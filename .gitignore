@@ -45,3 +45,6 @@ curso_ejemplos/proyecto_final/hallazgos_auditoria.log
 .idea/
 .DS_Store
 *.swp
+
+# ---- Borrador histórico (notebooks originales, no forma parte del curso) ----
+curso/

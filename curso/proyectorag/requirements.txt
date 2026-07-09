@@ -1,7 +1,0 @@
-langchain
-langchain-core
-langchain-google-genai
-google-generativeai
-langchain-community
-python-dotenv
-pypdf
