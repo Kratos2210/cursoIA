@@ -1,0 +1,47 @@
+# ==========================================================
+# .gitignore del proyecto de estudio (LangChain / RAG / LangGraph)
+# ==========================================================
+# Regla de oro: NUNCA se commitea un secreto ni un archivo generado.
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ---- Entornos virtuales ----
+.venv/
+venv/
+env/
+ENV/
+mi_rag/                 # el venv propio de proyectorag/
+
+# ---- Notebooks ----
+.ipynb_checkpoints/
+
+# ---- Tests / cobertura ----
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# ---- Empaquetado ----
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ---- Secretos (¡NUNCA commitear tu llave real!) ----
+# uv.lock SÍ se commitea (es la receta reproducible del entorno).
+.env
+.env.*
+!.env.example
+
+# ---- Archivos generados por los ejemplos ----
+curso_ejemplos/proyecto_final/hallazgos_auditoria.log
+
+# ---- Editor / SO ----
+.vscode/
+.idea/
+.DS_Store
+*.swp

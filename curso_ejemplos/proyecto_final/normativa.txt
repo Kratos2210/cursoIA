@@ -1,0 +1,16 @@
+Política de Gobierno de Datos — Entidad Financiera (documento de ejemplo)
+
+Regla 1 — Cifrado en reposo:
+Todos los datos personales de clientes deben almacenarse cifrados en reposo usando AES-256. Está prohibido guardar datos personales en texto plano.
+
+Regla 2 — Retención de datos:
+Los registros transaccionales se conservan por un mínimo de 10 años. Los datos personales que ya no son necesarios deben eliminarse tras 5 años de inactividad de la cuenta.
+
+Regla 3 — Completitud del RUC:
+Todo cliente empresa debe tener registrado su RUC de 11 dígitos. Un reporte con RUC vacío o incompleto se considera un incumplimiento de calidad de datos.
+
+Regla 4 — Control de acceso:
+El acceso a datos sensibles se otorga por rol y bajo el principio de mínimo privilegio. Todo acceso debe quedar registrado en un log de auditoría.
+
+Regla 5 — Consentimiento:
+No se pueden usar datos personales para fines de marketing sin el consentimiento explícito y documentado del cliente.

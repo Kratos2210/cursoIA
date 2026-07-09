@@ -1,0 +1,46 @@
+# ==========================================================
+# .gitignore del curso
+# ==========================================================
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# ---- Entornos virtuales ----
+.venv/
+venv/
+env/
+ENV/
+
+# ---- Empaquetado / builds ----
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ---- Tests / cobertura ----
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# ---- uv ----
+# uv.lock SÍ se commitea (es la receta reproducible). Solo ignoramos su caché.
+.uv/
+
+# ---- Secretos (¡NUNCA commitear tu llave real!) ----
+.env
+.env.*
+!.env.example
+
+# ---- Archivos generados por el proyecto final ----
+# El log de auditoría se regenera en cada ejecución; no se commitea.
+proyecto_final/hallazgos_auditoria.log
+
+# ---- Editor / SO ----
+.vscode/
+.idea/
+.DS_Store
+*.swp

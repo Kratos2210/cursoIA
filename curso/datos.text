@@ -1,0 +1,14 @@
+
+/effort low      # Razonamiento mínimo, más rápido
+/effort medium   # Preterminado anterior
+/effort high     # Predeterminado actual (desde marzo 2026)
+/effort xhigh    # Mayor profundidad (introducido en marzo 2026)
+/effort max      # Máximo razonamiento disponible
+
+¿Qué contexto inicial se configuró?
+
+Memoria de arquitectura: componentes del sistema disponibles desde el inicio.
+Alcance del rating: de una a cinco estrellas.
+Tarea central: “analizar el impacto de implementar ratings”.
+Niveles de pensamiento: Think, Think deeply y Ultrathink; se eligió *Think deeply*.
+Componentes a evaluar: backend y frontend como foco principal.

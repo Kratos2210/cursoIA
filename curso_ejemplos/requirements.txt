@@ -1,0 +1,21 @@
+# ==========================================================
+# Dependencias del curso.
+#
+# ⚠️  El CANON de dependencias es ahora pyproject.toml.
+#     Este archivo se mantiene por compatibilidad con `pip install -r`.
+#     Para un entorno reproducible usa:  uv sync  (genera uv.lock).
+#
+# Instalación:
+#   uv pip install -r curso_ejemplos/requirements.txt
+#   (o con pip:  pip install -r curso_ejemplos/requirements.txt)
+# Para tests:   pip install pytest   (o  uv sync --extra dev)
+# ==========================================================
+
+langchain-core==1.4.8          # Piezas base: mensajes, prompts, tools, runnables, vector store en memoria
+langchain-google-genai==4.2.7  # Conexión con los modelos Gemini de Google (chat + embeddings)
+langgraph==1.2.8               # Agentes: create_react_agent, StateGraph y memoria (checkpointer)
+python-dotenv==1.2.2           # Leer la llave secreta (GOOGLE_API_KEY) desde el archivo .env
+pydantic==2.13.4               # Moldes de datos para "salida estructurada" (BaseModel, Field)
+mcp==1.28.1                    # SDK oficial de Model Context Protocol (FastMCP: crear servidores)
+langchain-mcp-adapters==0.3.0  # Conectar servidores MCP como tools de LangChain/LangGraph
+langsmith==0.9.8               # Observabilidad: tracing de ejecuciones (se activa con LANGSMITH_API_KEY)

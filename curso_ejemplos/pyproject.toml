@@ -1,0 +1,89 @@
+# ==========================================================
+# Configuración del proyecto del curso.
+# Este archivo ES EL CANON de dependencias (fuente de verdad).
+# requirements.txt se mantiene solo por compatibilidad con `pip install -r`.
+#
+# Instalación (recomendada, con uv):
+#   uv sync            # crea/actualiza el venv y genera uv.lock
+#   uv run pytest      # corre los tests
+#
+# Instalación clásica con pip:
+#   pip install -e ".[dev]"
+# ==========================================================
+
+[project]
+name = "curso-langchain"
+version = "0.1.0"
+description = "Curso de LangChain, LangGraph, MCP y RAG — ejemplos autónomos y testeados."
+requires-python = ">=3.11"
+dependencies = [
+    # === Base de LangChain ===
+    # Piezas base: mensajes, prompts, tools, runnables, vector store en memoria.
+    "langchain-core==1.4.8",
+    # Conexión con los modelos Gemini de Google (chat + embeddings).
+    "langchain-google-genai==4.2.7",
+
+    # === Agentes y grafos ===
+    # Agentes: create_react_agent, StateGraph y memoria (checkpointer).
+    "langgraph==1.2.8",
+
+    # === Utilidades ===
+    # Leer la llave secreta (GOOGLE_API_KEY) desde el archivo .env.
+    "python-dotenv==1.2.2",
+    # Moldes de datos para "salida estructurada" (BaseModel, Field).
+    "pydantic==2.13.4",
+
+    # === Model Context Protocol (MCP) ===
+    # SDK oficial de MCP (FastMCP: crear servidores).
+    "mcp==1.28.1",
+    # Conectar servidores MCP como tools de LangChain/LangGraph.
+    "langchain-mcp-adapters==0.3.0",
+
+    # === Observabilidad ===
+    # Tracing de ejecuciones (LangSmith). Solo se activa con LANGSMITH_API_KEY.
+    "langsmith==0.9.8",
+]
+
+[project.optional-dependencies]
+# Dependencias para desarrollo y tests. Instalar con:  uv sync --extra dev
+# o:  pip install -e ".[dev]"
+dev = [
+    "pytest>=8.0",
+]
+# Interfaz web/servidor para el TEMA 17 (servir un agente por HTTP).
+# Instalar con:  uv sync --extra ui   o:  pip install -e ".[ui]"
+ui = [
+    "fastapi>=0.115",
+    "uvicorn==0.51.0",
+]
+
+[tool.uv]
+# El curso son SCRIPTS SUELTOS, no una librería instalable. Con package=false
+# le decimos a uv que solo instale las dependencias y no intente construir
+# un wheel de este proyecto (que no tiene nada que empaquetar).
+package = false
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# Solo se usa si alguien hace `pip install -e .` (no con uv). Sin esto,
+# hatchling se queja de que no encuentra qué empaquetar.
+bypass-selection = true
+
+[tool.pytest.ini_options]
+# Dos suites: la de los ejemplos y la del proyecto final modular.
+testpaths = ["tests", "proyecto_final/tests"]
+# Añade al path la carpeta del curso (para 'import util') y la del proyecto
+# final (para 'import config', 'import rag'…, igual que al ejecutar main.py).
+pythonpath = [".", "proyecto_final"]
+# Cualquier archivo que empiece con test_ se considera test.
+python_files = ["test_*.py"]
+# Marcadores propios: '@pytest.mark.offline' marca tests que NO llaman a la API.
+markers = [
+    "offline: tests que NO usan GOOGLE_API_KEY (los que corre la CI)",
+    "llm: tests que SÍ llaman a la API de Gemini (se omiten en CI sin secrets)",
+]
+# Por defecto corremos todo; la CI usa '-m offline' para no gastar cuota.
+addopts = "-ra"

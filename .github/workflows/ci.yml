@@ -1,0 +1,62 @@
+# ==========================================================
+# CI del curso — la red de seguridad automática
+# ==========================================================
+# FINALIDAD:
+#   Cada vez que alguien sube un cambio, GitHub corre los tests OFFLINE
+#   del curso en dos versiones de Python. Si un ejemplo se rompe porque
+#   una librería cambió de API, nos enteramos aquí y no en clase.
+#
+# ⚠️  Esta CI NUNCA llama a la API de Gemini:
+#     - no hay GOOGLE_API_KEY en los secrets del repo, y
+#     - solo corremos los tests marcados con '-m offline'.
+#     Así no gasta cuota ni falla por un 429 ajeno al código.
+#
+# Los tests marcados '@pytest.mark.llm' (si algún día los hay) se omiten.
+# ==========================================================
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+  # Permite lanzarla a mano desde la pestaña "Actions" de GitHub.
+  workflow_dispatch:
+
+jobs:
+  tests:
+    name: tests offline (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      # Si 3.11 falla, queremos ver igual el resultado de 3.12.
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+
+    # Todos los comandos corren dentro de la carpeta del curso,
+    # que es donde vive pyproject.toml (el canon de dependencias).
+    defaults:
+      run:
+        working-directory: curso_ejemplos
+
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar uv (el gestor de paquetes del curso)
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Instalar dependencias (resuelve pyproject.toml + uv.lock)
+        # Si esto falla, es que las versiones pinneadas ya no resuelven juntas.
+        run: uv sync --extra dev --python ${{ matrix.python-version }}
+
+      - name: Correr los tests offline
+        # -m offline  : omite cualquier test que llame a la API.
+        # --strict-markers: un marcador con typo ('offline' -> 'ofline') falla,
+        #                   en vez de omitir el test en silencio.
+        run: uv run pytest tests/ -m offline -v --strict-markers
+
+      - name: Verificar que ningún ejemplo tiene errores de sintaxis
+        # Barato y complementario: compila TODOS los .py del curso.
+        run: uv run python -m compileall -q . && echo "✅ Todos los .py compilan"

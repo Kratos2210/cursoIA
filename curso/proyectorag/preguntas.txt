@@ -1,0 +1,32 @@
+Para poner a prueba tu nuevo sistema RAG y asegurarte de que está extrayendo 
+la información de manera milimétrica, necesitas un buen banco de preguntas.
+Aquí tienes una lista de preguntas organizadas por las secciones del documento 
+de Políticas de Servicio y Operación de Datawith.AI, i
+deales para entrenar o testear a tu asistente virtual:
+Privacidad y Soberanía de Datos
+¿Quién mantiene el control de las llaves de API y credenciales del cliente?
+¿De qué manera se aplica la encriptación de los datos en la plataforma?  
+¿Qué opciones de alojamiento ofrecen si se requiere la máxima privacidad de los datos?  
+¿Cuál es el tiempo estándar de retención para los logs operativos?
+¿Por cuánto tiempo se conservan los índices de embeddings y bajo qué criterio se puede ajustar este plazo?
+
+Soporte y Continuidad Operativa (SLA)
+¿Cuál es el tiempo de respuesta y el objetivo de resolución para un ticket crítico (P1)?  
+Si el servicio sufre una degradación catalogada como P2,
+¿cuánto tiempo máximo tiene el equipo para responder y resolver?  
+¿Qué plazo de respuesta se contempla para las consultas o ajustes de nivel P3?
+¿Qué tipo de soporte o garantía se incluye una vez realizada la entrega del proyecto y por cuántos días? 
+
+Ética y Transparencia en IA
+¿Cómo se presentan o identifican los agentes ante los usuarios finales?
+¿Qué sucede automáticamente si un usuario muestra señales de frustración o realiza una consulta muy compleja?  
+¿Quién es la persona encargada de recibir el traspaso de un agente de IA a un humano?  
+¿Cómo se garantiza la auditabilidad en los procesos que toman decisiones automatizadas? 
+
+Propiedad Intelectual y Seguridad en el Diseño
+
+¿En qué momento los flujos, scripts y configuraciones personalizadas pasan a ser propiedad exclusiva del cliente?  
+¿Qué políticas o recursos ofrece la empresa para evitar la dependencia del proveedor (No Lock-in)?  
+¿Cuáles son los dos principios de seguridad que se aplican estrictamente en el diseño de todos los flujos? 
+
+Puedes usar cualquiera de estas frases directamente en el comando chain.invoke("Pregunta") que armamos en el paso anterior para verificar que el "bibliotecario" (retriever) haga bien su trabajo de búsqueda.  

@@ -1,0 +1,19 @@
+Manual de la empresa Datawith.AI
+
+Sobre nosotros:
+Datawith.AI es una consultora de inteligencia artificial y automatización con sede en Lima, Perú. Ayudamos a empresas a implementar agentes de IA, gobierno de datos y flujos de trabajo automatizados.
+
+Horario de atención:
+Nuestro horario de atención al cliente es de lunes a viernes, de 9:00 a 18:00 (hora de Perú, UTC-5). No atendemos sábados ni domingos.
+
+Política de reembolsos:
+Ofrecemos reembolso completo dentro de los primeros 7 días si el servicio no cumple lo acordado. Después de 7 días, no se aplican reembolsos, pero sí soporte correctivo sin costo durante 30 días.
+
+Seguridad y llaves de API:
+El cliente mantiene siempre el control de sus propias llaves de API y credenciales. Datawith.AI nunca almacena contraseñas en texto plano y usa variables de entorno para los secretos.
+
+Entregables de un proyecto:
+Al finalizar un proyecto el cliente recibe: el código fuente documentado, un manual de uso, una sesión de capacitación de 2 horas y 30 días de soporte incluido.
+
+Formas de pago:
+Aceptamos transferencia bancaria, Yape y Plin. Para proyectos mayores a 5000 soles ofrecemos pago en dos cuotas.
