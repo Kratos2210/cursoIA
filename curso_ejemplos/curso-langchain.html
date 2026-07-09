@@ -434,9 +434,12 @@ uv run python -c "from dotenv import load_dotenv; print('listo')"   # debe decir
 
       <div class="box warn"><div class="lab">▲ Todo el curso se hace en <code>mi-curso-ia/</code></div>
         <p>No tienes que clonar nada ni cambiar de carpeta. <strong>Desde aquí hasta el último módulo trabajas en la carpeta que creaste en el paso anterior</strong>, escribiendo tú cada archivo. Los ejemplos del repositorio son para <em>leerlos</em> cuando te atasques o para comparar tu solución con la de referencia — nunca para reemplazar el rato que pasas escribiendo el código.</p>
-        <p>Tu único comando de trabajo, siempre el mismo:</p>
-        <figure class="code"><figcaption><span class="d"></span>terminal · el bucle de todo el curso</figcaption><pre><code>cd mi-curso-ia            # ya estás aquí desde el paso anterior
-uv run python llmodel.py  # el archivo que acabas de escribir</code></pre></figure></div>
+        <p>Tu único comando de trabajo, siempre el mismo — cambia el nombre del archivo según el módulo:</p>
+        <figure class="code"><figcaption><span class="d"></span>terminal · el bucle de todo el curso</figcaption><pre><code>cd mi-curso-ia              # ya estás aquí desde el paso anterior
+uv run python main.py      # el archivo que uv init te creó
+
+# Y a partir del Módulo 01, el archivo que escribas tú:
+# uv run python llmodel.py</code></pre></figure></div>
 
       <div class="box analogy"><div class="lab">◆ Leer la solución antes de intentarlo no te ahorra nada</div>
         <p>El código correcto lo vas a tener igual — está a un clic. Lo que no vuelve es el rato que habrías pasado equivocándote, que es exactamente donde se aprende. Abre el ejemplo de referencia <em>después</em> de tener algo corriendo, no antes.</p></div>
@@ -464,7 +467,7 @@ uv run python llmodel.py  # el archivo que acabas de escribir</code></pre></figu
       </table></div>
           <div class="recap l1">
         <div class="lab">↺ En una frase</div>
-        <p>Un LLM por sí solo no calcula, no recuerda y no conoce tus documentos. <strong>LangChain</strong> lo conecta a herramientas, <strong>RAG</strong> le da tus papeles y <strong>LangGraph</strong> le da un ciclo de trabajo.<span class="arch">Para empezar: <code>cd mi-curso-ia</code> y <code>uv run python llmodel.py</code></span></p>
+        <p>Un LLM por sí solo no calcula, no recuerda y no conoce tus documentos. <strong>LangChain</strong> lo conecta a herramientas, <strong>RAG</strong> le da tus papeles y <strong>LangGraph</strong> le da un ciclo de trabajo.<span class="arch">Para empezar: <code>cd mi-curso-ia</code> y <code>uv run python main.py</code></span></p>
       </div>
     </div></section>
 
