@@ -6,16 +6,26 @@ SOLUCIÓN · Ejercicio 04 — Memoria: ventana y resumen
 Las tres estrategias de memoria, en un solo archivo, para que puedas
 compararlas: historial completo, ventana deslizante y resumen.
 
-Requisitos: .env con GOOGLE_API_KEY
+Requisitos: .env con la llave de tu proveedor (GOOGLE_API_KEY, o bien
+            LLM_PROVIDER=groq + GROQ_API_KEY para no gastar cuota de Gemini)
 Ejecuta:  uv run python curso_ejemplos/ejercicios/soluciones/solucion_04_memoria.py
 """
 
 import os
+import sys
+
+# `util.py` vive en curso_ejemplos/, dos carpetas más arriba. Estos scripts se
+# ejecutan desde soluciones/, así que Python no lo encontraría solo.
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_google_genai import ChatGoogleGenerativeAI
+
+# El modelo NO se instancia a mano: `crear_llm()` lo construye según el .env.
+# Con LLM_PROVIDER=groq usas qwen/qwen3-32b y dejas de gastar la cuota (muy
+# corta) de Gemini. El resto del archivo no se entera de cuál está detrás.
+from util import crear_llm, es_error_cuota, mensaje_cuota
 
 # Cuántos mensajes conserva la ventana (2 intercambios = 4 mensajes).
 VENTANA = 4
@@ -128,9 +138,10 @@ def demo(nombre, fabrica, llm):
 
 def main():
     load_dotenv()
-    if not os.getenv("GOOGLE_API_KEY"):
-        raise SystemExit("❌ Falta GOOGLE_API_KEY. Este ejercicio sí llama al modelo.")
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.5)
+    # Temperatura 0.5: queremos que el resumen suene natural, no robótico.
+    # crear_llm() valida la llave del proveedor activo y aborta con un mensaje
+    # claro si falta.
+    llm = crear_llm(temperature=0.5)
 
     demo("ESTRATEGIA 1 · Historial completo", hacer_chatear_completo, llm)
     demo("ESTRATEGIA 2 · Ventana de 4 mensajes", hacer_chatear_ventana, llm)
@@ -162,6 +173,6 @@ if __name__ == "__main__":
         main()
     except Exception as error:
         if "RESOURCE_EXHAUSTED" in str(error) or "429" in str(error):
-            print("⏳ Cuota de Gemini agotada (429). Espera unos minutos.")
+            print(mensaje_cuota())
         else:
             print(f"❌ Error inesperado: {error}")

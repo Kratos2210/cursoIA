@@ -2,6 +2,14 @@
 
 **Ejemplo base:** `11_rag.py` · **Gasta cuota:** sí (embeddings + 1 llamada por pregunta)
 
+> ⚠️ **Este es el único ejercicio que Groq no salva del todo.** Puedes mover el
+> *chat* a `qwen/qwen3-32b` (`LLM_PROVIDER=groq`), pero **Groq no ofrece
+> embeddings** y el RAG los necesita: seguirás gastando `GOOGLE_API_KEY` al
+> vectorizar. Y ojo — cambiar de modelo de embeddings no es cambiar de
+> proveedor: **invalida el índice entero**, porque los vectores viejos y los
+> nuevos viven en espacios distintos. (Así lo resuelve `proyecto_llmops/`:
+> calcula los embeddings **en local** con `fastembed`, sin API ni cuota.)
+
 ## Contexto
 
 `11_rag.py` indexa `datos_rag.txt` (7 fragmentos), recupera los `k=2` más

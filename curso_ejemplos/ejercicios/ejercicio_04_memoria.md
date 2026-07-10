@@ -2,6 +2,9 @@
 
 **Ejemplo base:** `04_memoria.py` · **Gasta cuota:** sí (3–4 llamadas)
 
+> 💡 **¿Sin cuota de Gemini?** Este ejercicio usa `util.crear_llm()`, que lee el proveedor del `.env`. Pon `LLM_PROVIDER=groq` + `GROQ_API_KEY` y pasas a `qwen/qwen3-32b` sin tocar código. Ver [README](README.md#-si-la-cuota-de-gemini-se-te-agota-429).
+
+
 ## Contexto
 
 `04_memoria.py` guarda el historial en una lista de Python y lo reenvía entero

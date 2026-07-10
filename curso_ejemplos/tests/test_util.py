@@ -6,6 +6,7 @@ Son la primera red de seguridad: si algo aquí falla, los ejemplos mostrarán
 errores crípticos en producción.
 """
 import pytest
+import util
 from util import es_error_cuota, mensaje_cuota, trocear_parrafos, requiere_api_key
 
 
@@ -99,3 +100,119 @@ class TestRequiereApiKey:
         """Si la llave está presente, devuelve None (todo ok)."""
         monkeypatch.setenv("GOOGLE_API_KEY", "una_llave_de_prueba")
         assert requiere_api_key() is None
+
+
+# ------------------------------------------------------------------
+# crear_llm: elegir proveedor sin tocar el código
+# ------------------------------------------------------------------
+# La cuota gratuita de Gemini se agota a mitad de una tarde de ejercicios. Estos
+# tests fijan que `LLM_PROVIDER=groq` sea una salida de verdad, no un adorno.
+#
+# Construir el modelo NO llama a la API: solo instancia el cliente. Por eso
+# estos tests son offline aunque toquen `crear_llm()`.
+@pytest.mark.offline
+class TestProveedor:
+    def test_por_defecto_es_google(self, monkeypatch):
+        monkeypatch.delenv("LLM_PROVIDER", raising=False)
+        assert util.proveedor() == "google"
+
+    def test_lo_decide_el_entorno(self, monkeypatch):
+        monkeypatch.setenv("LLM_PROVIDER", "GROQ")   # mayúsculas y espacios sobran
+        assert util.proveedor() == "groq"
+
+    def test_cada_proveedor_tiene_su_modelo(self, monkeypatch):
+        monkeypatch.delenv("LLM_MODELO", raising=False)
+        assert util.modelo_por_defecto("groq") == "qwen/qwen3-32b"
+        assert util.modelo_por_defecto("google") == "gemini-2.0-flash"
+
+    def test_LLM_MODELO_manda_sobre_el_default(self, monkeypatch):
+        monkeypatch.setenv("LLM_MODELO", "llama-3.3-70b-versatile")
+        assert util.modelo_por_defecto("groq") == "llama-3.3-70b-versatile"
+
+    def test_un_proveedor_inventado_falla_claro(self, monkeypatch):
+        monkeypatch.delenv("LLM_MODELO", raising=False)
+        with pytest.raises(ValueError, match="no existe"):
+            util.modelo_por_defecto("openrouter")
+
+    def test_cada_proveedor_lee_SU_variable_de_llave(self):
+        assert util.variable_de_llave("google") == "GOOGLE_API_KEY"
+        assert util.variable_de_llave("groq") == "GROQ_API_KEY"
+
+
+@pytest.mark.offline
+class TestRequiereLlmKey:
+    def test_con_groq_pide_GROQ_API_KEY_no_la_de_google(self, monkeypatch):
+        # El fallo clásico al cambiar de proveedor: seguir validando la llave vieja.
+        monkeypatch.setenv("LLM_PROVIDER", "groq")
+        monkeypatch.setenv("GOOGLE_API_KEY", "la_de_google_no_sirve_aqui")
+        monkeypatch.delenv("GROQ_API_KEY", raising=False)
+        assert "GROQ_API_KEY" in util.requiere_llm_key()
+
+    def test_con_la_llave_correcta_no_se_queja(self, monkeypatch):
+        monkeypatch.setenv("LLM_PROVIDER", "groq")
+        monkeypatch.setenv("GROQ_API_KEY", "gsk_de_prueba")
+        assert util.requiere_llm_key() is None
+
+    def test_ollama_no_necesita_llave(self, monkeypatch):
+        # Corre en tu máquina: no hay a quién autenticarse.
+        monkeypatch.setenv("LLM_PROVIDER", "ollama")
+        monkeypatch.delenv("OLLAMA_API_KEY", raising=False)
+        assert util.requiere_llm_key() is None
+
+
+@pytest.mark.offline
+class TestCrearLlm:
+    def test_groq_construye_un_cliente_openai_apuntando_a_groq(self, monkeypatch):
+        # ⭐ Una sola clase sirve para Groq, Ollama y OpenAI: todos hablan el
+        #    mismo dialecto. Lo que cambia es la base_url, no el código.
+        monkeypatch.setenv("LLM_PROVIDER", "groq")
+        monkeypatch.setenv("GROQ_API_KEY", "gsk_de_prueba")
+        monkeypatch.delenv("LLM_MODELO", raising=False)
+        monkeypatch.delenv("LLM_BASE_URL", raising=False)
+
+        llm = util.crear_llm(temperature=0.3)
+        assert type(llm).__name__ == "ChatOpenAI"
+        assert llm.model_name == "qwen/qwen3-32b"
+        assert "groq.com" in str(llm.openai_api_base)
+        assert llm.temperature == 0.3
+
+    def test_google_sigue_siendo_el_camino_por_defecto(self, monkeypatch):
+        monkeypatch.delenv("LLM_PROVIDER", raising=False)
+        monkeypatch.delenv("LLM_MODELO", raising=False)
+        monkeypatch.setenv("GOOGLE_API_KEY", "de_prueba")
+
+        llm = util.crear_llm()
+        assert type(llm).__name__ == "ChatGoogleGenerativeAI"
+
+    def test_sin_llave_aborta_antes_de_construir_nada(self, monkeypatch):
+        # Mejor un SystemExit con instrucciones que un 401 críptico a mitad de
+        # la primera llamada.
+        monkeypatch.setenv("LLM_PROVIDER", "groq")
+        monkeypatch.delenv("GROQ_API_KEY", raising=False)
+        with pytest.raises(SystemExit, match="GROQ_API_KEY"):
+            util.crear_llm()
+
+
+@pytest.mark.offline
+class TestMensajeCuotaPorProveedor:
+    def test_con_gemini_ofrece_groq_como_salida(self, monkeypatch):
+        monkeypatch.delenv("LLM_PROVIDER", raising=False)
+        assert "groq" in mensaje_cuota().lower()
+
+    def test_con_groq_no_recomienda_un_modelo_de_gemini(self, monkeypatch):
+        # Decirle "usa gemini-2.5-flash" a quien corre contra Groq no le sirve.
+        monkeypatch.setenv("LLM_PROVIDER", "groq")
+        assert "gemini" not in mensaje_cuota().lower()
+        assert "429" in mensaje_cuota()
+
+
+@pytest.mark.offline
+class TestRequiereApiKeyAvisaDelDesajuste:
+    def test_si_pusiste_groq_pero_corres_un_ejemplo_de_gemini(self, monkeypatch):
+        # Los ejemplos numerados instancian Gemini directamente. Si el alumno
+        # puso LLM_PROVIDER=groq, el mensaje tiene que explicárselo.
+        monkeypatch.setenv("LLM_PROVIDER", "groq")
+        monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+        mensaje = requiere_api_key()
+        assert "LLM_PROVIDER=groq" in mensaje
+        assert "ejercicios" in mensaje

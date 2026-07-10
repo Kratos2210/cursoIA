@@ -3,6 +3,8 @@
 **Ejemplos base:** `07_herramientas.py` (definir) y `08_routing.py` (usar)
 **Gasta cuota:** la Parte 1 no; la Parte 2 sí (2 llamadas por pregunta)
 
+> 💡 **¿Sin cuota de Gemini?** Este ejercicio usa `util.crear_llm()`, que lee el proveedor del `.env`. Pon `LLM_PROVIDER=groq` + `GROQ_API_KEY` y pasas a `qwen/qwen3-32b` sin tocar código. Ver [README](README.md#-si-la-cuota-de-gemini-se-te-agota-429).
+
 ## Parte 1 — Escribe dos tools (offline)
 
 Añade a `07_herramientas.py` dos herramientas nuevas del dominio del curso:

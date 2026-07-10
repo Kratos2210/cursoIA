@@ -3,7 +3,7 @@
 Cada archivo es **autónomo**: lo abres en VS Code, lo corres y funciona solo.
 Están comentados **sección por sección** para que entiendas cada línea.
 
-Y todo está **verificado por 141 tests** que corren sin gastar un solo token
+Y todo está **verificado por 353 tests** que corren sin gastar un solo token
 (ver [§6](#6-cómo-se-verifica-que-esto-funciona)).
 
 ## 1) Requisitos (una sola vez)
@@ -16,6 +16,11 @@ cp .env.example .env     # edita y pon tu llave de https://aistudio.google.com
 
 > `pyproject.toml` + `uv.lock` son la receta reproducible.
 > `requirements.txt` se mantiene solo por compatibilidad con `pip install -r`.
+
+> ⚡ **La cuota de Gemini es cortísima.** Para los [ejercicios](ejercicios/) puedes
+> usar Groq (`qwen/qwen3-32b`) con solo dos líneas en el `.env`:
+> `LLM_PROVIDER=groq` + `GROQ_API_KEY` ([llave gratis](https://console.groq.com/keys)).
+> Los ejemplos numerados siguen usando Gemini a propósito — ver el `.env.example`.
 
 ## 2) Cómo ejecutar cualquier ejemplo
 
@@ -69,6 +74,10 @@ Los dos que no puedes saltarte —y no gastan cuota— son
 [`ejercicio_12_rerank.md`](ejercicios/ejercicio_12_rerank.md) (predice el ranking
 antes de ejecutarlo) y [`ejercicio_13_hitl.md`](ejercicios/ejercicio_13_hitl.md).
 
+Los ejercicios **no cablean el proveedor**: llaman a `util.crear_llm()`, que lee
+`LLM_PROVIDER` del `.env`. Cuando Gemini te dé un 429, pásate a Groq sin tocar
+código. Excepción: el ejercicio 11 (RAG) necesita embeddings, y Groq no los ofrece.
+
 ## 5) Mapa: concepto → archivo → ejercicio → test
 
 La columna de tests es la que hace que esto sea material de estudio y no un
@@ -99,7 +108,7 @@ montón de scripts: **cada concepto tiene una prueba que lo defiende**.
 
 ```bash
 cd curso_ejemplos
-uv run pytest -m offline        # 141 tests, ~20 s, CERO llamadas a la API
+uv run pytest -m offline        # 353 tests, ~15 s, CERO llamadas a la API
 ```
 
 Qué cubren:
@@ -111,13 +120,22 @@ Qué cubren:
   las tools, los moldes Pydantic, las fórmulas de BM25/RRF, el grafo HITL en sus
   dos ramas, el protocolo MCP contra un servidor real, el enrutado del supervisor
   y el cálculo de costes.
-- **`tests/test_util.py`** — la lógica compartida (`es_error_cuota`, troceado).
+- **`tests/test_util.py`** — la lógica compartida (`es_error_cuota`, troceado) y la
+  fábrica de modelos: que `LLM_PROVIDER=groq` construya de verdad un cliente
+  apuntando a Groq, y que pida `GROQ_API_KEY` y no la llave de Google.
 - **`proyecto_final/tests/`** — el proyecto final entero, con un **modelo falso**
   que recita un guion: pregunta → tool → auditoría → respuesta.
+- **`proyecto_llmops/tests/`** — el servicio de producción: guardrails, caché
+  semántico, tríada RAG, el gate del deploy y la API entera (con `TestClient`,
+  un agente falso y sin levantar Postgres, Redis ni Langfuse).
 
 Y en cada `push`, [la CI](../.github/workflows/ci.yml) corre exactamente eso en
 Python 3.11 y 3.12. **Nunca llama a la API**: no gasta cuota y no falla por un
 429 ajeno al código.
+
+Aparte va [`eval-gate.yml`](../.github/workflows/eval-gate.yml), que **sí gasta
+cuota** y **sí puede bloquear un deploy**: corre la tríada RAG sobre el dataset
+versionado. Se lanza a mano o al crear una release, nunca en cada push.
 
 ## 7) Documentación de operación
 
@@ -128,7 +146,33 @@ Python 3.11 y 3.12. **Nunca llama a la API**: no gasta cuota y no falla por un
 | [`docs/adr/0002-re-ranker.md`](docs/adr/0002-re-ranker.md) | Por qué el re-ranker está escrito a mano y no con un cross-encoder |
 | [`docs/adr/0000-plantilla.md`](docs/adr/0000-plantilla.md) | La plantilla para tus propios ADR |
 
-## 8) Si ves un error 429 (RESOURCE_EXHAUSTED)
+## 8) 🚀 El escalón siguiente: `proyecto_llmops/`
+
+El `proyecto_final/` es **el prototipo que funciona en local**.
+[`proyecto_llmops/`](proyecto_llmops/README.md) es ese mismo agente convertido en
+un **producto**: el mismo dominio (GobData), envuelto en las cuatro capas que
+exige producción.
+
+```bash
+uv sync --extra llmops
+docker compose -f proyecto_llmops/docker-compose.yml up -d   # Postgres+pgvector, Redis, Langfuse
+uv run uvicorn proyecto_llmops.app.main:app --port 8000
+```
+
+| Pilar LLMOps | Dónde vive | La idea que hay que llevarse |
+|---|---|---|
+| 🛡️ **Gobernanza** | `guardrails/` | Bloquear lo hostil, **sanear** lo torpe. El prompt no es un control de seguridad |
+| 💸 **Coste y UX** | `cache/`, `app/llm.py`, `app/streaming.py` | Un HIT del caché cuesta $0. Y un caché sin rol **se salta el RBAC** |
+| 🔭 **Observabilidad** | `observability/` | La media esconde al usuario que se va: mide **p95** y **TTFT** |
+| 📊 **Evaluación** | `evals/` | La evaluación solo vale si tiene **poder de veto** (`ci_gate.py` → `exit 1`) |
+
+Y tres decisiones documentadas, con sus consecuencias negativas escritas:
+[pgvector](proyecto_llmops/docs/adr/0003-pgvector.md) ·
+[Langfuse](proyecto_llmops/docs/adr/0004-langfuse.md) ·
+[caché semántico](proyecto_llmops/docs/adr/0005-semantic-cache.md).
+Cuando algo se rompa: [su runbook](proyecto_llmops/docs/README_runbook.md).
+
+## 9) Si ves un error 429 (RESOURCE_EXHAUSTED)
 
 Es el límite del plan gratuito de Gemini. Espera unos minutos, cambia el modelo
 a `gemini-2.5-flash`, o activa facturación. **No es un error de tu código.**

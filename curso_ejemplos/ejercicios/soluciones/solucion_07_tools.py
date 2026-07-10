@@ -3,12 +3,23 @@ SOLUCIÓN · Ejercicio 07 — Dos tools nuevas
 ==========================================================
 ⚠️ No leas esto hasta haberlo intentado.
 
-Partes 1 y 3 son OFFLINE (no gastan cuota). La Parte 2 necesita GOOGLE_API_KEY.
+Partes 1 y 3 son OFFLINE (no gastan cuota). La Parte 2 necesita la llave del
+proveedor que elijas (GOOGLE_API_KEY, o GROQ_API_KEY con LLM_PROVIDER=groq).
 
 Ejecuta:  uv run python curso_ejemplos/ejercicios/soluciones/solucion_07_tools.py
 """
 
 import os
+import sys
+
+# `util.py` vive en curso_ejemplos/, dos carpetas más arriba. Estos scripts se
+# ejecutan desde soluciones/, así que Python no lo encontraría solo.
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
+# `crear_llm()` construye el modelo del proveedor que diga el .env. Con
+# LLM_PROVIDER=groq usas qwen/qwen3-32b y dejas de gastar la (cortísima) cuota
+# gratuita de Gemini.
+from util import crear_llm, requiere_llm_key
 
 from dotenv import load_dotenv
 from langchain_core.tools import tool
@@ -77,10 +88,11 @@ def verificar_offline():
 # ============ PARTE 2 · Que el modelo las combine (gasta cuota) ============
 def parte_2():
     """El ciclo completo de 08_routing.py, pero con TRES tools."""
-    from langchain_google_genai import ChatGoogleGenerativeAI
     from langchain_core.messages import HumanMessage, ToolMessage
 
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
+    # El proveedor sale del .env. `bind_tools` funciona igual con Gemini que con
+    # qwen/qwen3-32b vía Groq: el tool calling es parte del protocolo, no del modelo.
+    llm = crear_llm(temperature=0)
     herramientas = [calculadora_descuentos, validar_ruc, calcular_igv]
     llm_tools = llm.bind_tools(herramientas)
     mapa = {t.name: t for t in herramientas}
@@ -116,8 +128,11 @@ def main():
     verificar_offline()
 
     load_dotenv()
-    if not os.getenv("GOOGLE_API_KEY"):
-        print("\nℹ️  Sin GOOGLE_API_KEY: me salto la Parte 2 (la que llama al modelo).")
+    # requiere_llm_key() mira la llave del proveedor ACTIVO, no siempre la de
+    # Google: con LLM_PROVIDER=groq comprueba GROQ_API_KEY, y con ollama, nada.
+    if requiere_llm_key():
+        print(f"\nℹ️  {requiere_llm_key()}")
+        print("   Me salto la Parte 2 (la que llama al modelo).")
         return
 
     print("\n" + "=" * 60)

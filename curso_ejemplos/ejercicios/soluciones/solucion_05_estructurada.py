@@ -4,12 +4,23 @@ SOLUCIÓN · Ejercicio 05 — Un cuarto molde Pydantic
 ⚠️ No leas esto hasta haberlo intentado.
 
 El molde TicketSoporte, sus tests offline, y la extracción real con el modelo.
-La parte de tests corre SIN llave; la extracción necesita GOOGLE_API_KEY.
+La parte de tests corre SIN llave; la extracción necesita la llave del
+proveedor que elijas (GOOGLE_API_KEY, o GROQ_API_KEY con LLM_PROVIDER=groq).
 
 Ejecuta:  uv run python curso_ejemplos/ejercicios/soluciones/solucion_05_estructurada.py
 """
 
 import os
+import sys
+
+# `util.py` vive en curso_ejemplos/, dos carpetas más arriba. Estos scripts se
+# ejecutan desde soluciones/, así que Python no lo encontraría solo.
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
+
+# `crear_llm()` construye el modelo del proveedor que diga el .env. Con
+# LLM_PROVIDER=groq usas qwen/qwen3-32b y dejas de gastar la (cortísima) cuota
+# gratuita de Gemini.
+from util import crear_llm, requiere_llm_key
 from typing import List, Literal
 
 from dotenv import load_dotenv
@@ -95,9 +106,9 @@ def verificar_offline():
 
 # ============ LA EXTRACCIÓN REAL ============
 def extraer():
-    from langchain_google_genai import ChatGoogleGenerativeAI
-
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
+    # Respeta LLM_PROVIDER del .env (google | groq | ollama). Temperatura 0:
+    # extraer datos no es una tarea creativa.
+    llm = crear_llm(temperature=0)
     extractor = llm.with_structured_output(TicketSoporte)
     ticket = extractor.invoke(f"Extrae un ticket de soporte de este correo:\n{CORREO}")
 
@@ -122,8 +133,10 @@ def main():
     verificar_offline()
 
     load_dotenv()
-    if not os.getenv("GOOGLE_API_KEY"):
-        print("\nℹ️  Sin GOOGLE_API_KEY: me salto la extracción real.")
+    # La llave que hace falta depende del proveedor activo (google | groq | ollama).
+    if requiere_llm_key():
+        print(f"\nℹ️  {requiere_llm_key()}")
+        print("   Me salto la extracción real.")
         return
     extraer()
 

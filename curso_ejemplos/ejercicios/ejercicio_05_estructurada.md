@@ -2,6 +2,9 @@
 
 **Ejemplo base:** `05_salida_estructurada.py` · **Gasta cuota:** sí (1–2 llamadas)
 
+> 💡 **¿Sin cuota de Gemini?** Este ejercicio usa `util.crear_llm()`, que lee el proveedor del `.env`. Pon `LLM_PROVIDER=groq` + `GROQ_API_KEY` y pasas a `qwen/qwen3-32b` sin tocar código. Ver [README](README.md#-si-la-cuota-de-gemini-se-te-agota-429).
+
+
 ## Contexto
 
 `05_salida_estructurada.py` tiene tres moldes: `Persona`, `Extraccion` y
