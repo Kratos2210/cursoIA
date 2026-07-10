@@ -6,7 +6,7 @@
     --ink:#211d18; --ink-soft:#565046; --ink-faint:#8b8477;
     --line:#e3ddd0; --line-strong:#d3ccbb;
     --accent:#0f6e64; --accent-ink:#0a4a43; --accent-wash:#0f6e6414;
-    --amber:#b0600f; --amber-wash:#b0600f14;
+    --amber:#b0600f; --amber-wash:#b0600f14; --rose:#b0323f; --rose-wash:#b0323f14;
     --code-bg:#1c1a16; --code-ink:#e9e3d6; --code-com:#8f8776; --code-str:#e0a86a; --code-line:#2c2a24;
     --good:#2f7d4f; --warn:#b0600f;
     --l1:#2f7d4f; --l2:#b0600f; --l3:#2563a8; --l4:#9a3b6e; --l5:#0f6e64;
@@ -21,7 +21,7 @@
       --ink:#ece7dd; --ink-soft:#b4ad9f; --ink-faint:#7e776a;
       --line:#2c2822; --line-strong:#3a352d;
       --accent:#3bbcad; --accent-ink:#67d3c5; --accent-wash:#3bbcad1a;
-      --amber:#e19140; --amber-wash:#e191401a;
+      --amber:#e19140; --amber-wash:#e191401a; --rose:#e0808c; --rose-wash:#e0808c1a;
       --good:#5fb984; --warn:#e19140;
       --l1:#5fb984; --l2:#e19140; --l3:#5b9bd8; --l4:#d072a3; --l5:#3bbcad;
     }
@@ -31,7 +31,7 @@
     --ink:#211d18; --ink-soft:#565046; --ink-faint:#8b8477;
     --line:#e3ddd0; --line-strong:#d3ccbb;
     --accent:#0f6e64; --accent-ink:#0a4a43; --accent-wash:#0f6e6414;
-    --amber:#b0600f; --amber-wash:#b0600f14; --good:#2f7d4f; --warn:#b0600f;
+    --amber:#b0600f; --amber-wash:#b0600f14; --rose:#b0323f; --rose-wash:#b0323f14; --good:#2f7d4f; --warn:#b0600f;
     --l1:#2f7d4f; --l2:#b0600f; --l3:#2563a8; --l4:#9a3b6e; --l5:#0f6e64;
   }
   :root[data-theme="dark"]{
@@ -39,7 +39,7 @@
     --ink:#ece7dd; --ink-soft:#b4ad9f; --ink-faint:#7e776a;
     --line:#2c2822; --line-strong:#3a352d;
     --accent:#3bbcad; --accent-ink:#67d3c5; --accent-wash:#3bbcad1a;
-    --amber:#e19140; --amber-wash:#e191401a; --good:#5fb984; --warn:#e19140;
+    --amber:#e19140; --amber-wash:#e191401a; --rose:#e0808c; --rose-wash:#e0808c1a; --good:#5fb984; --warn:#e19140;
     --l1:#5fb984; --l2:#e19140; --l3:#5b9bd8; --l4:#d072a3; --l5:#3bbcad;
   }
 
@@ -207,6 +207,8 @@
   .box.practice .lab{color:var(--amber)}
   .box.warn{background:var(--amber-wash);border:1px solid var(--amber);border-left-width:3px}
   .box.warn .lab{color:var(--amber)}
+  .avoid{margin:26px 0 0;padding:16px 19px;border-radius:11px;background:var(--rose-wash);border:1px solid var(--rose);border-left:3px solid var(--rose)}
+  .avoid .lab{color:var(--rose)}
   .box.def{background:var(--surface-2);border:1px solid var(--line-strong);border-left:3px solid var(--l3)}
   .box.def .lab{color:var(--l3)}
   .box.def dl{margin:14px 0 0}
@@ -869,6 +871,13 @@ for _ in range(3):
     print(creativo.invoke("Dame un nombre para una cafetería").content)
 # con 0.9 salen 3 nombres distintos; con temperature=0, casi siempre el mismo</code></pre></figure>
         </div></details></div>
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Explicar qué recibe y qué devuelve <code class="k">.invoke()</code> (mensajes entran, un <code class="k">AIMessage</code> sale).</li>
+          <li>Nombrar los cuatro tipos de mensaje (<code class="k">System</code>, <code class="k">Human</code>, <code class="k">AI</code>, <code class="k">Tool</code>) y para qué sirve cada rol.</li>
+          <li>Decir cómo cambia la respuesta al ajustar <code class="k">temperature</code> de <code class="k">0</code> a <code class="k">0.9</code>.</li>
+          <li>Reconocer por qué <code class="k">util.crear_llm()</code> te deja cambiar de proveedor sin tocar el resto del código.</li>
+        </ul></div>
           <div class="recap l1">
         <div class="lab">↺ En una frase</div>
         <p><code>invoke()</code> envía mensajes y devuelve un <code>AIMessage</code>. El <em>rol</em> de cada mensaje (System, Human, AI) no es decoración: cambia cómo responde el modelo.<span class="arch">archivo: <code>01_primer_modelo.py</code></span></p>
@@ -920,6 +929,13 @@ print(cadena.invoke({"review": "El producto llegó tarde y roto."}))</code></pre
 # la cadena NO se toca:
 print((prompt | llm | StrOutputParser()).invoke({"review": "El producto llegó tarde y roto."}))</code></pre></figure>
         </div></details></div>
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Explicar qué es un prompt template y por qué un molde con <code class="k">{variables}</code> es reutilizable.</li>
+          <li>Decir qué hace el operador <code class="k">|</code>: la salida de cada pieza es la entrada de la siguiente.</li>
+          <li>Nombrar los tres bloques de una cadena básica (prompt <code class="k">|</code> modelo <code class="k">|</code> parser).</li>
+          <li>Reconocer para qué sirve <code class="k">StrOutputParser()</code> (dejar texto plano en vez de un <code class="k">AIMessage</code>).</li>
+        </ul></div>
           <div class="recap l1">
         <div class="lab">↺ En una frase</div>
         <p>Un prompt es una <strong>plantilla reutilizable</strong>, no un texto fijo. Y el operador <code>|</code> encadena prompt → modelo → parser en un solo objeto invocable.<span class="arch">archivo: <code>02_prompts_lcel.py</code></span></p>
@@ -979,6 +995,13 @@ for f in filas:
     cadena.invoke(f)
 print("un for:", round(time.time() - t, 1), "s")   # bastante más lento</code></pre></figure>
         </div></details></div>
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Explicar qué promete la interfaz unificada (<code class="k">Runnable</code>): toda pieza entiende los mismos verbos.</li>
+          <li>Decir cuándo usar <code class="k">invoke</code> (una entrada), <code class="k">batch</code> (muchas en paralelo) y <code class="k">stream</code> (token a token).</li>
+          <li>Explicar por qué <code class="k">batch</code> es más rápido que un <code class="k">for</code> con <code class="k">invoke</code>.</li>
+          <li>Reconocer para qué sirven los gemelos <code class="k">async</code> (<code class="k">ainvoke</code>, <code class="k">abatch</code>, <code class="k">astream</code>).</li>
+        </ul></div>
           <div class="recap l1">
         <div class="lab">↺ En una frase</div>
         <p>Toda pieza de LCEL habla el mismo idioma: <code>invoke</code> (una entrada), <code>batch</code> (muchas en paralelo) y <code>stream</code> (token a token). Por eso las piezas se intercambian sin reescribir nada.<span class="arch">archivo: <code>03_interfaz_unificada.py</code></span></p>
@@ -1032,6 +1055,13 @@ print(chatear("¿Recuerdas mi nombre y qué me gusta?"))  # -> sí</code></pre><
     print("IA:", chatear(texto))</code></pre></figure>
           <p>Prueba: di tu nombre en el turno 1, pregunta por él en el turno 4.</p>
         </div></details></div>
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Explicar por qué el modelo "olvida": cada <code class="k">.invoke()</code> es independiente y no guarda estado.</li>
+          <li>Decir qué es la memoria en LangChain (una lista tuya que reenvías completa en cada turno).</li>
+          <li>Reconocer para qué sirve <code class="k">MessagesPlaceholder</code> (el hueco donde se pega el historial).</li>
+          <li>Explicar por qué la conversación se encarece turno a turno y cuándo toca resumir o recortar.</li>
+        </ul></div>
 
       <div class="quiz">
         <div class="qhead">✅ Autoevaluación · Nivel Básico (módulos 00–04)</div>
@@ -1141,6 +1171,13 @@ extractor = llm.with_structured_output(Producto)
 print(extractor.invoke("Sí tenemos la camilla plegable, cuesta 350 soles"))
 # color saldrá None: el modelo NO lo inventa porque es Optional</code></pre></figure>
         </div></details></div>
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Explicar qué es la salida estructurada: un objeto de forma conocida en vez de prosa libre.</li>
+          <li>Reconocer para qué sirve <code class="k">with_structured_output(Modelo)</code> con una clase Pydantic.</li>
+          <li>Decir por qué las descripciones (<code class="k">Field(description=…)</code>) las lee el modelo, no son comentarios.</li>
+          <li>Explicar por qué un campo obligatorio ausente invita a alucinar y cuándo marcarlo <code class="k">Optional</code>.</li>
+        </ul></div>
           <div class="recap l2">
         <div class="lab">↺ En una frase</div>
         <p><code>with_structured_output</code> + un modelo Pydantic convierten texto libre en un objeto <strong>validado</strong>. Deja de parsear respuestas con expresiones regulares.<span class="arch">archivo: <code>05_salida_estructurada.py</code></span></p>
@@ -1194,6 +1231,13 @@ analisis = RunnableParallel(
 print(analisis.invoke({"texto": "La automatización ahorra tiempo valioso"}))
 # {'ingles': 'Automation saves valuable time', 'palabras': 5}</code></pre></figure>
         </div></details></div>
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Decir qué hace <code class="k">RunnableParallel</code> (ramas a la vez que devuelven un diccionario).</li>
+          <li>Explicar para qué sirven <code class="k">RunnablePassthrough</code> (dejar pasar la entrada) y <code class="k">RunnableLambda</code> (meter una función tuya).</li>
+          <li>Explicar qué significa que un Runnable sea "cerrado bajo composición" (<code class="k">a | b</code> vuelve a ser un Runnable).</li>
+          <li>Reconocer el patrón <code class="k">{"context": retriever, "question": passthrough}</code> que armará el RAG.</li>
+        </ul></div>
           <div class="recap l2">
         <div class="lab">↺ En una frase</div>
         <p><code>RunnableParallel</code>, <code>RunnablePassthrough</code> y <code>RunnableLambda</code> te dejan armar cualquier topología —ramas, copias, funciones tuyas— sin salir de LCEL.<span class="arch">archivo: <code>06_runnables.py</code></span></p>
@@ -1240,6 +1284,13 @@ def convertir_moneda(soles: float) -&gt; float:
     pida pasar un precio de soles a dólares."""   # ✅ CLARO: cuándo y para qué
     return soles / 3.75</code></pre></figure>
         </div></details></div>
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Explicar qué hace <code class="k">@tool</code> (usa nombre, tipos y docstring para describir la función).</li>
+          <li>Decir por qué "el docstring es el prompt": es lo único que el modelo lee para elegir la herramienta.</li>
+          <li>Explicar que el modelo <strong>pide</strong> una herramienta (emite un <code class="k">tool_call</code>) pero no la ejecuta: tu código decide.</li>
+          <li>Reconocer dónde viajan los <code class="k">tool_calls</code> (dentro de un <code class="k">AIMessage</code>).</li>
+        </ul></div>
           <div class="recap l2">
         <div class="lab">↺ En una frase</div>
         <p>El decorador <code>@tool</code> no ejecuta nada: <strong>describe</strong> una función para que el modelo pueda pedirla. El docstring y los tipos son la documentación que el modelo lee.<span class="arch">archivo: <code>07_herramientas.py</code> (offline)</span></p>
@@ -1330,6 +1381,12 @@ print(llm_tools.invoke(mensajes).content)     # (D) respuesta final con el dato 
       </ul>
       <div class="box warn"><div class="lab">▲ El error típico</div>
         <p>Muchos se quedan en el paso B e imprimen el <code class="k">tool_calls</code> crudo. Sin C y D no tienes un agente: tienes media función. El <code class="k">ToolMessage</code> con su <code class="k">tool_call_id</code> es el hilo que une pedido y resultado.</p></div>
+      <div class="avoid"><div class="lab">⛔ Cuándo NO usar esto</div>
+        <ul>
+          <li>Si un solo prompt directo ya resuelve la pregunta (no necesita datos externos): un <code class="k">.invoke()</code> normal es más barato y rápido que atar herramientas.</li>
+          <li>Si el camino se decide con una regla fija (una palabra clave, un tipo de dato): resuélvelo con un <code class="k">if</code> en tu código, no con un LLM — un <code class="k">if</code> es gratis, determinista y no alucina.</li>
+          <li>Si solo tienes una herramienta y siempre se usa: llama la función tú mismo; el ciclo de decisión sobra.</li>
+        </ul></div>
       <div class="box practice"><div class="lab">▸ Para practicar</div>
         <p>Añade una segunda herramienta y haz una pregunta que necesite <strong>las dos</strong>. Como iteramos sobre <code class="k">ai.tool_calls</code>, el código ya lo soporta.</p>
         <details class="sol"><summary>Ver una solución</summary><div class="sbody">
@@ -1391,6 +1448,12 @@ async def procesar_todo(preguntas):
 respuestas = asyncio.run(procesar_todo(["...", "...", "..."]))
 print(respuestas)</code></pre></figure>
       <figure class="code output"><figcaption><span class="d"></span>▸ deberías ver (una lista con las 3 respuestas — pero llegaron casi a la vez, no una tras otra)</figcaption><pre><code>['Respuesta a la 1…', 'Respuesta a la 2…', 'Respuesta a la 3…']</code></pre></figure>
+      <div class="avoid"><div class="lab">⛔ Cuándo NO usar esto</div>
+        <ul>
+          <li>No metas <code class="k">async</code> en un flujo secuencial y corto (una sola llamada, o pasos que dependen uno del otro): no ganas nada y complicas el código. Async paga cuando hay muchas esperas de red en paralelo.</li>
+          <li><code class="k">with_retry</code> no arregla bugs de lógica: si el prompt está mal o el modelo no existe, reintentar solo repite el error más lento. Úsalo solo para fallos pasajeros (429, timeout).</li>
+          <li>No apiles un <code class="k">with_fallbacks</code> "por si acaso" cuando el modelo principal es estable: cada capa extra es más código que mantener y probar.</li>
+        </ul></div>
       <div class="box practice"><div class="lab">▸ Para practicar</div>
         <p>Pon como modelo principal uno con nombre inválido a propósito y comprueba que el fallback responde igual. Es la mejor forma de <em>ver</em> la resiliencia funcionando.</p>
         <details class="sol"><summary>Ver una solución</summary><div class="sbody">
@@ -1400,6 +1463,13 @@ respaldo  = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite")
 robusto = principal.with_fallbacks([respaldo])
 print(robusto.invoke("Di hola").content)   # responde IGUAL, gracias al respaldo</code></pre></figure>
         </div></details></div>
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Distinguir <code class="k">with_retry</code> (reintenta lo mismo, para fallos pasajeros) de <code class="k">with_fallbacks</code> (salta a otro modelo).</li>
+          <li>Reconocer un <code class="k">429 RESOURCE_EXHAUSTED</code> como límite del proveedor, no un bug de tu código.</li>
+          <li>Explicar qué gana <code class="k">async</code>: no acelera el cómputo, libera el programa mientras espera a la red.</li>
+          <li>Decir cómo lanzar varias llamadas a la vez (<code class="k">asyncio.gather</code> sobre varios <code class="k">ainvoke</code>).</li>
+        </ul></div>
 
       <div class="quiz">
         <div class="qhead">✅ Autoevaluación · Nivel Intermedio (módulos 05–09)</div>
@@ -1530,6 +1600,13 @@ agente = create_react_agent(llm, tools=[consultar_disponibilidad, agendar_cita],
                             checkpointer=MemorySaver())
 # "¿Tienes algo el viernes?"  -&gt; consulta.  "Sí, resérvame a las 10" -&gt; agenda.</code></pre></figure>
         </div></details></div>
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Definir qué es un agente: un LLM en un bucle con herramientas donde <em>el modelo</em> decide cuándo parar.</li>
+          <li>Explicar por qué un agente no es "una cadena más larga" (su longitud se descubre en tiempo de ejecución).</li>
+          <li>Reconocer para qué sirven el <code class="k">checkpointer</code> y el <code class="k">thread_id</code> (memoria separada por conversación).</li>
+          <li>Decir por qué conviene un <code class="k">recursion_limit</code> y vigilar el gasto: cada vuelta del ciclo cuesta tokens.</li>
+        </ul></div>
           <div class="recap l3">
         <div class="lab">↺ En una frase</div>
         <p><code>create_react_agent</code> cierra por ti el ciclo pensar→actuar→observar, y el <em>checkpointer</em> lo vuelve conversacional: un <code>thread_id</code>, una conversación.<span class="arch">archivo: <code>10_agente.py</code></span></p>
@@ -1792,6 +1869,12 @@ Pregunta: ¿Cuál es el horario de atención de soporte?
       <p>Dos conclusiones incómodas y verdaderas. Primero: <strong>un dataset de preguntas fáciles te dice que tu RAG es perfecto</strong>, y es el error nº1 al construir un set de evaluación. Segundo: con 6 preguntas, cada una vale 16.7% — estos números <em>no demuestran nada</em> estadísticamente. Antes de celebrar que un cambio "mejoró un 4%", pregúntate cuántos ejemplos lo respaldan.</p>
       <div class="box analogy"><div class="lab">◆ La regla que sí se lleva a producción</div>
         <p><strong>No puedes arreglar en el re-ranking lo que perdiste en la recuperación.</strong> Si el chunk correcto no está entre los candidatos, ningún reordenamiento lo va a inventar. Por eso se recupera <em>ancho y barato</em> primero.</p></div>
+      <div class="avoid"><div class="lab">⛔ Cuándo NO usar esto</div>
+        <ul>
+          <li>Si el RAG básico del Módulo 11 ya acierta (<code class="k">precision@k</code> alto), no añadas re-ranking: sumas cientos de ms y un modelo más por una ganancia que aquí fue nula. Mídelo antes de meterlo.</li>
+          <li>No montes búsqueda híbrida si tus dos buscadores fallan igual: fusionar dos señales que se equivocan igual no arregla nada. El híbrido paga cuando combinas señales <em>independientes</em> (léxica + semántica).</li>
+          <li>No afines el ranking a ciegas: sin un banco de preguntas con su chunk correcto para medir <code class="k">precision@k</code>, cualquier "mejora" es una corazonada.</li>
+        </ul></div>
       <div class="box practice"><div class="lab">▸ Para practicar</div>
         <p><strong>Predice antes de ejecutar.</strong> Cambia la pregunta a <code class="k">"¿Puedo pagar en cuotas un proyecto grande?"</code> y escribe en un papel qué chunk crees que ganará en cada uno de los 4 rankings. Solo entonces córrelo. El aprendizaje ocurre en la distancia entre tu predicción y el resultado.</p>
         <p>El ejercicio completo, con sus 4 partes y pistas progresivas, está en <code class="k">ejercicios/ejercicio_12_rerank.md</code> — y su solución <em>se ejecuta</em>: <code class="k">uv run python ejercicios/soluciones/solucion_12_rerank.py</code>. Es 100% offline.</p>
@@ -1804,6 +1887,13 @@ RRF        : [5, 6, 1]     &lt;- fusionar dos errores iguales da el mismo error
 Re-rankeado: [6, 5, 4]     &lt;- el 6 (Formas de pago). Correcto.</code></pre></figure>
         </div></details></div>
       <p class="note-src">¿Por qué este módulo implementa BM25 y el re-ranker a mano en vez de instalar <code class="k">rank_bm25</code> y un cross-encoder? La decisión está razonada, con sus alternativas y sus consecuencias, en un ADR real del repo: <code class="k">docs/adr/0002-re-ranker.md</code> (Módulo 17).</p>
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Explicar por qué se recupera ancho y barato y se reordena poco y caro (recuperar es rápido y tonto; re-rankear, lento y listo).</li>
+          <li>Decir qué combina la búsqueda híbrida (BM25 léxico + denso semántico) y por qué solo ayuda con señales independientes.</li>
+          <li>Explicar qué premia de verdad <code class="k">RRF</code>: estar presente en ambas listas, no el "equilibrio".</li>
+          <li>Reconocer <code class="k">precision@k</code> como la métrica que convierte "creo que mejoró" en un número.</li>
+        </ul></div>
           <div class="recap l3">
         <div class="lab">↺ En una frase</div>
         <p>Recupera mucho y barato, reordena poco y caro: híbrido (BM25 + denso) → fusión RRF → re-ranker. Y si no mides <code>precision@k</code>, estás adivinando.<span class="arch">archivo: <code>12_rag_hibrido_rerank.py</code> (offline)</span></p>
@@ -1941,6 +2031,12 @@ def log_transition(nodo):
           <tr><td><code>config.py</code> · <code>main.py</code></td><td>Configuración (modelos, rutas) y el punto de entrada que lo enciende todo.</td></tr>
         </tbody>
       </table></div>
+      <div class="avoid"><div class="lab">⛔ Cuándo NO usar esto</div>
+        <ul>
+          <li>Si una cadena LCEL lineal ya resuelve el flujo (sin ciclos, ramas ni pausas), no montes un <code class="k">StateGraph</code>: es sobreingeniería, con estado y aristas que mantener a cambio de nada.</li>
+          <li>Si el agente "de fábrica" (<code class="k">create_react_agent</code>) ya te alcanza, no lo reescribas a mano: solo abres el capó cuando necesitas control que el prebuilt no da (pasos propios, ramas, aprobación humana).</li>
+          <li>No metas <code class="k">interrupt()</code> si no hay una decisión humana real que tomar: una pausa que nadie atiende solo deja el grafo congelado.</li>
+        </ul></div>
       <div class="box practice"><div class="lab">▸ Para practicar</div>
         <p>Dibuja en papel el grafo con la escalada: <code class="k">START → retrieve → evaluate → (¿docs?) → generate | retry | human</code>. Luego abre <code class="k">13_langgraph_stategraph.py</code> y añádele el contador <code class="k">attempts</code> con límite de 3. Extra: escribe el <code class="k">log_transition()</code> y mira tu <code class="k">audit.log</code> crecer.</p>
         <details class="sol"><summary>Ver una solución</summary><div class="sbody">
@@ -2121,12 +2217,25 @@ agente = create_react_agent(llm, tools=herramientas_mcp)</code></pre></figure>
       </table></div>
       <div class="box warn"><div class="lab">▲ La regla de oro</div>
         <p>Trata cada tool MCP como tratarías a un practicante nuevo: acceso de <strong>lectura</strong> desde el día uno, acceso de <strong>escritura</strong> solo con supervisión (aprobación humana), y <strong>nunca</strong> las credenciales del administrador.</p></div>
+      <div class="avoid"><div class="lab">⛔ Cuándo NO usar esto</div>
+        <ul>
+          <li>No expongas por MCP lo que es una función local que solo tú vas a llamar: el <code class="k">@tool</code> del Módulo 07 basta. MCP añade un proceso aparte, un protocolo y un transporte que ahí no necesitas.</li>
+          <li>No montes un servidor para un único cliente y una única tool: MCP paga cuando varios agentes comparten varias herramientas (M+N en vez de M×N), no en un 1×1.</li>
+          <li>No instales servidores MCP de fuentes que no controlas "solo para probar": un servidor MCP es código que corre en tu máquina con tus permisos.</li>
+        </ul></div>
       <div class="box practice"><div class="lab">▸ Para practicar</div>
         <p>Copia el <code class="k">servidor_mcp.py</code> de arriba (instala el SDK con <code class="k">uv add "mcp[cli]"</code>) y conéctalo con el cliente. Lista las tools con <code class="k">await client.get_tools()</code> antes de dárselas al agente — inspeccionar qué expone un servidor <em>antes</em> de enchufarlo es el hábito de seguridad número uno.</p>
         <details class="sol"><summary>Ver una solución</summary><div class="sbody">
           <p>Todo el ciclo (servidor + cliente + descubrimiento + invocación) ya está armado y corriendo en <code class="k">curso_ejemplos/14_mcp_servidor_cliente.py</code> — su salida es la que viste más arriba, en "Un intercambio MCP".</p>
           <p>Reto extra: añádele una tercera tool <code class="k">@mcp.tool()</code> (por ejemplo <code class="k">listar_reglas()</code>) y verifica que el cliente la descubre <em>sin tocar el código del cliente</em>.</p>
         </div></details></div>
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Explicar qué problema resuelve MCP: pasar de M×N integraciones a medida a M+N.</li>
+          <li>Distinguir el servidor MCP (expone capacidades) del cliente MCP (las descubre y las vuelve tools del agente).</li>
+          <li>Nombrar las tres cosas que un servidor puede exponer (<code class="k">tools</code>, <code class="k">resources</code>, <code class="k">prompts</code>) y los dos transportes (<code class="k">stdio</code> / HTTP).</li>
+          <li>Decir por qué el intercambio es controlado: el permiso lo das tú (lectura sí, escritura con aprobación), no el modelo.</li>
+        </ul></div>
           <div class="recap l4">
         <div class="lab">↺ En una frase</div>
         <p>MCP es el puerto estándar de las herramientas: un servidor las expone, cualquier agente las consume. El intercambio es <strong>controlado</strong> — el permiso lo das tú, no el modelo.<span class="arch">archivo: <code>14_mcp_servidor_cliente.py</code> (offline)</span></p>
@@ -2206,6 +2315,12 @@ grafo.add_edge("evaluador", "supervisor")</code></pre></figure>
         <p>El especialista devuelve el control al supervisor, que vuelve a delegar, que vuelve a responder… para siempre. La <code class="k">Regla 1</code> (<em>"si ya hay respuesta, FIN"</em>) es lo único que lo corta. En un supervisor con LLM, <strong>esa regla no se delega jamás</strong> al modelo: es código. Cuando LangGraph te lance un <code class="k">GraphRecursionError</code>, este es el primer sitio donde mirar.</p></div>
       <div class="box analogy"><div class="lab">◆ Por qué el supervisor decide con reglas… y en producción con un LLM</div>
         <p>El ejemplo enruta con <code class="k">if</code>, para que corra offline y puedas testearlo. En producción el supervisor <em>es</em> un LLM con <strong>salida estructurada sobre un <code class="k">Literal</code></strong> — exactamente el molde del Módulo 05. Así el modelo solo puede devolver un destino válido: si escribe <code class="k">"evaluadorr"</code>, Pydantic lo rechaza antes de que el grafo intente enrutar a un nodo que no existe. Míralo en <code class="k">decidir_con_llm()</code>, en el mismo archivo.</p></div>
+      <div class="avoid"><div class="lab">⛔ Cuándo NO usar esto</div>
+        <ul>
+          <li>Si un solo agente con unas pocas herramientas ya elige bien, no lo partas en especialistas: cada salto al supervisor es una llamada más al LLM (más coste, más latencia, más puntos de fallo). Reparte solo cuando el agente único empiece a confundir tools.</li>
+          <li>Si en realidad es un flujo lineal de pasos fijos, no necesitas enrutamiento dinámico: eso es una cadena LCEL o un <code class="k">StateGraph</code> simple, no un supervisor.</li>
+          <li>No delegues al LLM la regla que corta el bucle ("si ya respondió, FIN"): eso es código. Delegarla invita al bucle infinito.</li>
+        </ul></div>
       <div class="box practice"><div class="lab">▸ Para practicar</div>
         <p>Añade un tercer especialista, <code class="k">redactor</code>, que convierta un hallazgo en un correo formal. Fíjate en lo que <strong>no</strong> tienes que tocar: los prompts del consultor ni del evaluador. Ese es todo el argumento del patrón.</p>
         <details class="sol"><summary>La garantía que te regala</summary><div class="sbody">
@@ -2825,6 +2940,13 @@ def test_la_linea_lleva_la_severidad():
 </code></pre></figure>
           <p>Y al invertir <code class="k">es_error_cuota()</code> deberías ver fallar <code class="k">tests/test_util.py</code> en rojo, nombrando la aserción exacta. Eso — que el fallo te diga <em>dónde</em> — es todo lo que le pides a una red de seguridad.</p>
         </div></details></div>
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Explicar por qué un test de IA no debe llamar al LLM (lento, cuesta y falla por un 429 ajeno a tu código).</li>
+          <li>Distinguir un test (protege tu <em>lógica</em>) de una evaluación (protege tu <em>calidad</em>, Módulo 16).</li>
+          <li>Decir cómo se testea un agente entero sin API: un doble (<code class="k">ModeloFalso</code>) que recita un guion, inyectado por parámetro.</li>
+          <li>Reconocer para qué sirven el marcador <code class="k">-m offline</code> con <code class="k">--strict-markers</code> y una CI que no tiene la llave.</li>
+        </ul></div>
           <div class="recap l4">
         <div class="lab">↺ En una frase</div>
         <p>Testear IA consiste en fijar todo lo que <em>no</em> es el modelo y sustituir el modelo por un guion. Por eso la CI puede correr los 383 tests sin tener tu llave.<span class="arch">archivos: <code>tests/</code> · <code>.github/workflows/ci.yml</code></span></p>
