@@ -12,7 +12,7 @@ FINALIDAD:
 LÓGICA (paso a paso) — degradación en cascada, corre siempre:
   1) Detectamos qué llaves hay disponibles:
        - LANGSMITH_API_KEY -> activamos el tracing real a LangSmith.
-       - GOOGLE_API_KEY    -> llamamos a Gemini de verdad.
+       - la llave del proveedor (GOOGLE_API_KEY o GROQ_API_KEY) -> modelo real.
        - ninguna           -> modo OFFLINE: simulamos la respuesta del modelo.
      El código de medición es EL MISMO en los tres casos. Eso es lo que se enseña.
   2) @traceable envuelve nuestras funciones: cada llamada se convierte en un
@@ -39,7 +39,8 @@ import os                       # leer las llaves y activar el tracing por env v
 import re                       # tokenizar el texto para el retrieval
 from dotenv import load_dotenv  # cargar el .env
 
-from util import es_error_cuota, mensaje_cuota, trocear_parrafos
+from util import (crear_llm as _crear_llm_del_curso, es_error_cuota, mensaje_cuota,
+                  modelo_por_defecto, requiere_llm_key, trocear_parrafos)
 
 
 # ============ 1) TABLA DE PRECIOS (dólares por 1 millón de tokens) ============
@@ -47,11 +48,22 @@ from util import es_error_cuota, mensaje_cuota, trocear_parrafos
 # Los de SALIDA (lo que escribe el modelo) cuestan varias veces más.
 # Por eso un RAG con contexto gigante NO es lo caro: lo caro es una respuesta larga.
 PRECIOS = {
-    #  modelo               entrada    salida     (USD por 1M de tokens)
-    "gemini-2.0-flash":   {"entrada": 0.10, "salida": 0.40},
-    "gemini-2.5-flash":   {"entrada": 0.30, "salida": 2.50},
+    #  modelo                     entrada    salida     (USD por 1M de tokens)
+    "gemini-2.0-flash":        {"entrada": 0.10, "salida": 0.40},
+    "gemini-2.5-flash":        {"entrada": 0.30, "salida": 2.50},
+    "qwen/qwen3-32b":          {"entrada": 0.29, "salida": 0.59},
+    "llama-3.3-70b-versatile": {"entrada": 0.59, "salida": 0.79},
+    "qwen3:8b":                {"entrada": 0.0,  "salida": 0.0},   # local: no cuesta dinero
 }
-MODELO = "gemini-2.0-flash"
+
+# ⚠️ El modelo activo NO puede ser una constante de módulo. Sale del .env, y el
+#    .env se carga en main() con load_dotenv() — que corre DESPUÉS de importar.
+#    Una constante calculada aquí arriba diría "gemini-2.0-flash" mientras el
+#    programa habla con Groq, y costearía con la tabla equivocada. Es una
+#    función, y se pregunta cuando ya hay respuesta.
+def modelo_activo() -> str:
+    """El modelo del proveedor que diga el .env (LLM_PROVIDER)."""
+    return modelo_por_defecto()
 
 
 # ============ 2) FUNCIONES PURAS: contar y costear ============
@@ -75,14 +87,15 @@ def extraer_tokens(mensaje) -> dict[str, int]:
     }
 
 
-def estimar_costo(tokens: dict[str, int], modelo: str = MODELO) -> float:
+def estimar_costo(tokens: dict[str, int], modelo: str | None = None) -> float:
     """Coste en dólares de una llamada, según la tabla PRECIOS.
 
     Los precios son 'por millón de tokens', de ahí el 1_000_000.
     Si el modelo no está en la tabla, devolvemos 0.0 en vez de reventar:
-    un informe de costes no debe tumbar la aplicación.
+    un informe de costes no debe tumbar la aplicación. (Ojo: ese 0.0 significa
+    "no sé cuánto costó", no "fue gratis".)
     """
-    precio = PRECIOS.get(modelo)
+    precio = PRECIOS.get(modelo or modelo_activo())
     if precio is None:
         return 0.0
     return (tokens["entrada"] * precio["entrada"] +
@@ -185,11 +198,15 @@ def generar(pregunta: str, contexto: str, llm=None):
 
 
 def crear_llm():
-    """El modelo real, o None si no hay llave (y entonces vamos a offline)."""
-    if not os.getenv("GOOGLE_API_KEY"):
+    """El modelo real, o None si no hay llave (y entonces vamos a offline).
+
+    La llave que hace falta depende del proveedor activo: GOOGLE_API_KEY con
+    Gemini, GROQ_API_KEY con Groq, ninguna con Ollama. Por eso preguntamos a
+    `requiere_llm_key()` en vez de mirar una variable concreta.
+    """
+    if requiere_llm_key():
         return None
-    from langchain_google_genai import ChatGoogleGenerativeAI
-    return ChatGoogleGenerativeAI(model=MODELO, temperature=0)
+    return _crear_llm_del_curso(temperature=0)
 
 
 # ============ 5) EL INFORME ============
@@ -199,13 +216,17 @@ def main():
     # ---- ¿Qué modo nos toca hoy? ----
     tracing = activar_tracing()
     llm = crear_llm()
+    MODELO = modelo_activo()      # ya con el .env cargado
 
     print("=== Configuración detectada ===")
     print(f"  tracing a LangSmith : {'✅ activo' if tracing else '➖ no (falta LANGSMITH_API_KEY)'}")
-    print(f"  modelo              : {'✅ ' + MODELO if llm else '➖ offline (falta GOOGLE_API_KEY)'}")
+    print(f"  modelo              : {'✅ ' + MODELO if llm else '➖ offline (falta la llave del proveedor)'}")
     if not llm:
         print("\nℹ️  Modo OFFLINE: simulamos la respuesta del modelo. Los tokens son")
         print("   estimados, pero el CÓDIGO que los cuenta y los costea es el real.")
+    elif MODELO not in PRECIOS:
+        print(f"\n⚠️  '{MODELO}' no está en la tabla PRECIOS: el coste saldrá $0.")
+        print("   Un 0 aquí significa 'no sé', no 'fue gratis'. Añade su fila.")
 
     ruta = os.path.join(os.path.dirname(__file__), "datos_rag.txt")
     with open(ruta, encoding="utf-8") as f:

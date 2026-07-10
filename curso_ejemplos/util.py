@@ -100,10 +100,65 @@ def requiere_llm_key() -> str | None:
     return None
 
 
+# Modelos "de razonamiento": antes de responder escriben su cadena de
+# pensamiento. En Groq, esa cadena llega DENTRO del contenido, envuelta en
+# <think>…</think>, y ensucia todas las salidas del curso.
+#
+# `reasoning_format: "hidden"` le dice a Groq que la descarte y devuelva solo la
+# respuesta. ⚠️ Es un parámetro específico de Groq y **solo lo aceptan los
+# modelos de razonamiento**: mandárselo a llama-3.3-70b devuelve un 400
+# ("`reasoning_format` is not supported with this model"). Por eso se envía
+# únicamente cuando el nombre del modelo coincide con esta lista.
+_MODELOS_DE_RAZONAMIENTO = ("qwen3", "deepseek-r1", "gpt-oss")
+
+
+def _es_modelo_de_razonamiento(modelo: str) -> bool:
+    m = modelo.lower()
+    return any(marca in m for marca in _MODELOS_DE_RAZONAMIENTO)
+
+
+def _crear_chat_openai_compatible(modelo: str, temperature: float, activo: str):
+    """Un ChatOpenAI apuntado a Groq/Ollama/… con dos parches necesarios."""
+    from langchain_openai import ChatOpenAI
+
+    base_url, variable = _COMPATIBLES_OPENAI[activo]
+
+    extra: dict = {}
+    if activo == "groq" and _es_modelo_de_razonamiento(modelo):
+        # "hidden" descarta el <think>; "raw" lo deja dentro del contenido.
+        extra["reasoning_format"] = os.getenv("GROQ_RAZONAMIENTO", "hidden")
+
+    class _ChatCompatible(ChatOpenAI):
+        """ChatOpenAI con `with_structured_output` en modo function_calling.
+
+        ⚠️ POR QUÉ ESTE PARCHE. Por defecto, `with_structured_output()` pide al
+        proveedor un `response_format: json_schema`. OpenAI lo soporta; **Groq
+        solo lo soporta en algunos modelos**, y `qwen/qwen3-32b` no está entre
+        ellos: devuelve un 400 y el TEMA 05 del curso se cae en seco.
+
+        `method="function_calling"` obtiene el mismo resultado por otro camino:
+        le declara al modelo una herramienta con la forma del esquema y le pide
+        que la llame. Funciona en todos los modelos con tool calling, que son
+        justo los que este curso necesita de todas formas.
+        """
+
+        def with_structured_output(self, schema, *, method="function_calling", **kwargs):
+            return super().with_structured_output(schema, method=method, **kwargs)
+
+    return _ChatCompatible(
+        model=modelo,
+        temperature=temperature,
+        base_url=os.getenv("LLM_BASE_URL", base_url),
+        # Ollama no valida la llave, pero el cliente de OpenAI exige que exista.
+        api_key=os.getenv(variable, "no-hace-falta"),
+        extra_body=extra or None,
+    )
+
+
 def crear_llm(temperature: float = 0.0, modelo: str | None = None):
     """El modelo de chat del proveedor que diga el .env.
 
-    Los ejercicios llaman a ESTO en vez de instanciar `ChatGoogleGenerativeAI`
+    Todo el curso llama a ESTO en vez de instanciar `ChatGoogleGenerativeAI`
     a mano. Así, cuando la cuota de Gemini se agote a mitad de una tarde, basta
     con cambiar dos líneas del .env para seguir practicando con Groq.
 
@@ -120,15 +175,7 @@ def crear_llm(temperature: float = 0.0, modelo: str | None = None):
         from langchain_google_genai import ChatGoogleGenerativeAI
         return ChatGoogleGenerativeAI(model=modelo, temperature=temperature)
 
-    base_url, variable = _COMPATIBLES_OPENAI[activo]
-    from langchain_openai import ChatOpenAI
-    return ChatOpenAI(
-        model=modelo,
-        temperature=temperature,
-        base_url=os.getenv("LLM_BASE_URL", base_url),
-        # Ollama no valida la llave, pero el cliente de OpenAI exige que exista.
-        api_key=os.getenv(variable, "no-hace-falta"),
-    )
+    return _crear_chat_openai_compatible(modelo, temperature, activo)
 
 
 # ==================================================================

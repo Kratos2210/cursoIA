@@ -170,11 +170,54 @@ class TestCrearLlm:
         monkeypatch.delenv("LLM_MODELO", raising=False)
         monkeypatch.delenv("LLM_BASE_URL", raising=False)
 
+        from langchain_openai import ChatOpenAI
+
         llm = util.crear_llm(temperature=0.3)
-        assert type(llm).__name__ == "ChatOpenAI"
+        # Es un ChatOpenAI (subclase: ver _crear_chat_openai_compatible).
+        assert isinstance(llm, ChatOpenAI)
         assert llm.model_name == "qwen/qwen3-32b"
         assert "groq.com" in str(llm.openai_api_base)
         assert llm.temperature == 0.3
+
+    def test_groq_oculta_el_bloque_think_de_los_modelos_de_razonamiento(self, monkeypatch):
+        # qwen3 escribe su cadena de pensamiento dentro del contenido, envuelta
+        # en <think>…</think>. `reasoning_format: hidden` le dice a Groq que la
+        # descarte. Sin esto, TODAS las salidas del curso salen contaminadas.
+        monkeypatch.setenv("LLM_PROVIDER", "groq")
+        monkeypatch.setenv("GROQ_API_KEY", "gsk_de_prueba")
+        monkeypatch.delenv("LLM_MODELO", raising=False)
+        assert util.crear_llm().extra_body == {"reasoning_format": "hidden"}
+
+    def test_a_un_modelo_SIN_razonamiento_no_se_le_manda_ese_parametro(self, monkeypatch):
+        # Groq devuelve 400 si se lo mandas a llama-3.3: "`reasoning_format` is
+        # not supported with this model".
+        monkeypatch.setenv("LLM_PROVIDER", "groq")
+        monkeypatch.setenv("GROQ_API_KEY", "gsk_de_prueba")
+        monkeypatch.setenv("LLM_MODELO", "llama-3.3-70b-versatile")
+        assert util.crear_llm().extra_body is None
+
+    def test_structured_output_usa_function_calling_no_json_schema(self, monkeypatch):
+        # ⭐ qwen/qwen3-32b NO soporta response_format=json_schema en Groq: el
+        #    TEMA 05 se caía con un 400. function_calling da el mismo resultado
+        #    por otro camino y funciona en todo modelo con tool calling.
+        monkeypatch.setenv("LLM_PROVIDER", "groq")
+        monkeypatch.setenv("GROQ_API_KEY", "gsk_de_prueba")
+        from pydantic import BaseModel
+
+        class Molde(BaseModel):
+            nombre: str
+
+        capturado = {}
+        llm = util.crear_llm()
+        original = type(llm).__mro__[1].with_structured_output
+
+        def espia(self, schema, *, method="json_schema", **kw):
+            capturado["method"] = method
+            return "runnable-falso"
+
+        monkeypatch.setattr(type(llm).__mro__[1], "with_structured_output", espia)
+        llm.with_structured_output(Molde)
+        assert capturado["method"] == "function_calling"
 
     def test_google_sigue_siendo_el_camino_por_defecto(self, monkeypatch):
         monkeypatch.delenv("LLM_PROVIDER", raising=False)
