@@ -124,6 +124,12 @@ class TestProveedor:
         monkeypatch.delenv("LLM_MODELO", raising=False)
         assert util.modelo_por_defecto("groq") == "qwen/qwen3-32b"
         assert util.modelo_por_defecto("google") == "gemini-2.0-flash"
+        assert util.modelo_por_defecto("ollama") == "qwen3:8b"
+        # Los cuatro proveedores nuevos, cada uno con su default (ver el plan):
+        assert util.modelo_por_defecto("openai") == "gpt-5-mini"
+        assert util.modelo_por_defecto("anthropic") == "claude-haiku-4-5"
+        assert util.modelo_por_defecto("openrouter") == "meta-llama/llama-3.3-70b-instruct:free"
+        assert util.modelo_por_defecto("deepseek") == "deepseek-chat"
 
     def test_LLM_MODELO_manda_sobre_el_default(self, monkeypatch):
         monkeypatch.setenv("LLM_MODELO", "llama-3.3-70b-versatile")
@@ -131,12 +137,21 @@ class TestProveedor:
 
     def test_un_proveedor_inventado_falla_claro(self, monkeypatch):
         monkeypatch.delenv("LLM_MODELO", raising=False)
+        # OJO: 'cohere' es un proveedor REAL, pero el curso no lo soporta; sirve
+        # justo por eso como "inventado". (Antes aquí ponía 'openrouter', que
+        # dejó de valer como ejemplo el día que 'openrouter' pasó a ser real.)
         with pytest.raises(ValueError, match="no existe"):
-            util.modelo_por_defecto("openrouter")
+            util.modelo_por_defecto("cohere")
 
     def test_cada_proveedor_lee_SU_variable_de_llave(self):
         assert util.variable_de_llave("google") == "GOOGLE_API_KEY"
         assert util.variable_de_llave("groq") == "GROQ_API_KEY"
+        assert util.variable_de_llave("ollama") == "OLLAMA_API_KEY"
+        # Los nuevos: cada proveedor con SU variable, sin colisiones.
+        assert util.variable_de_llave("openai") == "OPENAI_API_KEY"
+        assert util.variable_de_llave("anthropic") == "ANTHROPIC_API_KEY"
+        assert util.variable_de_llave("openrouter") == "OPENROUTER_API_KEY"
+        assert util.variable_de_llave("deepseek") == "DEEPSEEK_API_KEY"
 
 
 @pytest.mark.offline
@@ -152,6 +167,17 @@ class TestRequiereLlmKey:
         monkeypatch.setenv("LLM_PROVIDER", "groq")
         monkeypatch.setenv("GROQ_API_KEY", "gsk_de_prueba")
         assert util.requiere_llm_key() is None
+
+    def test_con_anthropic_pide_ANTHROPIC_API_KEY_y_no_otra(self, monkeypatch):
+        # Claude es un proveedor NATIVO (rama propia, como Gemini): su llave sale
+        # de _PROVEEDORES_NATIVOS, no de _COMPATIBLES_OPENAI. El mensaje tiene que
+        # nombrar SU variable, no la de otro proveedor que el alumno tenga puesta.
+        monkeypatch.setenv("LLM_PROVIDER", "anthropic")
+        monkeypatch.setenv("OPENAI_API_KEY", "sk_la_de_openai_no_sirve_aqui")
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        aviso = util.requiere_llm_key()
+        assert "ANTHROPIC_API_KEY" in aviso
+        assert "OPENAI_API_KEY" not in aviso
 
     def test_ollama_no_necesita_llave(self, monkeypatch):
         # Corre en tu máquina: no hay a quién autenticarse.
@@ -234,6 +260,105 @@ class TestCrearLlm:
         monkeypatch.delenv("GROQ_API_KEY", raising=False)
         with pytest.raises(SystemExit, match="GROQ_API_KEY"):
             util.crear_llm()
+
+
+@pytest.mark.offline
+class TestProveedoresNuevos:
+    """Los cuatro proveedores que se añadieron al conmutador: openai, anthropic,
+    openrouter y deepseek.
+
+    Tres hablan el dialecto de OpenAI (openai/openrouter/deepseek) y se
+    construyen con `ChatOpenAI` + su `base_url`, igual que Groq y Ollama. El
+    cuarto, anthropic, es NATIVO: tiene su propia clase, como Gemini. Estos tests
+    inspeccionan el cliente ya construido (sin llamar a la API), como
+    `TestCrearLlm`: `model_name`, `openai_api_base` y `extra_body`.
+    """
+
+    def test_openai_apunta_a_su_base_url_con_gpt_5_mini(self, monkeypatch):
+        monkeypatch.setenv("LLM_PROVIDER", "openai")
+        monkeypatch.setenv("OPENAI_API_KEY", "sk_de_prueba")
+        monkeypatch.delenv("LLM_MODELO", raising=False)
+        monkeypatch.delenv("LLM_BASE_URL", raising=False)
+
+        from langchain_openai import ChatOpenAI
+
+        llm = util.crear_llm()
+        assert isinstance(llm, ChatOpenAI)
+        assert llm.model_name == "gpt-5-mini"
+        assert "api.openai.com" in str(llm.openai_api_base)
+
+    def test_openrouter_apunta_a_su_base_url_con_el_llama_gratis(self, monkeypatch):
+        monkeypatch.setenv("LLM_PROVIDER", "openrouter")
+        monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or_de_prueba")
+        monkeypatch.delenv("LLM_MODELO", raising=False)
+        monkeypatch.delenv("LLM_BASE_URL", raising=False)
+
+        llm = util.crear_llm()
+        assert llm.model_name == "meta-llama/llama-3.3-70b-instruct:free"
+        assert "openrouter.ai" in str(llm.openai_api_base)
+
+    def test_deepseek_apunta_a_su_base_url_con_deepseek_chat(self, monkeypatch):
+        monkeypatch.setenv("LLM_PROVIDER", "deepseek")
+        monkeypatch.setenv("DEEPSEEK_API_KEY", "sk_de_prueba")
+        monkeypatch.delenv("LLM_MODELO", raising=False)
+        monkeypatch.delenv("LLM_BASE_URL", raising=False)
+
+        llm = util.crear_llm()
+        assert llm.model_name == "deepseek-chat"
+        assert "api.deepseek.com" in str(llm.openai_api_base)
+
+    def test_openai_no_lleva_ningun_parche_en_extra_body(self, monkeypatch):
+        # OpenAI no necesita esconder ningún <think>: sus modelos no lo escupen
+        # dentro del contenido. Mandarle un parche que no espera sería pedir un 400.
+        monkeypatch.setenv("LLM_PROVIDER", "openai")
+        monkeypatch.setenv("OPENAI_API_KEY", "sk_de_prueba")
+        monkeypatch.delenv("LLM_MODELO", raising=False)
+        assert util.crear_llm().extra_body is None
+
+    def test_deepseek_no_lleva_ningun_parche_en_extra_body(self, monkeypatch):
+        # deepseek-chat no razona, y deepseek-reasoner devuelve el razonamiento en
+        # un campo APARTE del contenido: en ningún caso hace falta parche.
+        monkeypatch.setenv("LLM_PROVIDER", "deepseek")
+        monkeypatch.setenv("DEEPSEEK_API_KEY", "sk_de_prueba")
+        monkeypatch.delenv("LLM_MODELO", raising=False)
+        assert util.crear_llm().extra_body is None
+
+    def test_anthropic_construye_un_ChatAnthropic(self, monkeypatch):
+        # Claude NO habla el dialecto de OpenAI: rama propia con su clase, como
+        # Gemini. La llave tiene que estar ANTES de construir (si no, SystemExit).
+        monkeypatch.setenv("LLM_PROVIDER", "anthropic")
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant_de_prueba")
+        monkeypatch.delenv("LLM_MODELO", raising=False)
+
+        llm = util.crear_llm()
+        assert type(llm).__name__ == "ChatAnthropic"
+
+    def test_anthropic_sin_llave_aborta_nombrando_ANTHROPIC_API_KEY(self, monkeypatch):
+        # Mejor un SystemExit con instrucciones que un 401 críptico a mitad de
+        # la primera llamada. Y el mensaje debe nombrar SU variable.
+        monkeypatch.setenv("LLM_PROVIDER", "anthropic")
+        monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+        with pytest.raises(SystemExit, match="ANTHROPIC_API_KEY"):
+            util.crear_llm()
+
+    def test_reasoning_format_es_EXCLUSIVO_de_groq(self, monkeypatch):
+        # `reasoning_format` es un parámetro SOLO de Groq. A un modelo de
+        # razonamiento servido por OpenRouter (aquí un qwen3) NO se le puede
+        # mandar: OpenRouter no lo entiende. El parche correcto es otro (ver el
+        # test siguiente). Aquí blindamos que ese nombre no se cuele.
+        monkeypatch.setenv("LLM_PROVIDER", "openrouter")
+        monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or_de_prueba")
+        monkeypatch.setenv("LLM_MODELO", "qwen/qwen3-32b")
+        extra = util.crear_llm().extra_body or {}
+        assert "reasoning_format" not in extra
+
+    def test_openrouter_con_modelo_razonador_usa_reasoning_exclude(self, monkeypatch):
+        # OpenRouter unifica el "esconde el <think>" bajo `reasoning`: el
+        # equivalente al "hidden" de Groq es {"exclude": True}.
+        monkeypatch.setenv("LLM_PROVIDER", "openrouter")
+        monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or_de_prueba")
+        monkeypatch.setenv("LLM_MODELO", "qwen/qwen3-32b")
+        assert util.crear_llm().extra_body == {"reasoning": {"exclude": True}}
 
 
 @pytest.mark.offline

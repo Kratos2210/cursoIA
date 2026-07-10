@@ -28,6 +28,10 @@ dependencies = [
     # Va en las dependencias BASE, no en un extra: los ejercicios lo usan y se
     # instalan con `uv sync --extra dev`.
     "langchain-openai>=0.2",
+    # Claude (Anthropic): NO habla el dialecto de OpenAI, así que tiene su
+    # propia rama en `util.crear_llm()` (igual que Gemini). Es lo que permite
+    # `LLM_PROVIDER=anthropic` en el .env sin tocar código.
+    "langchain-anthropic==1.4.8",
 
     # === Agentes y grafos ===
     # Agentes: create_react_agent, StateGraph y memoria (checkpointer).

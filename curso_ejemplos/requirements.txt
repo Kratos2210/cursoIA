@@ -13,6 +13,8 @@
 
 langchain-core==1.4.8          # Piezas base: mensajes, prompts, tools, runnables, vector store en memoria
 langchain-google-genai==4.2.7  # Conexión con los modelos Gemini de Google (chat + embeddings)
+langchain-openai==1.3.3        # ChatOpenAI: cubre OpenAI, Groq, Ollama, OpenRouter y DeepSeek (mismo dialecto)
+langchain-anthropic==1.4.8     # ChatAnthropic: los modelos Claude, que tienen su propia rama (como Gemini)
 langgraph==1.2.8               # Agentes: create_react_agent, StateGraph y memoria (checkpointer)
 python-dotenv==1.2.2           # Leer la llave secreta (GOOGLE_API_KEY) desde el archivo .env
 pydantic==2.13.4               # Moldes de datos para "salida estructurada" (BaseModel, Field)
