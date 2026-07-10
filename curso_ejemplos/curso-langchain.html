@@ -3551,7 +3551,7 @@ def test_la_segunda_pregunta_igual_no_llama_al_agente(self, cliente):
       <p class="modtag l5"><span class="bar"></span>Práctica · Ejercicios</p>
       <h2>Ejercicios: leer código no enseña a escribirlo</h2>
       <div class="fileref">📋 Enunciados completos: <b>curso_ejemplos/ejercicios/</b> — con pistas progresivas y soluciones aparte</div>
-      <p>Hasta aquí has leído mucho código correcto. Eso crea una ilusión peligrosa: <em>"lo entendí"</em>. Entender no es lo mismo que poder escribirlo con la página en blanco. Estos siete ejercicios te obligan a <strong>modificar</strong> los ejemplos y a <strong>predecir</strong> qué va a pasar antes de ejecutar — que es donde de verdad se aprende.</p>
+      <p>Hasta aquí has leído mucho código correcto. Eso crea una ilusión peligrosa: <em>"lo entendí"</em>. Entender no es lo mismo que poder escribirlo con la página en blanco. Estos doce ejercicios te obligan a <strong>modificar</strong> los ejemplos y a <strong>predecir</strong> qué va a pasar antes de ejecutar — que es donde de verdad se aprende.</p>
       <div class="box warn"><div class="lab">▲ Los enunciados viven en el repositorio, no en esta página</div>
         <p>Los enunciados completos, con sus pistas progresivas y sus soluciones, están en la carpeta <code class="k">curso_ejemplos/ejercicios/</code> del <a class="inline" href="https://github.com/Kratos2210/cursoIA/tree/main/curso_ejemplos">repositorio</a>. Esta sección te explica <strong>el método</strong> para trabajarlos —que importa más que cualquier enunciado concreto— y puedes leerlo sin descargar nada; pero para <em>hacer</em> los ejercicios necesitas el repo (varios se apoyan en los ejemplos numerados y en <code class="k">soluciones/</code>).</p></div>
 
@@ -3564,6 +3564,11 @@ def test_la_segunda_pregunta_igual_no_llama_al_agente(self, cliente):
           <tr><td>11</td><td>Anti-alucinación: cambiar <code>k</code>, añadir un documento</td><td><code>11_rag.py</code></td><td>Sí</td><td>⚠️ chat sí, embeddings no</td></tr>
           <tr><td>12</td><td>Predice el ranking <em>antes</em> de ejecutar</td><td><code>12_rag_hibrido_rerank.py</code></td><td><b>No</b></td><td>—</td></tr>
           <tr><td>13</td><td>Escalar a un humano cuando rechaza la propuesta</td><td><code>13b_human_in_the_loop.py</code></td><td><b>No</b></td><td>—</td></tr>
+          <tr><td>14</td><td>Añadir una tercera tool al servidor MCP y consumirla</td><td><code>14_mcp_servidor_cliente.py</code></td><td><b>No</b></td><td>—</td></tr>
+          <tr><td>15</td><td>Un tercer especialista, y predecir el enrutado</td><td><code>15_supervisor_multiagente.py</code></td><td><b>No</b></td><td>—</td></tr>
+          <tr><td>16</td><td>Casos trampa en el dataset y la métrica que los caza</td><td><code>16_evaluacion.py</code></td><td>Parcial</td><td>✅ el juez</td></tr>
+          <tr><td>16b</td><td>Predecir la factura antes de calcularla</td><td><code>16b_observabilidad_langsmith.py</code></td><td><b>No</b></td><td>—</td></tr>
+          <tr><td>17</td><td>Un endpoint nuevo, probado con TestClient sin API</td><td><code>17_servidor_agente.py</code></td><td><b>No</b></td><td>—</td></tr>
           <tr><td>🏆</td><td>Extender el proyecto final</td><td><code>proyecto_final/</code></td><td>Parcial</td><td>❌ usa Gemini directo</td></tr>
         </tbody>
       </table></div>
@@ -3715,11 +3720,11 @@ llm = ChatOpenAI(model="qwen/qwen3-32b",
           <tr><td>BM25 · coseno · RRF · re-rank</td><td><code>12</code></td><td><a class="inline" href="#ejercicios">12</a></td><td><code>test_offline.py::TestTema12*</code> (25 tests)</td></tr>
           <tr><td><code>StateGraph</code> (nodos y aristas)</td><td><code>13</code></td><td>—</td><td><code>test_offline.py::TestTema13bHumanInTheLoop</code></td></tr>
           <tr><td>Human-in-the-loop</td><td><code>13b</code></td><td><a class="inline" href="#ejercicios">13</a></td><td><code>test_offline.py::TestTema13bHumanInTheLoop</code></td></tr>
-          <tr><td>MCP (servidor + cliente)</td><td><code>14</code></td><td>—</td><td><code>test_offline.py::TestTema14Mcp</code></td></tr>
-          <tr><td>Patrón supervisor</td><td><code>15</code></td><td>—</td><td><code>test_offline.py::TestTema15Supervisor</code></td></tr>
-          <tr><td>Evaluación con dataset</td><td><code>16</code></td><td>—</td><td><em>el propio ejemplo es la métrica</em></td></tr>
-          <tr><td>Tokens, coste y tracing</td><td><code>16b</code></td><td>—</td><td><code>test_offline.py::TestTema16bObservabilidad</code></td></tr>
-          <tr><td>Servir por HTTP</td><td><code>17</code></td><td><a class="inline" href="#ejercicios">🏆</a></td><td><code>test_imports.py</code></td></tr>
+          <tr><td>MCP (servidor + cliente)</td><td><code>14</code></td><td><a class="inline" href="#ejercicios">14</a></td><td><code>test_offline.py::TestTema14Mcp</code></td></tr>
+          <tr><td>Patrón supervisor</td><td><code>15</code></td><td><a class="inline" href="#ejercicios">15</a></td><td><code>test_offline.py::TestTema15Supervisor</code></td></tr>
+          <tr><td>Evaluación con dataset</td><td><code>16</code></td><td><a class="inline" href="#ejercicios">16</a></td><td><em>el propio ejemplo es la métrica</em></td></tr>
+          <tr><td>Tokens, coste y tracing</td><td><code>16b</code></td><td><a class="inline" href="#ejercicios">16b</a></td><td><code>test_offline.py::TestTema16bObservabilidad</code></td></tr>
+          <tr><td>Servir por HTTP</td><td><code>17</code></td><td><a class="inline" href="#ejercicios">17</a></td><td><code>test_imports.py</code></td></tr>
           <tr><td>Elegir modelo y proveedor</td><td><code>util.py</code></td><td><a class="inline" href="#m18b">18b</a></td><td><code>test_util.py::TestProveedoresNuevos</code></td></tr>
           <tr><td>Auditoría / trazabilidad</td><td><code>proyecto_final/audit.py</code></td><td><a class="inline" href="#ejercicios">🏆</a></td><td><code>proyecto_final/tests/test_audit.py</code></td></tr>
           <tr><td>Inyección de dependencias</td><td><code>proyecto_final/graph_builder.py</code></td><td><a class="inline" href="#ejercicios">🏆</a></td><td><code>proyecto_final/tests/test_agente.py</code></td></tr>

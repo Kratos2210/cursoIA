@@ -75,13 +75,16 @@ Gobierno de Datos, repartido en 8 módulos y con 44 tests propios.
 
 ## 4) Ejercicios
 
-Leer código no enseña a escribirlo. En [`ejercicios/`](ejercicios/) hay 7
+Leer código no enseña a escribirlo. En [`ejercicios/`](ejercicios/) hay 12
 ejercicios con enunciado, **pistas progresivas**, criterio de aceptación
-verificable y solución aparte.
+verificable y solución aparte —incluidos los de temas avanzados (MCP, patrón
+supervisor, evaluación, coste y servir el agente por HTTP).
 
-Los dos que no puedes saltarte —y no gastan cuota— son
+Los que no puedes saltarte —y no gastan cuota— son
 [`ejercicio_12_rerank.md`](ejercicios/ejercicio_12_rerank.md) (predice el ranking
-antes de ejecutarlo) y [`ejercicio_13_hitl.md`](ejercicios/ejercicio_13_hitl.md).
+antes de ejecutarlo) y [`ejercicio_13_hitl.md`](ejercicios/ejercicio_13_hitl.md);
+y en la recta final, buena parte de los avanzados (14, 15, 16b y 17) también son
+100% offline.
 
 Ningún ejercicio cablea el proveedor: llaman a `util.crear_llm()`, que lee
 `LLM_PROVIDER` del `.env`. Cuando Gemini te dé un 429, pásate a Groq sin tocar
@@ -105,11 +108,11 @@ montón de scripts: **cada concepto tiene una prueba que lo defiende**.
 | BM25 · coseno · RRF · re-rank | `12` | [12](ejercicios/ejercicio_12_rerank.md) | `test_offline.py::TestTema12*` (25 tests) |
 | `StateGraph` (nodos y aristas) | `13` | — | `test_offline.py::TestTema13bHumanInTheLoop` |
 | Human-in-the-loop | `13b` | [13](ejercicios/ejercicio_13_hitl.md) | `test_offline.py::TestTema13bHumanInTheLoop` |
-| MCP (servidor + cliente) | `14` | — | `test_offline.py::TestTema14Mcp` |
-| Patrón supervisor | `15` | — | `test_offline.py::TestTema15Supervisor` |
-| Evaluación con dataset | `16` | — | *(el propio ejemplo es la métrica)* |
-| Tokens, coste y tracing | `16b` | — | `test_offline.py::TestTema16bObservabilidad` |
-| Servir por HTTP | `17` | [🏆 nivel 5](ejercicios/ejercicio_proyecto.md) | `test_imports.py` |
+| MCP (servidor + cliente) | `14` | [14](ejercicios/ejercicio_14_mcp.md) | `test_offline.py::TestTema14Mcp` |
+| Patrón supervisor | `15` | [15](ejercicios/ejercicio_15_supervisor.md) | `test_offline.py::TestTema15Supervisor` |
+| Evaluación con dataset | `16` | [16](ejercicios/ejercicio_16_evaluacion.md) | *(el propio ejemplo es la métrica)* |
+| Tokens, coste y tracing | `16b` | [16b](ejercicios/ejercicio_16b_costes.md) | `test_offline.py::TestTema16bObservabilidad` |
+| Servir por HTTP | `17` | [17](ejercicios/ejercicio_17_api.md) | `test_imports.py` |
 | Elegir modelo y proveedor | `util.py` | [18b](curso-langchain.html#m18b) | `test_util.py::TestProveedoresNuevos` |
 | Auditoría / trazabilidad | `proyecto_final/audit.py` | [🏆](ejercicios/ejercicio_proyecto.md) | `proyecto_final/tests/test_audit.py` |
 | Inyección de dependencias | `proyecto_final/graph_builder.py` | [🏆](ejercicios/ejercicio_proyecto.md) | `proyecto_final/tests/test_agente.py` |
