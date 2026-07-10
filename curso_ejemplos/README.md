@@ -72,6 +72,8 @@ La columna «Cuota» se refiere al proveedor que tengas activo: con
 | 20 · RAG avanzado | `20_rag_avanzado.py` | multi-query + RAG-Fusion (RRF sobre variantes) | **No** |
 | 21 · Fine-tuning vs RAG | `21_fine_tuning.py` | decidir enfoque + dataset de chat a JSONL | **No** |
 | 22 · Multimodal | `22_multimodal.py` | enviar texto + imagen a un modelo con visión | Sí |
+| 23 · Seguridad | `23_seguridad.py` | red-teaming OWASP LLM: inyección, saneo, secretos | **No** |
+| 24 · Vector DBs | `24_vector_db.py` | dedup por hash + índice IVFFlat (recall↔velocidad) | **No** |
 
 **Proyecto final:** [`proyecto_final/`](proyecto_final/) — el asistente de
 Gobierno de Datos, repartido en 8 módulos y con 44 tests propios.
@@ -123,6 +125,8 @@ montón de scripts: **cada concepto tiene una prueba que lo defiende**.
 | Multi-query y RAG-Fusion | `20` | [20](curso-langchain.html#m20) | `test_offline.py::TestTema20*` |
 | Fine-tuning vs RAG | `21` | [21](curso-langchain.html#m21) | `test_offline.py::TestTema21*` |
 | Multimodal (texto + imagen) | `22` | [22](curso-langchain.html#m22) | `test_offline.py::TestTema22*` |
+| Seguridad y red-teaming (OWASP LLM) | `23` | [23](curso-langchain.html#m23) | `test_redteam.py` |
+| Vector DBs en producción (dedup · IVFFlat) | `24` | [24](curso-langchain.html#m24) | `test_offline.py::TestTema24*` |
 
 ## 6) Cómo se verifica que esto funciona
 

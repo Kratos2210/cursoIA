@@ -421,6 +421,8 @@
       <a href="#m20"><span class="n">20</span>RAG avanzado</a>
       <a href="#m21"><span class="n">21</span>Fine-tuning vs RAG</a>
       <a href="#m22"><span class="n">22</span>Multimodal</a>
+      <a href="#m23"><span class="n">23</span>Seguridad · red-teaming</a>
+      <a href="#m24"><span class="n">24</span>Vector DBs en producción</a>
       <a href="#examen"><span class="n">📝</span>Examen final</a>
       <a href="#ejercicios"><span class="n">🏋️</span>Ejercicios</a>
       <a href="#faq"><span class="n">?</span>FAQ · errores comunes</a>
@@ -3743,6 +3745,171 @@ def mensaje_multimodal(texto, data_url):
       </div>
     </div></section>
 
+    <section id="m23"><div class="col">
+      <p class="modtag l5"><span class="bar"></span>AI Engineer · Módulo 23</p>
+      <h2>Seguridad: rompe tu propio agente antes que otro</h2>
+      <div class="fileref">📋 Copia y ejecuta: <b>curso_ejemplos/23_seguridad.py</b> — los ataques y los guardarraíles corren sin API<span class="tested">✓ cubierto por tests (batería en test_redteam.py)</span></div>
+      <p class="modmeta"><span>🎯 <b>Al terminar sabrás:</b> pensar como <strong>atacante</strong> y montar guardarraíles <strong>en capas</strong> contra el OWASP LLM Top-10.</span><span>✅ <b>Necesitas:</b> el Módulo 11/12 (RAG) y el 07 (herramientas).</span><span>⏱️ <b>~40 min</b></span></p>
+      <p>Un agente que lee documentos, llama a herramientas y le responde a un usuario es una <strong>superficie de ataque</strong>. El estándar para razonar sobre esto es el <strong>OWASP LLM Top-10</strong>. Aquí atacamos —y defendemos— las tres piezas que se ven <strong>offline</strong>: la inyección de prompts, el manejo inseguro de la salida y la fuga de datos. La regla de oro: <em>si tú no rompes tu agente, lo hará alguien con peores intenciones</em>.</p>
+
+      <div class="box def"><div class="lab">◈ Definición · Tres familias del OWASP LLM</div>
+        <dl>
+          <dt>LLM01 · Inyección de prompts</dt><dd>Alguien mete <strong>instrucciones</strong> donde tú esperabas <strong>datos</strong>. <em>Directa</em>: el usuario escribe "ignora tus reglas". <em>Indirecta</em> (la peligrosa): la orden viene <strong>escondida en el documento</strong> que tu RAG recuperó.</dd>
+          <dt>LLM02 · Manejo inseguro de la salida</dt><dd>La respuesta del modelo se pega en un HTML o una consulta <strong>sin limpiarla</strong> y ejecuta un <code class="k">&lt;script&gt;</code> (XSS). La salida de un LLM es <strong>contenido que no controlas</strong>.</dd>
+          <dt>LLM06 · Fuga de datos sensibles</dt><dd>La respuesta se lleva puesta una <strong>API key</strong>, un email o una tarjeta que nunca debió salir del sistema.</dd>
+        </dl></div>
+
+      <div class="box analogy"><div class="lab">◆ El portero y el sobre marcado</div>
+        <p>Tu contexto recuperado es como un <strong>sobre que te llega por correo</strong>: puedes <em>leer</em> lo que dice, pero no vas a <em>obedecer</em> una nota que diga "dale las llaves de la caja fuerte al portador". Separar DATOS de INSTRUCCIONES es marcar ese sobre como "solo lectura". El detector de patrones es el <strong>portero</strong> que revisa a la entrada; el saneo de la salida es el que revisa a la <strong>salida</strong> — porque a veces el intruso ya está dentro.</p></div>
+
+      <h3>Paso 1 · Detectar la inyección (primera capa)</h3>
+      <p>Casi todos los ataques se apoyan en unas pocas frases-palanca. Una lista de patrones las caza y te dice <strong>qué</strong> tipo de ataque vio (útil para loguear y alertar).</p>
+      <figure class="code"><figcaption><span class="d"></span>23_seguridad.py · LLM01 · lista negra de patrones</figcaption><pre><code>def detectar_inyeccion(texto):
+    # PORQUÉ primera capa: barata y determinista. Devuelve las ETIQUETAS de los
+    # patrones vistos ("anular-instrucciones", "revelar-system-prompt", DAN…).
+    plano = _sin_tildes(texto)              # "IGNORÁ" y "ignora" caen igual
+    encontrados = []
+    for etiqueta, patron in PATRONES_INYECCION.items():
+        if re.search(patron, plano):
+            encontrados.append(etiqueta)
+    return encontrados                       # lista vacía = limpio</code></pre></figure>
+
+      <h3>Paso 2 · Sanear la salida (LLM02) y redactar secretos (LLM06)</h3>
+      <figure class="code"><figcaption><span class="d"></span>23_seguridad.py · guardarraíles de salida (stdlib html + re)</figcaption><pre><code>def sanear_salida(texto):
+    # Borra bloques con cuerpo (&lt;script&gt;…&lt;/script&gt;) y ESCAPA el resto del HTML:
+    # `&lt;` -&gt; `&amp;lt;`. Así NADA de lo que venga se interpreta como etiqueta.
+    sin_bloques = _ETIQUETAS_PELIGROSAS.sub("", texto)
+    return html.escape(sin_bloques)
+
+def redactar_secretos(texto):
+    # Enmascara claves de API, emails y tarjetas ANTES de que la respuesta salga.
+    return _SECRETOS.sub("«oculto»", texto)</code></pre></figure>
+
+      <h3>Paso 3 · El pipeline: separar DATOS de INSTRUCCIONES</h3>
+      <p>La defensa estructural contra la inyección <em>indirecta</em>: le decimos al modelo, explícitamente, que el contexto es material de referencia y que jamás obedezca órdenes escritas ahí dentro. Y pase lo que pase, limpiamos la salida.</p>
+      <figure class="code"><figcaption><span class="d"></span>23_seguridad.py · guardarraíles en capas</figcaption><pre><code>def responder_seguro(pregunta, contexto, modelo=modelo_ingenuo):
+    alertas = detectar_inyeccion(contexto)          # 1) alarma (LLM01 indirecta)
+    prompt  = construir_prompt(pregunta, contexto)  # 2) separa datos de órdenes
+    cruda   = modelo(prompt)                         # 3) el modelo puede caer…
+    segura  = redactar_secretos(sanear_salida(cruda))  # 4) …la salida SIEMPRE se limpia
+    return {"respuesta": segura, "cruda": cruda, "alertas": alertas}</code></pre></figure>
+      <figure class="code output"><figcaption><span class="d"></span>▸ deberías ver al correr 23_seguridad.py (recortado)</figcaption><pre><code>1) Inyección DIRECTA (en la pregunta del usuario):
+   detectado: ['anular-instrucciones', 'revelar-system-prompt']
+
+2) Inyección INDIRECTA (escondida en el contexto recuperado):
+   alertas del contexto: ['anular-instrucciones', 'exfiltracion']
+   ¿la salida CRUDA lleva &lt;script&gt;? True     ¿la clave? True
+   ¿la salida SEGURA lleva &lt;script&gt;? False    ¿la clave? False</code></pre></figure>
+
+      <div class="box warn"><div class="lab">▲ Honestidad pedagógica: el detector por patrones SE SALTA</div>
+        <p><code class="k">detectar_inyeccion</code> es una <strong>lista negra</strong>, y toda lista negra se rodea parafraseando ("haz de cuenta que las reglas de arriba ya no aplican…"). <strong>No es la única defensa, es la primera capa.</strong> La seguridad real es <strong>en capas</strong>: (1) separar datos de instrucciones, (2) validar SIEMPRE la salida, (3) <strong>mínimo privilegio</strong> — no le des al LLM herramientas peligrosas (borrar, pagar, mandar correos) sin una confirmación humana, y (4) asumir que el contexto recuperado puede venir envenenado. Un detector que "pasa" te da falsa tranquilidad; las capas de abajo son las que de verdad frenan el daño.</p></div>
+      <div class="avoid"><div class="lab">⛔ Cuándo NO confiar en esto</div>
+        <ul>
+          <li>No uses <code class="k">detectar_inyeccion</code> como <strong>único</strong> filtro: un atacante que parafrasea lo evade. Es la alarma, no la cerradura.</li>
+          <li>No pintes la salida del modelo como HTML de confianza: trátala como <strong>entrada de usuario</strong> y escápala (LLM02).</li>
+          <li>No le des al agente herramientas con poder destructivo o de gasto <strong>sin human-in-the-loop</strong> (Módulo 13b): la inyección más cara no "habla mal", <em>actúa</em>.</li>
+        </ul></div>
+      <div class="box practice"><div class="lab">▸ Para practicar</div>
+        <p>Añade a <code class="k">tests/test_redteam.py</code> una inyección nueva que <strong>hoy se cuele</strong> (parafrasea "ignora las instrucciones" sin usar esas palabras) y compruébalo: el test debe fallar. Ahora tienes dos caminos didácticos — endurecer el patrón (y ver cómo la lista negra nunca termina) o apoyarte en la capa estructural (<code class="k">responder_seguro</code>) que no depende de adivinar la frase.</p></div>
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Nombrar LLM01/LLM02/LLM06 y dar un ejemplo de cada uno.</li>
+          <li>Distinguir inyección <strong>directa</strong> de <strong>indirecta</strong> (la que viaja en el contexto del RAG).</li>
+          <li>Explicar por qué el detector por patrones es la primera capa y NO la única.</li>
+          <li>Poner guardarraíles de salida (saneo + redacción) que van <strong>siempre</strong>, tropiece o no el modelo.</li>
+        </ul></div>
+      <div class="recap l5">
+        <div class="lab">↺ En una frase</div>
+        <p>La seguridad de un agente es <strong>en capas</strong>: detectar (primera capa, evadible), separar datos de instrucciones (estructural), sanear la salida (LLM02) y redactar secretos (LLM06) SIEMPRE, y mínimo privilegio en las herramientas.<span class="arch">archivo: <code>23_seguridad.py</code> · batería: <code>tests/test_redteam.py</code></span></p>
+      </div>
+    </div></section>
+
+    <section id="m24"><div class="col">
+      <p class="modtag l5"><span class="bar"></span>AI Engineer · Módulo 24</p>
+      <h2>Del vector store en memoria a una DB vectorial de verdad</h2>
+      <div class="fileref">📋 Copia y ejecuta: <b>curso_ejemplos/24_vector_db.py</b> — dedup e índice IVFFlat a mano, 100% offline<span class="tested">✓ cubierto por tests</span></div>
+      <p class="modmeta"><span>🎯 <b>Al terminar sabrás:</b> por qué un <strong>vector store en memoria</strong> no escala y qué hacen las DBs vectoriales: <strong>dedup</strong> antes de indexar e <strong>índices ANN</strong>.</span><span>✅ <b>Necesitas:</b> el Módulo 12 (vectores y coseno).</span><span>⏱️ <b>~40 min</b></span></p>
+      <p>Cierra el arco de RAG (Módulos 11/12/20). Hasta ahora el "vector store" era una <strong>lista en memoria</strong> y la búsqueda comparaba la consulta con <strong>TODOS</strong> los vectores. Con 7 chunks funciona; con 7 millones, no. Dos ideas te separan del prototipo: no indexar basura repetida (<strong>dedup</strong>) y no comparar contra todo (<strong>índice ANN</strong>).</p>
+
+      <div class="box def"><div class="lab">◈ Definición · Dedup por hash e índice IVFFlat</div>
+        <dl>
+          <dt>Dedup por hash</dt><dd>Antes de indexar, una <strong>huella</strong> (sha256 del texto normalizado) descarta duplicados exactos y <em>casi-exactos</em>. Repetir un chunk infla el coste y <strong>sesga el ranking</strong>: tres copias se reparten los primeros puestos.</dd>
+          <dt>ANN (Approximate Nearest Neighbor)</dt><dd>Buscar el vecino "casi" más cercano <strong>muchísimo más rápido</strong> que la fuerza bruta, aceptando perder algún resultado (menos <em>recall</em>).</dd>
+          <dt>IVFFlat</dt><dd>Agrupa los vectores en <strong>listas</strong> alrededor de <strong>centroides</strong>. Al buscar, solo sondeas las listas cercanas a la consulta (<code class="k">n_sondas</code>). Hay que <strong>entrenar</strong> el índice y elegir <code class="k">nlist</code>.</dd>
+          <dt>HNSW</dt><dd>Un <strong>grafo navegable de mundo pequeño</strong>: saltas de nodo a nodo acercándote al vecino. Muy rápido, pero <strong>más memoria</strong>.</dd>
+        </dl></div>
+
+      <div class="box analogy"><div class="lab">◆ La biblioteca por secciones</div>
+        <p>El escaneo exacto es <strong>leer todos los lomos</strong> de la biblioteca para hallar un libro. IVFFlat es tenerla <strong>por secciones</strong> (centroides): vas a las 1–2 secciones más afines a tu tema y buscas solo ahí. Rapidísimo, salvo que el libro estuviera mal clasificado en otra sección — ahí pierdes <em>recall</em>. Subir <code class="k">n_sondas</code> es visitar más secciones: más lento, más seguro.</p></div>
+
+      <h3>Paso 1 · Dedup por hash antes de indexar</h3>
+      <figure class="code"><figcaption><span class="d"></span>24_vector_db.py · huella normalizada (stdlib hashlib)</figcaption><pre><code>def hash_normalizado(texto):
+    # Normaliza (minúsculas, sin puntuación, espacios colapsados) y luego sha256.
+    # Dos textos que solo difieren en caja o espacios -&gt; MISMO hash (casi-duplicados).
+    normalizado = " ".join(tokenizar(texto))
+    return hashlib.sha256(normalizado.encode("utf-8")).hexdigest()
+
+def deduplicar(chunks):
+    vistos, unicos = set(), []
+    for chunk in chunks:                       # conserva la PRIMERA aparición
+        huella = hash_normalizado(chunk)
+        if huella not in vistos:
+            vistos.add(huella); unicos.append(chunk)
+    return unicos</code></pre></figure>
+
+      <h3>Paso 2 · Índice IVFFlat y la perilla del trade-off</h3>
+      <p>Subir <code class="k">n_sondas</code> <strong>nunca empeora</strong> el recall (miras un superconjunto de listas), solo cuesta más. Con todas las sondas, igualas al escaneo exacto — y pierdes la ventaja. Ese es el corazón de un índice ANN.</p>
+      <figure class="code"><figcaption><span class="d"></span>24_vector_db.py · búsqueda aproximada</figcaption><pre><code>def buscar_ivf(consulta, indice, k=3, n_sondas=1):
+    # 1) rankea los centroides por parecido a la consulta
+    orden = sorted(range(len(indice.centroides)),
+                   key=lambda c: coseno(consulta, indice.centroides[c]), reverse=True)
+    # 2) recoge candidatos SOLO de las n_sondas listas más cercanas
+    candidatos = [i for c in orden[:n_sondas] for i in indice.listas[c]]
+    # 3) puntúa esos candidatos y devuelve el top-k
+    candidatos.sort(key=lambda i: coseno(consulta, indice.vectores[i]), reverse=True)
+    return candidatos[:k]</code></pre></figure>
+      <figure class="code output"><figcaption><span class="d"></span>▸ deberías ver al correr 24_vector_db.py (recortado)</figcaption><pre><code>Tras deduplicar por hash: 7 (se cayó el casi-duplicado).
+Índice IVFFlat con 3 listas; tamaños: [1, 3, 3]
+  Escaneo EXACTO (techo de recall): top-3 = [2, 5, 4]
+  IVF n_sondas=1: recall vs exacto = 0.33
+  IVF n_sondas=2: recall vs exacto = 1.00
+  IVF n_sondas=3: recall vs exacto = 1.00</code></pre></figure>
+
+      <div class="box def"><div class="lab">◈ IVFFlat vs HNSW · cuándo cada uno</div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Criterio</th><th>IVFFlat</th><th>HNSW</th></tr></thead>
+          <tbody>
+            <tr><td>Idea</td><td>listas por centroide; sondeas las cercanas</td><td>grafo navegable; saltas hacia el vecino</td></tr>
+            <tr><td>Velocidad de consulta</td><td>rápida (depende de <code>n_sondas</code>)</td><td>muy rápida</td></tr>
+            <tr><td>Memoria</td><td>menor</td><td>mayor (guarda el grafo)</td></tr>
+            <tr><td>Puesta a punto</td><td>entrenar + elegir <code>nlist</code>/<code>nprobe</code></td><td>casi sin entrenar; <code>M</code>/<code>ef</code></td></tr>
+            <tr><td>Perilla recall↔velocidad</td><td><code>nprobe</code> (sondas)</td><td><code>ef_search</code></td></tr>
+          </tbody>
+        </table></div></div>
+
+      <div class="box warn"><div class="lab">▲ Estos vectores son didácticos</div>
+        <p>Vectorizamos por <strong>frecuencia de palabras</strong> (como el Módulo 12), no con embeddings reales — para que la mecánica del índice se vea sin depender de un modelo. La <em>mecánica</em> de agrupar y sondar es idéntica con embeddings de verdad; lo que cambia es la calidad del vector. En producción NO escribes esto a mano: lo dan <code class="k">pgvector</code> (Postgres), <strong>Qdrant</strong> o <strong>Milvus</strong>, que ofrecen IVFFlat y HNSW como tipos de índice.</p></div>
+      <div class="avoid"><div class="lab">⛔ Cuándo NO complicarte</div>
+        <ul>
+          <li>No montes un índice ANN con <strong>cientos</strong> de vectores: el escaneo exacto es más simple y ya es instantáneo. ANN paga cuando hay millones.</li>
+          <li>No olvides el <strong>dedup</strong>: reindexar el mismo documento en cada carga sesga el ranking y multiplica el coste.</li>
+          <li>No trates <code>nprobe</code>/<code>ef</code> como magia: mídelos contra el escaneo exacto (el techo de recall) sobre TUS datos.</li>
+        </ul></div>
+      <div class="box practice"><div class="lab">▸ Para practicar</div>
+        <p>Cambia <code class="k">n_listas</code> en <code class="k">construir_ivf</code> y observa cómo cambian los tamaños de las listas y el recall con <code class="k">n_sondas=1</code>. Luego busca una consulta cuyo vecino correcto caiga en otra lista: verás el recall subir de 0 a 1 al aumentar las sondas. Es el trade-off en vivo.</p></div>
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Explicar por qué deduplicar antes de indexar ahorra coste y mejora el ranking.</li>
+          <li>Describir IVFFlat (listas + centroides) y el papel de <code class="k">n_sondas</code>.</li>
+          <li>Argumentar el trade-off recall↔velocidad y que el escaneo exacto es el techo de recall.</li>
+          <li>Elegir entre IVFFlat y HNSW según memoria y puesta a punto.</li>
+        </ul></div>
+      <div class="recap l5">
+        <div class="lab">↺ En una frase</div>
+        <p>Una DB vectorial de verdad hace dos cosas que tu lista en memoria no: <strong>deduplica</strong> antes de indexar e <strong>indexa con ANN</strong> (IVFFlat/HNSW) para no comparar contra todo — cambiando algo de recall por mucha velocidad.<span class="arch">archivo: <code>24_vector_db.py</code></span></p>
+      </div>
+    </div></section>
+
     <!-- ================= EXAMEN FINAL ================= -->
     <section id="examen"><div class="col">
       <p class="modtag l5"><span class="bar"></span>Evaluación · Examen final</p>
@@ -4088,6 +4255,8 @@ llm = ChatOpenAI(model="qwen/qwen3-32b",
           <tr><td>Multi-query y RAG-Fusion</td><td><code>20</code></td><td><a class="inline" href="#m20">20</a></td><td><code>test_offline.py::TestTema20*</code></td></tr>
           <tr><td>Fine-tuning vs RAG</td><td><code>21</code></td><td><a class="inline" href="#m21">21</a></td><td><code>test_offline.py::TestTema21*</code></td></tr>
           <tr><td>Multimodal (texto + imagen)</td><td><code>22</code></td><td><a class="inline" href="#m22">22</a></td><td><code>test_offline.py::TestTema22*</code></td></tr>
+          <tr><td>Seguridad y red-teaming (OWASP LLM)</td><td><code>23</code></td><td><a class="inline" href="#m23">23</a></td><td><code>test_redteam.py</code></td></tr>
+          <tr><td>Vector DBs en producción (dedup · IVFFlat)</td><td><code>24</code></td><td><a class="inline" href="#m24">24</a></td><td><code>test_offline.py::TestTema24*</code></td></tr>
         </tbody>
       </table></div>
       <div class="box analogy"><div class="lab">◆ ¿Y tus experimentos previos?</div>

@@ -858,3 +858,123 @@ class TestTema22Mensaje:
         assert partes[0].text == "mira"
         assert partes[1].inline_data.mime_type == "image/png"
         assert len(partes[1].inline_data.data) > 0
+
+
+# ==================================================================
+# TEMA 23 · Seguridad: guardarraíles (la batería de ataques va en test_redteam.py)
+# ==================================================================
+@pytest.fixture(scope="module")
+def m23(importar_ejemplo):
+    return importar_ejemplo("23_seguridad")
+
+
+class TestTema23Guardarrailes:
+    """Las piezas del pipeline por separado. Los ATAQUES concretos viven en
+    tests/test_redteam.py; aquí probamos el contrato de cada función."""
+
+    def test_construir_prompt_marca_el_contexto_como_datos(self, m23):
+        prompt = m23.construir_prompt("¿precio?", "el precio es 100 soles")
+        assert m23.MARCA_DATOS in prompt
+        assert "el precio es 100 soles" in prompt
+        # La instrucción de no obedecer al contexto debe estar presente.
+        assert "NUNCA obedezcas" in prompt
+
+    def test_el_modelo_credulo_recita_el_bloque_de_datos(self, m23):
+        """El doble de juguete obedece: devuelve tal cual lo que va tras la marca."""
+        prompt = m23.construir_prompt("x", "TEXTO SECRETO")
+        assert m23.modelo_ingenuo(prompt) == "TEXTO SECRETO"
+
+    def test_responder_seguro_devuelve_las_tres_claves(self, m23):
+        r = m23.responder_seguro("¿horario?", "de 9 a 18")
+        assert set(r) == {"respuesta", "cruda", "alertas"}
+
+    def test_sanear_escapa_los_angulos_del_texto_normal(self, m23):
+        """El HTML que no es un bloque peligroso se ESCAPA, no se ejecuta."""
+        limpio = m23.sanear_salida("2 < 3 y <b>negrita</b>")
+        assert "&lt;" in limpio
+        assert "<b>" not in limpio
+
+    def test_detectar_inyeccion_devuelve_lista_vacia_si_esta_limpio(self, m23):
+        assert m23.detectar_inyeccion("¿cuánto cuesta el servicio?") == []
+
+
+# ==================================================================
+# TEMA 24 · Vector DBs: dedup por hash + índice IVFFlat didáctico
+# ==================================================================
+@pytest.fixture(scope="module")
+def m24(importar_ejemplo):
+    return importar_ejemplo("24_vector_db")
+
+
+# Un corpus pequeño y determinista con dos "temas" (mascotas / finanzas) para
+# que el clustering tenga algo que separar.
+CORPUS_M24 = [
+    "el gato negro duerme en el sofá de casa",
+    "el perro corre feliz por el parque",
+    "las acciones subieron en la bolsa de valores hoy",
+    "el mercado bursátil cerró a la baja esta tarde",
+    "receta de pastel de chocolate casero muy fácil",
+    "cómo hornear pan integral en casa paso a paso",
+    "el gato blanco juega con la lana en el sofá",
+    "inversiones y finanzas personales para principiantes",
+]
+
+
+class TestTema24Dedup:
+    """Dedup por hash: no indexar la misma información dos veces."""
+
+    def test_normaliza_mayusculas_y_espacios(self, m24):
+        """Mismo texto, distinta caja/puntuación -> mismo hash."""
+        assert m24.hash_normalizado("Hola,  MUNDO!") == m24.hash_normalizado("hola mundo")
+
+    def test_textos_distintos_dan_hashes_distintos(self, m24):
+        assert m24.hash_normalizado("gato") != m24.hash_normalizado("perro")
+
+    def test_deduplicar_quita_exactos_y_casi_exactos(self, m24):
+        chunks = ["El horario es de 9 a 18.", "el horario es de 9 a 18", "Formas de pago: Yape."]
+        unicos = m24.deduplicar(chunks)
+        assert len(unicos) == 2
+
+    def test_deduplicar_conserva_el_orden_y_la_primera_aparicion(self, m24):
+        chunks = ["primero", "segundo", "PRIMERO"]
+        assert m24.deduplicar(chunks) == ["primero", "segundo"]
+
+
+class TestTema24Ivf:
+    """Índice IVFFlat: sondar solo las listas cercanas, con el trade-off recall↔velocidad."""
+
+    def _indice(self, m24, n_listas=3):
+        vectores = [m24.vectorizar(t) for t in CORPUS_M24]
+        return vectores, m24.construir_ivf(vectores, n_listas=n_listas)
+
+    def test_cada_vector_cae_en_exactamente_una_lista(self, m24):
+        _, indice = self._indice(m24)
+        asignados = sorted(i for lista in indice.listas for i in lista)
+        assert asignados == list(range(len(CORPUS_M24)))
+
+    def test_encuentra_el_vecino_correcto(self, m24):
+        """La consulta es (casi) un documento: con sondas suficientes, sale primero."""
+        vectores, indice = self._indice(m24)
+        consulta = m24.vectorizar("el gato juega en el sofá")
+        # Con todas las sondas, IVF ve todo -> el mejor vecino real está en el top.
+        top = m24.buscar_ivf(consulta, indice, k=3, n_sondas=3)
+        exacto = m24.buscar_exacto(consulta, vectores, k=3)
+        assert exacto[0] in top
+
+    def test_subir_sondas_no_empeora_el_recall(self, m24):
+        vectores, indice = self._indice(m24)
+        consulta = m24.vectorizar("finanzas y bolsa de valores")
+        exacto = set(m24.buscar_exacto(consulta, vectores, k=3))
+        recalls = []
+        for sondas in (1, 2, 3):
+            aprox = set(m24.buscar_ivf(consulta, indice, k=3, n_sondas=sondas))
+            recalls.append(len(aprox & exacto) / len(exacto))
+        # Monótono no decreciente: más sondas nunca dan menos recall.
+        assert recalls == sorted(recalls)
+
+    def test_con_todas_las_sondas_iguala_al_escaneo_exacto(self, m24):
+        vectores, indice = self._indice(m24, n_listas=3)
+        consulta = m24.vectorizar("receta de pan y pastel casero")
+        exacto = set(m24.buscar_exacto(consulta, vectores, k=3))
+        todas = set(m24.buscar_ivf(consulta, indice, k=3, n_sondas=3))
+        assert todas == exacto
