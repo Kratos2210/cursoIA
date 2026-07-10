@@ -3,7 +3,7 @@
 Cada archivo es **autónomo**: lo abres en VS Code, lo corres y funciona solo.
 Están comentados **sección por sección** para que entiendas cada línea.
 
-Y todo está **verificado por 353 tests** que corren sin gastar un solo token
+Y todo está **verificado por 372 tests** que corren sin gastar un solo token
 (ver [§6](#6-cómo-se-verifica-que-esto-funciona)).
 
 ## 1) Requisitos (una sola vez)
@@ -71,7 +71,7 @@ La columna «Cuota» se refiere al proveedor que tengas activo: con
 | 17 · Servir el agente | `17_servidor_agente.py` | FastAPI: `POST /chat` con memoria por usuario | Sí |
 
 **Proyecto final:** [`proyecto_final/`](proyecto_final/) — el asistente de
-Gobierno de Datos, repartido en 8 módulos y con 43 tests propios.
+Gobierno de Datos, repartido en 8 módulos y con 44 tests propios.
 
 ## 4) Ejercicios
 
@@ -110,6 +110,7 @@ montón de scripts: **cada concepto tiene una prueba que lo defiende**.
 | Evaluación con dataset | `16` | — | *(el propio ejemplo es la métrica)* |
 | Tokens, coste y tracing | `16b` | — | `test_offline.py::TestTema16bObservabilidad` |
 | Servir por HTTP | `17` | [🏆 nivel 5](ejercicios/ejercicio_proyecto.md) | `test_imports.py` |
+| Elegir modelo y proveedor | `util.py` | [18b](curso-langchain.html#m18b) | `test_util.py::TestProveedoresNuevos` |
 | Auditoría / trazabilidad | `proyecto_final/audit.py` | [🏆](ejercicios/ejercicio_proyecto.md) | `proyecto_final/tests/test_audit.py` |
 | Inyección de dependencias | `proyecto_final/graph_builder.py` | [🏆](ejercicios/ejercicio_proyecto.md) | `proyecto_final/tests/test_agente.py` |
 
@@ -117,7 +118,7 @@ montón de scripts: **cada concepto tiene una prueba que lo defiende**.
 
 ```bash
 cd curso_ejemplos
-uv run pytest -m offline        # 353 tests, ~15 s, CERO llamadas a la API
+uv run pytest -m offline        # 372 tests, ~15 s, CERO llamadas a la API
 ```
 
 Qué cubren:
@@ -181,22 +182,30 @@ Y tres decisiones documentadas, con sus consecuencias negativas escritas:
 [caché semántico](proyecto_llmops/docs/adr/0005-semantic-cache.md).
 Cuando algo se rompa: [su runbook](proyecto_llmops/docs/README_runbook.md).
 
-## 9) Cambiar de proveedor (Groq, Ollama, fastembed)
+## 9) Cambiar de proveedor (Gemini, Groq, OpenAI, Claude, OpenRouter, DeepSeek, Ollama)
 
 Ningún archivo del curso instancia un modelo a mano. Todos llaman a
-`util.crear_llm()` y a `util.crear_embeddings()`, que leen el `.env`.
+`util.crear_llm()` y a `util.crear_embeddings()`, que leen el `.env`. Cambiar de
+proveedor es cambiar una línea, nunca el código. **Cuál elegir** para una
+solución real (pago vs. open weights, precios, dónde corre) se explica en el
+Módulo 18b (`curso-langchain.html#m18b`).
 
 | Quiero… | En el `.env` | Instalar |
 |---------|--------------|----------|
 | Gemini (por defecto) | `LLM_PROVIDER=google` + `GOOGLE_API_KEY` | — |
 | **Groq · `qwen/qwen3-32b`** | `LLM_PROVIDER=groq` + `GROQ_API_KEY` | — |
 | Ollama en mi máquina | `LLM_PROVIDER=ollama` + `LLM_MODELO=qwen3:8b` | `ollama serve` |
+| OpenAI · `gpt-5-mini` | `LLM_PROVIDER=openai` + `OPENAI_API_KEY` | — |
+| Anthropic · `claude-haiku-4-5` | `LLM_PROVIDER=anthropic` + `ANTHROPIC_API_KEY` | — |
+| OpenRouter (agregador, tiene `:free`) | `LLM_PROVIDER=openrouter` + `OPENROUTER_API_KEY` | — |
+| DeepSeek · `deepseek-chat` | `LLM_PROVIDER=deepseek` + `DEEPSEEK_API_KEY` | — |
 | Otro modelo del mismo proveedor | `LLM_MODELO=llama-3.3-70b-versatile` | — |
 | **Embeddings sin cuota** | `EMBEDDINGS_PROVIDER=fastembed` | `uv sync --extra emb` |
 
-Una sola clase (`ChatOpenAI` con otra `base_url`) cubre Groq, Ollama, Together y
-OpenAI: el mercado convergió en el dialecto de la API de OpenAI. Gemini no lo
-habla, y por eso conserva su propia rama en `crear_llm()`.
+Una sola clase (`ChatOpenAI` con otra `base_url`) cubre Groq, Ollama, OpenAI,
+OpenRouter y DeepSeek: el mercado convergió en el dialecto de la API de OpenAI.
+Gemini y Claude (Anthropic) no lo hablan, y por eso conservan su propia rama en
+`crear_llm()`.
 
 ### ⚠️ Los embeddings NO siguen a `LLM_PROVIDER`
 

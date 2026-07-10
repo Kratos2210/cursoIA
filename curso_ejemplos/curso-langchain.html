@@ -412,6 +412,7 @@
       <a href="#m17b"><span class="n">17b</span>Tests y CI</a>
       <div class="navsec" style="--sc:var(--l5)">Proyecto</div>
       <a href="#m18"><span class="n">18</span>Capstone final</a>
+      <a href="#m18b"><span class="n">18b</span>Elegir modelo y proveedor</a>
       <a href="#llmops"><span class="n">🚀</span>LLMOps: de prototipo a producto</a>
       <a href="#examen"><span class="n">📝</span>Examen final</a>
       <a href="#ejercicios"><span class="n">🏋️</span>Ejercicios</a>
@@ -562,6 +563,8 @@ ModuleNotFoundError: No module named 'dotenv'</code></pre></figure>
       <div class="box analogy"><div class="lab">◆ Cuál elegir (y por qué te vas a acabar pasando a Groq)</div>
         <p><strong>Gemini</strong> es el camino por defecto del curso. <strong>Groq</strong> sirve <code class="k">qwen/qwen3-32b</code> con un cupo gratuito <em>mucho</em> más generoso y respuestas bastante más rápidas.</p>
         <p>La cuota gratuita de Gemini se agota en una tarde de práctica: verás un <code class="k">429 RESOURCE_EXHAUSTED</code> y creerás que rompiste algo. No rompiste nada. Si vas a hacer los ejercicios del tirón, <strong>empieza directamente en Groq</strong>. Puedes tener las dos llaves y cambiar con una línea del <code class="k">.env</code>.</p></div>
+
+      <p>Para empezar, con Gemini o Groq te basta. Pero el conmutador entiende <strong>más proveedores</strong> — <code class="k">openai</code>, <code class="k">anthropic</code> (Claude), <code class="k">openrouter</code> y <code class="k">deepseek</code>, además de <code class="k">ollama</code> en tu máquina — todos con la misma línea del <code class="k">.env</code>. Cuándo y por qué elegir cada uno (pago vs. open weights, precios reales, dónde corre) lo ves en el <a class="inline" href="#m18b">Módulo 18b · Elegir modelo y proveedor</a>.</p>
 
       <h4>Opción A · Gemini</h4>
       <ol>
@@ -2723,7 +2726,7 @@ vector store servido (el retriever se cambia sin tocar la cadena).</code></pre><
     <section id="m17b"><div class="col">
       <p class="modtag l4"><span class="bar"></span>Nivel Producción · Módulo 17b</p>
       <h2>Tests y CI: la red que te deja cambiar cosas sin miedo</h2>
-      <div class="fileref">📋 Existe de verdad: <b>curso_ejemplos/tests/</b> · <b>proyecto_final/tests/</b> · <b>.github/workflows/ci.yml</b> — 141 tests, ninguno gasta cuota</div>
+      <div class="fileref">📋 Existe de verdad: <b>curso_ejemplos/tests/</b> · <b>proyecto_final/tests/</b> · <b>proyecto_llmops/tests/</b> · <b>.github/workflows/ci.yml</b> — 372 tests, ninguno gasta cuota</div>
       <p class="modmeta"><span>🎯 <b>Al terminar sabrás:</b> testear IA sin gastar cuota (modelo falso, marcador <code class="k">offline</code>) y montar CI.</span><span>✅ <b>Necesitas:</b> Módulo 17.</span><span>⏱️ <b>~45 min</b></span></p>
       <p>Todo el nivel de producción se apoya en una idea silenciosa: <strong>puedes cambiar el código porque algo te avisa si lo rompes</strong>. Sin eso, cada refactor es una apuesta y cada actualización de librería, una noche larga. Este módulo enseña cómo está tejida esa red — la del propio curso, que puedes correr ahora mismo.</p>
       <div class="box def"><div class="lab">◈ Definición · Test, doble de prueba y CI</div>
@@ -2745,7 +2748,7 @@ vector store servido (el retriever se cambia sin tocar la cadena).</code></pre><
           <tr><td><code>tests/test_imports.py</code></td><td>Importa <em>todos</em> los ejemplos. Si una librería cambia su API, este test lo grita — sin gastar un token.</td></tr>
           <tr><td><code>tests/test_offline.py</code></td><td>La lógica no-LLM de cada tema: BM25 y RRF, el ciclo HITL, el descubrimiento de tools MCP, el supervisor, los costes.</td></tr>
           <tr><td><code>tests/test_util.py</code></td><td>Lo compartido: detección del 429, troceado de párrafos.</td></tr>
-          <tr><td><code>proyecto_final/tests/</code></td><td>43 tests que ejercitan el <strong>grafo completo</strong> del capstone… sin llamar a la API ni una vez.</td></tr>
+          <tr><td><code>proyecto_final/tests/</code></td><td>44 tests que ejercitan el <strong>grafo completo</strong> del capstone… sin llamar a la API ni una vez.</td></tr>
         </tbody>
       </table></div>
 
@@ -2779,7 +2782,7 @@ vector store servido (el retriever se cambia sin tocar la cadena).</code></pre><
       <div class="flow" role="img" aria-label="Flujo de CI: haces commit y push, GitHub Actions corre pytest en modo offline; si sale verde el cambio se puede mergear, si sale rojo se corrige antes de integrar.">
         <div class="step"><div class="num">1</div><div class="ti">Commit + push</div><div class="de">Subes tu cambio al repositorio.</div></div><div class="arw">→</div>
         <div class="step hl"><div class="num">2</div><div class="ti">GitHub Actions</div><div class="de">Arranca solo, sin que nadie se lo pida.</div></div><div class="arw">→</div>
-        <div class="step"><div class="num">3</div><div class="ti"><code>pytest -m offline</code></div><div class="de">Los 141 tests, sin llave ni cuota.</div></div><div class="arw">→</div>
+        <div class="step"><div class="num">3</div><div class="ti"><code>pytest -m offline</code></div><div class="de">Los 372 tests, sin llave ni cuota.</div></div><div class="arw">→</div>
         <div class="step"><div class="num">✅ / ❌</div><div class="ti">Verde o rojo</div><div class="de">Verde → se mergea. Rojo → se corrige antes de integrar.</div></div>
       </div>
       <figure class="code"><figcaption><span class="d"></span>.github/workflows/ci.yml · el corazón del workflow</figcaption><pre><code>strategy:
@@ -2823,7 +2826,7 @@ def test_la_linea_lleva_la_severidad():
         </div></details></div>
           <div class="recap l4">
         <div class="lab">↺ En una frase</div>
-        <p>Testear IA consiste en fijar todo lo que <em>no</em> es el modelo y sustituir el modelo por un guion. Por eso la CI puede correr los 141 tests sin tener tu llave.<span class="arch">archivos: <code>tests/</code> · <code>.github/workflows/ci.yml</code></span></p>
+        <p>Testear IA consiste en fijar todo lo que <em>no</em> es el modelo y sustituir el modelo por un guion. Por eso la CI puede correr los 372 tests sin tener tu llave.<span class="arch">archivos: <code>tests/</code> · <code>.github/workflows/ci.yml</code></span></p>
       </div>
     </div></section>
 
@@ -2832,13 +2835,13 @@ def test_la_linea_lleva_la_severidad():
       <div class="lvbanner" style="--lvc:var(--l5)"><div class="k">Proyecto final · Capstone</div><p>Todo junto en un caso real: un asistente de gobierno de datos para una entidad financiera.</p></div>
       <p class="modtag l5"><span class="bar"></span>Proyecto Final · Módulo 18</p>
       <h2>Sistema de Gobierno de Datos (financiera), listo para producción</h2>
-      <div class="fileref">📋 Proyecto ejecutable: <b>curso_ejemplos/proyecto_final/main.py</b> — corre solo con tu llave. Abajo se explican las piezas.<span class="tested">✓ 43 tests, sin API</span></div>
+      <div class="fileref">📋 Proyecto ejecutable: <b>curso_ejemplos/proyecto_final/main.py</b> — corre solo con tu llave. Abajo se explican las piezas.<span class="tested">✓ 44 tests, sin API</span></div>
       <p class="modmeta"><span>🎯 <b>Al terminar sabrás:</b> integrar casi todo el curso en un sistema real, modular y testeable.</span><span>✅ <b>Necesitas:</b> todos los módulos anteriores.</span><span>⏱️ <b>~90 min</b></span></p>
       <div class="box analogy"><div class="lab">◆ El proyecto final <em>es</em> el Módulo 17 hecho realidad</div>
         <p>Empezó siendo un <code class="k">app.py</code> de 158 líneas que llamaba a la API con solo importarlo — imposible de testear. Hoy está partido exactamente como prescribe el módulo anterior: <code class="k">config.py</code>, <code class="k">rag.py</code>, <code class="k">audit.py</code>, <code class="k">tools.py</code>, <code class="k">state.py</code>, <code class="k">persistence.py</code>, <code class="k">graph_builder.py</code> y <code class="k">main.py</code>. (<code class="k">app.py</code> sigue ahí como atajo de compatibilidad.)</p>
-        <p>⭐ La regla que lo hizo testeable cabe en una línea: <code class="k">construir_agente()</code> recibe modelo, evaluador y retriever <strong>por parámetro</strong>. Por eso sus 43 tests pueden pasarle un modelo falso que recita un guion, y ejercitar el grafo completo <strong>sin llamar a la API ni una vez</strong>. Eso es lo que significa "modular": no que haya más archivos, sino que puedes sustituir las piezas caras.</p></div>
+        <p>⭐ La regla que lo hizo testeable cabe en una línea: <code class="k">construir_agente()</code> recibe modelo, evaluador y retriever <strong>por parámetro</strong>. Por eso sus 44 tests pueden pasarle un modelo falso que recita un guion, y ejercitar el grafo completo <strong>sin llamar a la API ni una vez</strong>. Eso es lo que significa "modular": no que haya más archivos, sino que puedes sustituir las piezas caras.</p></div>
       <div class="box warn"><div class="lab">▲ El proyecto vive en el repositorio, no en esta página</div>
-        <p>Lo que sigue <strong>explica</strong> el capstone pieza por pieza, pero el código completo y ejecutable está en la carpeta <code class="k">curso_ejemplos/proyecto_final/</code> del <a class="inline" href="https://github.com/Kratos2210/cursoIA/tree/main/curso_ejemplos">repositorio</a>. Si solo tienes esta página puedes leer y entender el diseño igual; para <em>correrlo</em> (y correr sus 43 tests) necesitas el repo.</p></div>
+        <p>Lo que sigue <strong>explica</strong> el capstone pieza por pieza, pero el código completo y ejecutable está en la carpeta <code class="k">curso_ejemplos/proyecto_final/</code> del <a class="inline" href="https://github.com/Kratos2210/cursoIA/tree/main/curso_ejemplos">repositorio</a>. Si solo tienes esta página puedes leer y entender el diseño igual; para <em>correrlo</em> (y correr sus 44 tests) necesitas el repo.</p></div>
       <p>Trabajas en Gobierno de Datos y Cumplimiento de una organización financiera. Construyes un asistente que <strong>responde dudas sobre normativa</strong>, <strong>evalúa reglas de calidad de datos</strong> y <strong>registra hallazgos</strong> — con aprobación humana antes de marcar un incumplimiento.</p>
       <div class="box def"><div class="lab">◈ Definición · Capstone (proyecto integrador)</div>
         <p>Un <strong>capstone</strong> o <strong>proyecto integrador</strong> es el trabajo final que <strong>junta en un solo sistema</strong> todo lo que aprendiste por partes. No introduce conceptos nuevos: demuestra que sabes <em>combinarlos</em> bajo las restricciones de un caso real (aquí, una financiera regulada). Si algo del curso no encajaba, aquí encaja.</p>
@@ -2872,7 +2875,7 @@ def test_la_linea_lleva_la_severidad():
         <div class="step"><div class="num">4</div><div class="ti">main.py</div><div class="de">Lo único que decide usar el modelo <em>real</em>.</div></div>
       </div>
       <div class="box analogy"><div class="lab">◆ Dónde está el truco</div>
-        <p>Las cajas caras (el modelo, el retriever) entran en <code class="k">graph_builder</code> <strong>por la puerta</strong>, como parámetros. <code class="k">main.py</code> le pasa las de verdad; <code class="k">tests/</code> le pasa un modelo falso que recita un guion. El grafo no nota la diferencia — y por eso 43 tests ejercitan el capstone completo sin gastar un solo token.</p></div>
+        <p>Las cajas caras (el modelo, el retriever) entran en <code class="k">graph_builder</code> <strong>por la puerta</strong>, como parámetros. <code class="k">main.py</code> le pasa las de verdad; <code class="k">tests/</code> le pasa un modelo falso que recita un guion. El grafo no nota la diferencia — y por eso 44 tests ejercitan el capstone completo sin gastar un solo token.</p></div>
 
       <h3>Pieza 1 · RAG como herramienta</h3>
       <figure class="code"><figcaption><span class="d"></span>capstone · buscar_normativa</figcaption><pre><code>from langchain_core.tools import tool
@@ -2959,6 +2962,150 @@ print(r["messages"][-1].content)</code></pre></figure>
           <div class="recap l5">
         <div class="lab">↺ En una frase</div>
         <p>El capstone junta RAG + herramientas + Pydantic + agente con memoria + auditoría. Y es testeable por una sola razón: <code>construir_agente()</code> recibe sus piezas caras <strong>por parámetro</strong>.<span class="arch">archivo: <code>proyecto_final/main.py</code></span></p>
+      </div>
+    </div></section>
+
+    <!-- ================= Módulo 18b ================= -->
+    <section id="m18b"><div class="col">
+      <div class="lvbanner" style="--lvc:var(--l5)"><div class="k">Producción · Decisión de arquitectura</div><p>Ya tienes el capstone funcionando. Antes de ponerlo delante de usuarios reales toca decidir QUÉ modelo lo mueve y DÓNDE corre — sin reescribir una línea.</p></div>
+      <p class="modtag l5"><span class="bar"></span>Producción · Módulo 18b</p>
+      <h2>Elegir modelo y proveedor</h2>
+      <div class="fileref">📋 Todo el curso ya conmuta de proveedor desde el <b>.env</b> vía <b>curso_ejemplos/util.py</b> (<code>crear_llm()</code>). Este módulo te enseña a decidir qué poner ahí.<span class="tested">✓ cubierto por tests</span></div>
+      <p class="modmeta"><span>🎯 <b>Al terminar sabrás:</b> escoger entre API de pago y open weights, y entre los cuatro caminos de despliegue, con precios reales en la mano.</span><span>✅ <b>Necesitas:</b> el Módulo 03 (interfaz unificada) y el 09 (fallbacks).</span><span>⏱️ <b>~35 min</b></span></p>
+
+      <p>Construiste el capstone contra Gemini porque era el camino por defecto. Pero una solución real obliga a dos decisiones que hasta ahora esquivamos: <strong>¿qué modelo?</strong> (capacidad, precio, ventana de contexto) y <strong>¿dónde corre?</strong> (API de pago, API hospedada, cloud gestionado, tu propia máquina). La buena noticia: como <em>ningún</em> ejemplo del curso instancia un modelo a mano — todos llaman a <code class="k">util.crear_llm()</code> — cambiar de decisión es <strong>una línea del <code class="k">.env</code></strong>, no una reescritura.</p>
+
+      <div class="box def"><div class="lab">◈ Definición · Modelos de pago vs. open weights</div>
+        <p>Un modelo es de <strong>pago / propietario</strong> cuando sus pesos son secretos y solo lo usas pagando por token a quien lo hospeda; es de <strong>open weights</strong> cuando sus pesos se descargan y puedes correrlo tú. Elegir un modelo es elegir a la vez su <em>capacidad</em>, su <em>precio por token</em> y su <em>ventana de contexto</em>.</p>
+        <dl>
+          <dt>modelo de pago / propietario</dt><dd>Pesos cerrados; pagas inferencia por token (GPT-5, Claude, Gemini). No puedes verlo ni moverlo de sus servidores.</dd>
+          <dt>open weights</dt><dd>Pesos descargables y ejecutables por ti (Llama, Qwen, DeepSeek, Mistral). "Open weights" no es lo mismo que "open source": suele publicarse el modelo entrenado, no los datos ni el código de entrenamiento.</dd>
+          <dt>licencia de modelo</dt><dd>El contrato que dice qué puedes hacer con esos pesos. La <em>Llama Community License</em> pone restricciones (p. ej. cláusula para productos de &gt;700M usuarios); <em>Apache 2.0</em> (Qwen, DeepSeek, Mistral) permite uso comercial libre. Revísala antes de construir un producto encima.</dd>
+        </dl></div>
+
+      <div class="box warn"><div class="lab">▲ "open source" ≠ "gratis"</div>
+        <p>Que los pesos de un Llama 70B sean descargables no lo hace gratis de usar. Servir un modelo de ese tamaño en producción exige GPUs caras (memoria de decenas de GB) encendidas y mantenidas. Lo que es gratis es <strong>el archivo de pesos</strong>; la <strong>inferencia</strong> — el cómputo que lo hace responder — siempre la paga alguien, tú o el proveedor que te lo hospeda.</p></div>
+
+      <div class="box analogy"><div class="lab">◆ La partitura y la orquesta</div>
+        <p>Los pesos abiertos son como una <strong>partitura gratuita</strong>: puedes descargarla, pero no suena sola. Para oírla necesitas una <strong>orquesta</strong> — las GPUs y la operación que ejecutan la inferencia — y eso cuesta. Tienes dos opciones: <em>contratar</em> una orquesta que ya está montada (una API hospedada como Groq o Together) o <em>montar la tuya</em> (servidores on-premise). La partitura es la misma; lo que pagas es quién la toca.</p></div>
+
+      <h3>Los cuatro caminos para correr un modelo</h3>
+      <p>Toda decisión de despliegue cae en uno de estos cuatro cajones, ordenados de "menos fricción / menos control" a "más control / más trabajo".</p>
+      <p class="flowcap">De cero fricción (izquierda) a control total (derecha)</p>
+      <div class="flow" role="img" aria-label="Cuatro caminos: API de pago, open weights vía API hospedada, cloud gestionado, on-premise.">
+        <div class="step"><div class="num">①</div><div class="ti">API de pago</div><div class="de">OpenAI · Anthropic · Gemini. Pagas por token, cero infraestructura.</div></div><div class="arw">→</div>
+        <div class="step"><div class="num">②</div><div class="ti">Open weights hospedados</div><div class="de">Groq · Together · OpenRouter · DeepSeek. Modelos abiertos, pero corren en su nube.</div></div><div class="arw">→</div>
+        <div class="step"><div class="num">③</div><div class="ti">Cloud gestionado</div><div class="de">AWS Bedrock · GCP Vertex · Azure Foundry. Los modelos dentro de tu nube corporativa.</div></div><div class="arw">→</div>
+        <div class="step hl"><div class="num">④</div><div class="ti">On-premise</div><div class="de">Ollama (dev) · vLLM (prod). Los pesos en tu hardware, nada sale de tu red.</div></div>
+      </div>
+
+      <h4>① API de pago (propietaria)</h4>
+      <p>Le pides una llave a OpenAI, Anthropic o Google, pones la variable en el <code class="k">.env</code> y ya estás produciendo tokens. Es el camino con <strong>cero fricción</strong> y el que da acceso a los modelos más capaces del mercado. El precio es el precio de lista por token y tus datos viajan a los servidores del proveedor.</p>
+
+      <h4>② Open weights vía API hospedada</h4>
+      <p>Otras empresas descargan los pesos abiertos (Llama, Qwen, DeepSeek) y te venden la inferencia. <strong>Groq</strong> destaca por latencia (corre en LPUs, no GPUs), <strong>Together</strong> por catálogo, <strong>OpenRouter</strong> por ser un único endpoint hacia cientos de modelos (con variantes <code class="k">:free</code> para prototipar), y <strong>DeepSeek</strong> por precio agresivo. Casi todos hablan el <em>dialecto de OpenAI</em>, así que en el curso son una <code class="k">base_url</code> distinta y nada más.</p>
+
+      <h4>③ Cloud gestionado — AWS Bedrock (y sus equivalentes)</h4>
+      <p>El camino que elige una empresa que ya vive en AWS, GCP o Azure. <strong>Amazon Bedrock</strong> es un servicio que te da acceso a modelos de varios proveedores (Anthropic, Meta, Mistral, Amazon…) <em>desde dentro de tu propia cuenta de AWS</em>. Lo que aporta a una organización:</p>
+      <ul>
+        <li><strong>IAM y facturación unificadas</strong>: los modelos se pagan y se permisan como cualquier otro servicio AWS; no hay una tarjeta ni una consola aparte por proveedor.</li>
+        <li><strong>Los datos no salen de tu VPC</strong>: las llamadas se quedan en tu red privada de AWS, no viajan al servidor público del proveedor del modelo. Es la diferencia que un banco necesita para aprobar el proyecto.</li>
+        <li><strong>Catálogo multi-modelo con una sola integración</strong>: cambias de Claude a Llama sin cambiar de SDK ni de credenciales.</li>
+        <li><strong>Compliance</strong>: hereda las certificaciones de AWS (SOC 2, HIPAA, etc.), que en un sector regulado ya tienes auditadas.</li>
+      </ul>
+      <figure class="code"><figcaption><span class="d"></span>solo lectura — requiere cuenta AWS y <code>uv add langchain-aws</code></figcaption><pre><code>from langchain_aws import ChatBedrockConverse
+llm = ChatBedrockConverse(
+    model="anthropic.claude-haiku-4-5",   # en Bedrock los ids llevan prefijo del proveedor
+    region_name="us-east-1",              # la llave no es una API key: son credenciales AWS (IAM)
+)</code></pre></figure>
+      <p>En GCP el equivalente es <strong>Vertex AI</strong> y en Azure, <strong>Azure AI Foundry</strong>: la misma idea — modelos de terceros servidos dentro de tu nube, con la identidad, la red y la factura de la nube que ya usas.</p>
+
+      <h4>④ On-premise — de tu portátil a tu datacenter</h4>
+      <p>Los pesos corren en <em>tu</em> hardware. Para <strong>desarrollo</strong>, <code class="k">Ollama</code> es imbatible: lo instalas, descargas <code class="k">qwen3:8b</code> y ya tienes un modelo local sin llave ni cuota (en el curso es literalmente <code class="k">LLM_PROVIDER=ollama</code>). Para <strong>producción</strong>, la herramienta es <strong>vLLM</strong>: un servidor de inferencia con <em>continuous batching</em> (agrupa peticiones en vuelo) que exprime el throughput de una GPU mucho mejor que Ollama, pensado para servir a muchos usuarios a la vez.</p>
+      <div class="box warn"><div class="lab">▲ La realidad del hardware</div>
+        <p>Un modelo <strong>7B cuantizado</strong> corre en un portátil decente. Un <strong>70B</strong> pide del orden de <strong>2×A100 o 2×H100</strong> (decenas de miles de dólares, o varios dólares/hora en la nube) solo para caber en memoria. El coste no desaparece cuando eliges on-premise: se transforma en <strong>fierros y operación</strong> — comprar/alquilar GPUs, mantenerlas encendidas, parchear, monitorear. On-premise gana en privacidad y control, no siempre en dinero.</p></div>
+
+      <h3>Cuánto cuesta cada modelo (consultado: 2026-07-09)</h3>
+      <p>Precios de lista por millón de tokens, tomados de las páginas oficiales de cada proveedor el 2026-07-09. Sirven para <em>estimar</em> y <em>comparar</em>, no como contrato.</p>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Modelo</th><th>Proveedor</th><th>Tipo</th><th>$/1M entrada</th><th>$/1M salida</th><th>Ventana</th><th>Nota</th></tr></thead>
+        <tbody>
+          <tr><td><code>GPT-5.5</code> (flagship)</td><td>OpenAI</td><td>pago</td><td>$5.00</td><td>$30.00</td><td>~1M</td><td>272K estándar; sobre eso 2× entrada / 1.5× salida. Ya salió 5.6 al mismo precio.</td></tr>
+          <tr><td><code>gpt-5-mini</code></td><td>OpenAI</td><td>pago</td><td>$0.25</td><td>$2.00</td><td>400K</td><td>Rápido y barato para tareas bien definidas.</td></tr>
+          <tr><td><code>Claude Opus 4.8</code></td><td>Anthropic</td><td>pago</td><td>$5.00</td><td>$25.00</td><td>1M</td><td>Máxima capacidad de Anthropic.</td></tr>
+          <tr><td><code>Claude Sonnet 5</code></td><td>Anthropic</td><td>pago</td><td>$3.00</td><td>$15.00</td><td>1M</td><td>Precio intro $2/$10 hasta 2026-08-31.</td></tr>
+          <tr><td><code>Claude Haiku 4.5</code></td><td>Anthropic</td><td>pago</td><td>$1.00</td><td>$5.00</td><td>200K</td><td>El barato y rápido de Anthropic.</td></tr>
+          <tr><td><code>Gemini 2.5 Pro</code></td><td>Google</td><td>pago</td><td>$1.25</td><td>$10.00</td><td>1M</td><td>Sobre 200K tokens sube a $2.50 / $15.00.</td></tr>
+          <tr><td><code>Gemini 2.5 Flash</code></td><td>Google</td><td>pago</td><td>$0.30</td><td>$2.50</td><td>1M</td><td>Tarifa única sin tramos. El default barato del curso.</td></tr>
+          <tr><td><code>deepseek-chat</code></td><td>DeepSeek</td><td>open weights (API)</td><td>$0.14</td><td>$0.28</td><td>1M</td><td>Cache miss; el nombre <code>deepseek-chat</code> se renombra el 2026-07-24.</td></tr>
+          <tr><td><code>Llama 3.3 70B</code></td><td>Groq</td><td>open weights</td><td>$0.59</td><td>$0.79</td><td>128K</td><td>Llama Community License.</td></tr>
+          <tr><td><code>Qwen3 32B</code></td><td>Groq</td><td>open weights</td><td>$0.29</td><td>$0.59</td><td>131K</td><td>Apache 2.0. El que usa el curso en Groq.</td></tr>
+          <tr><td><code>qwen3:8b</code> (Ollama, tu máquina)</td><td>local</td><td>open weights</td><td>$0</td><td>$0</td><td>según tu RAM</td><td>Cero coste por token: pagas hardware y electricidad.</td></tr>
+        </tbody>
+      </table></div>
+      <div class="box warn"><div class="lab">▲ Esta tabla caduca</div>
+        <p>Los precios de los LLM cambian cada pocos meses (bajan casi siempre, y los nombres de modelo se renombran aún más rápido: OpenAI ya publica GPT-5.6). <strong>Fecha de esta consulta: 2026-07-09.</strong> Antes de decidir con dinero real, mira siempre la página oficial:</p>
+        <ul>
+          <li><a class="inline" href="https://platform.openai.com/docs/pricing">OpenAI</a> · <a class="inline" href="https://ai.google.dev/gemini-api/docs/pricing">Gemini</a> · <a class="inline" href="https://www.anthropic.com/pricing">Anthropic</a></li>
+          <li><a class="inline" href="https://api-docs.deepseek.com/quick_start/pricing">DeepSeek</a> · <a class="inline" href="https://groq.com/pricing">Groq</a></li>
+        </ul></div>
+
+      <h3>Cómo decidir (y cómo cambiar de opinión barato)</h3>
+      <p>No hay un "mejor modelo": hay un mejor modelo <em>para tu restricción dominante</em>. Empieza por identificarla.</p>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Si tu prioridad es…</th><th>Camino recomendado</th></tr></thead>
+        <tbody>
+          <tr><td>Privacidad / regulación (banca, salud)</td><td>On-premise (④) o Bedrock/Vertex dentro de tu VPC (③).</td></tr>
+          <tr><td>Latencia mínima</td><td>Groq (LPU) — respuestas casi instantáneas.</td></tr>
+          <tr><td>Coste mínimo</td><td>DeepSeek · Gemini Flash · open weights hospedados.</td></tr>
+          <tr><td>Máxima capacidad de razonamiento</td><td>Claude Opus · GPT-5.</td></tr>
+          <tr><td>Ventana enorme (1M tokens)</td><td>Claude · Gemini.</td></tr>
+          <tr><td>Prototipar sin gastar</td><td>Free tier de Groq / Gemini · OpenRouter <code>:free</code> · Ollama local.</td></tr>
+        </tbody>
+      </table></div>
+      <p>Y como todo el curso pasa por <code class="k">util.crear_llm()</code>, cambiar de camino es cambiar una variable — el conmutador ya soporta todos estos proveedores:</p>
+      <figure class="code"><figcaption><span class="d"></span>.env · cambiar de proveedor = cambiar una línea</figcaption><pre><code># Elige UNO. crear_llm() lee esto y construye el modelo del proveedor activo.
+LLM_PROVIDER=openai        # o: anthropic | google | groq | openrouter | deepseek | ollama
+# LLM_MODELO=…             # opcional: manda sobre el default del proveedor
+
+# …y pon la llave del proveedor que activaste:
+OPENAI_API_KEY=sk-...      # openai      (default gpt-5-mini)
+# ANTHROPIC_API_KEY=sk-ant-...           # anthropic (default claude-haiku-4-5)
+# OPENROUTER_API_KEY=sk-or-...           # openrouter (modelos :free para prototipar)
+# DEEPSEEK_API_KEY=sk-...                # deepseek
+# GROQ_API_KEY=gsk_...                   # groq       (default qwen/qwen3-32b)
+# GOOGLE_API_KEY=AIza...                 # google     (default gemini-2.0-flash)
+# (ollama no necesita llave: corre en tu máquina)</code></pre></figure>
+      <div class="box analogy"><div class="lab">◆ El respaldo puede ser de otra empresa</div>
+        <p>Recuerda el <a class="inline" href="#m9">Módulo 09</a>: <code class="k">with_fallbacks</code> deja poner un modelo principal de pago y un <strong>respaldo barato de otro proveedor</strong>. La estrategia recomendada para arrancar: empieza con una <strong>API de pago</strong> (cero fricción, sales rápido), <strong>mide el coste real</strong> con lo del <a class="inline" href="#m16">Módulo 16b</a> (tokens → dólares), y <strong>abarata después</strong> — a Gemini Flash, a DeepSeek o a un open weights — sin tocar el código, solo el <code class="k">.env</code>.</p></div>
+      <div class="box analogy"><div class="lab">◆ No es un matrimonio</div>
+        <p>Elegir modelo se siente como una decisión enorme e irreversible. No lo es. Gracias a la <strong>interfaz unificada</strong> de LangChain (<a class="inline" href="#m3">Módulo 03</a>), el modelo es una <strong>variable de entorno</strong>: pruebas cuatro, mides, te quedas con el que mejor equilibra capacidad y coste, y lo cambias el mes que viene cuando salga uno mejor o más barato.</p></div>
+
+      <div class="box practice"><div class="lab">✎ Para practicar</div>
+        <ol>
+          <li>Consigue una llave gratuita de <strong>OpenRouter</strong> y corre el ejemplo <code class="k">01_primer_modelo.py</code> con un modelo <code class="k">:free</code> (<code class="k">LLM_PROVIDER=openrouter</code> + <code class="k">LLM_MODELO=…:free</code>). No debería costarte un centavo.</li>
+          <li>Con la tabla de precios, <strong>estima el coste mensual</strong> del capstone si atiende 1000 consultas/día de ~2K tokens de entrada y ~500 de salida, en <em>dos</em> modelos distintos (p. ej. GPT-5.5 vs. Gemini 2.5 Flash). Compara.</li>
+          <li>Un <strong>banco</strong> con datos confidenciales de clientes quiere este asistente. ¿Qué camino de los cuatro elegirías y por qué? Justifica en 3 líneas.</li>
+        </ol>
+        <details class="sol"><summary>Ver soluciones razonadas</summary>
+          <p><strong>1.</strong> Con <code class="k">LLM_PROVIDER=openrouter</code>, tu llave <code class="k">OPENROUTER_API_KEY</code> y un modelo terminado en <code class="k">:free</code>, <code class="k">crear_llm()</code> lo construye igual que cualquier otro (OpenRouter habla el dialecto de OpenAI). El ejemplo 01 imprime la respuesta sin que cambies una línea de código.</p>
+          <p><strong>2.</strong> Consumo diario = 1000 × (2000 in + 500 out). Al mes (×30): 60M tokens de entrada + 15M de salida.
+          <br>· <em>GPT-5.5</em>: 60 × $5.00 + 15 × $30.00 = $300 + $450 = <strong>$750/mes</strong>.
+          <br>· <em>Gemini 2.5 Flash</em>: 60 × $0.30 + 15 × $2.50 = $18 + $37.50 = <strong>$55.50/mes</strong>.
+          <br>El flagship cuesta ~13×. La lección: mide primero si de verdad necesitas la capacidad del caro; muchas tareas del capstone las cubre Flash. (Y con caché de prompt y descuentos por batch se abarata más.)</p>
+          <p><strong>3.</strong> <strong>On-premise (④) o cloud gestionado en tu VPC (③, Bedrock/Vertex).</strong> Los datos de clientes de un banco no pueden viajar a un servidor público de terceros por regulación. Bedrock deja usar Claude sin que las llamadas salgan de la VPC de AWS y hereda su compliance (SOC 2, etc.); on-premise da control total a cambio de operar el hardware. Una API de pago pública (①) queda descartada aunque sea la más cómoda.</p>
+        </details></div>
+
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Distinguir un modelo de pago de uno de open weights, y por qué "abierto" no es "gratis".</li>
+          <li>Nombrar los cuatro caminos de despliegue y cuándo conviene cada uno.</li>
+          <li>Explicar qué aporta AWS Bedrock a una empresa regulada frente a una API pública.</li>
+          <li>Estimar el coste mensual de un servicio con la tabla de precios, y cambiar de proveedor tocando solo el <code class="k">.env</code>.</li>
+        </ul></div>
+      <div class="recap l5">
+        <div class="lab">↺ En una frase</div>
+        <p>Elegir modelo = elegir a la vez <strong>camino de despliegue + precio por token + ventana de contexto</strong>; con <code>crear_llm()</code> esa elección vive en el <code class="k">.env</code>, no en el código.<span class="arch">archivos: <code>util.py</code> · <code>.env</code></span></p>
       </div>
     </div></section>
 
@@ -3145,7 +3292,7 @@ def test_la_segunda_pregunta_igual_no_llama_al_agente(self, cliente):
       <p>Ese «nunca llega al agente» es la parte que importa: es lo que ahorra dinero y lo que evita el riesgo. Y solo se puede <em>afirmar</em> contando las invocaciones del doble.</p>
 
       <div class="box analogy"><div class="lab">◆ Los dos workflows de CI, y por qué son dos</div>
-        <p><code class="k">ci.yml</code> corre en <strong>cada push</strong>: 338 tests offline, gratis, nunca llama a la API. <code class="k">eval-gate.yml</code> corre <strong>a mano o antes de una release</strong>: sí gasta cuota y sí puede vetar el deploy. Confundirlos es el error clásico — o pagas una evaluación completa por cada commit de un README, o no evalúas nunca porque «la CI ya pasa».</p></div>
+        <p><code class="k">ci.yml</code> corre en <strong>cada push</strong>: 372 tests offline, gratis, nunca llama a la API. <code class="k">eval-gate.yml</code> corre <strong>a mano o antes de una release</strong>: sí gasta cuota y sí puede vetar el deploy. Confundirlos es el error clásico — o pagas una evaluación completa por cada commit de un README, o no evalúas nunca porque «la CI ya pasa».</p></div>
 
       <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
         <ul>
@@ -3383,8 +3530,9 @@ uv run pytest             # corre TUS tests, sin llave y sin cuota</code></pre><
           <tr><td><code>ModuleNotFoundError: No module named 'langchain…'</code></td><td>La librería no está instalada en el entorno con el que corres.</td><td><code>uv pip install -r curso_ejemplos/requirements.txt</code> y ejecuta siempre con <code>uv run python …</code> (no con el Python del sistema).</td></tr>
           <tr><td><code>Creating virtual environment at: .venv</code> seguido de <code>ModuleNotFoundError</code></td><td>Tu <code>pyproject.toml</code> tiene <code>dependencies = []</code>. Hiciste <code>uv init</code> pero no <code>uv add</code>: <code>uv run</code> instala <strong>solo</strong> lo declarado, y no había nada.</td><td>Corre los <code>uv add</code> del Módulo 00 dentro de tu carpeta. Si ya los corriste, estás parado en otra: comprueba con <code>pwd</code>.</td></tr>
           <tr><td>El mismo comando funciona en una carpeta y falla en otra</td><td><code>uv</code> elige el entorno según el <code>pyproject.toml</code> más cercano <em>hacia arriba</em>. Cambiar de carpeta cambia de <code>.venv</code>.</td><td><code>uv run python -c "import sys; print(sys.prefix)"</code> te dice qué entorno usa de verdad. Haz <code>cd</code> al proyecto correcto.</td></tr>
-          <tr><td>"❌ Falta GOOGLE_API_KEY" o "❌ Falta GROQ_API_KEY"</td><td>El <code>.env</code> no existe, está en otra carpeta, o pusiste la llave de un proveedor y <code>LLM_PROVIDER</code> apunta al otro. El mensaje nombra <strong>la variable del proveedor activo</strong>.</td><td>Debe estar en <code>curso_ejemplos/.env</code>: <code>cp curso_ejemplos/.env.example curso_ejemplos/.env</code> y edítalo con tu llave.</td></tr>
+          <tr><td>"❌ Falta …_API_KEY" (<code>GOOGLE_API_KEY</code>, <code>GROQ_API_KEY</code>, <code>OPENAI_API_KEY</code>, <code>ANTHROPIC_API_KEY</code>, <code>OPENROUTER_API_KEY</code>, <code>DEEPSEEK_API_KEY</code>…)</td><td>El <code>.env</code> no existe, está en otra carpeta, o pusiste la llave de un proveedor y <code>LLM_PROVIDER</code> apunta a otro. El mensaje siempre nombra <strong>la variable del proveedor activo</strong> — el único que <code>ollama</code> no necesita, porque corre en tu máquina.</td><td>Debe estar en <code>curso_ejemplos/.env</code>: <code>cp curso_ejemplos/.env.example curso_ejemplos/.env</code> y edítalo con la llave del proveedor que activaste. La lista completa y cómo elegir, en el <a class="inline" href="#m18b">Módulo 18b</a>.</td></tr>
           <tr><td><code>400 API key not valid</code></td><td>La llave se copió mal (espacios, comillas, incompleta) o fue revocada.</td><td>Regenérala en <strong>aistudio.google.com</strong>. En el <code>.env</code> va sin comillas y sin espacios: <code>GOOGLE_API_KEY=AIza…</code></td></tr>
+          <tr><td><code>401 Unauthorized</code> · <code>402 Payment Required</code> · <code>insufficient credits/quota</code></td><td>Estás en un proveedor <strong>de pago</strong> (OpenAI, Anthropic, DeepSeek, o un modelo no <code>:free</code> de OpenRouter) y la cuenta no tiene saldo, no verificó facturación, o la llave no autoriza ese modelo. No es un bug del código: es la tarjeta, no el <code>.env</code>.</td><td>Carga saldo en la consola del proveedor, o cámbiate a una opción gratuita: <code>LLM_PROVIDER=groq</code>, <code>LLM_PROVIDER=google</code>, un modelo <code>:free</code> de OpenRouter, u <code>ollama</code> en tu máquina. Qué proveedor cobra y cuánto, en el <a class="inline" href="#m18b">Módulo 18b</a>.</td></tr>
           <tr><td><code>command not found: uv</code></td><td><code>uv</code> no está instalado (o la terminal no lo encuentra).</td><td>Instálalo con <code>curl -LsSf https://astral.sh/uv/install.sh | sh</code> y abre una terminal nueva.</td></tr>
           <tr><td><code>IndentationError</code> / <code>SyntaxError</code></td><td>Al copiar, el código perdió su alineación (Módulo 0b: la indentación es sintaxis).</td><td>Usa el botón <strong>copiar</strong> de cada bloque de este curso y pega en un archivo vacío, sin retocar espacios.</td></tr>
           <tr><td><code>AttributeError: … has no attribute …</code></td><td>Escribiste un nombre que no existe (típico: <code>.contenido</code> en vez de <code>.content</code>) o tu versión de librería cambió esa pieza.</td><td>Revisa la ortografía exacta; luego <code>uv pip list | grep langchain</code> — el curso usa <code>langchain 1.x</code> y <code>langgraph 1.x</code>.</td></tr>
@@ -3445,6 +3593,19 @@ from langchain_openai import ChatOpenAI
 llm = ChatOpenAI(model="qwen/qwen3-32b",
                  base_url="https://api.groq.com/openai/v1",
                  api_key=os.getenv("GROQ_API_KEY"))</code></pre></figure>
+      <p>El conmutador de <code class="k">util.crear_llm()</code> entiende estos <code class="k">LLM_PROVIDER</code>; si no pones <code class="k">LLM_MODELO</code>, usa el modelo por defecto de cada uno. Cuál elegir para una solución real (pago vs. open weights, precios, dónde corre) está en el <a class="inline" href="#m18b">Módulo 18b</a>.</p>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th><code>LLM_PROVIDER</code></th><th>Modelo por defecto</th><th>Llave (<code>.env</code>)</th></tr></thead>
+        <tbody>
+          <tr><td><code>google</code></td><td><code>gemini-2.0-flash</code></td><td><code>GOOGLE_API_KEY</code></td></tr>
+          <tr><td><code>groq</code></td><td><code>qwen/qwen3-32b</code></td><td><code>GROQ_API_KEY</code></td></tr>
+          <tr><td><code>ollama</code></td><td><code>qwen3:8b</code></td><td>— (corre en tu máquina)</td></tr>
+          <tr><td><code>openai</code></td><td><code>gpt-5-mini</code></td><td><code>OPENAI_API_KEY</code></td></tr>
+          <tr><td><code>anthropic</code></td><td><code>claude-haiku-4-5</code></td><td><code>ANTHROPIC_API_KEY</code></td></tr>
+          <tr><td><code>openrouter</code></td><td><code>meta-llama/llama-3.3-70b-instruct:free</code></td><td><code>OPENROUTER_API_KEY</code></td></tr>
+          <tr><td><code>deepseek</code></td><td><code>deepseek-chat</code></td><td><code>DEEPSEEK_API_KEY</code></td></tr>
+        </tbody>
+      </table></div>
       <div class="tbl-wrap"><table>
         <thead><tr><th>Qué cambia</th><th>Qué NO cambia</th></tr></thead>
         <tbody>
@@ -3481,6 +3642,7 @@ llm = ChatOpenAI(model="qwen/qwen3-32b",
           <tr><td>Evaluación con dataset</td><td><code>16</code></td><td>—</td><td><em>el propio ejemplo es la métrica</em></td></tr>
           <tr><td>Tokens, coste y tracing</td><td><code>16b</code></td><td>—</td><td><code>test_offline.py::TestTema16bObservabilidad</code></td></tr>
           <tr><td>Servir por HTTP</td><td><code>17</code></td><td><a class="inline" href="#ejercicios">🏆</a></td><td><code>test_imports.py</code></td></tr>
+          <tr><td>Elegir modelo y proveedor</td><td><code>util.py</code></td><td><a class="inline" href="#m18b">18b</a></td><td><code>test_util.py::TestProveedoresNuevos</code></td></tr>
           <tr><td>Auditoría / trazabilidad</td><td><code>proyecto_final/audit.py</code></td><td><a class="inline" href="#ejercicios">🏆</a></td><td><code>proyecto_final/tests/test_audit.py</code></td></tr>
           <tr><td>Inyección de dependencias</td><td><code>proyecto_final/graph_builder.py</code></td><td><a class="inline" href="#ejercicios">🏆</a></td><td><code>proyecto_final/tests/test_agente.py</code></td></tr>
         </tbody>
@@ -3523,6 +3685,12 @@ llm = ChatOpenAI(model="qwen/qwen3-32b",
           <tr><td>fastembed</td><td>Librería que ejecuta modelos de embeddings <em>en tu máquina</em>, sin API ni cuota. Usa ONNX Runtime en vez de PyTorch: ~70 MB en lugar de ~800 MB.</td></tr>
           <tr><td>ONNX</td><td><em>Open Neural Network Exchange</em>: formato estándar para guardar un modelo ya entrenado, independiente de la librería que lo entrenó. El "PDF de los modelos".</td></tr>
           <tr><td>Inferencia</td><td>Usar un modelo ya entrenado para producir una salida. Lo contrario de <em>entrenamiento</em> (ajustar sus pesos). Casi todo lo que escribirás hace inferencia.</td></tr>
+          <tr><td>Open weights</td><td>Modelo cuyos pesos se descargan y puedes ejecutar tú (Llama, Qwen, DeepSeek). No es lo mismo que "open source": suele publicarse el modelo entrenado, no los datos ni el código de entrenamiento. Ver <a class="inline" href="#m18b">Módulo 18b</a>.</td></tr>
+          <tr><td>Licencia de modelo</td><td>El contrato que dice qué puedes hacer con esos pesos. <em>Apache 2.0</em> (Qwen, DeepSeek) permite uso comercial libre; la <em>Llama Community License</em> pone restricciones. Revísala antes de construir un producto encima.</td></tr>
+          <tr><td>AWS Bedrock</td><td>Servicio que da acceso a modelos de varios proveedores <em>desde dentro de tu cuenta de AWS</em>: IAM y factura unificadas, y los datos no salen de tu VPC. Equivalentes: Vertex (GCP), Azure AI Foundry. Ver <a class="inline" href="#m18b">Módulo 18b</a>.</td></tr>
+          <tr><td>vLLM</td><td>Servidor de inferencia para <strong>producción</strong> on-premise: con <em>continuous batching</em> exprime el throughput de una GPU para servir a muchos usuarios a la vez. Para desarrollo local, la herramienta cómoda es Ollama.</td></tr>
+          <tr><td>On-premise</td><td>Correr los pesos en <em>tu</em> hardware (portátil, servidor o datacenter): nada sale de tu red. Gana en privacidad y control; el coste no desaparece, se transforma en GPUs y operación.</td></tr>
+          <tr><td>OpenRouter</td><td>Agregador: UNA llave y un único endpoint hacia cientos de modelos de muchos proveedores, con variantes <code>:free</code> para prototipar. Habla el dialecto de OpenAI, así que en el curso es una <code>base_url</code> distinta.</td></tr>
           <tr><td>Text splitter</td><td>Trocea documentos respetando frases/párrafos.</td></tr>
           <tr><td>MMR</td><td>Recupera resultados relevantes y variados (evita duplicados).</td></tr>
           <tr><td>Re-ranker</td><td>Segundo filtro que reordena y deja arriba lo más relevante.</td></tr>
@@ -3597,7 +3765,7 @@ llm = ChatOpenAI(model="qwen/qwen3-32b",
 
     <footer><div class="col">
       <p>Curso generado a partir de tu código en <code class="k">spec-sdd/studylangchain</code> y <code class="k">studylangchainnivelinter</code>. Estudia nivel por nivel y practica cada bloque en su archivo.</p>
-      <p>Tú escribes el código en <code class="k">mi-curso-ia/</code>. La versión de referencia de cada tema, comentada línea por línea y cubierta por <strong>141 tests que no gastan cuota</strong>, está publicada en <a class="inline" href="https://github.com/Kratos2210/cursoIA/tree/main/curso_ejemplos">github.com/Kratos2210/cursoIA</a> — consúltala <em>después</em> de intentarlo.</p>
+      <p>Tú escribes el código en <code class="k">mi-curso-ia/</code>. La versión de referencia de cada tema, comentada línea por línea y cubierta por <strong>372 tests que no gastan cuota</strong>, está publicada en <a class="inline" href="https://github.com/Kratos2210/cursoIA/tree/main/curso_ejemplos">github.com/Kratos2210/cursoIA</a> — consúltala <em>después</em> de intentarlo.</p>
       <p>Si algo falla, empieza por la <a class="inline" href="#faq">FAQ de errores</a>.</p>
       <p>Datawith.AI · Alberto Ruiz — Lima, Perú</p>
     </div></footer>
