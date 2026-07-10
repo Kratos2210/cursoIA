@@ -515,16 +515,28 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
       <h3>Instalación (con <code class="k">uv</code>)</h3>
       <figure class="code"><figcaption><span class="d"></span>terminal · setup.sh</figcaption><pre><code># Básico e intermedio
 uv init mi-curso-ia && cd mi-curso-ia
-uv add langchain langchain-google-genai langgraph python-dotenv pypdf
+uv add langchain langgraph python-dotenv pypdf
+
+# Los dos clientes de modelo. langchain-openai no es "para OpenAI":
+# es para CUALQUIER API que hable su dialecto — Groq, Ollama, Together…
+uv add langchain-google-genai langchain-openai
 
 # Avanzado (RAG pro + re-ranking)
 uv add langchain-chroma langchain-text-splitters langchain-community rank-bm25
 
+# Embeddings en tu máquina, sin cuota (opcional pero recomendado para el RAG)
+uv add fastembed
+
 # Producción (opcional)
 uv add langchain-mcp-adapters langsmith
 
-# Crea el .env con tu llave (NUNCA lo subas a git)
-echo "GOOGLE_API_KEY=tu_llave_secreta" > .env</code></pre></figure>
+# Crea el .env con tu llave (NUNCA lo subas a git). Elige UNA:
+echo "LLM_PROVIDER=google"                    >  .env   # opción A: Gemini
+echo "GOOGLE_API_KEY=tu_llave_secreta"        >> .env
+
+# echo "LLM_PROVIDER=groq"                    >  .env   # opción B: Groq
+# echo "GROQ_API_KEY=gsk_tu_llave_secreta"    >> .env
+# echo "EMBEDDINGS_PROVIDER=fastembed"        >> .env</code></pre></figure>
 
       <p>Esos comandos hacen dos cosas distintas y conviene no confundirlas. <code class="k">uv init</code> crea la carpeta del proyecto con un <code class="k">pyproject.toml</code> <strong>vacío de dependencias</strong>. <code class="k">uv add</code> es lo que las escribe ahí dentro <em>y</em> las instala. Si te saltas los <code class="k">uv add</code>, tienes un proyecto perfectamente válido… que no sabe nada de LangChain.</p>
 
@@ -622,10 +634,10 @@ EMBEDDINGS_PROVIDER=fastembed</code></pre></figure>
         <p>Verás mencionado <strong>git</strong> y un <code class="k">.gitignore</code> aquí y allá. Si no sabes qué son, <strong>ignóralos por ahora</strong>: son herramientas para versionar código y no hacen falta para seguir el curso. Lo único que importa quedarte hoy es esto: <strong>el <code class="k">.env</code> es secreto y no se sube a ningún lado</strong>. Cuando más adelante uses git, el <code class="k">.gitignore</code> es justo lo que evita que esa llave se escape.</p></div>
 
       <div class="box practice"><div class="lab">▸ Para practicar</div>
-        <p>Instala lo del bloque básico y consigue tu llave en <strong>aistudio.google.com</strong>. Verifica que <code class="k">.env</code> exista y esté en tu <code class="k">.gitignore</code>. Las demás librerías las instalarás cuando llegues a cada nivel.</p>
+        <p>Instala lo del bloque básico y consigue tu llave: en <strong>aistudio.google.com</strong> (Gemini) o en <strong>console.groq.com/keys</strong> (Groq). Verifica que <code class="k">.env</code> exista y esté en tu <code class="k">.gitignore</code>. Las demás librerías las instalarás cuando llegues a cada nivel.</p>
         <details class="sol"><summary>Ver una solución</summary><div class="sbody">
           <figure class="code"><figcaption><span class="d"></span>solución · verificación en 4 comandos</figcaption><pre><code>pwd                      # ¿estás DENTRO de mi-curso-ia? si no: cd mi-curso-ia
-cat .env                 # debe mostrar GOOGLE_API_KEY=AIza… (tu llave)
+cat .env                 # debe mostrar LLM_PROVIDER y tu llave (AIza… o gsk_…)
 cat .gitignore | grep .env   # debe imprimir ".env" (si no: echo ".env" &gt;&gt; .gitignore)
 uv run python -c "from dotenv import load_dotenv; print('listo')"   # debe decir: listo</code></pre></figure>
           <p>Si el último comando dice <code class="k">No module named 'dotenv'</code>, no es tu código: te faltó el <code class="k">uv add python-dotenv</code>, o estás en otra carpeta. Repasa el aviso de arriba.</p>
@@ -654,6 +666,7 @@ uv run python main.py      # el archivo que uv init te creó
           <tr><td><code>import os</code></td><td>Leer variables de entorno (tu llave API) y rutas de archivos.</td></tr>
           <tr><td><code>from dotenv import load_dotenv</code></td><td>Cargar la llave secreta desde el archivo <code>.env</code>.</td></tr>
           <tr><td><code>langchain_google_genai</code></td><td>El modelo Gemini: <code>ChatGoogleGenerativeAI</code> (chat) y <code>GoogleGenerativeAIEmbeddings</code> (RAG).</td></tr>
+          <tr><td><code>langchain_openai</code></td><td><code>ChatOpenAI</code>. Pese al nombre, sirve para <strong>Groq</strong>, Ollama, Together y OpenAI: todos hablan el mismo dialecto. Solo cambia la <code>base_url</code>.</td></tr>
           <tr><td><code>langchain_core.messages</code></td><td>Los roles de la conversación: System / Human / AI / Tool.</td></tr>
           <tr><td><code>langchain_core.prompts</code></td><td>Plantillas de prompt con huecos <code>{variable}</code>.</td></tr>
           <tr><td><code>langchain_core.output_parsers</code></td><td>Convertir la respuesta del modelo en texto plano (<code>StrOutputParser</code>).</td></tr>
@@ -728,9 +741,9 @@ print(os.path.exists(".env"))               # se usa con su apellido: os.algo</c
       <h3>7 · Leer un traceback (el mensaje de error)</h3>
       <p>Cuando algo falla, Python imprime un <strong>traceback</strong>. Asusta, pero se lee fácil si sabes el truco: <strong>ve directo a la última línea</strong> (el qué), y la penúltima te dice el dónde.</p>
       <figure class="code"><figcaption><span class="d"></span>un error real, anotado</figcaption><pre><code>Traceback (most recent call last):          # "esto es un error", ignora esta línea
-  File "01_primer_modelo.py", line 12       # <- DÓNDE: archivo y número de línea
+  File "01_primer_modelo.py", line 12       # &lt;- DÓNDE: archivo y número de línea
     print(respuesta.contenido)
-AttributeError: 'AIMessage' object has      # <- QUÉ: el tipo de error y su causa
+AttributeError: 'AIMessage' object has      # &lt;- QUÉ: el tipo de error y su causa
 no attribute 'contenido'                    #    (era .content, no .contenido)</code></pre></figure>
       <div class="box analogy"><div class="lab">◆ El hábito</div>
         <p>Error → última línea → si no la entiendes, cópiala completa en un buscador o pégasela a una IA. El 90% de los errores del curso están en la sección <a class="inline" href="#faq">FAQ · errores comunes</a>.</p></div>
@@ -789,13 +802,35 @@ from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage
 
-load_dotenv()  # lee el .env y carga GOOGLE_API_KEY
+load_dotenv()  # lee el .env y carga tu llave (GOOGLE_API_KEY)
 
 # El "cerebro". temperature=0 -> respuestas precisas y estables.
 llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
 
 respuesta = llm.invoke([HumanMessage(content="Explica qué es un LLM en una frase.")])
 print(respuesta.content)</code></pre></figure>
+      <div class="box analogy"><div class="lab">◆ ¿Solo tienes llave de Groq? Cambia dos líneas</div>
+        <p>Groq sirve <code class="k">qwen/qwen3-32b</code> con un cupo gratuito mucho más generoso que el de Gemini. El resto del archivo —y del curso entero— es idéntico: <code class="k">invoke</code>, los mensajes, las cadenas, los agentes. Solo cambia <em>quién</em> está al otro lado del cable.</p>
+        <figure class="code"><figcaption><span class="d"></span>llmodel.py · la misma idea, con Groq</figcaption><pre><code>import os
+from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI          # ← sirve para Groq, no solo para OpenAI
+from langchain_core.messages import HumanMessage
+
+load_dotenv()  # lee el .env y carga GROQ_API_KEY
+
+llm = ChatOpenAI(
+    model="qwen/qwen3-32b",
+    temperature=0,
+    base_url="https://api.groq.com/openai/v1",   # ← lo único específico de Groq
+    api_key=os.getenv("GROQ_API_KEY"),
+    # qwen3 RAZONA antes de responder y Groq devuelve ese razonamiento dentro
+    # del texto, envuelto en &lt;think&gt;…&lt;/think&gt;. Esto le dice que lo descarte.
+    extra_body={"reasoning_format": "hidden"},
+)
+
+respuesta = llm.invoke([HumanMessage(content="Explica qué es un LLM en una frase.")])
+print(respuesta.content)</code></pre></figure>
+        <p>Los ejemplos del repositorio no repiten esto diecinueve veces: llaman a <code class="k">util.crear_llm()</code>, que lee <code class="k">LLM_PROVIDER</code> del <code class="k">.env</code> y devuelve el modelo correcto ya configurado. <strong>Esa función es la razón por la que puedes cambiar de proveedor sin tocar código.</strong></p></div>
       <figure class="code output"><figcaption><span class="d"></span>▸ deberías ver (algo así — el texto exacto varía)</figcaption><pre><code>Un LLM es un modelo de inteligencia artificial entrenado con enormes
 cantidades de texto para comprender y generar lenguaje natural.</code></pre></figure>
       <h3>Los tipos de mensaje</h3>
@@ -3312,7 +3347,7 @@ uv run pytest             # corre TUS tests, sin llave y sin cuota</code></pre><
           <tr><td><code>ModuleNotFoundError: No module named 'langchain…'</code></td><td>La librería no está instalada en el entorno con el que corres.</td><td><code>uv pip install -r curso_ejemplos/requirements.txt</code> y ejecuta siempre con <code>uv run python …</code> (no con el Python del sistema).</td></tr>
           <tr><td><code>Creating virtual environment at: .venv</code> seguido de <code>ModuleNotFoundError</code></td><td>Tu <code>pyproject.toml</code> tiene <code>dependencies = []</code>. Hiciste <code>uv init</code> pero no <code>uv add</code>: <code>uv run</code> instala <strong>solo</strong> lo declarado, y no había nada.</td><td>Corre los <code>uv add</code> del Módulo 00 dentro de tu carpeta. Si ya los corriste, estás parado en otra: comprueba con <code>pwd</code>.</td></tr>
           <tr><td>El mismo comando funciona en una carpeta y falla en otra</td><td><code>uv</code> elige el entorno según el <code>pyproject.toml</code> más cercano <em>hacia arriba</em>. Cambiar de carpeta cambia de <code>.venv</code>.</td><td><code>uv run python -c "import sys; print(sys.prefix)"</code> te dice qué entorno usa de verdad. Haz <code>cd</code> al proyecto correcto.</td></tr>
-          <tr><td>"❌ Falta GOOGLE_API_KEY"</td><td>El archivo <code>.env</code> no existe o está en otra carpeta.</td><td>Debe estar en <code>curso_ejemplos/.env</code>: <code>cp curso_ejemplos/.env.example curso_ejemplos/.env</code> y edítalo con tu llave.</td></tr>
+          <tr><td>"❌ Falta GOOGLE_API_KEY" o "❌ Falta GROQ_API_KEY"</td><td>El <code>.env</code> no existe, está en otra carpeta, o pusiste la llave de un proveedor y <code>LLM_PROVIDER</code> apunta al otro. El mensaje nombra <strong>la variable del proveedor activo</strong>.</td><td>Debe estar en <code>curso_ejemplos/.env</code>: <code>cp curso_ejemplos/.env.example curso_ejemplos/.env</code> y edítalo con tu llave.</td></tr>
           <tr><td><code>400 API key not valid</code></td><td>La llave se copió mal (espacios, comillas, incompleta) o fue revocada.</td><td>Regenérala en <strong>aistudio.google.com</strong>. En el <code>.env</code> va sin comillas y sin espacios: <code>GOOGLE_API_KEY=AIza…</code></td></tr>
           <tr><td><code>command not found: uv</code></td><td><code>uv</code> no está instalado (o la terminal no lo encuentra).</td><td>Instálalo con <code>curl -LsSf https://astral.sh/uv/install.sh | sh</code> y abre una terminal nueva.</td></tr>
           <tr><td><code>IndentationError</code> / <code>SyntaxError</code></td><td>Al copiar, el código perdió su alineación (Módulo 0b: la indentación es sintaxis).</td><td>Usa el botón <strong>copiar</strong> de cada bloque de este curso y pega en un archivo vacío, sin retocar espacios.</td></tr>
@@ -3335,7 +3370,7 @@ uv run pytest             # corre TUS tests, sin llave y sin cuota</code></pre><
       <div class="tbl-wrap"><table>
         <thead><tr><th>Quiero…</th><th>Escribo…</th><th>Mód.</th></tr></thead>
         <tbody>
-          <tr><td>Crear el modelo</td><td><code>llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)</code></td><td>01</td></tr>
+          <tr><td>Crear el modelo</td><td><code>llm = crear_llm(temperature=0)</code> — o a mano: <code>ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)</code></td><td>01</td></tr>
           <tr><td>Una cadena</td><td><code>cadena = prompt | llm | StrOutputParser()</code></td><td>02</td></tr>
           <tr><td>Muchas entradas a la vez</td><td><code>cadena.batch([entrada1, entrada2, …])</code></td><td>03</td></tr>
           <tr><td>Respuesta token a token</td><td><code>for t in cadena.stream(x): print(t, end="", flush=True)</code></td><td>03</td></tr>
@@ -3360,17 +3395,20 @@ uv run pytest             # corre TUS tests, sin llave y sin cuota</code></pre><
         </tbody>
       </table></div>
 
-      <h3>Cambiar de proveedor (Gemini ↔ Qwen ↔ OpenAI ↔ Claude)</h3>
-      <p>Todo el curso usa Gemini, pero <strong>nada</strong> de lo que aprendiste depende de él. Cambiar de proveedor es cambiar <em>una línea</em> — el resto (LCEL, tools, agentes, RAG, grafos) queda intacto. El interruptor universal es <code class="k">init_chat_model</code>:</p>
+      <h3>Cambiar de proveedor (Gemini ↔ Groq ↔ OpenAI ↔ Claude)</h3>
+      <p><strong>Nada</strong> de lo que aprendiste depende del proveedor. El resto (LCEL, tools, agentes, RAG, grafos) queda intacto. De hecho los ejemplos del repo ya no instancian ningún modelo: llaman a <code class="k">util.crear_llm()</code>, que lee <code class="k">LLM_PROVIDER</code> del <code class="k">.env</code>. Si prefieres el interruptor de LangChain, es <code class="k">init_chat_model</code>:</p>
       <figure class="code"><figcaption><span class="d"></span>el interruptor universal</figcaption><pre><code>from langchain.chat_models import init_chat_model
 
 llm = init_chat_model("gemini-2.0-flash")        # Google (necesita GOOGLE_API_KEY)
 # llm = init_chat_model("gpt-4o-mini")           # OpenAI  (OPENAI_API_KEY)
 # llm = init_chat_model("claude-sonnet-5")       # Anthropic (ANTHROPIC_API_KEY)
 
-# Y para Qwen (como en tu studylangchain), su clase dedicada:
-# from langchain_community.chat_models.tongyi import ChatTongyi
-# llm = ChatTongyi(model="qwen-turbo")           # (DASHSCOPE_API_KEY)</code></pre></figure>
+# Groq (y Ollama, y Together): NO hace falta una clase por proveedor.
+# Todos hablan el dialecto de OpenAI; solo cambia la base_url.
+from langchain_openai import ChatOpenAI
+llm = ChatOpenAI(model="qwen/qwen3-32b",
+                 base_url="https://api.groq.com/openai/v1",
+                 api_key=os.getenv("GROQ_API_KEY"))</code></pre></figure>
       <div class="tbl-wrap"><table>
         <thead><tr><th>Qué cambia</th><th>Qué NO cambia</th></tr></thead>
         <tbody>
