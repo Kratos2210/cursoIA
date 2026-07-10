@@ -809,7 +809,7 @@ from langchain_core.messages import HumanMessage
 load_dotenv()  # lee el .env y carga tu llave (GOOGLE_API_KEY)
 
 # El "cerebro". temperature=0 -> respuestas precisas y estables.
-llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
+llm = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", temperature=0)
 
 respuesta = llm.invoke([HumanMessage(content="Explica qué es un LLM en una frase.")])
 print(respuesta.content)</code></pre></figure>
@@ -853,7 +853,7 @@ mensajes = [
 ]
 print(llm.invoke(mensajes).content)</code></pre></figure>
       <div class="box analogy"><div class="lab">◆ Bueno saber</div>
-        <p>El parámetro <code class="k">temperature</code> controla la creatividad: <code class="k">0</code> = preciso y repetible (clasificar, calcular, usar tools); <code class="k">0.7–1</code> = variado (redactar, conversar). En LangChain 1.x existe también <code class="k">init_chat_model("gemini-2.0-flash")</code> para crear cualquier modelo cambiando solo el nombre.</p></div>
+        <p>El parámetro <code class="k">temperature</code> controla la creatividad: <code class="k">0</code> = preciso y repetible (clasificar, calcular, usar tools); <code class="k">0.7–1</code> = variado (redactar, conversar). En LangChain 1.x existe también <code class="k">init_chat_model("gemini-3.1-flash-lite")</code> para crear cualquier modelo cambiando solo el nombre.</p></div>
       <div class="box practice"><div class="lab">▸ Para practicar</div>
         <p>Cambia el <code class="k">SystemMessage</code> a "eres un pirata" y observa cómo cambia el tono sin tocar la pregunta. Luego prueba <code class="k">temperature=0</code> vs <code class="k">0.9</code> repitiendo la misma consulta 3 veces.</p>
         <details class="sol"><summary>Ver una solución</summary><div class="sbody">
@@ -863,7 +863,7 @@ print(llm.invoke(mensajes).content)</code></pre></figure>
 ]
 print(llm.invoke(mensajes).content)   # mismo contenido, tono de pirata
 
-creativo = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.9)
+creativo = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", temperature=0.9)
 for _ in range(3):
     print(creativo.invoke("Dame un nombre para una cafetería").content)
 # con 0.9 salen 3 nombres distintos; con temperature=0, casi siempre el mismo</code></pre></figure>
@@ -1369,7 +1369,7 @@ mensajes = [HumanMessage(content=
           <dt>429 RESOURCE_EXHAUSTED</dt><dd>El error de cuota. En este curso lo verás seguido con el plan gratuito de Gemini: <strong>no es un bug de tu código</strong>, es el proveedor diciendo "más despacio".</dd>
           <dt>async / await</dt><dd>La sintaxis de Python para "esto tarda, sigue con otra cosa mientras". Combinado con <code class="k">asyncio.gather</code> lanza muchas llamadas a la vez.</dd>
         </dl></div>
-      <figure class="code"><figcaption><span class="d"></span>fallbacks.ipynb · planes de respaldo y reintentos</figcaption><pre><code>principal = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
+      <figure class="code"><figcaption><span class="d"></span>fallbacks.ipynb · planes de respaldo y reintentos</figcaption><pre><code>principal = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite")
 respaldo  = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
 
 # Si 'principal' falla, salta AUTOMÁTICAMENTE a 'respaldo'
@@ -1394,7 +1394,7 @@ print(respuestas)</code></pre></figure>
         <p>Pon como modelo principal uno con nombre inválido a propósito y comprueba que el fallback responde igual. Es la mejor forma de <em>ver</em> la resiliencia funcionando.</p>
         <details class="sol"><summary>Ver una solución</summary><div class="sbody">
           <figure class="code"><figcaption><span class="d"></span>solución · romper para creer</figcaption><pre><code>principal = ChatGoogleGenerativeAI(model="modelo-que-no-existe")   # falla seguro
-respaldo  = ChatGoogleGenerativeAI(model="gemini-2.0-flash")
+respaldo  = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite")
 
 robusto = principal.with_fallbacks([respaldo])
 print(robusto.invoke("Di hola").content)   # responde IGUAL, gracias al respaldo</code></pre></figure>
@@ -2393,9 +2393,9 @@ LANGSMITH_PROJECT=gobierno-datos</code></pre></figure>
       <div class="fileref">📋 Copia y ejecuta: <b>curso_ejemplos/16b_observabilidad_langsmith.py</b> — trazas + tokens + coste; corre sin ninguna llave<span class="tested">✓ cubierto por tests</span></div>
       <p>La traza responde <em>"¿por qué salió mal?"</em>. Los tokens responden <em>"¿cuánto nos cuesta?"</em> — la segunda pregunta que te hará tu jefe. Cada respuesta del modelo trae un <code class="k">usage_metadata</code> con los tokens que consumió, y de ahí al dólar solo hay una multiplicación:</p>
       <figure class="code"><figcaption><span class="d"></span>16b_observabilidad_langsmith.py · de tokens a dólares</figcaption><pre><code># Los tokens de ENTRADA (prompt + contexto del RAG) son baratos.
-# Los de SALIDA cuestan varias veces más: gemini-2.0-flash cobra
-# $0.10 por millón de entrada… y $0.40 por millón de salida.
-PRECIOS = {"gemini-2.0-flash": {"entrada": 0.10, "salida": 0.40}}
+# Los de SALIDA cuestan varias veces más: gemini-3.1-flash-lite cobra
+# $0.25 por millón de entrada… y $1.50 por millón de salida.
+PRECIOS = {"gemini-3.1-flash-lite": {"entrada": 0.25, "salida": 1.50}}
 
 def extraer_tokens(mensaje) -> dict[str, int]:
     """Función PURA: se testea sin llave y sin red."""
@@ -2444,7 +2444,7 @@ from openevals.prompts import CORRECTNESS_PROMPT
 
 evaluador_correccion = create_llm_as_judge(
     prompt=CORRECTNESS_PROMPT,     # prompt de juez ya probado, no lo inventas tú
-    judge_model=ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0),
+    judge_model=ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", temperature=0),
 )</code></pre></figure>
       <p>Y los tests: además de tus asserts de siempre, el marcador de LangSmith hace que <strong>cada corrida del test quede trazada</strong> — la evaluación y la observabilidad se encuentran:</p>
       <figure class="code"><figcaption><span class="d"></span>test_app.py · tests que también se observan (pytest)</figcaption><pre><code>import pytest
@@ -3030,13 +3030,14 @@ llm = ChatBedrockConverse(
       <div class="tbl-wrap"><table>
         <thead><tr><th>Modelo</th><th>Proveedor</th><th>Tipo</th><th>$/1M entrada</th><th>$/1M salida</th><th>Ventana</th><th>Nota</th></tr></thead>
         <tbody>
-          <tr><td><code>GPT-5.5</code> (flagship)</td><td>OpenAI</td><td>pago</td><td>$5.00</td><td>$30.00</td><td>~1M</td><td>272K estándar; sobre eso 2× entrada / 1.5× salida. Ya salió 5.6 al mismo precio.</td></tr>
+          <tr><td><code>GPT-5.5</code></td><td>OpenAI</td><td>pago</td><td>$5.00</td><td>$30.00</td><td>~1M</td><td>272K estándar; sobre eso 2× entrada / 1.5× salida. Ya salió 5.6 al mismo precio.</td></tr>
           <tr><td><code>gpt-5.4-mini</code></td><td>OpenAI</td><td>pago</td><td>$0.75</td><td>$4.50</td><td>400K</td><td>El barato de OpenAI. Reemplaza al viejo <code>gpt-5-mini</code>.</td></tr>
           <tr><td><code>Claude Opus 4.8</code></td><td>Anthropic</td><td>pago</td><td>$5.00</td><td>$25.00</td><td>1M</td><td>Máxima capacidad de Anthropic.</td></tr>
           <tr><td><code>Claude Sonnet 5</code></td><td>Anthropic</td><td>pago</td><td>$3.00</td><td>$15.00</td><td>1M</td><td>Precio intro $2/$10 hasta 2026-08-31.</td></tr>
           <tr><td><code>Claude Haiku 4.5</code></td><td>Anthropic</td><td>pago</td><td>$1.00</td><td>$5.00</td><td>200K</td><td>El barato y rápido de Anthropic.</td></tr>
           <tr><td><code>Gemini 2.5 Pro</code></td><td>Google</td><td>pago</td><td>$1.25</td><td>$10.00</td><td>1M</td><td>Sobre 200K tokens sube a $2.50 / $15.00.</td></tr>
-          <tr><td><code>Gemini 2.5 Flash</code></td><td>Google</td><td>pago</td><td>$0.30</td><td>$2.50</td><td>1M</td><td>Tarifa única sin tramos. El default barato del curso.</td></tr>
+          <tr><td><code>Gemini 2.5 Flash</code></td><td>Google</td><td>pago</td><td>$0.30</td><td>$2.50</td><td>1M</td><td>Tarifa única sin tramos.</td></tr>
+          <tr><td><code>gemini-3.1-flash-lite</code></td><td>Google</td><td>pago</td><td>$0.25</td><td>$1.50</td><td>1M</td><td>Tiene capa gratuita. <strong>El default del curso</strong>, tras apagarse <code>gemini-2.0-flash</code> el 2026-06-01.</td></tr>
           <tr><td><code>deepseek-v4-flash</code></td><td>DeepSeek</td><td>open weights (API)</td><td>$0.14</td><td>$0.28</td><td>1M</td><td>Cache miss; el nombre <code>deepseek-chat</code> se renombra el 2026-07-24.</td></tr>
           <tr><td><code>Llama 3.3 70B</code></td><td>Groq</td><td>open weights</td><td>$0.59</td><td>$0.79</td><td>128K</td><td>Llama Community License.</td></tr>
           <tr><td><code>Qwen3 32B</code></td><td>Groq</td><td>open weights</td><td>$0.29</td><td>$0.59</td><td>131K</td><td>Apache 2.0. El que usa el curso en Groq.</td></tr>
@@ -3074,7 +3075,7 @@ OPENAI_API_KEY=sk-...      # openai      (default gpt-5.4-mini)
 # OPENROUTER_API_KEY=sk-or-...           # openrouter (modelos :free para prototipar)
 # DEEPSEEK_API_KEY=sk-...                # deepseek   (default deepseek-v4-flash)
 # GROQ_API_KEY=gsk_...                   # groq       (default qwen/qwen3-32b)
-# GOOGLE_API_KEY=AIza...                 # google     (default gemini-2.0-flash)
+# GOOGLE_API_KEY=AIza...                 # google     (default gemini-3.1-flash-lite)
 # (ollama no necesita llave: corre en tu máquina)</code></pre></figure>
       <div class="box analogy"><div class="lab">◆ El respaldo puede ser de otra empresa</div>
         <p>Recuerda el <a class="inline" href="#m9">Módulo 09</a>: <code class="k">with_fallbacks</code> deja poner un modelo principal de pago y un <strong>respaldo barato de otro proveedor</strong>. La estrategia recomendada para arrancar: empieza con una <strong>API de pago</strong> (cero fricción, sales rápido), <strong>mide el coste real</strong> con lo del <a class="inline" href="#m16">Módulo 16b</a> (tokens → dólares), y <strong>abarata después</strong> — a Gemini Flash, a DeepSeek o a un open weights — sin tocar el código, solo el <code class="k">.env</code>.</p></div>
@@ -3227,7 +3228,7 @@ VENTANA = 64</code></pre></figure>
 PRECIOS = {
     "qwen/qwen3-32b":          {"entrada": 0.29, "salida": 0.59},
     "llama-3.3-70b-versatile": {"entrada": 0.59, "salida": 0.79},
-    "gemini-2.0-flash":        {"entrada": 0.10, "salida": 0.40},
+    "gemini-3.1-flash-lite":   {"entrada": 0.25, "salida": 1.50},
     "gemini-2.5-flash":        {"entrada": 0.30, "salida": 2.50},
 }
 
@@ -3554,7 +3555,7 @@ uv run pytest             # corre TUS tests, sin llave y sin cuota</code></pre><
       <div class="tbl-wrap"><table>
         <thead><tr><th>Quiero…</th><th>Escribo…</th><th>Mód.</th></tr></thead>
         <tbody>
-          <tr><td>Crear el modelo</td><td><code>llm = crear_llm(temperature=0)</code> — o a mano: <code>ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)</code></td><td>01</td></tr>
+          <tr><td>Crear el modelo</td><td><code>llm = crear_llm(temperature=0)</code> — o a mano: <code>ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", temperature=0)</code></td><td>01</td></tr>
           <tr><td>Una cadena</td><td><code>cadena = prompt | llm | StrOutputParser()</code></td><td>02</td></tr>
           <tr><td>Muchas entradas a la vez</td><td><code>cadena.batch([entrada1, entrada2, …])</code></td><td>03</td></tr>
           <tr><td>Respuesta token a token</td><td><code>for t in cadena.stream(x): print(t, end="", flush=True)</code></td><td>03</td></tr>
@@ -3583,7 +3584,7 @@ uv run pytest             # corre TUS tests, sin llave y sin cuota</code></pre><
       <p><strong>Nada</strong> de lo que aprendiste depende del proveedor. El resto (LCEL, tools, agentes, RAG, grafos) queda intacto. De hecho los ejemplos del repo ya no instancian ningún modelo: llaman a <code class="k">util.crear_llm()</code>, que lee <code class="k">LLM_PROVIDER</code> del <code class="k">.env</code>. Si prefieres el interruptor de LangChain, es <code class="k">init_chat_model</code>:</p>
       <figure class="code"><figcaption><span class="d"></span>el interruptor universal</figcaption><pre><code>from langchain.chat_models import init_chat_model
 
-llm = init_chat_model("gemini-2.0-flash")        # Google (necesita GOOGLE_API_KEY)
+llm = init_chat_model("gemini-3.1-flash-lite")        # Google (necesita GOOGLE_API_KEY)
 # llm = init_chat_model("gpt-4o-mini")           # OpenAI  (OPENAI_API_KEY)
 # llm = init_chat_model("claude-sonnet-5")       # Anthropic (ANTHROPIC_API_KEY)
 
@@ -3597,7 +3598,7 @@ llm = ChatOpenAI(model="qwen/qwen3-32b",
       <div class="tbl-wrap"><table>
         <thead><tr><th><code>LLM_PROVIDER</code></th><th>Modelo por defecto</th><th>Llave (<code>.env</code>)</th></tr></thead>
         <tbody>
-          <tr><td><code>google</code></td><td><code>gemini-2.0-flash</code></td><td><code>GOOGLE_API_KEY</code></td></tr>
+          <tr><td><code>google</code></td><td><code>gemini-3.1-flash-lite</code></td><td><code>GOOGLE_API_KEY</code></td></tr>
           <tr><td><code>groq</code></td><td><code>qwen/qwen3-32b</code></td><td><code>GROQ_API_KEY</code></td></tr>
           <tr><td><code>ollama</code></td><td><code>qwen3:8b</code></td><td>— (corre en tu máquina)</td></tr>
           <tr><td><code>openai</code></td><td><code>gpt-5.4-mini</code></td><td><code>OPENAI_API_KEY</code></td></tr>

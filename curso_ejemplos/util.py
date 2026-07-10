@@ -52,7 +52,7 @@ PROVEEDOR_POR_DEFECTO = "google"
 
 # El modelo que usa cada proveedor si no dices otro (LLM_MODELO en el .env).
 MODELOS_POR_DEFECTO = {
-    "google": "gemini-2.0-flash",
+    "google": "gemini-3.1-flash-lite",
     "groq": "qwen/qwen3-32b",
     "ollama": "qwen3:8b",
     "openai": "gpt-5.4-mini",

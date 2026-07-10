@@ -123,7 +123,7 @@ class TestProveedor:
     def test_cada_proveedor_tiene_su_modelo(self, monkeypatch):
         monkeypatch.delenv("LLM_MODELO", raising=False)
         assert util.modelo_por_defecto("groq") == "qwen/qwen3-32b"
-        assert util.modelo_por_defecto("google") == "gemini-2.0-flash"
+        assert util.modelo_por_defecto("google") == "gemini-3.1-flash-lite"
         assert util.modelo_por_defecto("ollama") == "qwen3:8b"
         # Los cuatro proveedores nuevos, cada uno con su default (ver el plan):
         assert util.modelo_por_defecto("openai") == "gpt-5.4-mini"
