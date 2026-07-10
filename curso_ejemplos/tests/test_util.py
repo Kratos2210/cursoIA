@@ -126,10 +126,10 @@ class TestProveedor:
         assert util.modelo_por_defecto("google") == "gemini-2.0-flash"
         assert util.modelo_por_defecto("ollama") == "qwen3:8b"
         # Los cuatro proveedores nuevos, cada uno con su default (ver el plan):
-        assert util.modelo_por_defecto("openai") == "gpt-5-mini"
+        assert util.modelo_por_defecto("openai") == "gpt-5.4-mini"
         assert util.modelo_por_defecto("anthropic") == "claude-haiku-4-5"
         assert util.modelo_por_defecto("openrouter") == "meta-llama/llama-3.3-70b-instruct:free"
-        assert util.modelo_por_defecto("deepseek") == "deepseek-chat"
+        assert util.modelo_por_defecto("deepseek") == "deepseek-v4-flash"
 
     def test_LLM_MODELO_manda_sobre_el_default(self, monkeypatch):
         monkeypatch.setenv("LLM_MODELO", "llama-3.3-70b-versatile")
@@ -284,7 +284,7 @@ class TestProveedoresNuevos:
 
         llm = util.crear_llm()
         assert isinstance(llm, ChatOpenAI)
-        assert llm.model_name == "gpt-5-mini"
+        assert llm.model_name == "gpt-5.4-mini"
         assert "api.openai.com" in str(llm.openai_api_base)
 
     def test_openrouter_apunta_a_su_base_url_con_el_llama_gratis(self, monkeypatch):
@@ -297,14 +297,14 @@ class TestProveedoresNuevos:
         assert llm.model_name == "meta-llama/llama-3.3-70b-instruct:free"
         assert "openrouter.ai" in str(llm.openai_api_base)
 
-    def test_deepseek_apunta_a_su_base_url_con_deepseek_chat(self, monkeypatch):
+    def test_deepseek_apunta_a_su_base_url_con_v4_flash(self, monkeypatch):
         monkeypatch.setenv("LLM_PROVIDER", "deepseek")
         monkeypatch.setenv("DEEPSEEK_API_KEY", "sk_de_prueba")
         monkeypatch.delenv("LLM_MODELO", raising=False)
         monkeypatch.delenv("LLM_BASE_URL", raising=False)
 
         llm = util.crear_llm()
-        assert llm.model_name == "deepseek-chat"
+        assert llm.model_name == "deepseek-v4-flash"
         assert "api.deepseek.com" in str(llm.openai_api_base)
 
     def test_openai_no_lleva_ningun_parche_en_extra_body(self, monkeypatch):
@@ -316,8 +316,8 @@ class TestProveedoresNuevos:
         assert util.crear_llm().extra_body is None
 
     def test_deepseek_no_lleva_ningun_parche_en_extra_body(self, monkeypatch):
-        # deepseek-chat no razona, y deepseek-reasoner devuelve el razonamiento en
-        # un campo APARTE del contenido: en ningún caso hace falta parche.
+        # deepseek-v4-flash no razona por defecto, y en modo pensante devuelve el
+        # razonamiento en un campo APARTE del contenido: nunca hace falta parche.
         monkeypatch.setenv("LLM_PROVIDER", "deepseek")
         monkeypatch.setenv("DEEPSEEK_API_KEY", "sk_de_prueba")
         monkeypatch.delenv("LLM_MODELO", raising=False)

@@ -195,10 +195,10 @@ Módulo 18b (`curso-langchain.html#m18b`).
 | Gemini (por defecto) | `LLM_PROVIDER=google` + `GOOGLE_API_KEY` | — |
 | **Groq · `qwen/qwen3-32b`** | `LLM_PROVIDER=groq` + `GROQ_API_KEY` | — |
 | Ollama en mi máquina | `LLM_PROVIDER=ollama` + `LLM_MODELO=qwen3:8b` | `ollama serve` |
-| OpenAI · `gpt-5-mini` | `LLM_PROVIDER=openai` + `OPENAI_API_KEY` | — |
+| OpenAI · `gpt-5.4-mini` | `LLM_PROVIDER=openai` + `OPENAI_API_KEY` | — |
 | Anthropic · `claude-haiku-4-5` | `LLM_PROVIDER=anthropic` + `ANTHROPIC_API_KEY` | — |
 | OpenRouter (agregador, tiene `:free`) | `LLM_PROVIDER=openrouter` + `OPENROUTER_API_KEY` | — |
-| DeepSeek · `deepseek-chat` | `LLM_PROVIDER=deepseek` + `DEEPSEEK_API_KEY` | — |
+| DeepSeek · `deepseek-v4-flash` | `LLM_PROVIDER=deepseek` + `DEEPSEEK_API_KEY` | — |
 | Otro modelo del mismo proveedor | `LLM_MODELO=llama-3.3-70b-versatile` | — |
 | **Embeddings sin cuota** | `EMBEDDINGS_PROVIDER=fastembed` | `uv sync --extra emb` |
 

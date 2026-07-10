@@ -3025,19 +3025,19 @@ llm = ChatBedrockConverse(
       <div class="box warn"><div class="lab">▲ La realidad del hardware</div>
         <p>Un modelo <strong>7B cuantizado</strong> corre en un portátil decente. Un <strong>70B</strong> pide del orden de <strong>2×A100 o 2×H100</strong> (decenas de miles de dólares, o varios dólares/hora en la nube) solo para caber en memoria. El coste no desaparece cuando eliges on-premise: se transforma en <strong>fierros y operación</strong> — comprar/alquilar GPUs, mantenerlas encendidas, parchear, monitorear. On-premise gana en privacidad y control, no siempre en dinero.</p></div>
 
-      <h3>Cuánto cuesta cada modelo (consultado: 2026-07-09)</h3>
+      <h3>Cuánto cuesta cada modelo (consultado: 2026-07-10)</h3>
       <p>Precios de lista por millón de tokens, tomados de las páginas oficiales de cada proveedor el 2026-07-09. Sirven para <em>estimar</em> y <em>comparar</em>, no como contrato.</p>
       <div class="tbl-wrap"><table>
         <thead><tr><th>Modelo</th><th>Proveedor</th><th>Tipo</th><th>$/1M entrada</th><th>$/1M salida</th><th>Ventana</th><th>Nota</th></tr></thead>
         <tbody>
           <tr><td><code>GPT-5.5</code> (flagship)</td><td>OpenAI</td><td>pago</td><td>$5.00</td><td>$30.00</td><td>~1M</td><td>272K estándar; sobre eso 2× entrada / 1.5× salida. Ya salió 5.6 al mismo precio.</td></tr>
-          <tr><td><code>gpt-5-mini</code></td><td>OpenAI</td><td>pago</td><td>$0.25</td><td>$2.00</td><td>400K</td><td>Rápido y barato para tareas bien definidas.</td></tr>
+          <tr><td><code>gpt-5.4-mini</code></td><td>OpenAI</td><td>pago</td><td>$0.75</td><td>$4.50</td><td>400K</td><td>El barato de OpenAI. Reemplaza al viejo <code>gpt-5-mini</code>.</td></tr>
           <tr><td><code>Claude Opus 4.8</code></td><td>Anthropic</td><td>pago</td><td>$5.00</td><td>$25.00</td><td>1M</td><td>Máxima capacidad de Anthropic.</td></tr>
           <tr><td><code>Claude Sonnet 5</code></td><td>Anthropic</td><td>pago</td><td>$3.00</td><td>$15.00</td><td>1M</td><td>Precio intro $2/$10 hasta 2026-08-31.</td></tr>
           <tr><td><code>Claude Haiku 4.5</code></td><td>Anthropic</td><td>pago</td><td>$1.00</td><td>$5.00</td><td>200K</td><td>El barato y rápido de Anthropic.</td></tr>
           <tr><td><code>Gemini 2.5 Pro</code></td><td>Google</td><td>pago</td><td>$1.25</td><td>$10.00</td><td>1M</td><td>Sobre 200K tokens sube a $2.50 / $15.00.</td></tr>
           <tr><td><code>Gemini 2.5 Flash</code></td><td>Google</td><td>pago</td><td>$0.30</td><td>$2.50</td><td>1M</td><td>Tarifa única sin tramos. El default barato del curso.</td></tr>
-          <tr><td><code>deepseek-chat</code></td><td>DeepSeek</td><td>open weights (API)</td><td>$0.14</td><td>$0.28</td><td>1M</td><td>Cache miss; el nombre <code>deepseek-chat</code> se renombra el 2026-07-24.</td></tr>
+          <tr><td><code>deepseek-v4-flash</code></td><td>DeepSeek</td><td>open weights (API)</td><td>$0.14</td><td>$0.28</td><td>1M</td><td>Cache miss; el nombre <code>deepseek-chat</code> se renombra el 2026-07-24.</td></tr>
           <tr><td><code>Llama 3.3 70B</code></td><td>Groq</td><td>open weights</td><td>$0.59</td><td>$0.79</td><td>128K</td><td>Llama Community License.</td></tr>
           <tr><td><code>Qwen3 32B</code></td><td>Groq</td><td>open weights</td><td>$0.29</td><td>$0.59</td><td>131K</td><td>Apache 2.0. El que usa el curso en Groq.</td></tr>
           <tr><td><code>qwen3:8b</code> (Ollama, tu máquina)</td><td>local</td><td>open weights</td><td>$0</td><td>$0</td><td>según tu RAM</td><td>Cero coste por token: pagas hardware y electricidad.</td></tr>
@@ -3069,10 +3069,10 @@ LLM_PROVIDER=openai        # o: anthropic | google | groq | openrouter | deepsee
 # LLM_MODELO=…             # opcional: manda sobre el default del proveedor
 
 # …y pon la llave del proveedor que activaste:
-OPENAI_API_KEY=sk-...      # openai      (default gpt-5-mini)
+OPENAI_API_KEY=sk-...      # openai      (default gpt-5.4-mini)
 # ANTHROPIC_API_KEY=sk-ant-...           # anthropic (default claude-haiku-4-5)
 # OPENROUTER_API_KEY=sk-or-...           # openrouter (modelos :free para prototipar)
-# DEEPSEEK_API_KEY=sk-...                # deepseek
+# DEEPSEEK_API_KEY=sk-...                # deepseek   (default deepseek-v4-flash)
 # GROQ_API_KEY=gsk_...                   # groq       (default qwen/qwen3-32b)
 # GOOGLE_API_KEY=AIza...                 # google     (default gemini-2.0-flash)
 # (ollama no necesita llave: corre en tu máquina)</code></pre></figure>
@@ -3600,10 +3600,10 @@ llm = ChatOpenAI(model="qwen/qwen3-32b",
           <tr><td><code>google</code></td><td><code>gemini-2.0-flash</code></td><td><code>GOOGLE_API_KEY</code></td></tr>
           <tr><td><code>groq</code></td><td><code>qwen/qwen3-32b</code></td><td><code>GROQ_API_KEY</code></td></tr>
           <tr><td><code>ollama</code></td><td><code>qwen3:8b</code></td><td>— (corre en tu máquina)</td></tr>
-          <tr><td><code>openai</code></td><td><code>gpt-5-mini</code></td><td><code>OPENAI_API_KEY</code></td></tr>
+          <tr><td><code>openai</code></td><td><code>gpt-5.4-mini</code></td><td><code>OPENAI_API_KEY</code></td></tr>
           <tr><td><code>anthropic</code></td><td><code>claude-haiku-4-5</code></td><td><code>ANTHROPIC_API_KEY</code></td></tr>
           <tr><td><code>openrouter</code></td><td><code>meta-llama/llama-3.3-70b-instruct:free</code></td><td><code>OPENROUTER_API_KEY</code></td></tr>
-          <tr><td><code>deepseek</code></td><td><code>deepseek-chat</code></td><td><code>DEEPSEEK_API_KEY</code></td></tr>
+          <tr><td><code>deepseek</code></td><td><code>deepseek-v4-flash</code></td><td><code>DEEPSEEK_API_KEY</code></td></tr>
         </tbody>
       </table></div>
       <div class="tbl-wrap"><table>

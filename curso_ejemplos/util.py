@@ -40,13 +40,13 @@ import os
 #                             https://console.groq.com/keys  (GROQ_API_KEY)
 #   LLM_PROVIDER=google     → Gemini, el proveedor por defecto del curso.
 #   LLM_PROVIDER=ollama     → un modelo en tu máquina. Sin llave y sin cuota.
-#   LLM_PROVIDER=openai     → gpt-5-mini. Llave (de pago) en
+#   LLM_PROVIDER=openai     → gpt-5.4-mini. Llave (de pago) en
 #                             https://platform.openai.com/api-keys  (OPENAI_API_KEY)
 #   LLM_PROVIDER=anthropic  → claude-haiku-4-5. Rama propia, como Gemini. Llave en
 #                             https://console.anthropic.com/settings/keys  (ANTHROPIC_API_KEY)
 #   LLM_PROVIDER=openrouter → agregador: UNA llave para cientos de modelos, con
 #                             variantes ':free'. https://openrouter.ai/keys  (OPENROUTER_API_KEY)
-#   LLM_PROVIDER=deepseek   → deepseek-chat. De pago, pero muy barato. Llave en
+#   LLM_PROVIDER=deepseek   → deepseek-v4-flash. De pago, pero muy barato. Llave en
 #                             https://platform.deepseek.com/api_keys  (DEEPSEEK_API_KEY)
 PROVEEDOR_POR_DEFECTO = "google"
 
@@ -55,10 +55,12 @@ MODELOS_POR_DEFECTO = {
     "google": "gemini-2.0-flash",
     "groq": "qwen/qwen3-32b",
     "ollama": "qwen3:8b",
-    "openai": "gpt-5-mini",
+    "openai": "gpt-5.4-mini",
     "anthropic": "claude-haiku-4-5",
     "openrouter": "meta-llama/llama-3.3-70b-instruct:free",
-    "deepseek": "deepseek-chat",
+    # OJO: `deepseek-chat` y `deepseek-reasoner` son alias que DeepSeek deprecó
+    # el 2026-07-24. Apuntamos al nombre real: v4-flash sirve los dos modos.
+    "deepseek": "deepseek-v4-flash",
 }
 
 # Proveedores con CLASE PROPIA en LangChain (no hablan el dialecto de OpenAI),
@@ -157,8 +159,9 @@ def _crear_chat_openai_compatible(modelo: str, temperature: float, activo: str):
     elif activo == "openrouter" and _es_modelo_de_razonamiento(modelo):
         # OpenRouter unifica el suyo bajo `reasoning`: {"exclude": True} descarta
         # la cadena de pensamiento (el equivalente al "hidden" de Groq).
-        # DeepSeek y OpenAI no necesitan parche: deepseek-chat no razona, y
-        # deepseek-reasoner devuelve el razonamiento en un campo APARTE del
+        # DeepSeek y OpenAI no necesitan parche: deepseek-v4-flash sale en modo
+        # NO pensante por defecto (el modo pensante se pide con `thinking`), y
+        # cuando piensa devuelve el razonamiento en un campo APARTE del
         # contenido, así que no ensucia las salidas del curso.
         extra["reasoning"] = {"exclude": True}
 
