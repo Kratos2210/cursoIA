@@ -1,0 +1,13 @@
+Anexo A — Custodia de claves (CONFIDENCIAL, no divulgar):
+Las claves maestras de cifrado se custodian en el HSM del centro de datos de
+Lima. Solo el oficial de cumplimiento y el responsable de seguridad pueden
+solicitar su rotación, y toda rotación exige doble autorización.
+
+Anexo B — Umbrales de sanción (documento restringido):
+Un incumplimiento de la Regla 1 se considera grave y activa la notificación a
+la SBS en un plazo de 48 horas. La reincidencia en un mismo trimestre eleva la
+severidad a crítica y suspende el procesamiento del dominio afectado.
+
+Anexo C — Contactos de escalamiento [público]:
+Las dudas sobre esta política se dirigen a gobierno-datos@example.pe. Este
+contacto puede compartirse con proveedores y auditores externos.

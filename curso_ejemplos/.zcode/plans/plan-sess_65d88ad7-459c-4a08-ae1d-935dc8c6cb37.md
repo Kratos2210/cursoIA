@@ -1,72 +1,129 @@
-# Plan: mejorar la estructura y el aprendizaje del HTML del curso
+# Plan: Proyecto end-to-end LLMOps — GobData en producción
 
-## Diagnóstico
-El HTML (`curso-langchain.html`, ~196KB monolítico) ya es **maduro**: tiene dark mode, scrollspy, barra de progreso, progreso persistente en localStorage, 4 quizzes, 21 callouts "Para practicar", 21 `<details>` de soluciones, botón copiar código, diagramas de pasos `.flow`, y resaltador de sintaxis propio. El sistema de diseño (tokens CSS, `.box/.flow/.ccard/.lvbanner/.fileref`) es coherente y reutilizable.
+## Contexto y posicionamiento
 
-Pero tiene problemas reales en 4 frentes (los que pediste):
+El curso ya tiene un `proyecto_final/` modular y testeado (el "prototipo que funciona en local"). Este plan añade el **siguiente escalón real**: un proyecto hermano, `proyecto_llmops/`, que lleva ESE MISMO dominio (GobData, financiera, normativa + evaluación de reglas + auditoría) a un producto empresarial escalable, seguro y rentable aplicando el ciclo de vida LLMOps en sus 3 fases.
 
-| Frente | Problemas concretos |
-|--------|---------------------|
-| **Técnico** | HTML *inválido*: sin `<!DOCTYPE>`, `<html>`, `<head>`, `charset`, `viewport`, `lang="es"`. Cero `aria-*`/`role`. El nav `m15` dice "Multiagente y arquitectura" pero el contenido es microservicios/K8s (engañoso). |
-| **Visual** | 0 imágenes/SVG/diagramas conceptuales. Conceptos clave (ciclo del agente, pipeline RAG end-to-end, grafo LangGraph con su ciclo, arquitectura supervisor/multiagente) son solo texto. |
-| **Pedagógico** | Sin recaps por módulo. Sin botón volver arriba. Sin buscador. El HTML no referencia los archivos `.py`/tests nuevos del plan de infraestructura. |
-| **Contenido** | Los temas nuevos que estoy creando (supervisor multiagente, servidor del agente, proyecto modular, LangSmith real) son brechas que el HTML no refleja. |
+**No duplica** `proyecto_final/`: lo **reutiliza como núcleo** y le añade las capas de producción alrededor. El ADR-0001 existente ya dice literalmente *"cuándo revisar InMemory → pgvector"*, *"cuándo desplegar con más de un proceso"* — este plan materializa esos "cuándo".
 
-**Decisión clave de diseño**: mantener el archivo monolítico (tu elección). Todas las mejoras reutilizan el sistema de componentes existente (no invento clases nuevas salvo lo imprescindible), y el JS nuevo se suma a la IIFE actual.
+**Decisión del usuario**: servicios reales con `docker-compose` (Langfuse + Redis + Postgres/pgvector), y los 4 pilares LLMOps en profundidad.
 
 ---
 
-## Fase A — Corrección técnica (fundación, sin cambio visual)
+## Arquitectura del proyecto
 
-1. **Carcasa HTML5 válida**: envolver todo en `<!DOCTYPE html>` / `<html lang="es">` / `<head>` con `<meta charset>`, `<meta viewport>`, `<meta name="description">`, `<meta name="author">`. El `<title>` y `<style>` actuales pasan al `<head>`. Esto no cambia ni un pixel.
-2. **Accesibilidad**: `aria-label` en `<nav>`, `role="progressbar"` + `aria-valuenow` en la barra de progreso, `aria-label` en botones copiar y en el toggle de tema, `aria-current="page"` en el enlace activo del scrollspy. Añadir `:focus-visible` estilado (hoy no existe).
-3. **Arreglar nav `m15`**: renombrar el enlace de "Multiagente y arquitectura" a "Arquitectura y despliegue" (refleja el contenido real de microservicios/K8s/serverless) — o bien, si la Fase D añade multiagente, dividir en `m15` (arquitectura) + `m15b` (multiagente).
-4. **Footer ampliado**: añadir referencia al repo/tests y a cómo verificar el curso (enlaza el plan de infraestructura: `pytest tests/`), manteniendo la firma "Datawith.AI · Alberto Ruiz".
+```
+proyecto_llmops/
+├── docker-compose.yml          # Postgres+pgvector, Redis, Langfuse (self-hosted)
+├── .env.example                # TODAS las vars (GOOGLE_API_KEY, PG, Redis, Langfuse)
+├── README.md                   # Cómo levantarlo, diagrama de arquitectura
+│
+├── app/                        # El servicio (FastAPI)
+│   ├── main.py                 # API: POST /chat (con streaming SSE), GET /health
+│   ├── config.py               # Settings centralizados (pydantic-settings)
+│   ├── llm.py                  # Cascade: barato→caro, con with_fallbacks
+│   ├── agent.py                # Reutiliza proyecto_final/graph_builder con pgvector
+│   ├── rag.py                  # pgvector retriever (reemplaza InMemory)
+│   └── streaming.py            # token-a-token vía SSE
+│
+├── guardrails/                 # PILAR: Gobernanza (filtros entrada/salida, PII, RBAC)
+│   ├── __init__.py
+│   ├── input_guard.py          # anti prompt-injection, tópicos prohibidos
+│   ├── output_guard.py         # filtro de contenido sensible, PII leak
+│   ├── pii.py                  # detección DNI/tarjeta/email (regex + opc. Presidio)
+│   ├── rbac.py                 # control de acceso por rol sobre documentos
+│   └── policy.py               # reglas declarativas (qué bloquear, qué anonimizar)
+│
+├── cache/                      # PILAR: Optimización costo
+│   ├── semantic_cache.py       # cache semántico (coseno); backend Redis si hay, in-mem si no
+│   └── cache_backends.py       # interfaz: InMemoryCache vs RedisCache
+│
+├── observability/              # PILAR: Observabilidad
+│   ├── tracing.py              # wrapper Langfuse (decorador @observe)
+│   ├── metrics.py              # TTFT, tokens in/out, costo por request, latencia p50/p95
+│   └── cost_model.py           # precios por modelo (gemini-2.0-flash, etc.)
+│
+├── evals/                      # PILAR: Evaluación + CI/CD
+│   ├── dataset.jsonl           # dataset versionado (pregunta + respuesta esperada + contexto)
+│   ├── rag_triad.py            # faithfulness, answer_relevance, context_precision (LLM-judge)
+│   ├── judge.py                # LLM-as-judge con structured output
+│   ├── run_evals.py            # corre el dataset entero y produce un reporte
+│   └── ci_gate.py              # umbral: si score < X, exit 1 (bloquea el deploy)
+│
+├── prompts/                    # Prompt management (prompts como código)
+│   ├── *.yaml                  # versionados, con variables, few-shot, metadata
+│   └── loader.py               # carga + render Jinja2
+│
+├── tests/                      # Tests (offline donde sea posible)
+│   ├── test_guardrails.py      # prompt injection bloqueado, PII detectado
+│   ├── test_cache.py           # hit/miss del semántico
+│   ├── test_rbac.py            # rol sin permiso no ve documento restringido
+│   ├── test_evals.py           # tríada RAG con LLM mockeado
+│   └── test_smoke_api.py       # FastAPI con TestClient (sin llamar Gemini)
+│
+└── docs/
+    ├── README_runbook.md       # operación del servicio en producción
+    ├── adr/0003-pgvector.md    # por qué pgvector sobre Chroma en producción
+    ├── adr/0004-langfuse.md    # por qué Langfuse self-hosted sobre LangSmith
+    └── adr/0005-semantic-cache.md
+```
 
-## Fase B — Refuerzo visual (diagramas para los conceptos clave)
+---
 
-Reutilizar el componente `.flow` existente (y su variante `.step.hl`) — **no añadir SVG/mermaid**, para respetar tu decisión de archivo monolítico sin dependencias. Diagramas a añadir:
+## Fases del ciclo de vida LLMOps (mapeadas a entregables)
 
-1. **El ciclo del agente (m8/m10)**: `Pregunta → Modelo decide → ¿tool? → ejecutar → Modelo responde → (ciclado)`. Un `.flow` con la flecha de retorno dibujada en CSS. Hoy solo se narra.
-2. **Pipeline RAG end-to-end (m11/m12)**: `Documento → chunking → embeddings → vector store → (consulta) → retrieval → re-rank → LLM → respuesta`. Unifica lo que hoy está fragmentado en varios `.flow` sueltos en un único diagrama maestro al inicio de la sección RAG.
-3. **Grafo LangGraph con su ciclo (m13)**: `START → modelo → [arista condicional] → tools → (vuelve a modelo) → END`. Refleja literalmente el `StateGraph` del archivo `13_langgraph_stategraph.py`.
-4. **Human-in-the-loop como pausa (m13b)**: `detectar → aprobar ⏸️(interrupt) → humano responde → Command(resume) → registrar`. Visualiza la mecánica de pausa/reanudar.
-5. **Arquitectura de microservicios (m15)**: ya hay un diagrama `.flow` con `svc1/svc2/svc3`; lo completo con el balanceador delante y el estado compartido (vector store, base de datos) detrás, para mostrar el patrón stateless.
-6. **Patrón supervisor/multiagente (nuevo, m15b)**: `Usuario → Supervisor → {Agente A | Agente B} → Supervisor → Respuesta`.
+### Fase 1 — Ideación: Estrategia y Datos
+- **Data Sourcing + document parsing**: `rag.py` lee la normativa con troceado limpio + clasificación de **confidencialidad** por fragmento (metadato `confidentiality: public|internal|restricted`). Esto alimenta el RBAC.
+- **Selección del modelo base**: `llm.py` implementa una **arquitectura en cascada** — modelo barato (`gemini-2.0-flash`) primero, salta al de mayor razonamiento solo si el guardrail de "complejidad" lo indica o si hay fallback. Tabla costo/latencia/razonamiento documentada en un ADR.
 
-## Fase C — Refuerzo pedagógico
+### Fase 2 — Desarrollo: Arquitectura y Orquestación
+- **Prompt Engineering avanzado**: `prompts/*.yaml` con prompts tratados como código — estructura XML, salida JSON estricto, few-shot. `loader.py` los renderiza. Los prompts viven versionados, no hardcoded.
+- **Chains vs Agents**: documentado + implementado. GobData sigue siendo agente ReAct (necesita autonomía: decide entre consultar normativa o evaluar regla), pero las piezas internas (el RAG, el guardrail) son **cadenas deterministas**.
+- **RAG vs Fine-Tuning**: ADR justificando RAG (datos dinámicos: la normativa cambia) vs fine-tuning. Se usa **pgvector** (datos dinámicos persistentes) — materializa la decisión "cuándo revisar InMemory" del ADR-0001.
+- **LLM-as-a-Judge + tríada RAG**: `evals/rag_triad.py` implementa faithfulness (¿la respuesta se sostiene solo en el contexto?), answer relevance (¿responde la pregunta?) y context precision (¿el contexto recuperado es relevante?). `judge.py` usa `with_structured_output`.
 
-1. **Recap por módulo**: un nuevo componente `.recap` (caja compacta, estilo `.box` con un token de color propio, ej. borde izquierdo del nivel) al final de cada `<section>` de módulo con "En una frase: qué aprendiste" + "archivo: `NN_xxx.py`". Refuerza el cierre de cada unidad. Son ~14 recaps.
-2. **Botón "volver arriba"**: flotante (bottom-right), aparece tras hacer scroll. CSS mínimo + 5 líneas de JS en la IIFE existente.
-3. **Buscador de texto en la página**: un input en el nav que filtra/enmarca términos (`window.find` o resaltado de coincidencias en los `<section>`). Ligero, sin librerías, degrada con elegancia si no hay JS.
-4. **Conexión con el plan de infraestructura**: cada `.fileref` existente se enriquece con un badge "✓ testeado" que apunta a `tests/test_offline.py`, y donde aplique, con el ejercicio propuesto correspondiente. Cierra el lazo HTML ↔ código ↔ tests.
+### Fase 3 — Operación: Producción y Gobernanza
+- **CI/CD automatizado**: `evals/ci_gate.py` corre el dataset; si el score de la tríada baja de umbral, `exit 1` y **bloquea el deploy**. Workflow de GitHub Actions que lo ejecuta.
+- **Observabilidad E2E**: `observability/tracing.py` envuelve cada request con Langfuse `@observe`; `metrics.py` captura TTFT, tokens, costo. **Langfuse self-hosted** vía docker-compose (tú elegiste servicios reales).
+- **Optimización costo/UX**: `cache/semantic_cache.py` (coseno sobre embeddings; Redis como backend persistente, in-memory como fallback didáctico). Streaming SSE nativo en `/chat`. Arquitectura en cascada en `llm.py`.
+- **Gobernanza y guardrails**: `guardrails/` completo:
+  - **input_guard**: detecta prompt injection (patrones + heurística) y tópicos prohibidos antes de tocar el modelo.
+  - **output_guard**: filtra contenido sensible antes de devolver al usuario.
+  - **pii**: detección de DNI/tarjeta/email (regex first; Presidio opcional como extra).
+  - **rbac**: acceso por rol a nivel de **documento** (el retriever filtra por `metadata.confidentiality` vs el rol del usuario).
 
-## Fase D — Nuevos módulos en el HTML (materializar las brechas)
+---
 
-Contenido nuevo que va DENTRO del HTML (siguiendo el patrón de módulo existente: `<section id>` + `.lvbanner` + texto + `figure.code` + `.box` + quiz):
+## docker-compose.yml (servicios reales)
+- **postgres** + extensión `pgvector` → vector store persistente del RAG.
+- **redis** → backend del semantic cache.
+- **langfuse** (+ su propio postgres) → observabilidad/tracing self-hosted.
+- Todo arrancable con `docker compose up -d`. El `README.md` guía el `uv sync --extra llmops` y la configuración de `.env`.
 
-1. **m15b · Multiagente (supervisor)**: explica el patrón supervisor con LangGraph, con el diagrama de la Fase B.6 y un bloque de código que referencia el nuevo `15_supervisor_multiagente.py` del plan de infraestructura.
-2. **m17c · Servir el agente (interfaz)**: cómo exponer un agente por HTTP con FastAPI. Diagrama `Cliente → FastAPI → Agente LangGraph → tools/RAG`. Referencia el nuevo `17_servidor_agente.py`.
-3. **Refuerzo del m16 · Observabilidad**: ampliar con la sección de **conteo de tokens/coste real** y **LangSmith tracing** (hoy el m16 es teórico en parte), referenciando el nuevo `16b_observabilidad_langsmith.py`.
-4. **Sección m18 (capstone) actualizada**: reflejar el **proyecto modular** (`config.py/rag.py/audit.py/tools.py/graph_builder.py/...`) como "el siguiente paso" del `app.py` actual, con un diagrama de los módulos y sus dependencias.
+---
 
-## Fase E — Integración y verificación
+## Integración con el curso existente
+- `pyproject.toml` gana un extra `[llmops]` con: `langfuse`, `redis`, `psycopg`, `fastapi`, `uvicorn`, `pydantic-settings`, `jinja2` (Presidio en extra aparte por su peso).
+- El `README.md` principal del curso añade una sección "🚀 Proyecto LLMOps de producción" que enlaza `proyecto_llmops/`.
+- Se añaden **2 ADRs nuevos** (`docs/adr/0003-pgvector`, `0004-langfuse`, `0005-semantic-cache`) siguiendo la plantilla y tono existentes.
+- El HTML del curso (`curso-langchain.html`) gana una sección nueva `#llmops` que enseña el ciclo de vida de 3 fases y referencia este proyecto (esto alinea con el plan del HTML ya aprobado, Fase D).
 
-1. **Actualización del índice del nav** para reflejar nuevos módulos (`m15b`, `m17c`).
-2. **Nuevo glosario**: añadir términos nuevos (supervisor, multiagente, FastAPI, endpoint, stateless ya existe, ASGI).
-3. **Verificación**: abrir el HTML y confirmar que (a) valida como HTML5 razonable, (b) dark mode sigue funcionando, (c) scrollspy sigue marcando bien, (d) los diagramas `.flow` nuevos se ven bien en móvil (scroll horizontal), (e) el buscador y volver arriba funcionan.
+---
+
+## Estilo y restricciones
+- Respeta el estilo del curso: cabecera `FINALIDAD`/`LÓGICA`, comentarios línea por línea, español, dominio GobData/Datawith.AI.
+- **Degradación graceful donde aplique**: aunque elegiste servicios reales, los **tests** no deben requerir Docker corriendo — el semantic cache y el tracing tienen un fallback in-memory/no-op para que `pytest` corra en CI sin servicios levantados. Los servicios reales se usan al correr la app, no al testear unidades.
+- Inyección de dependencias en todo (como ya hace `proyecto_final`): `SemanticCache`, `Tracer`, `Retriever`, `Guard` se reciben por parámetro → testeables sin red.
 
 ---
 
 ## Orden de ejecución
-A → B → C → D → E. La Fase A es la base y no toca contenido; B y C son aditivas sobre el existente; D depende de que existan los archivos `.py` nuevos (del plan de infraestructura, que retomamos mañana).
+1. **Cimientos**: `docker-compose.yml`, `config.py`, `.env.example`, `README.md` + extras en `pyproject.toml`.
+2. **Núcleo reutilizado**: `app/agent.py` + `rag.py` con pgvector (adapta `proyecto_final`).
+3. **Guardrails** (pilar más diferenciador): input/output/pii/rbac/policy + tests.
+4. **Observabilidad**: tracing Langfuse + metrics + cost_model.
+5. **Optimización**: semantic cache + cascade + streaming SSE.
+6. **Evals + CI gate**: tríada RAG, dataset, judge, ci_gate, workflow de GH Actions.
+7. **Prompts como código**: YAML + loader.
+8. **Docs**: runbook + 3 ADRs + sección HTML.
 
-## Notas de alcance
-- **No** se convierte a generador/markdown (tu decisión: monolítico).
-- **No** se añaden dependencias externas (sin mermaid, sin highlight.js): el resaltador propio se respeta.
-- **No** se reescribe el contenido existente: se corrige, se amplía y se conecta, manteniendo el tono y los ejemplos de dominio (Gobierno de Datos / Datawith.AI).
-- Los diagramas son CSS puro reutilizando `.flow` — coherentes con el sistema de diseño actual.
-
-## Lo que NO incluye
-- No genero imágenes reales (PNG/JPG): todo sigue siendo tipográfico/CSS.
-- No cambio el proveedor ni los ejemplos de código existentes del HTML.

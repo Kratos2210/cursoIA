@@ -49,13 +49,18 @@ jobs:
 
       - name: Instalar dependencias (resuelve pyproject.toml + uv.lock)
         # Si esto falla, es que las versiones pinneadas ya no resuelven juntas.
-        run: uv sync --extra dev --python ${{ matrix.python-version }}
+        # 'llmops' trae pydantic-settings, numpy y fastapi: los tests offline del
+        # proyecto LLMOps los importan. NO levanta ningún servicio: Postgres,
+        # Redis y Langfuse siguen sin existir en la CI, y ningún test los necesita.
+        run: uv sync --extra dev --extra llmops --python ${{ matrix.python-version }}
 
       - name: Correr los tests offline
+        # Sin 'tests/': así pytest usa los 'testpaths' del pyproject y corre las
+        # TRES suites (ejemplos, proyecto_final y proyecto_llmops).
         # -m offline  : omite cualquier test que llame a la API.
         # --strict-markers: un marcador con typo ('offline' -> 'ofline') falla,
         #                   en vez de omitir el test en silencio.
-        run: uv run pytest tests/ -m offline -v --strict-markers
+        run: uv run pytest -m offline -v --strict-markers
 
       - name: Verificar que ningún ejemplo tiene errores de sintaxis
         # Barato y complementario: compila TODOS los .py del curso.

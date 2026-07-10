@@ -49,12 +49,63 @@ dependencies = [
 # o:  pip install -e ".[dev]"
 dev = [
     "pytest>=8.0",
+    # TestClient de FastAPI (proyecto_llmops/tests/test_smoke_api.py) va sobre
+    # httpx. Llegaba de rebote como dependencia de langsmith; declararlo aquí
+    # evita que la suite se rompa el día que langsmith deje de traerlo.
+    # TestClient conduce el `async` por dentro, así que la suite no necesita
+    # ningún plugin de asyncio: los tests siguen siendo funciones normales.
+    "httpx>=0.27",
 ]
 # Interfaz web/servidor para el TEMA 17 (servir un agente por HTTP).
 # Instalar con:  uv sync --extra ui   o:  pip install -e ".[ui]"
 ui = [
     "fastapi>=0.115",
     "uvicorn==0.51.0",
+]
+# Proyecto LLMOps de producción (proyecto_llmops/): guardrails, semantic cache,
+# observabilidad con Langfuse, RAG con pgvector y evaluación con tríada RAG.
+# Instalar con:  uv sync --extra llmops   o:  pip install -e ".[llmops]"
+# ⚠️ Requiere levantar los servicios:  docker compose -f proyecto_llmops/docker-compose.yml up -d
+llmops = [
+    # Langfuse v2, no v3: la v3 exige 6 contenedores (ClickHouse, MinIO, Redis,
+    # worker…) y ~8 GB de RAM. La v2 corre con un solo Postgres. Además el SDK
+    # cambió de API entre majors, así que lo acotamos: '>=2.0' se iría a la v3.
+    "langfuse>=2,<3",               # observabilidad self-hosted (tracing @observe)
+    "redis>=5.0",                   # backend del semantic cache
+    "fastapi>=0.115",               # API REST (POST /chat, /health)
+    "uvicorn==0.51.0",              # servidor ASGI para FastAPI
+    "pydantic-settings>=2.0",       # settings tipados desde .env
+    "jinja2>=3.1",                  # render de prompts como código (.yaml)
+    # Leer esos .yaml. Llegaba de rebote con langchain-core; declararlo aquí
+    # evita que prompts/loader.py se rompa si un día deja de traerlo.
+    "pyyaml>=6.0",
+    "langchain-postgres>=0.0.10",   # vector store sobre pgvector (Postgres)
+    "psycopg[binary]>=3.1",         # driver Postgres (binario: sin compilar)
+    "numpy>=1.26",                  # similitud coseno del semantic cache
+    # Cliente OpenAI-compatible: con él, una sola clase habla con Groq, Ollama,
+    # Together u OpenAI. Cambiar de proveedor = cambiar LLM_BASE_URL en el .env.
+    "langchain-openai>=0.2",
+    # Embeddings LOCALES (ONNX, sin API ni cuota). Groq no ofrece embeddings, y
+    # el RAG los necesita: así el proyecto no depende de ningún proveedor para
+    # vectorizar. Descarga el modelo (~220 MB) la primera vez.
+    "fastembed>=0.4",
+    # onnxruntime dejó de publicar wheels para macOS Intel tras la 1.23.2.
+    # Sin el pin, `uv sync` falla al resolver en un Mac x86_64.
+    "onnxruntime<1.24; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+]
+# Embeddings vía HuggingFace/sentence-transformers (EMBEDDINGS_PROVIDER=huggingface).
+# Extra APARTE porque arrastra PyTorch y ~16 paquetes. El ADR-0002 ya decidió no
+# meter torch en el camino por defecto del curso ni en la CI.
+#   uv sync --extra llmops --extra hf
+#
+# ⚠️ NO funciona en macOS Intel (x86_64): PyTorch no publica wheels para esa
+#    plataforma desde la 2.2.2, y esa versión es incompatible con NumPy 2 y con
+#    transformers>=5 (que exige torch>=2.4). No hay combinación que resuelva.
+#    En ese caso usa EMBEDDINGS_PROVIDER=fastembed: es el MISMO modelo.
+#    Comprobado en Linux y en Apple Silicon.
+hf = [
+    "langchain-huggingface>=0.1",
+    "sentence-transformers>=3.0",
 ]
 
 [tool.uv]
@@ -73,12 +124,23 @@ build-backend = "hatchling.build"
 bypass-selection = true
 
 [tool.pytest.ini_options]
-# Dos suites: la de los ejemplos y la del proyecto final modular.
-testpaths = ["tests", "proyecto_final/tests"]
-# Añade al path la carpeta del curso (para 'import util') y la del proyecto
-# final (para 'import config', 'import rag'…, igual que al ejecutar main.py).
-pythonpath = [".", "proyecto_final"]
+# Tres suites: los ejemplos, el proyecto final modular y el proyecto LLMOps.
+testpaths = ["tests", "proyecto_final/tests", "proyecto_llmops/tests"]
+# Añade al path la carpeta del curso (para 'import util'), la del proyecto
+# LLMOps (para 'import app.config', 'import guardrails.rbac'…) y la del
+# proyecto final (para 'import config', 'import rag'…, igual que main.py).
+#
+# ⚠️ EL ORDEN IMPORTA: 'proyecto_llmops' va ANTES que 'proyecto_final', porque
+#    los dos ofrecen un 'app'. Aquí gana el paquete proyecto_llmops/app/ y no
+#    el shim proyecto_final/app.py. (Y por eso app/ necesita su __init__.py:
+#    sin él sería un namespace package y perdería igual, fuese cual fuese el orden.)
+pythonpath = [".", "proyecto_llmops", "proyecto_final"]
 # Cualquier archivo que empiece con test_ se considera test.
+#
+# ⚠️ Los nombres de archivo deben ser ÚNICOS entre las tres suites. Las carpetas
+#    tests/ no son paquetes (no tienen __init__.py), así que pytest importa
+#    'test_rag' a secas: dos archivos con ese nombre chocan al recolectar.
+#    Por eso el del proyecto LLMOps se llama test_rag_rbac.py.
 python_files = ["test_*.py"]
 # Marcadores propios: '@pytest.mark.offline' marca tests que NO llaman a la API.
 markers = [

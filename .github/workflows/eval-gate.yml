@@ -1,0 +1,81 @@
+# ==========================================================
+# Eval gate — la evaluación que puede BLOQUEAR un deploy
+# ==========================================================
+# FINALIDAD:
+#   Correr la tríada RAG (faithfulness / answer relevance / context precision)
+#   sobre el dataset versionado y decidir si el sistema sigue siendo lo bastante
+#   bueno como para desplegarse.
+#
+# ⚠️  ESTE WORKFLOW SÍ GASTA CUOTA. Llama al agente y al juez una vez por
+#     ejemplo. Por eso NO corre en cada push:
+#
+#       ci.yml        → cada push. Tests offline. Gratis. Nunca llama a la API.
+#       eval-gate.yml → a mano, o antes de un deploy. Cuesta dinero. Puede vetar.
+#
+#     Confundir los dos es el error clásico: o pagas una evaluación completa en
+#     cada commit de un README, o no evalúas nunca porque "la CI ya pasa".
+#
+# ⚠️  Necesita el secret LLM_API_KEY en el repositorio
+#     (Settings → Secrets and variables → Actions). Sin él, el job se salta
+#     solo en vez de fallar en rojo: un fork no debe ver la CI rota.
+# ==========================================================
+name: Eval gate
+
+on:
+  # A mano, desde la pestaña "Actions".
+  workflow_dispatch:
+    inputs:
+      muestra:
+        description: "Fracción del dataset a evaluar (1.0 = todo)"
+        required: false
+        default: "1.0"
+  # Antes de publicar una release.
+  release:
+    types: [created]
+
+jobs:
+  gate:
+    name: tríada RAG sobre el dataset
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: curso_ejemplos
+
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Instalar dependencias
+        run: uv sync --extra llmops --python 3.12
+
+      - name: ¿Hay llave?
+        id: llave
+        run: |
+          if [ -z "${{ secrets.LLM_API_KEY }}" ]; then
+            echo "presente=false" >> "$GITHUB_OUTPUT"
+            echo "⚠️  Sin LLM_API_KEY: se omite la evaluación (no es un fallo)."
+          else
+            echo "presente=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Correr el gate
+        if: steps.llave.outputs.presente == 'true'
+        env:
+          LLM_PROVIDER: openai
+          LLM_BASE_URL: https://api.groq.com/openai/v1
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          # Embeddings locales: no hacen falta ni llave ni servicios externos.
+          EMBEDDINGS_PROVIDER: fastembed
+          # Sin Postgres levantado, app/rag.py cae solo a InMemoryVectorStore
+          # (degradación graceful). El índice se reconstruye en cada run: es lo
+          # correcto aquí, porque evaluamos el CÓDIGO, no un índice heredado.
+          EVAL_MUESTRA: ${{ github.event.inputs.muestra || '1.0' }}
+          EVAL_UMBRAL_APROBACION: "0.7"
+        # Si el score baja del umbral, ci_gate.py sale con 1 y el job falla.
+        # Ese fallo ES el propósito del workflow, no un accidente.
+        run: uv run python proyecto_llmops/evals/ci_gate.py

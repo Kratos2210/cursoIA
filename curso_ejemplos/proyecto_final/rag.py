@@ -35,20 +35,29 @@ def leer_normativa(ruta=None) -> str:
     return ruta.read_text(encoding="utf-8")
 
 
-def construir_retriever(ruta=None):
+def construir_retriever(ruta=None, *, vector_store=None, k=None):
     """Vectoriza la normativa y devuelve el buscador. ⚠️ Llama a la API.
 
     InMemoryVectorStore guarda los vectores en RAM: perfecto para un curso,
     inútil tras reiniciar. En producción: Chroma, Qdrant o pgvector.
+
+    Parámetros solo-por-nombre (los usa proyecto_llmops/):
+      vector_store: un store YA poblado (p.ej. pgvector). Si viene, no
+                    vectorizamos nada aquí: solo pedimos su retriever.
+      k           : cuántos fragmentos devolver. None = el del config.
+
+    Con ambos en None el comportamiento es el de siempre. Ese default es lo que
+    permite cambiar de base de datos vectorial sin tocar el resto del proyecto
+    (es la promesa que hace el ADR-0001).
     """
-    fragmentos = trocear(leer_normativa(ruta))
-    from langchain_core.vectorstores import InMemoryVectorStore
-    vectorstore = InMemoryVectorStore.from_documents(
-        fragmentos, embedding=config.crear_embeddings()
-    )
-    return vectorstore.as_retriever(
-        search_kwargs={"k": config.FRAGMENTOS_POR_CONSULTA}
-    )
+    k = k or config.FRAGMENTOS_POR_CONSULTA
+    if vector_store is None:
+        fragmentos = trocear(leer_normativa(ruta))
+        from langchain_core.vectorstores import InMemoryVectorStore
+        vector_store = InMemoryVectorStore.from_documents(
+            fragmentos, embedding=config.crear_embeddings()
+        )
+    return vector_store.as_retriever(search_kwargs={"k": k})
 
 
 def unir(docs) -> str:

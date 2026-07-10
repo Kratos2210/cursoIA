@@ -1,0 +1,132 @@
+# ==========================================================
+# docker-compose.yml · Infraestructura LLMOps de GobData
+# ==========================================================
+# Levanta los TRES servicios de los que depende el proyecto en producción:
+#
+#   postgres   → base de datos relacional + extensión pgvector (vector store del RAG)
+#   redis      → backend del semantic cache (resuelve preguntas repetitivas a costo ~0)
+#   langfuse   → observabilidad: trazas forenses de cada ejecución + métricas + costos
+#
+# USO:
+#   docker compose up -d            # levanta todo en segundo plano
+#   docker compose ps               # ver qué está corriendo
+#   docker compose logs -f langfuse # ver trazas
+#   docker compose down             # parar (los datos sobreviven en volúmenes)
+#   docker compose down -v          # parar Y borrar los datos (¡cuidado!)
+#
+# ⚠️  Usamos Langfuse **v2** (self-hosted, gratis), no la v3.
+#     La v3 partió el servicio en seis contenedores (web, worker, Postgres,
+#     ClickHouse, Redis y MinIO) y pide ~8 GB de RAM: es lo correcto a escala,
+#     pero para aprender observabilidad basta la v2, que corre con un solo
+#     Postgres. Ver docs/adr/0004-langfuse.md.
+#     No envía nada a terceros: toda la observabilidad se queda en tu máquina.
+# ==========================================================
+
+name: gobdata-llmops
+
+services:
+  # ------------------------------------------------------------------
+  # 1) POSTGRES + pgvector: el "libro abierto" persistente del RAG.
+  #    El ADR-0001 eligió InMemoryVectorStore y fijó tres disparadores para
+  #    revisar esa decisión. Aquí se cumple el TERCERO: "el proyecto se despliega
+  #    con más de un proceso (un servidor web, el tema 17)".
+  #    Ojo: el ADR-0001 proponía Chroma como primer paso. El ADR-0003 explica por
+  #    qué, con varios workers de uvicorn, saltamos directamente a pgvector.
+  # ------------------------------------------------------------------
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: gobdata-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gobdata
+      POSTGRES_PASSWORD: gobdata
+      POSTGRES_DB: gobdata
+    ports:
+      - "5433:5432"   # 5433 en el host (para no chocar con un Postgres local)
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gobdata"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ------------------------------------------------------------------
+  # 2) REDIS: backend del semantic cache.
+  #    Una pregunta repetida (o semánticamente igual) se responde SIN tocar el LLM.
+  # ------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: gobdata-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"   # 6380 en el host (para no chocar con un Redis local)
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ------------------------------------------------------------------
+  # 3) LANGFUSE: observabilidad end-to-end (self-hosted).
+  #    Cada request del agente genera una traza con: prompt, respuesta,
+  #    tokens, costo, latencia (TTFT) y el grafo de llamadas internas.
+  #    UI en http://localhost:3000  (usuario: langfuse@local / clave: langfuse)
+  # ------------------------------------------------------------------
+  langfuse:
+    # v2: una sola imagen + un Postgres. La v3 necesitaría además clickhouse,
+    # minio, redis y un contenedor 'worker' aparte.
+    image: langfuse/langfuse:2
+    container_name: gobdata-langfuse
+    restart: unless-stopped
+    depends_on:
+      langfuse-db:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      # Langfuse necesita SU PROPIA base de datos (distinta del RAG).
+      DATABASE_URL: "postgresql://langfuse:langfuse@langfuse-db:5432/langfuse"
+      NEXTAUTH_SECRET: "cambia-esto-en-produccion-usa-openssl-rand-base64-32"
+      SALT: "cambia-esto-tambien-usa-openssl-rand-base64-32"
+      NEXTAUTH_URL: "http://localhost:3000"
+      # Telemetría de Langfuse desactivada (no reporta a terceros).
+      TELEMETRY_ENABLED: "false"
+      # Auth por env (para no pelear con el wizard la primera vez):
+      LANGFUSE_INIT_ORG_ID: "gobdata"
+      LANGFUSE_INIT_ORG_NAME: "GobData"
+      LANGFUSE_INIT_PROJECT_ID: "gobdata-prod"
+      LANGFUSE_INIT_PROJECT_NAME: "GobData Producción"
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: "pk-lf-xxxxxxxx"
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: "sk-lf-xxxxxxxx"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/api/public/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+
+  # Base de datos interna de Langfuse (no se mezcla con la del RAG).
+  langfuse-db:
+    image: postgres:16-alpine
+    container_name: gobdata-langfuse-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD: langfuse
+      POSTGRES_DB: langfuse
+    volumes:
+      - langfusedata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U langfuse"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:
+  redisdata:
+  langfusedata:

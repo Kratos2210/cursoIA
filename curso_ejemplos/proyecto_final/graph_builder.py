@@ -31,7 +31,8 @@ import persistence
 import tools as tools_mod
 
 
-def construir_agente(llm, evaluador, retriever, checkpointer=None, ruta_auditoria=None):
+def construir_agente(llm, evaluador, retriever, checkpointer=None, ruta_auditoria=None,
+                     *, tools=None, prompt=None):
     """Ensambla el agente GobData.
 
     Parámetros:
@@ -40,13 +41,22 @@ def construir_agente(llm, evaluador, retriever, checkpointer=None, ruta_auditori
       retriever   : el buscador sobre la normativa.
       checkpointer: dónde persiste la conversación (None = MemorySaver).
       ruta_auditoria: dónde escribir el log (None = la ruta del proyecto).
+
+    Parámetros solo-por-nombre (los usa proyecto_llmops/):
+      tools : lista de tools ya construidas. None = las de siempre.
+      prompt: instrucciones del agente.        None = las de siempre.
+
+    Con ambos en None este ensamblado es EXACTAMENTE el de antes: por eso el
+    proyecto LLMOps puede reutilizar esta función (pasándole tools con RBAC y
+    otro prompt) sin que cambie nada aquí.
     """
     return create_react_agent(
         llm,
-        tools=tools_mod.crear_tools(llm, evaluador, retriever, ruta_auditoria),
+        tools=tools if tools is not None
+        else tools_mod.crear_tools(llm, evaluador, retriever, ruta_auditoria),
         # Sin checkpointer, el agente olvida todo entre invocaciones.
         checkpointer=checkpointer or persistence.crear_checkpointer(),
-        prompt=config.INSTRUCCIONES_AGENTE,
+        prompt=prompt or config.INSTRUCCIONES_AGENTE,
     )
 
 
