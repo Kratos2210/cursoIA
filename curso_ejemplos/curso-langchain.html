@@ -610,7 +610,8 @@ GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</code></pre></figure>
         <p>Los dos parches son <strong>específicos de Groq</strong> y condicionales: <code class="k">reasoning_format</code> solo se manda a modelos de razonamiento, porque a <code class="k">llama-3.3-70b</code> le provoca un <code class="k">400</code>. Esto es exactamente el trabajo invisible que ahorra una fábrica de modelos: si cada ejemplo instanciara el suyo, tendrías que recordar los dos parches diecinueve veces.</p></div>
 
       <h4>El RAG no se salva: los embeddings y <code>fastembed</code></h4>
-      <p>Hay una asimetría que conviene entender pronto, porque muerde en el <a class="inline" href="#m11">Módulo 11</a>. El <strong>chat</strong> se cambia de proveedor con una variable. Los <strong>embeddings</strong> —el modelo que convierte texto en vectores para que el RAG busque por significado— <strong>no</strong>. Por dos razones:</p>
+      <p>Esto no lo vas a entender del todo hasta el <a class="inline" href="#m11">Módulo 11</a>, y no pasa nada: <strong>déjalo puesto en el <code class="k">.env</code> y sigue</strong>. Allí se explica qué es <code class="k">fastembed</code> y por qué existe. Lo mínimo que necesitas saber ahora:</p>
+      <p>Además del modelo que <em>conversa</em>, el RAG usa un segundo modelo que convierte texto en números (<strong>embeddings</strong>) para poder buscar por significado. Ese segundo modelo <strong>no</strong> se cambia con <code class="k">LLM_PROVIDER</code>, por dos razones:</p>
       <ol>
         <li><strong>Groq no ofrece embeddings.</strong> Ninguno. Si mueves el chat a Groq, el RAG se queda sin quien vectorice.</li>
         <li><strong>Cambiar de modelo de embeddings invalida el índice entero.</strong> No es como cambiar de modelo de chat, donde lo peor que pasa es que la respuesta suene distinta. Los vectores de <code class="k">gemini-embedding-001</code> y los de otro modelo <em>viven en espacios distintos</em>: compararlos no da un resultado peor, da un resultado <strong>sin sentido</strong>. Hay que reindexar.</li>
@@ -1596,6 +1597,41 @@ print(docs[0].page_content[:80])</code></pre></figure>
 Política de reembolsos: los reembolsos se procesan en un plazo de 10 días hábil…</code></pre></figure>
       <div class="box analogy"><div class="lab">◆ Dos mejoras clave</div>
         <p><strong>RecursiveCharacterTextSplitter</strong> corta por párrafos/frases (no a ciegas cada 500 caracteres), así no parte ideas a la mitad. <strong>MMR</strong> (Maximal Marginal Relevance) trae resultados relevantes <em>y variados</em>, evitando 4 fragmentos casi idénticos.</p></div>
+
+      <h3>¿Y si no quiero pagar por vectorizar? <code>fastembed</code></h3>
+      <p>Fíjate en la línea <code class="k">GoogleGenerativeAIEmbeddings(...)</code>. Cada vez que indexas un documento y cada vez que haces una pregunta, esa línea <strong>llama a la API de Google y consume cuota</strong>. Indexar un PDF de 200 páginas son cientos de llamadas antes de que el modelo de chat haya dicho una sola palabra.</p>
+      <p>Y hay un problema peor si usas Groq: <strong>Groq no tiene endpoint de embeddings</strong>. Puedes mover el chat, pero el RAG se queda sin quien vectorice.</p>
+
+      <div class="box def"><div class="lab">◈ Definición · fastembed</div>
+        <p><strong>fastembed</strong> es una librería de Python que ejecuta modelos de embeddings <strong>en tu propia máquina</strong>, sin llamar a ninguna API. Le das texto, te devuelve vectores. Cero cuota, cero red (después de la primera descarga), cero dependencia de que una empresa mantenga vivo un endpoint.</p>
+        <p>Lo interesante es <em>cómo</em>. Un modelo de embeddings normalmente se ejecuta con <strong>PyTorch</strong>, una librería de varios cientos de megabytes pensada para <em>entrenar</em> redes neuronales. Pero nosotros no entrenamos nada: solo queremos ejecutar el modelo hacia adelante, una vez por texto. fastembed usa <strong>ONNX Runtime</strong>, un motor especializado justo en eso — ejecutar modelos ya entrenados, rápido y ligero.</p>
+        <dl>
+          <dt>ONNX</dt><dd><em>Open Neural Network Exchange</em>. Un formato estándar para guardar un modelo ya entrenado, independiente de la librería con la que se entrenó. Es el "PDF de los modelos": lo escribe cualquiera, lo lee cualquiera.</dd>
+          <dt>ONNX Runtime</dt><dd>El motor que ejecuta esos modelos. Optimizado para <strong>inferencia</strong> (usar el modelo), no para entrenamiento. De ahí que pese ~70 MB en vez de los ~800 MB de PyTorch.</dd>
+          <dt>inferencia</dt><dd>Usar un modelo ya entrenado para producir una salida. Lo contrario de <em>entrenamiento</em>, que es ajustar sus pesos. El 99% del código que escribirás en tu vida hace inferencia.</dd>
+        </dl></div>
+
+      <p>El modelo que usa el curso es <code class="k">paraphrase-multilingual-MiniLM-L12-v2</code>: <strong>multilingüe a propósito</strong>, porque nuestros documentos están en español y un modelo entrenado solo en inglés colocaría "reembolso" y "refund" en rincones distintos del espacio vectorial. Produce vectores de <strong>384 dimensiones</strong>.</p>
+
+      <figure class="code"><figcaption><span class="d"></span>terminal · una vez</figcaption><pre><code>uv sync --extra emb        # o, en tu proyecto:  uv add fastembed</code></pre></figure>
+      <figure class="code"><figcaption><span class="d"></span>.env · y ya está</figcaption><pre><code>EMBEDDINGS_PROVIDER=fastembed</code></pre></figure>
+      <p>No hay que tocar el código: <code class="k">util.crear_embeddings()</code> lee esa variable y devuelve el motor correcto. La primera ejecución descarga el modelo (~220 MB) a una caché local; a partir de ahí el RAG funciona <strong>incluso sin conexión a internet</strong>.</p>
+
+      <div class="tbl-wrap"><table>
+        <thead><tr><th></th><th><code>gemini-embedding-001</code> (API)</th><th><code>fastembed</code> (local)</th></tr></thead>
+        <tbody>
+          <tr><td>Coste por vector</td><td>Consume cuota</td><td><b>$0</b></td></tr>
+          <tr><td>Primera vez</td><td>Instantáneo</td><td>Descarga ~220 MB</td></tr>
+          <tr><td>Necesita internet</td><td>Siempre</td><td>Solo la primera vez</td></tr>
+          <tr><td>Velocidad</td><td>Latencia de red por lote</td><td>Depende de tu CPU; en corpus pequeños, más rápido</td></tr>
+          <tr><td>Calidad</td><td>Algo mejor en textos largos</td><td>Suficiente para RAG de documentos</td></tr>
+          <tr><td>Si el proveedor cae…</td><td>Tu RAG cae</td><td>Sigue funcionando</td></tr>
+        </tbody>
+      </table></div>
+
+      <div class="box warn"><div class="lab">▲ Elegir motor de embeddings NO es como elegir modelo de chat</div>
+        <p>Cambiar de modelo de chat, en el peor caso, te da una respuesta con otro estilo. Cambiar de modelo de <strong>embeddings</strong> con un índice ya construido <strong>invalida el índice entero</strong>: los vectores viejos y los nuevos viven en espacios distintos, así que compararlos no da un resultado <em>peor</em> — da un resultado <em>sin sentido</em>. Y sin lanzar ningún error.</p>
+        <p>Es exactamente el bug silencioso del aviso de arriba (A3 y B1 deben usar el mismo modelo), visto desde otro ángulo. <strong>Si cambias <code class="k">EMBEDDINGS_PROVIDER</code>, reindexa.</strong> En este curso da igual —los ejemplos reconstruyen el índice en cada arranque—, pero con un Chroma persistente o un pgvector, no.</p></div>
       <div class="box practice"><div class="lab">▸ Para practicar</div>
         <p>Indexa un PDF tuyo, borra el script y vuelve a correrlo: al ser persistente, no re-indexa. Compara respuestas con <code class="k">k=2</code> vs <code class="k">k=6</code>.</p>
         <details class="sol"><summary>Ver una solución</summary><div class="sbody">
@@ -3484,6 +3520,9 @@ llm = ChatOpenAI(model="qwen/qwen3-32b",
           <tr><td>Retriever</td><td>La pieza que recibe la pregunta y devuelve los <code>k</code> chunks más relevantes.</td></tr>
           <tr><td>Embedding</td><td>Huella numérica de un texto; parecidos → números parecidos.</td></tr>
           <tr><td>Vector store</td><td>Base de datos que guarda embeddings y busca por parecido.</td></tr>
+          <tr><td>fastembed</td><td>Librería que ejecuta modelos de embeddings <em>en tu máquina</em>, sin API ni cuota. Usa ONNX Runtime en vez de PyTorch: ~70 MB en lugar de ~800 MB.</td></tr>
+          <tr><td>ONNX</td><td><em>Open Neural Network Exchange</em>: formato estándar para guardar un modelo ya entrenado, independiente de la librería que lo entrenó. El "PDF de los modelos".</td></tr>
+          <tr><td>Inferencia</td><td>Usar un modelo ya entrenado para producir una salida. Lo contrario de <em>entrenamiento</em> (ajustar sus pesos). Casi todo lo que escribirás hace inferencia.</td></tr>
           <tr><td>Text splitter</td><td>Trocea documentos respetando frases/párrafos.</td></tr>
           <tr><td>MMR</td><td>Recupera resultados relevantes y variados (evita duplicados).</td></tr>
           <tr><td>Re-ranker</td><td>Segundo filtro que reordena y deja arriba lo más relevante.</td></tr>
