@@ -131,6 +131,101 @@ def crear_llm(temperature: float = 0.0, modelo: str | None = None):
     )
 
 
+# ==================================================================
+# LOS EMBEDDINGS · donde la analogía con el chat se rompe
+# ==================================================================
+# El CHAT se cambia de proveedor con una variable de entorno. Los EMBEDDINGS,
+# no. Hay dos razones, y las dos importan:
+#
+#   1) **Groq no ofrece endpoint de embeddings.** Ni Ollama por defecto. Si
+#      mueves el chat a Groq, el RAG (temas 11, 12 y el proyecto final) se queda
+#      sin quien vectorice.
+#
+#   2) ⚠️ **Cambiar de modelo de embeddings INVALIDA el índice entero.** No es
+#      como cambiar de modelo de chat, donde la peor consecuencia es una
+#      respuesta distinta. Los vectores de `gemini-embedding-001` y los de
+#      MiniLM viven en espacios distintos: comparar unos con otros no da un
+#      resultado peor, da un resultado SIN SENTIDO. Hay que reindexar.
+#
+# Por eso hay una salida propia: calcular los embeddings **en tu máquina**.
+# Cero cuota, cero red (tras la primera descarga), y sin depender de que ningún
+# proveedor mantenga vivo un endpoint.
+#
+#   EMBEDDINGS_PROVIDER=google     → gemini-embedding-001. Por defecto. Gasta cuota.
+#   EMBEDDINGS_PROVIDER=fastembed  → un modelo multilingüe en ONNX, en local.
+#                                    Requiere: uv sync --extra emb
+EMBEDDINGS_POR_DEFECTO = "google"
+
+# Multilingüe a propósito: los documentos del curso están en español.
+MODELO_FASTEMBED = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+MODELO_EMBEDDINGS_GOOGLE = "gemini-embedding-001"
+
+
+class _EmbeddingsFastEmbed:
+    """Adaptador mínimo de fastembed a la interfaz Embeddings de LangChain.
+
+    fastembed devuelve generadores de `np.ndarray`; LangChain espera
+    `list[list[float]]`. Traducir entre ambos es todo lo que hace esta clase.
+    """
+
+    def __init__(self, modelo: str):
+        from fastembed import TextEmbedding
+        self._modelo = TextEmbedding(modelo)
+
+    def embed_documents(self, textos: list[str]) -> list[list[float]]:
+        return [vector.tolist() for vector in self._modelo.embed(textos)]
+
+    def embed_query(self, texto: str) -> list[float]:
+        # embed() siempre trabaja en lote: le pasamos uno y sacamos el primero.
+        return self.embed_documents([texto])[0]
+
+
+def proveedor_embeddings() -> str:
+    """Qué motor de embeddings toca, según EMBEDDINGS_PROVIDER."""
+    return os.getenv("EMBEDDINGS_PROVIDER", EMBEDDINGS_POR_DEFECTO).strip().lower()
+
+
+def crear_embeddings():
+    """El modelo que convierte texto en vectores, según el .env.
+
+    Los ejemplos de RAG llaman a ESTO. Si corres con Groq y no quieres gastar la
+    cuota de Gemini solo para vectorizar, pon `EMBEDDINGS_PROVIDER=fastembed`.
+
+    ⚠️ Si cambias de motor con un índice ya construido, **reconstrúyelo**. Los
+       ejemplos del curso lo reconstruyen en cada arranque, así que aquí no
+       muerde; en producción sí (ver `proyecto_llmops/app/embeddings.py`).
+    """
+    motor = proveedor_embeddings()
+
+    if motor == "google":
+        if not os.getenv("GOOGLE_API_KEY"):
+            raise SystemExit(
+                "❌ Falta GOOGLE_API_KEY: los embeddings por defecto son de Gemini.\n"
+                "   Groq no ofrece embeddings. Dos salidas:\n"
+                "     a) pon GOOGLE_API_KEY en el .env (el chat puede seguir en Groq), o\n"
+                "     b) calcúlalos en local:  uv sync --extra emb\n"
+                "        y añade al .env:      EMBEDDINGS_PROVIDER=fastembed"
+            )
+        from langchain_google_genai import GoogleGenerativeAIEmbeddings
+        return GoogleGenerativeAIEmbeddings(
+            model=os.getenv("EMBEDDINGS_MODELO", MODELO_EMBEDDINGS_GOOGLE)
+        )
+
+    if motor == "fastembed":
+        try:
+            return _EmbeddingsFastEmbed(os.getenv("EMBEDDINGS_MODELO", MODELO_FASTEMBED))
+        except ImportError as exc:
+            raise SystemExit(
+                "❌ EMBEDDINGS_PROVIDER=fastembed necesita el paquete 'fastembed'.\n"
+                "   Instálalo:  uv sync --extra emb\n"
+                "   (la primera vez descarga el modelo, ~220 MB; después va offline)"
+            ) from exc
+
+    raise ValueError(
+        f"EMBEDDINGS_PROVIDER='{motor}' no existe. Opciones: google, fastembed."
+    )
+
+
 def es_error_cuota(exc: BaseException) -> bool:
     """¿Es esta excepción un error de cuota de Gemini (429)?
 
@@ -173,22 +268,12 @@ def cargar_var_entorno() -> None:
 
 
 def requiere_api_key() -> str | None:
-    """Devuelve un mensaje de error si FALTA GOOGLE_API_KEY; None si está ok.
+    """Alias histórico de `requiere_llm_key()`. Mismo comportamiento.
 
-    Así cada ejemplo hace:  if (err := requiere_api_key()): raise SystemExit(err)
-    en una sola línea, en vez de repetir el if not os.getenv(...).
+    Antes comprobaba GOOGLE_API_KEY a secas, porque el curso solo hablaba con
+    Gemini. Ahora todos los ejemplos respetan `LLM_PROVIDER`, así que validar la
+    llave de Google cuando el alumno corre contra Groq sería mentirle.
 
-    ⚠️ Es específica de Gemini a propósito: la usan los ejemplos numerados
-    (`01_…` a `16_…`), que instancian `ChatGoogleGenerativeAI` directamente.
-    Los EJERCICIOS usan `crear_llm()` + `requiere_llm_key()`, que sí entienden
-    de proveedores. Si pusiste LLM_PROVIDER=groq, esta función te lo recuerda
-    en vez de dejarte pelear con un ImportError de Google.
+    Se mantiene el nombre para no romper el código que alguien ya haya copiado.
     """
-    if not os.getenv("GOOGLE_API_KEY"):
-        if proveedor() != "google":
-            return (f"❌ Falta GOOGLE_API_KEY. Tienes LLM_PROVIDER={proveedor()} en el "
-                    f".env, pero este EJEMPLO usa Gemini directamente (los ejercicios "
-                    f"sí respetan LLM_PROVIDER). Pon la llave de Google, o corre los "
-                    f"ejemplos offline: 07, 12, 13b, 14, 15, 16b.")
-        return ("❌ Falta GOOGLE_API_KEY. Copia .env.example a .env y pon tu llave.")
-    return None
+    return requiere_llm_key()

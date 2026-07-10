@@ -29,16 +29,16 @@ La columna «¿Gasta cuota?» se refiere al proveedor que tengas activo — con
 | 11 | [Anti-alucinación del RAG](ejercicio_11_rag.md) | RAG | `11_rag.py` | Sí | ⚠️ chat sí, embeddings no |
 | 12 | [Predice el ranking](ejercicio_12_rerank.md) | Híbrido + re-ranking | `12_rag_hibrido_rerank.py` | **No** | — |
 | 13 | [Escalar cuando el humano rechaza](ejercicio_13_hitl.md) | LangGraph + HITL | `13b_human_in_the_loop.py` | **No** | — |
-| 🏆 | [Extender el proyecto final](ejercicio_proyecto.md) | Todo junto | `proyecto_final/` | Parcial | ❌ usa Gemini directo |
+| 🏆 | [Extender el proyecto final](ejercicio_proyecto.md) | Todo junto | `proyecto_final/` | Parcial | ⚠️ chat sí, embeddings no |
 
 ## ⚡ Si la cuota de Gemini se te agota (429)
 
 Te va a pasar: el plan gratuito de Gemini da para muy poco, y estos ejercicios
 llaman al modelo varias veces cada uno. Tienes dos salidas.
 
-**Salida 1 — Cambia a Groq.** Los ejercicios no instancian el modelo a mano:
-llaman a `util.crear_llm()`, que lee el proveedor del `.env`. Consigue una llave
-gratis en [console.groq.com/keys](https://console.groq.com/keys) y añade dos líneas:
+**Salida 1 — Cambia a Groq.** Nada en el curso instancia el modelo a mano:
+todo llama a `util.crear_llm()`, que lee el proveedor del `.env`. Consigue una
+llave gratis en [console.groq.com/keys](https://console.groq.com/keys) y añade dos líneas:
 
 ```bash
 # curso_ejemplos/.env
@@ -46,8 +46,9 @@ LLM_PROVIDER=groq
 GROQ_API_KEY=gsk_tu_llave_aqui
 ```
 
-Ya está. Los ejercicios pasan a usar **`qwen/qwen3-32b`**, con un cupo mucho más
-generoso. No hay que tocar ni una línea de código.
+Ya está. Los ejercicios —y todos los ejemplos del curso— pasan a usar
+**`qwen/qwen3-32b`**, con un cupo mucho más generoso. No hay que tocar ni una
+línea de código.
 
 > ⭐ **Por qué basta con eso.** Groq, Ollama, Together y OpenAI hablan todos el
 > *mismo* dialecto: la API de OpenAI. Por eso una sola clase (`ChatOpenAI` con
@@ -55,17 +56,19 @@ generoso. No hay que tocar ni una línea de código.
 > propia rama en `crear_llm()`. No es que LangChain tenga un adaptador por
 > proveedor: es que el mercado convergió en un protocolo.
 
-Dos límites que conviene saber antes de que te muerdan:
+**El único límite: Groq no ofrece embeddings.** El ejercicio 11 (RAG) los
+necesita, así que el chat irá por Groq pero vectorizar seguiría gastando
+`GOOGLE_API_KEY`. La salida sin cuota es calcularlos en tu máquina:
 
-- **`LLM_PROVIDER` solo lo respetan los ejercicios.** Los ejemplos numerados
-  (`01_…`, `02_…`) instancian Gemini directamente, a propósito: el curso enseña
-  un proveedor concreto antes de enseñar a abstraerlo. Si pones
-  `LLM_PROVIDER=groq` y corres `01_primer_modelo.py`, el mensaje de error te lo
-  recuerda en vez de dejarte pelear con un `ImportError`.
-- **Groq no ofrece embeddings.** El ejercicio 11 (RAG) sigue necesitando
-  `GOOGLE_API_KEY` para vectorizar, aunque el chat vaya por Groq. Cambiar de
-  modelo de embeddings no es cambiar de proveedor: **invalida el índice entero**,
-  porque los vectores viejos y los nuevos viven en espacios distintos.
+```bash
+uv sync --extra emb                 # fastembed (ONNX, sin PyTorch)
+# y en el .env:
+EMBEDDINGS_PROVIDER=fastembed
+```
+
+Y de paso aprendes algo que muerde en producción: cambiar de modelo de embeddings
+**no** es cambiar de proveedor de chat. **Invalida el índice entero**, porque los
+vectores viejos y los nuevos viven en espacios distintos. Hay que reindexar.
 
 **Salida 2 — Haz los ejercicios offline.** Los ejercicios 12 y 13 no llaman a
 ningún modelo y, no por casualidad, son los dos que más enseñan sobre

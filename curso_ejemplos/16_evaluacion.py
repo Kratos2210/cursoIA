@@ -23,10 +23,12 @@ Ejecuta:    uv run python curso_ejemplos/16_evaluacion.py
 """
 
 # ============ LIBRERÍAS QUE USAMOS ============
-import os                        # leer GOOGLE_API_KEY y construir rutas
+import os                        # construir rutas
 import re                        # tokenizar para el retrieval simple
 from collections import Counter  # contar palabras (retrieval por solapamiento)
 from dotenv import load_dotenv   # cargar la llave desde el archivo .env
+
+from util import requiere_llm_key  # ¿hay llave del proveedor activo?
 
 
 # ============ 1) LA "APP" QUE VAMOS A EVALUAR ============
@@ -80,11 +82,17 @@ def evaluar_contenido(respuesta: str, esperado: list[str]) -> float:
 
 # ============ 4) EVALUADOR OPCIONAL: LLM COMO JUEZ ============
 def crear_juez():
-    """Devuelve una función juez si hay llave; si no, None (y no pasa nada)."""
-    if not os.getenv("GOOGLE_API_KEY"):
-        return None
-    from langchain_google_genai import ChatGoogleGenerativeAI
+    """Devuelve una función juez si hay llave; si no, None (y no pasa nada).
+
+    La llave que hace falta depende del proveedor activo (LLM_PROVIDER):
+    GOOGLE_API_KEY con Gemini, GROQ_API_KEY con Groq, ninguna con Ollama.
+    """
     from pydantic import BaseModel, Field
+
+    from util import crear_llm
+
+    if requiere_llm_key():
+        return None
 
     class Veredicto(BaseModel):
         """Calificación del juez sobre una respuesta."""
@@ -92,7 +100,7 @@ def crear_juez():
         motivo: str = Field(description="Justificación en una frase")
 
     # temperature=0: un juez debe ser consistente, no creativo
-    juez = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
+    juez = crear_llm(temperature=0)
     juez_estructurado = juez.with_structured_output(Veredicto)
 
     def juzgar(pregunta: str, respuesta: str) -> str:

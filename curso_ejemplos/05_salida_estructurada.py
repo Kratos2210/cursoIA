@@ -15,11 +15,10 @@ Ejecuta:    uv run python curso_ejemplos/05_salida_estructurada.py
 """
 
 # ============ LIBRERÍAS QUE USAMOS ============
-import os                                   # variables de entorno
 from dotenv import load_dotenv              # cargar .env
 from typing import Optional, List           # 'typing': tipos (opcional, lista) para los moldes
 from pydantic import BaseModel, Field       # 'pydantic': fábrica de moldes de datos con validación
-from langchain_google_genai import ChatGoogleGenerativeAI   # modelo Gemini
+from util import mensaje_cuota, crear_llm, requiere_llm_key   # el modelo, del proveedor que diga el .env
 
 
 # ---- Los moldes se definen fuera de main() (son "plantillas") ----
@@ -40,9 +39,11 @@ class Etiqueta(BaseModel):
 def main():
     # ---- 1) Preparar llave y modelo ---------------------
     load_dotenv()
-    if not os.getenv("GOOGLE_API_KEY"):
-        raise SystemExit("❌ Falta GOOGLE_API_KEY. Copia .env.example a .env y pon tu llave.")
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
+    # requiere_llm_key() valida la llave del proveedor ACTIVO: GOOGLE_API_KEY
+    # con Gemini, GROQ_API_KEY con Groq, ninguna con Ollama.
+    if (error := requiere_llm_key()):
+        raise SystemExit(error)
+    llm = crear_llm(temperature=0)
 
     # ---- 2) EXTRAER: el modelo llena el molde Extraccion -
     # with_structured_output = "ponle anteojeras": deja de conversar y llena el formulario.
@@ -64,6 +65,6 @@ if __name__ == "__main__":
         main()
     except Exception as error:
         if "RESOURCE_EXHAUSTED" in str(error) or "429" in str(error):
-            print("⏳ Cuota de Gemini agotada (429). Espera unos minutos o usa 'gemini-2.5-flash'.")
+            print(mensaje_cuota())   # el mensaje depende del proveedor activo
         else:
             print(f"❌ Error inesperado: {error}")

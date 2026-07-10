@@ -24,7 +24,7 @@ from langchain_core.output_parsers import StrOutputParser   # respuesta -> texto
 from langchain_core.runnables import RunnablePassthrough    # deja pasar la pregunta tal cual
 from langchain_core.vectorstores import InMemoryVectorStore # base de datos vectorial en memoria (RAM)
 # Modelo de chat + modelo de embeddings (traductor de texto a números):
-from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
+from util import mensaje_cuota, crear_embeddings, crear_llm, requiere_llm_key
 
 
 # ============ PIEZAS PURAS (sin LLM) ============
@@ -47,8 +47,8 @@ def unir(docs) -> str:
 def main():
     # ---- 1) Preparar llave ------------------------------
     load_dotenv()
-    if not os.getenv("GOOGLE_API_KEY"):
-        raise SystemExit("❌ Falta GOOGLE_API_KEY. Copia .env.example a .env y pon tu llave.")
+    if (error := requiere_llm_key()):
+        raise SystemExit(error)
 
     # ---- 2) Leer el documento y trocearlo ---------------
     ruta = os.path.join(os.path.dirname(__file__), "datos_rag.txt")
@@ -61,7 +61,13 @@ def main():
 
     # ---- 3) Vectorizar y guardar ------------------------
     # embeddings = traductor de texto a números; el vector store los guarda.
-    embeddings = GoogleGenerativeAIEmbeddings(model="gemini-embedding-001")
+    #
+    # ⚠️ Aquí el chat y los embeddings NO van juntos. Groq no ofrece embeddings,
+    #    así que con LLM_PROVIDER=groq esta línea sigue llamando a Gemini. Si no
+    #    quieres gastar esa cuota: `uv sync --extra emb` y EMBEDDINGS_PROVIDER=fastembed
+    #    (los calcula en tu máquina). Ojo: cambiar de modelo de embeddings
+    #    invalida cualquier índice ya construido — hay que reindexar.
+    embeddings = crear_embeddings()
     vs = InMemoryVectorStore.from_documents(fragmentos, embedding=embeddings)
 
     # ---- 4) El retriever: trae los 2 más parecidos ------
@@ -72,7 +78,7 @@ def main():
         "Responde SOLO con el contexto. Si la respuesta no está, dilo amablemente.\n"
         "Contexto:\n{context}\n\nPregunta: {question}"
     )
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
+    llm = crear_llm(temperature=0)
 
     # ---- 6) La cadena RAG (LCEL) ------------------------
     # "context" se llena buscando en los documentos; "question" pasa tal cual.
@@ -96,6 +102,6 @@ if __name__ == "__main__":
         main()
     except Exception as error:
         if "RESOURCE_EXHAUSTED" in str(error) or "429" in str(error):
-            print("⏳ Cuota de Gemini agotada (429). Espera unos minutos o usa 'gemini-2.5-flash'.")
+            print(mensaje_cuota())   # el mensaje depende del proveedor activo
         else:
             print(f"❌ Error inesperado: {error}")

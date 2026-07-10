@@ -62,11 +62,19 @@ gastar un solo token.
 
 **Qué hacer, en orden:**
 1. Espera 60 segundos y reintenta. Si era el límite *por minuto*, se arregla solo.
-2. Si persiste, cambia de modelo: `gemini-2.5-flash` tiene otra cuota.
-   En el proyecto final, edita `MODELO_CHAT` en `proyecto_final/config.py`.
-3. Si sigue, es el límite *diario*: espera al reinicio (medianoche, hora del Pacífico)
-   o activa facturación en Google AI Studio.
-4. Mientras tanto, sigue estudiando con los ejemplos offline (§2).
+2. Si persiste, cambia de modelo sin tocar código: `LLM_MODELO=gemini-2.5-flash`
+   en el `.env`. (Ya no hay ninguna constante `MODELO_CHAT` que editar: todo el
+   curso construye el modelo con `util.crear_llm()`, que lee el `.env`.)
+3. **La salida buena: cámbiate de proveedor.** `LLM_PROVIDER=groq` +
+   `GROQ_API_KEY` y el curso entero pasa a `qwen/qwen3-32b`, con un cupo mucho
+   más generoso. Llave gratis en <https://console.groq.com/keys>.
+   ⚠️ El RAG (temas 11, 12 y proyecto final) necesita **embeddings**, y Groq no
+   los ofrece: seguiría gastando `GOOGLE_API_KEY` solo para vectorizar. Para no
+   gastar nada: `uv sync --extra emb` y `EMBEDDINGS_PROVIDER=fastembed`, que los
+   calcula en tu máquina.
+4. Si sigue, es el límite *diario* de Gemini: espera al reinicio (medianoche,
+   hora del Pacífico) o activa facturación en Google AI Studio.
+5. Mientras tanto, sigue estudiando con los ejemplos offline (§2).
 
 **Cómo se distingue de un problema real:** `util.es_error_cuota(exc)` busca
 `429` o `RESOURCE_EXHAUSTED` en el texto del error. Cualquier otra cosa

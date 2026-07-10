@@ -15,9 +15,8 @@ Ejecuta:    uv run python curso_ejemplos/03_interfaz_unificada.py
 """
 
 # ============ LIBRERÍAS QUE USAMOS ============
-import os                                   # variables de entorno
 from dotenv import load_dotenv              # cargar .env
-from langchain_google_genai import ChatGoogleGenerativeAI   # modelo Gemini
+from util import mensaje_cuota, crear_llm, requiere_llm_key   # el modelo, del proveedor que diga el .env
 from langchain_core.prompts import ChatPromptTemplate       # plantillas de prompt
 from langchain_core.output_parsers import StrOutputParser   # respuesta -> texto plano
 
@@ -25,9 +24,11 @@ from langchain_core.output_parsers import StrOutputParser   # respuesta -> texto
 def main():
     # ---- 1) Preparar llave, modelo y cadena -------------
     load_dotenv()
-    if not os.getenv("GOOGLE_API_KEY"):
-        raise SystemExit("❌ Falta GOOGLE_API_KEY. Copia .env.example a .env y pon tu llave.")
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.3)
+    # requiere_llm_key() valida la llave del proveedor ACTIVO: GOOGLE_API_KEY
+    # con Gemini, GROQ_API_KEY con Groq, ninguna con Ollama.
+    if (error := requiere_llm_key()):
+        raise SystemExit(error)
+    llm = crear_llm(temperature=0.3)
     prompt = ChatPromptTemplate.from_template(
         "Clasifica el sentimiento de esta reseña en una sola palabra.\nReseña: {review}"
     )
@@ -65,6 +66,6 @@ if __name__ == "__main__":
         main()
     except Exception as error:
         if "RESOURCE_EXHAUSTED" in str(error) or "429" in str(error):
-            print("⏳ Cuota de Gemini agotada (429). Espera unos minutos o usa 'gemini-2.5-flash'.")
+            print(mensaje_cuota())   # el mensaje depende del proveedor activo
         else:
             print(f"❌ Error inesperado: {error}")

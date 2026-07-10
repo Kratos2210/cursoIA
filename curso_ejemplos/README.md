@@ -17,10 +17,16 @@ cp .env.example .env     # edita y pon tu llave de https://aistudio.google.com
 > `pyproject.toml` + `uv.lock` son la receta reproducible.
 > `requirements.txt` se mantiene solo por compatibilidad con `pip install -r`.
 
-> ⚡ **La cuota de Gemini es cortísima.** Para los [ejercicios](ejercicios/) puedes
-> usar Groq (`qwen/qwen3-32b`) con solo dos líneas en el `.env`:
-> `LLM_PROVIDER=groq` + `GROQ_API_KEY` ([llave gratis](https://console.groq.com/keys)).
-> Los ejemplos numerados siguen usando Gemini a propósito — ver el `.env.example`.
+> ⚡ **La cuota de Gemini es cortísima.** *Todos* los ejemplos llaman a
+> `util.crear_llm()`, que lee el proveedor del `.env`. Con dos líneas
+> (`LLM_PROVIDER=groq` + `GROQ_API_KEY`, [llave gratis](https://console.groq.com/keys))
+> el curso entero pasa a `qwen/qwen3-32b` sin tocar una sola línea de código.
+> También hay `LLM_PROVIDER=ollama` (en tu máquina, sin llave).
+
+> 🧭 **El RAG es la excepción.** Groq no ofrece embeddings, así que los temas 11 y
+> 12 y el proyecto final seguirían gastando `GOOGLE_API_KEY` solo para vectorizar.
+> Salida sin cuota: `uv sync --extra emb` + `EMBEDDINGS_PROVIDER=fastembed`, que
+> los calcula en tu máquina. Ver [§9](#9-cambiar-de-proveedor-groq-ollama-fastembed).
 
 ## 2) Cómo ejecutar cualquier ejemplo
 
@@ -39,6 +45,9 @@ casualidad, los que más enseñan sobre ingeniería de RAG y agentes.
 
 ## 3) Índice de ejemplos
 
+La columna «Cuota» se refiere al proveedor que tengas activo: con
+`LLM_PROVIDER=groq` gastas cupo de Groq, no de Gemini.
+
 | Tema | Archivo | Qué aprendes | Cuota |
 |------|---------|--------------|-------|
 | 01 · Primer modelo | `01_primer_modelo.py` | invoke + tipos de mensaje | Sí |
@@ -51,7 +60,7 @@ casualidad, los que más enseñan sobre ingeniería de RAG y agentes.
 | 08 · Routing | `08_routing.py` | el ciclo completo A→D | Sí |
 | 09 · Resiliencia + async | `09_resiliencia_async.py` | fallbacks, retry, async | Sí |
 | 10 · Agente (prebuilt) | `10_agente.py` | `create_react_agent` + memoria | Sí |
-| 11 · RAG | `11_rag.py` | responder desde un documento | Sí |
+| 11 · RAG | `11_rag.py` | responder desde un documento | Sí (chat **+ embeddings**) |
 | 12 · RAG en profundidad | `12_rag_hibrido_rerank.py` | BM25 + vectorial, RRF y re-ranking | **No** |
 | 13 · LangGraph a fondo | `13_langgraph_stategraph.py` | `StateGraph` desde cero | Sí |
 | 13b · Human-in-the-loop | `13b_human_in_the_loop.py` | `interrupt()` + `Command(resume=…)` | **No** |
@@ -74,9 +83,9 @@ Los dos que no puedes saltarte —y no gastan cuota— son
 [`ejercicio_12_rerank.md`](ejercicios/ejercicio_12_rerank.md) (predice el ranking
 antes de ejecutarlo) y [`ejercicio_13_hitl.md`](ejercicios/ejercicio_13_hitl.md).
 
-Los ejercicios **no cablean el proveedor**: llaman a `util.crear_llm()`, que lee
+Ningún ejercicio cablea el proveedor: llaman a `util.crear_llm()`, que lee
 `LLM_PROVIDER` del `.env`. Cuando Gemini te dé un 429, pásate a Groq sin tocar
-código. Excepción: el ejercicio 11 (RAG) necesita embeddings, y Groq no los ofrece.
+código ([§9](#9-cambiar-de-proveedor-groq-ollama-fastembed)).
 
 ## 5) Mapa: concepto → archivo → ejercicio → test
 
@@ -172,10 +181,47 @@ Y tres decisiones documentadas, con sus consecuencias negativas escritas:
 [caché semántico](proyecto_llmops/docs/adr/0005-semantic-cache.md).
 Cuando algo se rompa: [su runbook](proyecto_llmops/docs/README_runbook.md).
 
-## 9) Si ves un error 429 (RESOURCE_EXHAUSTED)
+## 9) Cambiar de proveedor (Groq, Ollama, fastembed)
+
+Ningún archivo del curso instancia un modelo a mano. Todos llaman a
+`util.crear_llm()` y a `util.crear_embeddings()`, que leen el `.env`.
+
+| Quiero… | En el `.env` | Instalar |
+|---------|--------------|----------|
+| Gemini (por defecto) | `LLM_PROVIDER=google` + `GOOGLE_API_KEY` | — |
+| **Groq · `qwen/qwen3-32b`** | `LLM_PROVIDER=groq` + `GROQ_API_KEY` | — |
+| Ollama en mi máquina | `LLM_PROVIDER=ollama` + `LLM_MODELO=qwen3:8b` | `ollama serve` |
+| Otro modelo del mismo proveedor | `LLM_MODELO=llama-3.3-70b-versatile` | — |
+| **Embeddings sin cuota** | `EMBEDDINGS_PROVIDER=fastembed` | `uv sync --extra emb` |
+
+Una sola clase (`ChatOpenAI` con otra `base_url`) cubre Groq, Ollama, Together y
+OpenAI: el mercado convergió en el dialecto de la API de OpenAI. Gemini no lo
+habla, y por eso conserva su propia rama en `crear_llm()`.
+
+### ⚠️ Los embeddings NO siguen a `LLM_PROVIDER`
+
+Y no es un descuido. **Groq no ofrece embeddings**, y además **cambiar de modelo
+de embeddings invalida el índice entero**: los vectores viejos y los nuevos viven
+en espacios distintos, así que compararlos no da un resultado peor — da un
+resultado *sin sentido*. Hay que reindexar.
+
+En el curso eso no muerde (el índice se reconstruye en cada arranque), pero
+conviene entenderlo antes de llegar a producción. Para hacer RAG sin gastar nada:
+
+```bash
+uv sync --extra emb                 # fastembed (ONNX, sin PyTorch)
+echo "EMBEDDINGS_PROVIDER=fastembed" >> .env
+uv run python 11_rag.py             # vectoriza en tu máquina; solo el chat sale a internet
+```
+
+La primera ejecución descarga el modelo (~220 MB, multilingüe porque el curso
+está en español). Después funciona sin conexión.
+
+## 10) Si ves un error 429 (RESOURCE_EXHAUSTED)
 
 Es el límite del plan gratuito de Gemini. Espera unos minutos, cambia el modelo
-a `gemini-2.5-flash`, o activa facturación. **No es un error de tu código.**
+a `gemini-2.5-flash`, **pásate a Groq** ([§9](#9-cambiar-de-proveedor-groq-ollama-fastembed))
+o activa facturación. **No es un error de tu código.**
 
 Mientras tanto, corre los ejemplos offline: son 7 de los 19.
 Receta completa en el [runbook](docs/README_runbook.md#31-429-resource_exhausted--el-más-común).

@@ -16,9 +16,8 @@ Ejecuta:    uv run python curso_ejemplos/13_langgraph_stategraph.py
 """
 
 # ============ LIBRERÍAS QUE USAMOS ============
-import os                                   # variables de entorno
 from dotenv import load_dotenv              # cargar .env
-from langchain_google_genai import ChatGoogleGenerativeAI   # modelo Gemini
+from util import mensaje_cuota, crear_llm, requiere_llm_key   # el modelo, del proveedor que diga el .env
 from langchain_core.tools import tool                       # decorador de herramientas
 # Piezas de LangGraph para construir el grafo:
 from langgraph.graph import StateGraph, START, END, MessagesState  # grafo, inicio/fin y el estado
@@ -35,10 +34,12 @@ def calculadora_descuentos(precio: float, porcentaje: float) -> float:
 def main():
     # ---- 1) Preparar modelo + tools ---------------------
     load_dotenv()
-    if not os.getenv("GOOGLE_API_KEY"):
-        raise SystemExit("❌ Falta GOOGLE_API_KEY. Copia .env.example a .env y pon tu llave.")
+    # requiere_llm_key() valida la llave del proveedor ACTIVO: GOOGLE_API_KEY
+    # con Gemini, GROQ_API_KEY con Groq, ninguna con Ollama.
+    if (error := requiere_llm_key()):
+        raise SystemExit(error)
     herramientas = [calculadora_descuentos]
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
+    llm = crear_llm(temperature=0)
     llm_tools = llm.bind_tools(herramientas)
 
     # ---- 2) Los NODOS (funciones sobre el estado) -------
@@ -83,6 +84,6 @@ if __name__ == "__main__":
         main()
     except Exception as error:
         if "RESOURCE_EXHAUSTED" in str(error) or "429" in str(error):
-            print("⏳ Cuota de Gemini agotada (429). Espera unos minutos o usa 'gemini-2.5-flash'.")
+            print(mensaje_cuota())   # el mensaje depende del proveedor activo
         else:
             print(f"❌ Error inesperado: {error}")

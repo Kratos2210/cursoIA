@@ -91,13 +91,14 @@ def decidir_con_llm(pregunta: str, ya_respondido: bool) -> Destino:
         return "FIN"    # esta regla no se delega jamás: es la que corta el bucle
 
     from pydantic import BaseModel, Field
-    from langchain_google_genai import ChatGoogleGenerativeAI
+
+    from util import mensaje_cuota, crear_llm
 
     class Decision(BaseModel):
         """A qué especialista enviar la petición del usuario."""
         destino: Destino = Field(description="consultor para dudas, evaluador para evaluar reglas")
 
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
+    llm = crear_llm(temperature=0)   # Gemini, Groq u Ollama: lo dice el .env
     decision = llm.with_structured_output(Decision).invoke(
         "Eres el supervisor de un equipo de gobierno de datos.\n"
         "· consultor: responde dudas sobre qué dice la normativa.\n"
@@ -213,6 +214,6 @@ if __name__ == "__main__":
         main()
     except Exception as error:
         if "RESOURCE_EXHAUSTED" in str(error) or "429" in str(error):
-            print("⏳ Cuota de Gemini agotada (429). Espera unos minutos o usa 'gemini-2.5-flash'.")
+            print(mensaje_cuota())   # el mensaje depende del proveedor activo
         else:
             print(f"❌ Error inesperado: {error}")

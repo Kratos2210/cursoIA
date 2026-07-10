@@ -544,8 +544,14 @@ ModuleNotFoundError: No module named 'dotenv'</code></pre></figure>
 # .../otro-proyecto/.venv ← estás en la carpeta equivocada: haz cd</code></pre></figure>
         <p>En este curso hay <strong>una sola carpeta de trabajo</strong>: <code class="k">mi-curso-ia/</code>. Ahí vives, ahí escribes tus archivos y ahí traes las librerías con <code class="k">uv add</code>. Si un comando te falla, la primera pregunta no es "¿me faltó instalar algo?" sino <strong>"¿estoy parado en <code>mi-curso-ia/</code>?"</strong>. Nueve de cada diez veces, ese es el problema.</p></div>
 
-      <h3>Consigue tu llave de Gemini (paso a paso)</h3>
-      <p>El modelo vive en los servidores de Google; tu programa se identifica ante ellos con una <strong>llave API</strong>. Conseguirla es gratis y toma un minuto:</p>
+      <h3>Consigue tu llave (paso a paso)</h3>
+      <p>El modelo vive en los servidores de otra empresa; tu programa se identifica ante ellos con una <strong>llave API</strong>. Conseguirla es gratis y toma un minuto. <strong>Tienes dos proveedores para elegir</strong>, y el curso funciona igual con cualquiera de los dos.</p>
+
+      <div class="box analogy"><div class="lab">◆ Cuál elegir (y por qué te vas a acabar pasando a Groq)</div>
+        <p><strong>Gemini</strong> es el camino por defecto del curso. <strong>Groq</strong> sirve <code class="k">qwen/qwen3-32b</code> con un cupo gratuito <em>mucho</em> más generoso y respuestas bastante más rápidas.</p>
+        <p>La cuota gratuita de Gemini se agota en una tarde de práctica: verás un <code class="k">429 RESOURCE_EXHAUSTED</code> y creerás que rompiste algo. No rompiste nada. Si vas a hacer los ejercicios del tirón, <strong>empieza directamente en Groq</strong>. Puedes tener las dos llaves y cambiar con una línea del <code class="k">.env</code>.</p></div>
+
+      <h4>Opción A · Gemini</h4>
       <ol>
         <li>Entra a <a class="inline" href="https://aistudio.google.com">aistudio.google.com</a>.</li>
         <li>Inicia sesión con tu cuenta de Google (la misma de Gmail sirve).</li>
@@ -555,7 +561,56 @@ ModuleNotFoundError: No module named 'dotenv'</code></pre></figure>
       </ol>
       <p>El paso 5 es el que más confunde. El comando de instalación te dejó un <code class="k">.env</code> con un texto de ejemplo; tú lo cambias por tu llave real:</p>
       <figure class="code"><figcaption><span class="d"></span>.env · ANTES (lo que creó el comando)</figcaption><pre><code>GOOGLE_API_KEY=tu_llave_secreta</code></pre></figure>
-      <figure class="code"><figcaption><span class="d"></span>.env · DESPUÉS (con tu llave real, sin comillas ni espacios)</figcaption><pre><code>GOOGLE_API_KEY=AIzaSyD-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</code></pre></figure>
+      <figure class="code"><figcaption><span class="d"></span>.env · DESPUÉS (con tu llave real, sin comillas ni espacios)</figcaption><pre><code>LLM_PROVIDER=google
+GOOGLE_API_KEY=AIzaSyD-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</code></pre></figure>
+
+      <h4>Opción B · Groq con <code>qwen/qwen3-32b</code></h4>
+      <ol>
+        <li>Entra a <a class="inline" href="https://console.groq.com/keys">console.groq.com/keys</a>.</li>
+        <li>Inicia sesión (con Google o GitHub, no hace falta tarjeta).</li>
+        <li>Haz clic en <strong>"Create API Key"</strong> y ponle cualquier nombre.</li>
+        <li><strong>Copia</strong> la llave — empieza con <code class="k">gsk_…</code>. Solo se muestra <em>una vez</em>.</li>
+        <li>Pégala en el <code class="k">.env</code> y cambia el proveedor:</li>
+      </ol>
+      <figure class="code"><figcaption><span class="d"></span>.env · con Groq</figcaption><pre><code>LLM_PROVIDER=groq
+GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</code></pre></figure>
+      <p>Eso es todo. Los ejemplos no cambian: todos llaman a <code class="k">util.crear_llm()</code>, que lee el <code class="k">.env</code> y construye el modelo del proveedor activo. Ninguno instancia un modelo a mano.</p>
+      <figure class="code"><figcaption><span class="d"></span>util.py · una clase para casi todo el mercado</figcaption><pre><code>def crear_llm(temperature=0.0, modelo=None):
+    activo = proveedor()                       # lo dice LLM_PROVIDER
+    modelo = modelo or modelo_por_defecto(activo)
+
+    if activo == "google":                     # Gemini habla su propio dialecto
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        return ChatGoogleGenerativeAI(model=modelo, temperature=temperature)
+
+    # Groq, Ollama, Together, OpenAI… todos hablan el dialecto de OpenAI.
+    # Lo único que cambia entre ellos es la base_url.
+    base_url, variable = _COMPATIBLES_OPENAI[activo]
+    from langchain_openai import ChatOpenAI
+    return ChatOpenAI(model=modelo, temperature=temperature,
+                      base_url=base_url, api_key=os.getenv(variable))</code></pre></figure>
+      <div class="box analogy"><div class="lab">◆ Por qué basta con eso</div>
+        <p>No es que LangChain tenga un adaptador por proveedor: es que <strong>el mercado convergió en un protocolo</strong>. Groq, Ollama, Together y OpenAI hablan todos la misma API, así que una sola clase con otra <code class="k">base_url</code> los cubre a los cuatro. Gemini no la habla, y por eso tiene su propia rama. También puedes usar <code class="k">LLM_PROVIDER=ollama</code> para correr un modelo en tu propia máquina, sin llave y sin cuota.</p></div>
+
+      <h4>El RAG no se salva: los embeddings y <code>fastembed</code></h4>
+      <p>Hay una asimetría que conviene entender pronto, porque muerde en el <a class="inline" href="#m11">Módulo 11</a>. El <strong>chat</strong> se cambia de proveedor con una variable. Los <strong>embeddings</strong> —el modelo que convierte texto en vectores para que el RAG busque por significado— <strong>no</strong>. Por dos razones:</p>
+      <ol>
+        <li><strong>Groq no ofrece embeddings.</strong> Ninguno. Si mueves el chat a Groq, el RAG se queda sin quien vectorice.</li>
+        <li><strong>Cambiar de modelo de embeddings invalida el índice entero.</strong> No es como cambiar de modelo de chat, donde lo peor que pasa es que la respuesta suene distinta. Los vectores de <code class="k">gemini-embedding-001</code> y los de otro modelo <em>viven en espacios distintos</em>: compararlos no da un resultado peor, da un resultado <strong>sin sentido</strong>. Hay que reindexar.</li>
+      </ol>
+      <p>Por eso los embeddings tienen su propia variable. Y por eso existe una salida que no depende de ningún proveedor: <strong>calcularlos en tu propia máquina</strong> con <code class="k">fastembed</code>.</p>
+      <figure class="code"><figcaption><span class="d"></span>terminal · instalar los embeddings locales</figcaption><pre><code>uv sync --extra emb     # trae fastembed (ONNX, sin PyTorch)</code></pre></figure>
+      <figure class="code"><figcaption><span class="d"></span>.env · chat en Groq, embeddings en tu portátil → cero cuota de Gemini</figcaption><pre><code>LLM_PROVIDER=groq
+GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+EMBEDDINGS_PROVIDER=fastembed</code></pre></figure>
+      <p>Con esas cuatro líneas, <code class="k">11_rag.py</code> vectoriza los fragmentos en tu máquina y solo el chat sale a internet. La primera ejecución descarga el modelo (~220 MB, multilingüe: el curso está en español); a partir de ahí funciona incluso sin conexión.</p>
+      <figure class="code output"><figcaption><span class="d"></span>salida esperada · 11_rag.py con fastembed</figcaption><pre><code>📄 Se crearon 7 fragmentos.
+
+🙋 ¿Cuál es el horario de atención?
+🤖 Atendemos de lunes a viernes, de 9:00 a 18:00.</code></pre></figure>
+      <div class="box warn"><div class="lab">▲ Si ya habías indexado con otro modelo, reindexa</div>
+        <p>En el curso no muerde: los ejemplos reconstruyen el índice en cada arranque, así que cambiar <code class="k">EMBEDDINGS_PROVIDER</code> es inofensivo. En producción, donde el índice vive en una base de datos, cambiarlo <strong>sin reindexar</strong> deja un vector store que responde con basura convincente. Así lo resuelve <a class="inline" href="#llmops"><code class="k">proyecto_llmops/</code></a>: los embeddings son locales <em>desde el principio</em>, precisamente para que ningún proveedor pueda obligarte a reindexar.</p></div>
       <div class="box def"><div class="lab">◈ Definición · API key</div>
         <p>Una <strong>API key</strong> (llave de acceso) es una contraseña que identifica a tu programa ante el servicio de Google. En el plan gratuito de Gemini <strong>no cuesta nada</strong>, pero se trata como cualquier contraseña: <strong>no se comparte, no se pega en un chat y nunca se sube a internet</strong> (por eso vive en el <code class="k">.env</code>, un archivo que dejas fuera de git). Si alguien la ve, revócala y crea otra.</p></div>
       <div class="box analogy"><div class="lab">◆ ¿Y si no sé qué es git?</div>
@@ -3213,29 +3268,12 @@ def test_la_segunda_pregunta_igual_no_llama_al_agente(self, cliente):
       </table></div>
 
       <h3>Cuando se te agote la cuota de Gemini (y se te va a agotar)</h3>
-      <p>El plan gratuito de Gemini da para muy poco, y cada ejercicio llama al modelo varias veces. Los ejercicios <strong>no instancian el modelo a mano</strong>: llaman a <code class="k">util.crear_llm()</code>, que lee el proveedor del <code class="k">.env</code>. Consigue una llave gratis en <a class="inline" href="https://console.groq.com/keys">console.groq.com/keys</a> y añade dos líneas:</p>
+      <p>El plan gratuito de Gemini da para muy poco, y cada ejercicio llama al modelo varias veces. La salida está en el <a class="inline" href="#m0">Módulo 00</a>: consigue una llave gratis en <a class="inline" href="https://console.groq.com/keys">console.groq.com/keys</a> y cambia dos líneas del <code class="k">.env</code>.</p>
       <figure class="code"><figcaption><span class="d"></span>curso_ejemplos/.env</figcaption><pre><code>LLM_PROVIDER=groq
 GROQ_API_KEY=gsk_tu_llave_aqui</code></pre></figure>
-      <p>Ya está. Los ejercicios pasan a usar <strong><code>qwen/qwen3-32b</code></strong>, con un cupo mucho más generoso y bastante más rápido. Ni una línea de código cambia.</p>
-      <figure class="code"><figcaption><span class="d"></span>util.py · una clase para casi todo el mercado</figcaption><pre><code>def crear_llm(temperature=0.0, modelo=None):
-    activo = proveedor()                       # lo dice LLM_PROVIDER
-    modelo = modelo or modelo_por_defecto(activo)
-
-    if activo == "google":                     # Gemini habla su propio dialecto
-        from langchain_google_genai import ChatGoogleGenerativeAI
-        return ChatGoogleGenerativeAI(model=modelo, temperature=temperature)
-
-    # Groq, Ollama, Together, OpenAI… todos hablan el dialecto de OpenAI.
-    # Lo único que cambia entre ellos es la base_url.
-    base_url, variable = _COMPATIBLES_OPENAI[activo]
-    from langchain_openai import ChatOpenAI
-    return ChatOpenAI(model=modelo, temperature=temperature,
-                      base_url=base_url, api_key=os.getenv(variable))</code></pre></figure>
-      <div class="box analogy"><div class="lab">◆ Por qué basta con eso</div>
-        <p>No es que LangChain tenga un adaptador por proveedor: es que <strong>el mercado convergió en un protocolo</strong>. Groq, Ollama, Together y OpenAI hablan todos la misma API, así que una sola clase con otra <code class="k">base_url</code> los cubre a los cuatro. Gemini no la habla, y por eso tiene su propia rama.</p></div>
-      <div class="box warn"><div class="lab">▲ Dos límites, antes de que te muerdan</div>
-        <p><b>1. <code class="k">LLM_PROVIDER</code> solo lo respetan los ejercicios.</b> Los ejemplos numerados (<code class="k">01_…</code>, <code class="k">02_…</code>) instancian Gemini directamente, <em>a propósito</em>: el curso enseña un proveedor concreto antes de enseñar a abstraerlo. Si pones <code class="k">LLM_PROVIDER=groq</code> y corres <code class="k">01_primer_modelo.py</code>, el mensaje de error te lo recuerda en vez de dejarte pelear con un <code class="k">ImportError</code>.</p>
-        <p><b>2. Groq no ofrece embeddings.</b> El ejercicio 11 (RAG) sigue necesitando <code class="k">GOOGLE_API_KEY</code> para vectorizar, aunque el chat vaya por Groq. Y ojo: cambiar de modelo de embeddings no es cambiar de proveedor — <strong>invalida el índice entero</strong>, porque los vectores viejos y los nuevos viven en espacios distintos. Así lo resuelve <a class="inline" href="#llmops"><code class="k">proyecto_llmops/</code></a>: los calcula <strong>en local</strong> con <code class="k">fastembed</code>, sin API y sin cuota.</p></div>
+      <p>Ya está. Los ejercicios —y <strong>todos</strong> los ejemplos del curso— pasan a usar <strong><code>qwen/qwen3-32b</code></strong>. Ni una línea de código cambia: nadie instancia un modelo a mano, todos llaman a <code class="k">util.crear_llm()</code>.</p>
+      <div class="box warn"><div class="lab">▲ El único que Groq no salva del todo: el ejercicio 11</div>
+        <p>El ejercicio 11 hace RAG, y el RAG necesita <strong>embeddings</strong>. Groq no los ofrece, así que el chat irá por Groq pero vectorizar seguiría gastando <code class="k">GOOGLE_API_KEY</code>. La salida sin cuota es calcularlos en tu máquina: <code class="k">uv sync --extra emb</code> y <code class="k">EMBEDDINGS_PROVIDER=fastembed</code> en el <code class="k">.env</code>. Está explicado en el <a class="inline" href="#m0">Módulo 00</a>.</p></div>
       <div class="box warn"><div class="lab">▲ ¿Sin ninguna llave? Haz el 12 y el 13</div>
         <p>Son 100% offline — y no es casualidad que sean, además, <strong>los dos que más enseñan sobre ingeniería</strong> de RAG y de agentes. Un 429 no es excusa para no practicar: es una invitación a practicar lo que importa.</p></div>
 
@@ -3274,8 +3312,8 @@ uv run pytest             # corre TUS tests, sin llave y sin cuota</code></pre><
           <tr><td><code>command not found: uv</code></td><td><code>uv</code> no está instalado (o la terminal no lo encuentra).</td><td>Instálalo con <code>curl -LsSf https://astral.sh/uv/install.sh | sh</code> y abre una terminal nueva.</td></tr>
           <tr><td><code>IndentationError</code> / <code>SyntaxError</code></td><td>Al copiar, el código perdió su alineación (Módulo 0b: la indentación es sintaxis).</td><td>Usa el botón <strong>copiar</strong> de cada bloque de este curso y pega en un archivo vacío, sin retocar espacios.</td></tr>
           <tr><td><code>AttributeError: … has no attribute …</code></td><td>Escribiste un nombre que no existe (típico: <code>.contenido</code> en vez de <code>.content</code>) o tu versión de librería cambió esa pieza.</td><td>Revisa la ortografía exacta; luego <code>uv pip list | grep langchain</code> — el curso usa <code>langchain 1.x</code> y <code>langgraph 1.x</code>.</td></tr>
-          <tr><td>Pusiste <code>LLM_PROVIDER=groq</code> y aun así te pide <code>GOOGLE_API_KEY</code></td><td>Estás corriendo un <strong>ejemplo numerado</strong>, no un ejercicio. Los ejemplos instancian Gemini directamente, a propósito.</td><td>Los ejercicios sí respetan <code>LLM_PROVIDER</code> (usan <code>util.crear_llm()</code>). Para los ejemplos, pon la llave de Google o corre los offline: 07, 12, 13b, 14, 15, 16b.</td></tr>
-          <tr><td>Con Groq, el <strong>RAG</strong> (Módulo 11) sigue fallando por cuota</td><td>Groq <strong>no ofrece embeddings</strong>, y el RAG los necesita para vectorizar.</td><td>El chat va por Groq, pero los embeddings siguen en Gemini. Alternativa sin cuota: embeddings <em>locales</em> con <code>fastembed</code>, como hace <a class="inline" href="#llmops"><code>proyecto_llmops/</code></a>. Cambiar de modelo de embeddings <strong>invalida el índice</strong>: hay que reindexar.</td></tr>
+          <tr><td>Pusiste <code>LLM_PROVIDER=groq</code> y aun así te pide <code>GOOGLE_API_KEY</code></td><td>Estás corriendo un ejemplo de <strong>RAG</strong> (11, 12 o el proyecto final). El chat va por Groq, pero los <strong>embeddings</strong> siguen en Gemini: Groq no los ofrece.</td><td><code>uv sync --extra emb</code> y añade <code>EMBEDDINGS_PROVIDER=fastembed</code> al <code>.env</code>: los calcula en tu máquina, sin cuota. Ver el Módulo 00.</td></tr>
+          <tr><td><code>EMBEDDINGS_PROVIDER=fastembed</code> y falla con <code>No module named 'fastembed'</code></td><td>El extra no está instalado. Va aparte porque descarga un modelo de ~220 MB.</td><td><code>uv sync --extra emb</code>. Cambiar de modelo de embeddings <strong>invalida cualquier índice ya construido</strong>: hay que reindexar (en el curso da igual, se reconstruye en cada arranque).</td></tr>
           <tr><td>El script "se queda pensando" sin imprimir</td><td>Está esperando a la API (normal en la primera llamada) o el stream no vacía el buffer.</td><td>Dale 15–30 segundos. En streaming, imprime con <code>flush=True</code> como hacen los ejemplos.</td></tr>
         </tbody>
       </table></div>

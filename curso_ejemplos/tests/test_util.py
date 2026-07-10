@@ -207,12 +207,52 @@ class TestMensajeCuotaPorProveedor:
 
 
 @pytest.mark.offline
-class TestRequiereApiKeyAvisaDelDesajuste:
-    def test_si_pusiste_groq_pero_corres_un_ejemplo_de_gemini(self, monkeypatch):
-        # Los ejemplos numerados instancian Gemini directamente. Si el alumno
-        # puso LLM_PROVIDER=groq, el mensaje tiene que explicárselo.
+class TestRequiereApiKeyEsUnAlias:
+    """`requiere_api_key()` se quedó como alias histórico de `requiere_llm_key()`.
+
+    Antes miraba GOOGLE_API_KEY a secas. Ahora que TODOS los ejemplos respetan
+    LLM_PROVIDER, validar la llave de Google cuando el alumno corre contra Groq
+    sería mentirle.
+    """
+
+    def test_delega_en_el_proveedor_activo(self, monkeypatch):
         monkeypatch.setenv("LLM_PROVIDER", "groq")
+        monkeypatch.setenv("GOOGLE_API_KEY", "la_de_google_no_sirve_aqui")
+        monkeypatch.delenv("GROQ_API_KEY", raising=False)
+        assert "GROQ_API_KEY" in requiere_api_key()
+
+    def test_con_google_se_comporta_como_siempre(self, monkeypatch):
+        monkeypatch.delenv("LLM_PROVIDER", raising=False)
         monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
-        mensaje = requiere_api_key()
-        assert "LLM_PROVIDER=groq" in mensaje
-        assert "ejercicios" in mensaje
+        assert "GOOGLE_API_KEY" in requiere_api_key()
+
+
+# ------------------------------------------------------------------
+# crear_embeddings: donde la analogía con el chat se rompe
+# ------------------------------------------------------------------
+@pytest.mark.offline
+class TestCrearEmbeddings:
+    def test_por_defecto_son_los_de_google(self, monkeypatch):
+        monkeypatch.delenv("EMBEDDINGS_PROVIDER", raising=False)
+        assert util.proveedor_embeddings() == "google"
+
+    def test_sin_llave_de_google_explica_las_DOS_salidas(self, monkeypatch):
+        # Groq no ofrece embeddings: el mensaje tiene que decir qué hacer.
+        monkeypatch.delenv("EMBEDDINGS_PROVIDER", raising=False)
+        monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
+        with pytest.raises(SystemExit) as error:
+            util.crear_embeddings()
+        assert "fastembed" in str(error.value)
+        assert "--extra emb" in str(error.value)
+
+    def test_un_motor_inventado_falla_claro(self, monkeypatch):
+        monkeypatch.setenv("EMBEDDINGS_PROVIDER", "openai")
+        with pytest.raises(ValueError, match="no existe"):
+            util.crear_embeddings()
+
+    def test_los_embeddings_NO_siguen_a_LLM_PROVIDER(self, monkeypatch):
+        # ⭐ Cambiar el chat a Groq no cambia los embeddings. Y no es un
+        #    descuido: cambiar de modelo de embeddings invalida el índice.
+        monkeypatch.setenv("LLM_PROVIDER", "groq")
+        monkeypatch.delenv("EMBEDDINGS_PROVIDER", raising=False)
+        assert util.proveedor_embeddings() == "google"

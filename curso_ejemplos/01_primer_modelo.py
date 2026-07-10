@@ -17,22 +17,22 @@ Ejecuta:    uv run python curso_ejemplos/01_primer_modelo.py
 """
 
 # ============ LIBRERÍAS QUE USAMOS ============
-import os                                   # 'os': leer variables de entorno (tu llave API)
-from dotenv import load_dotenv              # 'dotenv': volcar el archivo .env a esas variables
-from langchain_google_genai import ChatGoogleGenerativeAI  # el modelo Gemini (el cerebro)
+from dotenv import load_dotenv              # 'dotenv': volcar el archivo .env a las variables de entorno
+from util import mensaje_cuota, crear_llm, requiere_llm_key   # el modelo, del proveedor que diga el .env
 from langchain_core.messages import SystemMessage, HumanMessage  # los "roles" de la conversación
 
 
 def main():
     # ---- 1) Preparar la llave (robustez) ----------------
     load_dotenv()  # busca .env en el proyecto y carga sus variables
-    if not os.getenv("GOOGLE_API_KEY"):
-        # Fallar temprano con un mensaje claro es mejor que un error críptico después.
-        raise SystemExit("❌ Falta GOOGLE_API_KEY. Copia .env.example a .env y pon tu llave.")
+    # requiere_llm_key() valida la llave del proveedor ACTIVO: GOOGLE_API_KEY
+    # con Gemini, GROQ_API_KEY con Groq, ninguna con Ollama.
+    if (error := requiere_llm_key()):
+        raise SystemExit(error)
 
     # ---- 2) Crear el modelo -----------------------------
     # temperature=0 -> respuestas precisas y estables (poco creativas).
-    llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0)
+    llm = crear_llm(temperature=0)
 
     # ---- 3) Llamada simple: una pregunta suelta ---------
     # .invoke() recibe una LISTA de mensajes y devuelve un objeto con .content
@@ -60,6 +60,6 @@ if __name__ == "__main__":
         main()
     except Exception as error:
         if "RESOURCE_EXHAUSTED" in str(error) or "429" in str(error):
-            print("⏳ Cuota de Gemini agotada (429). Espera unos minutos o usa 'gemini-2.5-flash'.")
+            print(mensaje_cuota())   # el mensaje depende del proveedor activo
         else:
             print(f"❌ Error inesperado: {error}")

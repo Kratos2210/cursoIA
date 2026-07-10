@@ -174,18 +174,28 @@ class TestConfigYPersistencia:
     def test_importar_config_no_ejecuta_nada(self, monkeypatch):
         """La regla de oro: sin llave, importar config debe funcionar igual.
 
-        Es lo que permite que la CI corra estos tests sin GOOGLE_API_KEY.
+        Es lo que permite que la CI corra estos tests sin ninguna llave.
         """
         monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
         import importlib
         importlib.reload(config)
-        assert config.MODELO_CHAT == "gemini-2.0-flash"
+        assert config.TEMPERATURA == 0
 
     def test_validar_entorno_falla_sin_llave(self, monkeypatch):
+        monkeypatch.delenv("LLM_PROVIDER", raising=False)
         monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
         # cargar_entorno() releería el .env real; lo neutralizamos.
         monkeypatch.setattr(config, "cargar_entorno", lambda: None)
         with pytest.raises(SystemExit, match="GOOGLE_API_KEY"):
+            config.validar_entorno()
+
+    def test_validar_entorno_pide_la_llave_del_proveedor_ACTIVO(self, monkeypatch):
+        """Con LLM_PROVIDER=groq, exigir GOOGLE_API_KEY sería mentirle al alumno."""
+        monkeypatch.setenv("LLM_PROVIDER", "groq")
+        monkeypatch.setenv("GOOGLE_API_KEY", "la_de_google_no_sirve_aqui")
+        monkeypatch.delenv("GROQ_API_KEY", raising=False)
+        monkeypatch.setattr(config, "cargar_entorno", lambda: None)
+        with pytest.raises(SystemExit, match="GROQ_API_KEY"):
             config.validar_entorno()
 
     def test_reconoce_el_error_de_cuota(self):

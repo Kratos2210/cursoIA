@@ -164,9 +164,10 @@ def main():
     except ImportError:
         raise SystemExit("❌ Falta uvicorn. Instálalo con:  uv sync --extra ui")
 
-    if not os.getenv("GOOGLE_API_KEY"):
-        from dotenv import load_dotenv
-        load_dotenv()
+    from dotenv import load_dotenv
+    load_dotenv()
+
+    # El agente vive en proyecto_final/, que sí está cableado a Gemini.
     if not os.getenv("GOOGLE_API_KEY"):
         raise SystemExit("❌ Falta GOOGLE_API_KEY: el agente no puede arrancar sin llave.")
 

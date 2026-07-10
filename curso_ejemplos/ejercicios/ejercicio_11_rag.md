@@ -4,11 +4,16 @@
 
 > ⚠️ **Este es el único ejercicio que Groq no salva del todo.** Puedes mover el
 > *chat* a `qwen/qwen3-32b` (`LLM_PROVIDER=groq`), pero **Groq no ofrece
-> embeddings** y el RAG los necesita: seguirás gastando `GOOGLE_API_KEY` al
-> vectorizar. Y ojo — cambiar de modelo de embeddings no es cambiar de
-> proveedor: **invalida el índice entero**, porque los vectores viejos y los
-> nuevos viven en espacios distintos. (Así lo resuelve `proyecto_llmops/`:
-> calcula los embeddings **en local** con `fastembed`, sin API ni cuota.)
+> embeddings** y el RAG los necesita: seguirías gastando `GOOGLE_API_KEY` solo
+> para vectorizar.
+>
+> Salida sin cuota — calcúlalos en tu máquina:
+> `uv sync --extra emb` y `EMBEDDINGS_PROVIDER=fastembed` en el `.env`.
+>
+> Y ojo, porque esto muerde en producción: cambiar de modelo de embeddings **no**
+> es cambiar de proveedor de chat. **Invalida el índice entero**, porque los
+> vectores viejos y los nuevos viven en espacios distintos. Compararlos no da un
+> resultado peor: da un resultado sin sentido. Hay que reindexar.
 
 ## Contexto
 
