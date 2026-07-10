@@ -414,6 +414,7 @@
       <a href="#m18"><span class="n">18</span>Capstone final</a>
       <a href="#m18b"><span class="n">18b</span>Elegir modelo y proveedor</a>
       <a href="#llmops"><span class="n">🚀</span>LLMOps: de prototipo a producto</a>
+      <a href="#m19"><span class="n">19</span>Spec-Driven Development</a>
       <a href="#examen"><span class="n">📝</span>Examen final</a>
       <a href="#ejercicios"><span class="n">🏋️</span>Ejercicios</a>
       <a href="#faq"><span class="n">?</span>FAQ · errores comunes</a>
@@ -2726,7 +2727,7 @@ vector store servido (el retriever se cambia sin tocar la cadena).</code></pre><
     <section id="m17b"><div class="col">
       <p class="modtag l4"><span class="bar"></span>Nivel Producción · Módulo 17b</p>
       <h2>Tests y CI: la red que te deja cambiar cosas sin miedo</h2>
-      <div class="fileref">📋 Existe de verdad: <b>curso_ejemplos/tests/</b> · <b>proyecto_final/tests/</b> · <b>proyecto_llmops/tests/</b> · <b>.github/workflows/ci.yml</b> — 372 tests, ninguno gasta cuota</div>
+      <div class="fileref">📋 Existe de verdad: <b>curso_ejemplos/tests/</b> · <b>proyecto_final/tests/</b> · <b>proyecto_llmops/tests/</b> · <b>.github/workflows/ci.yml</b> — 383 tests, ninguno gasta cuota</div>
       <p class="modmeta"><span>🎯 <b>Al terminar sabrás:</b> testear IA sin gastar cuota (modelo falso, marcador <code class="k">offline</code>) y montar CI.</span><span>✅ <b>Necesitas:</b> Módulo 17.</span><span>⏱️ <b>~45 min</b></span></p>
       <p>Todo el nivel de producción se apoya en una idea silenciosa: <strong>puedes cambiar el código porque algo te avisa si lo rompes</strong>. Sin eso, cada refactor es una apuesta y cada actualización de librería, una noche larga. Este módulo enseña cómo está tejida esa red — la del propio curso, que puedes correr ahora mismo.</p>
       <div class="box def"><div class="lab">◈ Definición · Test, doble de prueba y CI</div>
@@ -2782,7 +2783,7 @@ vector store servido (el retriever se cambia sin tocar la cadena).</code></pre><
       <div class="flow" role="img" aria-label="Flujo de CI: haces commit y push, GitHub Actions corre pytest en modo offline; si sale verde el cambio se puede mergear, si sale rojo se corrige antes de integrar.">
         <div class="step"><div class="num">1</div><div class="ti">Commit + push</div><div class="de">Subes tu cambio al repositorio.</div></div><div class="arw">→</div>
         <div class="step hl"><div class="num">2</div><div class="ti">GitHub Actions</div><div class="de">Arranca solo, sin que nadie se lo pida.</div></div><div class="arw">→</div>
-        <div class="step"><div class="num">3</div><div class="ti"><code>pytest -m offline</code></div><div class="de">Los 372 tests, sin llave ni cuota.</div></div><div class="arw">→</div>
+        <div class="step"><div class="num">3</div><div class="ti"><code>pytest -m offline</code></div><div class="de">Los 383 tests, sin llave ni cuota.</div></div><div class="arw">→</div>
         <div class="step"><div class="num">✅ / ❌</div><div class="ti">Verde o rojo</div><div class="de">Verde → se mergea. Rojo → se corrige antes de integrar.</div></div>
       </div>
       <figure class="code"><figcaption><span class="d"></span>.github/workflows/ci.yml · el corazón del workflow</figcaption><pre><code>strategy:
@@ -2826,7 +2827,7 @@ def test_la_linea_lleva_la_severidad():
         </div></details></div>
           <div class="recap l4">
         <div class="lab">↺ En una frase</div>
-        <p>Testear IA consiste en fijar todo lo que <em>no</em> es el modelo y sustituir el modelo por un guion. Por eso la CI puede correr los 372 tests sin tener tu llave.<span class="arch">archivos: <code>tests/</code> · <code>.github/workflows/ci.yml</code></span></p>
+        <p>Testear IA consiste en fijar todo lo que <em>no</em> es el modelo y sustituir el modelo por un guion. Por eso la CI puede correr los 383 tests sin tener tu llave.<span class="arch">archivos: <code>tests/</code> · <code>.github/workflows/ci.yml</code></span></p>
       </div>
     </div></section>
 
@@ -3293,7 +3294,7 @@ def test_la_segunda_pregunta_igual_no_llama_al_agente(self, cliente):
       <p>Ese «nunca llega al agente» es la parte que importa: es lo que ahorra dinero y lo que evita el riesgo. Y solo se puede <em>afirmar</em> contando las invocaciones del doble.</p>
 
       <div class="box analogy"><div class="lab">◆ Los dos workflows de CI, y por qué son dos</div>
-        <p><code class="k">ci.yml</code> corre en <strong>cada push</strong>: 372 tests offline, gratis, nunca llama a la API. <code class="k">eval-gate.yml</code> corre <strong>a mano o antes de una release</strong>: sí gasta cuota y sí puede vetar el deploy. Confundirlos es el error clásico — o pagas una evaluación completa por cada commit de un README, o no evalúas nunca porque «la CI ya pasa».</p></div>
+        <p><code class="k">ci.yml</code> corre en <strong>cada push</strong>: 383 tests offline, gratis, nunca llama a la API. <code class="k">eval-gate.yml</code> corre <strong>a mano o antes de una release</strong>: sí gasta cuota y sí puede vetar el deploy. Confundirlos es el error clásico — o pagas una evaluación completa por cada commit de un README, o no evalúas nunca porque «la CI ya pasa».</p></div>
 
       <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
         <ul>
@@ -3307,6 +3308,82 @@ def test_la_segunda_pregunta_igual_no_llama_al_agente(self, cliente):
           <div class="recap l5">
         <div class="lab">↺ En una frase</div>
         <p>LLMOps es lo que rodea al modelo: <strong>bloquear lo hostil y sanear lo torpe</strong>, no pagar dos veces por la misma pregunta, medir el p95 y no la media, y darle a la evaluación <strong>poder de veto</strong> sobre el deploy.<span class="arch">archivo: <code>proyecto_llmops/</code></span></p>
+      </div>
+    </div></section>
+
+    <!-- ================= Módulo 19 ================= -->
+    <section id="m19"><div class="col">
+      <div class="lvbanner" style="--lvc:var(--l5)"><div class="k">Método · Cómo se construye esto</div><p>Acabas de recorrer el curso entero. Última pregunta: ¿cómo se construye una pieza de software — como el propio verificador que mantiene todo este material coherente — sin llenarla de bugs y de decisiones que nadie recuerda? Escribiendo la especificación ANTES que el código.</p></div>
+      <p class="modtag l5"><span class="bar"></span>Método · Módulo 19</p>
+      <h2>Spec-Driven Development con spec-kit</h2>
+      <div class="fileref">📋 Ejemplo trabajado real: los artefactos SDD en <b>specs/001-verificador-curso/</b> y su implementación <b>curso_ejemplos/verificar_curso.py</b>.<span class="tested">✓ cubierto por tests</span></div>
+      <p class="modmeta"><span>🎯 <b>Al terminar sabrás:</b> describir un cambio como <em>spec → plan → tasks → implementación</em> y por qué ese orden produce mejor código, sobre todo cuando quien teclea es un agente de IA.</span><span>✅ <b>Necesitas:</b> el <a class="inline" href="#m17b">Módulo 17b</a> (tests y CI).</span><span>⏱️ <b>~30 min</b></span></p>
+
+      <p>Todo el curso te enseñó a <em>escribir</em> IA. Este módulo cierra con la pregunta que casi nadie se hace hasta que duele: ¿cómo decides <strong>qué</strong> vas a construir, antes de escribir la primera línea? La costumbre es abrir el editor y teclear; la especificación, si aparece, se escribe <em>después</em> — cuando ya nadie recuerda por qué el código quedó así. <strong>Spec-Driven Development invierte ese orden.</strong> Y no es teoría: el verificador que protege la coherencia de este mismo material nació exactamente así, y sus artefactos están en el repo para que los leas.</p>
+
+      <div class="box def"><div class="lab">◈ Definición · Spec-Driven Development (SDD)</div>
+        <p>SDD invierte el orden habitual del desarrollo: primero se escribe <strong>QUÉ</strong> debe hacer el sistema y <strong>POR QUÉ</strong> — la <em>especificación</em> — y el código pasa a ser la <em>consecuencia</em>, no el punto de partida. La regla que lo cambia todo: <strong>el spec es la fuente de verdad</strong>. Si el código y el spec discrepan, no se parchea el spec para que encaje con lo que ya tecleaste; gana el spec y se corrige el código.</p>
+        <dl>
+          <dt>especificación (spec)</dt><dd>El documento del QUÉ y el POR QUÉ: qué comportamiento se espera, con escenarios de aceptación. No dice <em>cómo</em> se implementa. Es el contrato.</dd>
+          <dt>plan</dt><dd>El CÓMO: las decisiones técnicas que el spec deja abiertas (qué librería, qué estructura, qué se descarta y por qué). Aquí viven los <em>research</em>, el modelo de datos y los contratos.</dd>
+          <dt>tasks</dt><dd>El plan descompuesto en tareas pequeñas y ordenadas por dependencia (T001, T002…), cada una lo bastante chica para hacerse y testearse sola.</dd>
+          <dt>constitución</dt><dd>Los principios no negociables del proyecto que condicionan <em>cualquier</em> spec (aquí: español didáctico, <code class="k">uv</code>, tests offline, cero dependencias por comodidad). Es la ley por encima de cada feature.</dd>
+        </dl></div>
+
+      <div class="box analogy"><div class="lab">◆ El plano antes del edificio</div>
+        <p>Nadie levanta un edificio y <em>luego</em> dibuja el plano. El plano existe para descubrir los problemas en papel — barato — antes de verterlos en hormigón — caro. En software siempre fue tentador saltarse ese paso porque "el código es blando, se cambia". Con <strong>agentes de IA</strong> que producen código rápido y convincente, saltarse el plano es aún <strong>más</strong> caro: el agente avanza muchísimo… en la dirección equivocada, y ahora tienes cien líneas plausibles que hay que entender para descubrir que sobran.</p></div>
+
+      <h3>Los cinco pasos de spec-kit</h3>
+      <p>spec-kit es la herramienta que pone rieles a este método: cinco comandos, en orden, cada uno produce un artefacto que alimenta al siguiente.</p>
+      <p class="flowcap">De los principios (izquierda) al código (derecha)</p>
+      <div class="flow" role="img" aria-label="Cinco pasos de spec-kit: constitution, /specify, /plan, /tasks, /implement.">
+        <div class="step"><div class="num">①</div><div class="ti"><code>constitution</code></div><div class="de">Principios del proyecto: español didáctico, <code class="k">uv</code>, tests offline.</div></div><div class="arw">→</div>
+        <div class="step"><div class="num">②</div><div class="ti"><code>/specify</code></div><div class="de">spec.md: QUÉ verifica y por qué, con escenarios. Sin decir cómo.</div></div><div class="arw">→</div>
+        <div class="step"><div class="num">③</div><div class="ti"><code>/plan</code></div><div class="de">plan.md + research/data-model/contracts: las decisiones técnicas.</div></div><div class="arw">→</div>
+        <div class="step"><div class="num">④</div><div class="ti"><code>/tasks</code></div><div class="de">tasks.md: T001–T015, ordenadas por dependencia.</div></div><div class="arw">→</div>
+        <div class="step hl"><div class="num">⑤</div><div class="ti"><code>/implement</code></div><div class="de"><code class="k">verificar_curso.py</code> + sus tests. El código, por fin.</div></div>
+      </div>
+
+      <h3>El ejemplo trabajado: cómo nació este verificador</h3>
+      <p>No es un ejemplo inventado. El script <code class="k">verificar_curso.py</code> — el que comprueba que la web, el README y <code class="k">util.py</code> se cuentan la misma historia — recorrió los cinco pasos, y sus artefactos están commiteados en <code class="k">specs/001-verificador-curso/</code>. Sigue la cadena:</p>
+      <ul>
+        <li>La <strong>constitución</strong> fijó un principio incómodo: <em>el curso no añade dependencias por comodidad</em> (la stdlib alcanza).</li>
+        <li>Por eso el <strong>spec</strong> pidió el QUÉ — "detectar enlaces internos rotos, tablas desincronizadas, modelos que no cuadran" — resuelto <em>con la biblioteca estándar</em>, sin decir aún cómo.</li>
+        <li>El <strong>plan</strong> tomó la decisión técnica que el spec dejó abierta: usar <code class="k">html.parser</code> de la stdlib en vez de traer BeautifulSoup, y escribir cada chequeo como <strong>función pura y testeable</strong> (recibe texto, devuelve un resultado; leer ficheros e imprimir vive aparte, en <code class="k">main()</code>).</li>
+        <li>Las <strong>tasks</strong> partieron el trabajo: una tarea por chequeo (T006 anclas, T008 carcasa sin duplicar, T011 modelos, T012 tablas), con sus tests primero.</li>
+        <li>La <strong>implementación</strong> son las cuatro comprobaciones que hoy defienden la coherencia HTML/README/util — las mismas que corriste al final de este curso.</li>
+      </ul>
+      <div class="box warn"><div class="lab">▲ La lección honesta: cuando el test destapó un bug de verdad</div>
+        <p>Durante la implementación, un test reveló un fallo real: el extractor de tablas Markdown contaba la <em>fila de cabecera</em> como si fuera una fila de datos, y comparaba de más. Aquí el SDD se ganó su sueldo. Como el material del curso es de <strong>solo lectura</strong> (principio V de la constitución), el arreglo no fue relajar la comprobación para que se callara — eso habría sido volver cómplice al guardián — sino corregir el <strong>verificador</strong>, guiado por lo que el spec decía que debía pasar. El spec dijo quién tenía razón.</p></div>
+
+      <div class="box warn"><div class="lab">▲ SDD no es cascada ni papeleo</div>
+        <p>El spec no es un documento que firmas y congelas. <strong>Vive</strong>: cuando cambia el requisito, cambias el spec y <em>regeneras</em> el plan y las tasks — no lo dejas mintiendo mientras el código se aleja. Y no es para todo: un README de una línea no necesita un spec, y montarle uno sería la burocracia que SDD justamente evita. SDD es para lo que <strong>vale la pena razonar antes de teclear</strong> — donde una decisión olvidada cuesta cara.</p></div>
+
+      <h3>Por qué esto importa aún más con agentes de IA</h3>
+      <p>Este es un curso de IA, así que cerremos donde más muerde. Un agente con un <strong>spec claro</strong> produce código <em>alineado</em>: sabe qué comportamiento se espera y contra qué se le va a medir. Un agente <strong>sin spec</strong> produce código <em>plausible pero desalineado</em> — compila, se ve razonable, y sin embargo resuelve un problema ligeramente distinto al que tenías. Y revisar código plausible-pero-equivocado cuesta más que escribirlo desde cero, porque primero tienes que <em>descubrir</em> en qué se desvió. El spec es el <strong>contrato que hace revisable</strong> el trabajo del agente: sin él no estás revisando, estás adivinando. Es la misma disciplina de <a class="inline" href="#m18">testear lo que no es el modelo</a> que viste en el capstone, subida un nivel: aquí fijas la intención antes de que el modelo — o el agente — escriba nada.</p>
+
+      <div class="box practice"><div class="lab">✎ Para practicar</div>
+        <ol>
+          <li>Abre <code class="k">specs/001-verificador-curso/spec.md</code> y <code class="k">tasks.md</code> y <strong>traza una task de punta a punta</strong>: toma T006 (<code class="k">verificar_anclas</code>) y sigue el hilo desde el escenario del spec → la task → la función en <code class="k">verificar_curso.py</code> → su test en <code class="k">tests/test_verificar_curso.py</code>. ¿Se cumple lo que el spec prometía?</li>
+          <li>Propón un <strong>quinto chequeo</strong>: que cada <code class="k">LLM_PROVIDER</code> mencionado en el README exista de verdad en <code class="k">util.crear_llm()</code>. Escribe su <strong>spec en 3 líneas</strong> (QUÉ y POR QUÉ) <em>antes</em> de pensar una sola línea de código.</li>
+          <li>De ese quinto chequeo, esboza las <strong>tasks</strong> mínimas en las que lo partirías (test primero, luego implementación). No lo implementes: solo ordénalas por dependencia.</li>
+        </ol>
+        <details class="sol"><summary>Ver soluciones razonadas</summary>
+          <p><strong>1.</strong> El spec (Historia 1) promete: "cada <code class="k">href=&quot;#X&quot;</code> tiene su <code class="k">id=&quot;X&quot;</code>; si falta, se reporta ese enlace y el proceso falla". La task T006 pide implementar <code class="k">verificar_anclas(html)</code> comparando el conjunto de <code class="k">href</code> contra el de <code class="k">id</code>. La función hace justo eso con un <code class="k">HTMLParser</code> (no una regex, para no confundirse con los <code class="k">id=</code> que aparecen dentro de ejemplos de código). Su test le pasa un HTML con un ancla rota y comprueba <code class="k">ok=False</code>. La cadena cierra: escenario → task → función → test dicen lo mismo.</p>
+          <p><strong>2.</strong> Un spec de 3 líneas: <em>«QUÉ: por cada <code class="k">LLM_PROVIDER=…</code> que aparezca en el README, verificar que ese proveedor esté soportado por <code class="k">util.crear_llm()</code>. POR QUÉ: si el README anuncia un proveedor que el código no sabe construir, el estudiante copia el <code class="k">.env</code> y obtiene un error; el material mentiría. FALLA SI: el README nombra un proveedor ausente en <code class="k">util</code>.»</em> Fíjate que ni una palabra dice <em>cómo</em> extraer los proveedores: eso es trabajo del plan.</p>
+          <p><strong>3.</strong> Tres tasks, en orden: (T-a) test del caso sano — un README cuyos proveedores existen todos → <code class="k">ok=True</code> — y del caso roto — un proveedor inventado → <code class="k">ok=False</code>; (T-b) implementar <code class="k">verificar_proveedores(readme, util)</code> como función pura; (T-c) engancharla en <code class="k">ejecutar_chequeos()</code> y en el informe. El test va primero porque es la definición ejecutable de "listo".</p>
+        </details></div>
+
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Distinguir spec, plan y tasks: el QUÉ/POR QUÉ, el CÓMO y la descomposición ordenada.</li>
+          <li>Explicar por qué el spec gana sobre el código cuando discrepan (y por qué se arregla el código, no el spec).</li>
+          <li>Nombrar los cinco pasos de spec-kit en orden: constitution → /specify → /plan → /tasks → /implement.</li>
+          <li>Justificar por qué SDD ayuda <em>especialmente</em> cuando quien escribe el código es un agente de IA.</li>
+        </ul></div>
+      <div class="recap l5">
+        <div class="lab">↺ En una frase</div>
+        <p>SDD = escribir <strong>QUÉ</strong> y <strong>POR QUÉ</strong> antes del <strong>CÓMO</strong>; con spec-kit son cinco pasos y el <strong>spec es la fuente de verdad</strong> — si el código discrepa, se corrige el código.<span class="arch">archivos: <code>specs/001-verificador-curso/</code> · <code>verificar_curso.py</code></span></p>
       </div>
     </div></section>
 
@@ -3646,6 +3723,7 @@ llm = ChatOpenAI(model="qwen/qwen3-32b",
           <tr><td>Elegir modelo y proveedor</td><td><code>util.py</code></td><td><a class="inline" href="#m18b">18b</a></td><td><code>test_util.py::TestProveedoresNuevos</code></td></tr>
           <tr><td>Auditoría / trazabilidad</td><td><code>proyecto_final/audit.py</code></td><td><a class="inline" href="#ejercicios">🏆</a></td><td><code>proyecto_final/tests/test_audit.py</code></td></tr>
           <tr><td>Inyección de dependencias</td><td><code>proyecto_final/graph_builder.py</code></td><td><a class="inline" href="#ejercicios">🏆</a></td><td><code>proyecto_final/tests/test_agente.py</code></td></tr>
+          <tr><td>Spec-Driven Development (verificador)</td><td><code>verificar_curso.py</code></td><td><a class="inline" href="#m19">19</a></td><td><code>tests/test_verificar_curso.py</code></td></tr>
         </tbody>
       </table></div>
       <div class="box analogy"><div class="lab">◆ ¿Y tus experimentos previos?</div>
@@ -3740,6 +3818,9 @@ llm = ChatOpenAI(model="qwen/qwen3-32b",
           <tr><td>Ciclo de vida del agente</td><td>Las cuatro etapas por las que pasa un agente en producción: Build → Test → Deploy → Monitor.</td></tr>
           <tr><td>Deep Agents</td><td>Framework open source de LangChain para agentes de larga duración que resuelven tareas complejas (planifican e investigan por horas).</td></tr>
           <tr><td>Agente ambiental</td><td>Agente que corre en segundo plano, disparado por eventos, y pide aprobación humana (<code>interrupt</code>) antes de una acción irreversible. Caso estrella: el asistente de correo.</td></tr>
+          <tr><td>Spec-Driven Development (SDD)</td><td>Escribir la especificación (QUÉ y POR QUÉ) antes del código; el spec es la fuente de verdad. Ver <a class="inline" href="#m19">Módulo 19</a>.</td></tr>
+          <tr><td>spec-kit</td><td>La herramienta que estructura el SDD en cinco pasos: constitution → /specify → /plan → /tasks → /implement.</td></tr>
+          <tr><td>Constitución (del proyecto)</td><td>Los principios no negociables del proyecto (aquí: español didáctico, <code>uv</code>, tests offline) que condicionan cada spec.</td></tr>
         </tbody>
       </table></div>
 
@@ -3766,7 +3847,7 @@ llm = ChatOpenAI(model="qwen/qwen3-32b",
 
     <footer><div class="col">
       <p>Curso generado a partir de tu código en <code class="k">spec-sdd/studylangchain</code> y <code class="k">studylangchainnivelinter</code>. Estudia nivel por nivel y practica cada bloque en su archivo.</p>
-      <p>Tú escribes el código en <code class="k">mi-curso-ia/</code>. La versión de referencia de cada tema, comentada línea por línea y cubierta por <strong>372 tests que no gastan cuota</strong>, está publicada en <a class="inline" href="https://github.com/Kratos2210/cursoIA/tree/main/curso_ejemplos">github.com/Kratos2210/cursoIA</a> — consúltala <em>después</em> de intentarlo.</p>
+      <p>Tú escribes el código en <code class="k">mi-curso-ia/</code>. La versión de referencia de cada tema, comentada línea por línea y cubierta por <strong>383 tests que no gastan cuota</strong>, está publicada en <a class="inline" href="https://github.com/Kratos2210/cursoIA/tree/main/curso_ejemplos">github.com/Kratos2210/cursoIA</a> — consúltala <em>después</em> de intentarlo.</p>
       <p>Si algo falla, empieza por la <a class="inline" href="#faq">FAQ de errores</a>.</p>
       <p>Datawith.AI · Alberto Ruiz — Lima, Perú</p>
     </div></footer>

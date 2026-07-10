@@ -3,7 +3,7 @@
 Cada archivo es **autónomo**: lo abres en VS Code, lo corres y funciona solo.
 Están comentados **sección por sección** para que entiendas cada línea.
 
-Y todo está **verificado por 372 tests** que corren sin gastar un solo token
+Y todo está **verificado por 383 tests** que corren sin gastar un solo token
 (ver [§6](#6-cómo-se-verifica-que-esto-funciona)).
 
 ## 1) Requisitos (una sola vez)
@@ -113,12 +113,13 @@ montón de scripts: **cada concepto tiene una prueba que lo defiende**.
 | Elegir modelo y proveedor | `util.py` | [18b](curso-langchain.html#m18b) | `test_util.py::TestProveedoresNuevos` |
 | Auditoría / trazabilidad | `proyecto_final/audit.py` | [🏆](ejercicios/ejercicio_proyecto.md) | `proyecto_final/tests/test_audit.py` |
 | Inyección de dependencias | `proyecto_final/graph_builder.py` | [🏆](ejercicios/ejercicio_proyecto.md) | `proyecto_final/tests/test_agente.py` |
+| Spec-Driven Development (verificador) | `verificar_curso.py` | [19](curso-langchain.html#m19) | `tests/test_verificar_curso.py` |
 
 ## 6) Cómo se verifica que esto funciona
 
 ```bash
 cd curso_ejemplos
-uv run pytest -m offline        # 372 tests, ~15 s, CERO llamadas a la API
+uv run pytest -m offline        # 383 tests, ~15 s, CERO llamadas a la API
 ```
 
 Qué cubren:
