@@ -417,6 +417,10 @@
       <a href="#m18b"><span class="n">18b</span>Elegir modelo y proveedor</a>
       <a href="#llmops"><span class="n">🚀</span>LLMOps: de prototipo a producto</a>
       <a href="#m19"><span class="n">19</span>Spec-Driven Development</a>
+      <div class="navsec" style="--sc:var(--l5)">AI Engineer</div>
+      <a href="#m20"><span class="n">20</span>RAG avanzado</a>
+      <a href="#m21"><span class="n">21</span>Fine-tuning vs RAG</a>
+      <a href="#m22"><span class="n">22</span>Multimodal</a>
       <a href="#examen"><span class="n">📝</span>Examen final</a>
       <a href="#ejercicios"><span class="n">🏋️</span>Ejercicios</a>
       <a href="#faq"><span class="n">?</span>FAQ · errores comunes</a>
@@ -3509,6 +3513,236 @@ def test_la_segunda_pregunta_igual_no_llama_al_agente(self, cliente):
       </div>
     </div></section>
 
+    <!-- ================= AI ENGINEER ================= -->
+    <section id="m20"><div class="col">
+      <div class="lvbanner" style="--lvc:var(--l5)"><div class="k">Empieza el track AI Engineer</div><p>Ya sabes construir y desplegar. Estos tres módulos son las técnicas que separan a quien "usa un LLM" de quien diseña un sistema de IA: recuperar mejor la pregunta, decidir entre RAG y fine-tuning, y darle ojos al modelo.</p></div>
+      <p class="modtag l5"><span class="bar"></span>AI Engineer · Módulo 20</p>
+      <h2>RAG avanzado: transformar la pregunta ANTES de buscar</h2>
+      <div class="fileref">📋 Copia y ejecuta: <b>curso_ejemplos/20_rag_avanzado.py</b> — 100% offline, no gasta cuota<span class="tested">✓ cubierto por tests</span></div>
+      <p class="modmeta"><span>🎯 <b>Al terminar sabrás:</b> mejorar el recall del RAG con <strong>multi-query</strong> y <strong>RAG-Fusion</strong>, tocando la pregunta y no el índice.</span><span>✅ <b>Necesitas:</b> el Módulo 12 (híbrido + RRF).</span><span>⏱️ <b>~40 min</b></span></p>
+      <p>En el <a class="inline" href="#m12">Módulo 12</a> mejoraste el RAG por el lado del <strong>índice</strong>: buscar mejor (híbrido) y reordenar mejor (re-ranking) <em>después</em> de recuperar. Aquí atacamos el otro extremo, el que casi nadie toca: la <strong>pregunta</strong>. Una sola formulación es una sola apuesta — y si el usuario escribe "devolución" mientras el documento dice "reembolso", esa apuesta pierde y el chunk correcto queda invisible. La cura es preguntar de <strong>varias maneras</strong> y fusionar lo que traiga cada una.</p>
+
+      <div class="box def"><div class="lab">◈ Definición · Multi-query y RAG-Fusion</div>
+        <p><strong>Multi-query</strong> es reformular la pregunta en 3–4 variantes (sinónimos, sin muletillas, solo palabras clave) y buscar con todas. <strong>RAG-Fusion</strong> es el paso que sigue: recuperar con cada variante y <strong>fusionar los rankings con RRF</strong> (la misma fórmula del Módulo 12). Un chunk que aparece en varias búsquedas sube; el ruido que solo una trajo se diluye.</p>
+        <dl>
+          <dt>recall</dt><dd>De los fragmentos <em>relevantes</em> que existen, cuántos llegaste a recuperar. Multi-query ataca justo esto: más formulaciones, menos relevantes que se te escapan.</dd>
+          <dt>reformulación</dt><dd>Otra manera de decir lo mismo. En producción la escribe el LLM ("dame 3 formas de preguntar esto"); aquí, plantillas deterministas para que el test sea reproducible y gratis.</dd>
+          <dt>RRF sobre variantes</dt><dd>El mismo Reciprocal Rank Fusion del Módulo 12, pero fusionando los rankings de <em>distintas preguntas</em> en vez de <em>distintos buscadores</em>. La idea es idéntica: premiar al que aparece en varias listas.</dd>
+          <dt>umbral de relevancia</dt><dd>Descartar los candidatos de puntaje 0. Es lo que evita que una reformulación que no casó con nada ensucie la fusión con un orden arbitrario.</dd>
+        </dl></div>
+
+      <div class="box analogy"><div class="lab">◆ Preguntarle a varios bibliotecarios</div>
+        <p>Buscar con una sola formulación es preguntarle a <strong>un</strong> bibliotecario que quizá no conoce tu palabra. Multi-query es preguntarle <strong>al equipo entero</strong>, cada uno con su vocabulario: uno entiende "devolución", otro "reembolso", otro "reintegro". Luego te quedas con el libro que <em>más</em> de ellos te señalaron. Esa votación es RRF.</p></div>
+
+      <h3>Paso 1 · Expandir la consulta</h3>
+      <p>La pregunta cruda produce varias reformulaciones deterministas. La clave está en el <strong>mapa de sinónimos del dominio</strong>: es lo que tapa el hueco "lo que dice el usuario ↔ lo que dice el documento".</p>
+      <figure class="code"><figcaption><span class="d"></span>20_rag_avanzado.py · multi-query a mano</figcaption><pre><code>def expandir_consulta(pregunta):
+    base = pregunta.strip()
+    tokens = tokenizar(base)
+    variantes = [base]
+    # 2) solo palabras clave: fuera muletillas (de, la, mi...)
+    clave = [t for t in tokens if t not in STOPWORDS]
+    if clave:
+        variantes.append(" ".join(clave))
+    # 3) sustituir cada palabra por su sinónimo del dominio (devolución -> reembolso)
+    variantes.append(" ".join(SINONIMOS.get(t, t) for t in tokens))
+    # 4) la original MÁS los sinónimos añadidos (suma señales, no reemplaza)
+    extra = [SINONIMOS[t] for t in tokens if t in SINONIMOS]
+    if extra:
+        variantes.append(base + " " + " ".join(dict.fromkeys(extra)))
+    return list(dict.fromkeys(variantes))   # dedup conservando el orden</code></pre></figure>
+
+      <h3>Paso 2 · Recuperar con umbral, y fusionar con RRF</h3>
+      <p>Cada variante trae sus candidatos, pero con una regla nueva respecto al Módulo 12: si una reformulación no casa con <strong>nada</strong>, devuelve una lista <strong>vacía</strong> en vez de un orden arbitrario. Es la diferencia entre "no encontré nada" y "aquí van resultados al azar" — y es lo que hace que la fusión no se envenene.</p>
+      <figure class="code"><figcaption><span class="d"></span>20_rag_avanzado.py · el umbral que protege la fusión</figcaption><pre><code>def recuperar(pregunta, chunks, k=3):
+    puntajes = puntuar(pregunta, chunks)          # coseno sobre términos de contenido
+    orden = sorted(range(len(chunks)), key=lambda i: puntajes[i], reverse=True)
+    # PORQUÉ el filtro puntajes[i] &gt; 0: una variante que no encontró nada NO debe
+    # aportar un ranking basura a RRF. "Nada" es una respuesta válida.
+    return [i for i in orden if puntajes[i] &gt; 0][:k]
+
+def rag_fusion(pregunta, chunks, k=3, ancho=3):
+    variantes = expandir_consulta(pregunta)
+    rankings = [recuperar(v, chunks, k=ancho) for v in variantes]
+    return fusion_rrf(rankings)[:k]               # el mismo RRF del Módulo 12</code></pre></figure>
+      <figure class="code output"><figcaption><span class="d"></span>▸ deberías ver al correr 20_rag_avanzado.py (recortado)</figcaption><pre><code>Pregunta: ¿Cómo pido la devolución de mi dinero?
+
+=== Ranking A · UNA sola búsqueda (pregunta cruda) ===
+  (nada superó el umbral: la pregunta cruda no casó con ningún chunk)
+
+=== Ranking B · RAG-FUSION (multi-query + RRF) ===
+  1º · chunk 3: Política de reembolsos: Ofrecemos reembolso completo dentro de…</code></pre></figure>
+      <div class="box warn"><div class="lab">▲ El coste es real: N búsquedas + N llamadas al LLM</div>
+        <p>Multi-query no es gratis. Cada reformulación es una búsqueda más, y en producción cada una <strong>además</strong> nace de una llamada al LLM que la redacta. Cuatro variantes ≈ 4× latencia de recuperación + una generación extra. Vale la pena cuando el recall es tu cuello de botella; es puro desperdicio cuando ya recuperabas bien.</p></div>
+      <div class="avoid"><div class="lab">⛔ Cuándo NO usar esto</div>
+        <ul>
+          <li>Si la pregunta ya es <strong>literal</strong> y el RAG básico acierta (códigos, SKUs, nombres propios): reformular solo añade ruido y coste. Mídelo con <code class="k">precision@k</code> antes de meterlo.</li>
+          <li>Si tu latencia ya está al límite: N búsquedas + N generaciones de reformulación pueden doblar el tiempo de respuesta. Multi-query paga en <em>calidad</em>, no en <em>velocidad</em>.</li>
+          <li>Si tus reformulaciones son casi idénticas a la original: fusionar cuatro veces la misma búsqueda no descubre nada nuevo. La ganancia viene de variantes que exploran <em>otro vocabulario</em>.</li>
+        </ul></div>
+      <div class="box practice"><div class="lab">▸ Para practicar</div>
+        <p><strong>Predice antes de ejecutar.</strong> Añade al mapa <code class="k">SINONIMOS</code> el par <code class="k">"cancelar" → "reembolso"</code> y cambia la pregunta a <code class="k">"¿Puedo cancelar y recuperar mi dinero?"</code>. ¿Qué variantes genera <code class="k">expandir_consulta</code>? ¿Sube el chunk de reembolsos? Escríbelo en un papel y solo entonces córrelo.</p>
+        <p>Segundo reto: haz que <code class="k">comprimir_contexto</code> devuelva también <em>de qué chunk</em> salió cada frase, para poder citar la fuente en la respuesta.</p></div>
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Explicar la diferencia entre mejorar el RAG por el índice (Módulo 12) y por la pregunta (multi-query).</li>
+          <li>Decir por qué una reformulación sin resultados debe devolver <em>vacío</em> y no un orden arbitrario.</li>
+          <li>Reconocer que RAG-Fusion sube el recall a cambio de N búsquedas y N llamadas al LLM.</li>
+          <li>Nombrar el caso donde multi-query estorba: preguntas literales que el RAG básico ya acierta.</li>
+        </ul></div>
+      <div class="recap l5">
+        <div class="lab">↺ En una frase</div>
+        <p>Si una sola formulación deja huecos, pregunta de varias maneras y fusiona con RRF: <strong>multi-query + RAG-Fusion</strong> suben el recall a costa de N búsquedas — y la reformulación que no encuentra nada no debe ensuciar la fusión.<span class="arch">archivo: <code>20_rag_avanzado.py</code> (offline)</span></p>
+      </div>
+    </div></section>
+
+    <section id="m21"><div class="col">
+      <p class="modtag l5"><span class="bar"></span>AI Engineer · Módulo 21</p>
+      <h2>Fine-tuning vs RAG: ¿enseñar conocimiento o comportamiento?</h2>
+      <div class="fileref">📋 Copia y ejecuta: <b>curso_ejemplos/21_fine_tuning.py</b> — 100% offline, no gasta cuota<span class="tested">✓ cubierto por tests</span></div>
+      <p class="modmeta"><span>🎯 <b>Al terminar sabrás:</b> decidir entre RAG, fine-tuning, ambos o solo prompt, y armar un dataset de fine-tuning por chat.</span><span>✅ <b>Necesitas:</b> el Módulo 11 (RAG) y el 05 (salida estructurada).</span><span>⏱️ <b>~35 min</b></span></p>
+      <p>La pregunta que casi todo el mundo se hace mal: <em>"¿hago fine-tuning para que el modelo sepa lo de mi empresa?"</em>. Casi siempre la respuesta es <strong>no</strong> — eso es RAG. Fine-tuning y RAG resuelven problemas distintos, y confundirlos cuesta dinero y meses. Este módulo te da el modelo mental y una utilidad de <strong>decisión</strong>.</p>
+
+      <div class="box def"><div class="lab">◈ Definición · Conocimiento vs comportamiento</div>
+        <p><strong>RAG</strong> le da al modelo una <strong>biblioteca</strong>: conocimiento fresco, que cambia y se puede citar, que <em>lee</em> en el momento de responder. <strong>Fine-tuning</strong> lo manda a la <strong>escuela</strong>: le enseña un <strong>comportamiento</strong> — un formato de salida fijo, un tono, un estilo, una forma de razonar. El fine-tuning <em>no</em> mete conocimiento nuevo ni actualizable: para eso está la biblioteca.</p>
+        <dl>
+          <dt>fine-tuning</dt><dd>Reentrenar (ligeramente) el modelo con tus ejemplos para fijar <em>cómo</em> responde. Cambia el comportamiento, no lo que sabe del mundo.</dd>
+          <dt>dataset de chat</dt><dd>El formato en que se entrega: una lista de conversaciones <code class="k">system → user → assistant</code>, donde el <code class="k">assistant</code> es la respuesta modelo a imitar. Su calidad ES la calidad del modelo afinado.</dd>
+          <dt>JSONL</dt><dd>JSON Lines: un objeto JSON por línea, sin comas ni corchete envolvente. El formato que piden las plataformas de fine-tuning.</dd>
+          <dt>few-shot</dt><dd>Meter 2–3 ejemplos <em>en el prompt</em>. Es el "fine-tuning del pobre": sin entrenar nada, muchas veces alcanza para fijar un formato — y es el primer intento razonable.</dd>
+        </dl></div>
+
+      <div class="box analogy"><div class="lab">◆ La biblioteca y la escuela</div>
+        <p>A un empleado nuevo le das dos cosas distintas. Le das <strong>acceso a la biblioteca</strong> (los manuales, que se actualizan solos) para que <em>consulte</em> datos frescos — eso es RAG. Y lo mandas a un <strong>curso de inducción</strong> para que aprenda <em>cómo</em> se hacen las cosas aquí: el tono con el cliente, el formato del informe — eso es fine-tuning. Mandarlo a la escuela a memorizar los precios de esta semana sería absurdo: mañana cambian. Los precios van en la biblioteca.</p></div>
+
+      <h3>La decisión, como reglas</h3>
+      <p>La utilidad recibe unas <strong>señales</strong> del proyecto y devuelve el enfoque. Lo interesante es lo que <em>no</em> es fine-tuning: casi todo lo que huele a "datos" cae en RAG.</p>
+      <figure class="code"><figcaption><span class="d"></span>21_fine_tuning.py · la regla de decisión</figcaption><pre><code>def recomendar_enfoque(senales):
+    conocimiento     = senales.get("conocimiento_cambia_seguido")     # ¿datos frescos?
+    formato          = senales.get("necesita_formato_o_estilo_fijo")  # ¿comportamiento?
+    ejemplos         = senales.get("hay_ejemplos_etiquetados")        # ¿dataset?
+    presupuesto_bajo = senales.get("presupuesto_bajo")
+
+    # Solo es viable AFINAR si quieres un comportamiento fijo Y tienes el dataset.
+    puede_afinar = formato and ejemplos and not presupuesto_bajo
+
+    if conocimiento and puede_afinar: return "ambos"    # biblioteca + escuela
+    if conocimiento:                  return "RAG"      # datos que cambian = biblioteca
+    if puede_afinar:                  return "fine-tuning"
+    if formato:                       return "prompt"   # sin dataset: few-shot
+    return "prompt"                                     # ante la duda, un buen prompt</code></pre></figure>
+
+      <h3>Armar el dataset (y serializarlo a JSONL)</h3>
+      <p>Cada ejemplo de entrenamiento es una <strong>conversación completa</strong> de tres turnos. El <code class="k">system</code> fija la instrucción, el <code class="k">user</code> pregunta y el <code class="k">assistant</code> es la respuesta que quieres que el modelo aprenda a imitar.</p>
+      <figure class="code"><figcaption><span class="d"></span>21_fine_tuning.py · pares (usuario, respuesta) → formato de chat → JSONL</figcaption><pre><code>def preparar_dataset_chat(pares, sistema):
+    return [
+        {"messages": [
+            {"role": "system",    "content": sistema},
+            {"role": "user",      "content": usuario},
+            {"role": "assistant", "content": respuesta},   # el ejemplo A IMITAR
+        ]}
+        for usuario, respuesta in pares
+    ]
+
+def a_jsonl(registros):
+    # un objeto JSON por línea; ensure_ascii=False conserva tildes y ñ legibles
+    return "\n".join(json.dumps(r, ensure_ascii=False) for r in registros)</code></pre></figure>
+      <div class="box warn"><div class="lab">▲ Fine-tuning NO actualiza conocimiento</div>
+        <p>El error caro: afinar un modelo con los precios, el inventario o la FAQ de hoy. Mañana cambian y tu modelo miente con total seguridad — y "reeducarlo" cuesta otro entrenamiento. Los datos que cambian viven en la <strong>biblioteca</strong> (RAG), donde se actualizan sin tocar el modelo. El fine-tuning es para lo que <em>no</em> cambia: la forma.</p></div>
+      <div class="avoid"><div class="lab">⛔ Cuándo NO usar esto</div>
+        <ul>
+          <li>No hagas fine-tuning para meter <strong>datos que cambian</strong> (precios, stock, políticas): eso es RAG. Afinar los congela y los vuelve mentira en cuanto se actualicen.</li>
+          <li>No afines <strong>sin un dataset de calidad y suficiente</strong>: un puñado de ejemplos ruidosos empeora el modelo. Sin dataset, empieza por few-shot en el prompt.</li>
+          <li>No afines lo que un <strong>buen prompt</strong> ya resuelve: es más lento de iterar y más caro de servir. El fine-tuning se gana cuando el prompt se queda corto y tienes con qué enseñar.</li>
+        </ul></div>
+      <div class="box practice"><div class="lab">▸ Para practicar</div>
+        <p>Para cada caso, decide el enfoque y justifícalo en una línea: <strong>(a)</strong> un bot que responde SIEMPRE en JSON estricto, con 800 ejemplos etiquetados; <strong>(b)</strong> un asistente sobre una wiki interna que se edita a diario; <strong>(c)</strong> imitar el tono de tu marca, pero aún no tienes ejemplos escritos.</p>
+        <details class="sol"><summary>Ver soluciones razonadas</summary>
+          <p><strong>(a)</strong> <code class="k">fine-tuning</code>: es comportamiento (formato fijo) y hay dataset. <strong>(b)</strong> <code class="k">RAG</code>: conocimiento que cambia a diario — biblioteca, no escuela. <strong>(c)</strong> <code class="k">prompt</code>: quieres fijar un estilo (comportamiento) pero sin dataset todavía; arranca con few-shot y, cuando acumules buenos ejemplos, evalúa afinar.</p>
+        </details></div>
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Explicar en una frase la diferencia RAG (conocimiento) vs fine-tuning (comportamiento).</li>
+          <li>Justificar por qué los datos que cambian NUNCA van en un fine-tuning.</li>
+          <li>Armar un dataset de chat <code class="k">system/user/assistant</code> y serializarlo a JSONL.</li>
+          <li>Decidir entre RAG, fine-tuning, ambos o prompt a partir de las señales de un proyecto.</li>
+        </ul></div>
+      <div class="recap l5">
+        <div class="lab">↺ En una frase</div>
+        <p>RAG = biblioteca (conocimiento fresco y citable); fine-tuning = escuela (formato, tono, estilo). Si el dato cambia o hay que citarlo, es RAG; si quieres fijar la forma y tienes dataset, es fine-tuning; ante la duda, un buen prompt.<span class="arch">archivo: <code>21_fine_tuning.py</code> (offline)</span></p>
+      </div>
+    </div></section>
+
+    <section id="m22"><div class="col">
+      <p class="modtag l5"><span class="bar"></span>AI Engineer · Módulo 22</p>
+      <h2>Multimodal: un modelo que además VE</h2>
+      <div class="fileref">📋 Copia y ejecuta: <b>curso_ejemplos/22_multimodal.py</b> — el armado del mensaje es offline; la llamada real necesita un modelo con visión<span class="tested">✓ cubierto por tests</span></div>
+      <p class="modmeta"><span>🎯 <b>Al terminar sabrás:</b> construir un mensaje con <strong>texto + imagen</strong> en el formato que espera un modelo con visión.</span><span>✅ <b>Necesitas:</b> el Módulo 01 (mensajes) y el 03 (interfaz unificada).</span><span>⏱️ <b>~30 min</b></span></p>
+      <p>Hasta aquí todo fue texto → texto. Los modelos con <strong>visión</strong> (Gemini, GPT-5, Claude) reciben además <strong>imágenes</strong>: le mandas la foto de una factura y te la extrae, la captura de un error y te lo explica, un diagrama y te lo describe. Lo único nuevo es cómo se <em>arma</em> el mensaje: el contenido deja de ser un string y pasa a ser una <strong>lista de bloques</strong>.</p>
+
+      <div class="box def"><div class="lab">◈ Definición · Contenido multimodal por bloques</div>
+        <p>Un <code class="k">HumanMessage</code> multimodal lleva en su <code class="k">content</code> una <strong>lista</strong> donde cada elemento es un <strong>bloque</strong> con su <code class="k">type</code>: uno de texto y uno de imagen. La imagen no viaja como bytes crudos (el JSON es texto) sino codificada en <strong>base64</strong> dentro de un <code class="k">data:</code> URL.</p>
+        <dl>
+          <dt>data: URL</dt><dd>Una imagen incrustada como texto: <code class="k">data:image/png;base64,iVBOR…</code>. El prefijo dice el tipo (MIME) y que lo que sigue es base64.</dd>
+          <dt>base64</dt><dd>Reescribe bytes binarios como texto ASCII para que quepan en el JSON de la petición. La stdlib de Python lo hace con <code class="k">base64.b64encode</code>.</dd>
+          <dt>bloque <code>image_url</code></dt><dd>El formato "chat completions" <code class="k">{"type":"image_url","image_url":{"url": data_url}}</code>. Es el que <code class="k">langchain-google-genai</code> traduce a la parte <code class="k">inline_data</code> que la API de Gemini espera — y el mismo que hablan los proveedores compatibles con OpenAI.</dd>
+          <dt>modelo con visión</dt><dd>No todos ven. Gemini sí; el Qwen de texto en Groq, no. Si el proveedor no tiene visión, el bloque de imagen se ignora o da error.</dd>
+        </dl></div>
+
+      <div class="box analogy"><div class="lab">◆ Un sobre con dos hojas</div>
+        <p>El mensaje multimodal es un <strong>sobre</strong> con dos hojas dentro: una con tu pregunta escrita y otra con la imagen pegada. El modelo abre el sobre y lee <em>ambas</em> como una sola entrada — "mira esto Y respóndeme aquello". El <code class="k">data:</code> URL es la imagen "fotocopiada en texto" para que quepa en el sobre.</p></div>
+
+      <h3>Paso 1 · La imagen como data: URL</h3>
+      <figure class="code"><figcaption><span class="d"></span>22_multimodal.py · bytes → data: URL (stdlib base64)</figcaption><pre><code>import base64
+
+def imagen_a_data_url(datos, mime="image/png"):
+    # PORQUÉ base64: el JSON de la petición es texto y no lleva bytes crudos.
+    # base64 reescribe los bytes como ASCII; el prefijo dice qué tipo de imagen es.
+    b64 = base64.b64encode(datos).decode("ascii")
+    return f"data:{mime};base64,{b64}"</code></pre></figure>
+
+      <h3>Paso 2 · El mensaje con dos bloques</h3>
+      <p>El <code class="k">content</code> es una lista: bloque de texto y bloque de imagen. Este es el formato que <strong>verificamos contra el paquete instalado</strong>, no de memoria — el test confirma que <code class="k">langchain-google-genai</code> lo traduce a una parte de imagen de Gemini.</p>
+      <figure class="code"><figcaption><span class="d"></span>22_multimodal.py · el mensaje multimodal</figcaption><pre><code>from langchain_core.messages import HumanMessage
+
+def mensaje_multimodal(texto, data_url):
+    return HumanMessage(content=[
+        {"type": "text",      "text": texto},
+        {"type": "image_url", "image_url": {"url": data_url}},
+    ])
+
+# ...y se envía como cualquier otro mensaje (la llamada real necesita API key):
+#   util.crear_llm().invoke([mensaje_multimodal(pregunta, data_url)])</code></pre></figure>
+      <figure class="code output"><figcaption><span class="d"></span>▸ deberías ver al correr 22_multimodal.py sin llave (recortado)</figcaption><pre><code>== Mensaje multimodal construido ==
+  Bloques: 2
+  [0] type='text' · text='¿Qué ves en esta imagen? Descríbela en una frase.'
+  [1] type='image_url' · url=data:image/png;base64,iVBORw0KGgoAAAANSU…
+
+(⏸️  Sin API key: no llamo al modelo. Pon la llave en .env para verlo en acción.)</code></pre></figure>
+      <div class="box warn"><div class="lab">▲ Las imágenes cuestan tokens (y no todos ven)</div>
+        <p>Una imagen se cobra como un buen puñado de tokens, y crece con su resolución. Manda fotos <strong>redimensionadas</strong>, no la captura de 4000×3000 del teléfono: pagas de más por detalle que el modelo no necesita. Y verifica que el proveedor <strong>tenga visión</strong> — mandarle una imagen a un modelo de solo texto es, en el mejor caso, dinero tirado.</p></div>
+      <div class="avoid"><div class="lab">⛔ Cuándo NO usar esto</div>
+        <ul>
+          <li>No mandes imágenes <strong>enormes sin redimensionar</strong>: disparas tokens y coste por resolución que no aporta.</li>
+          <li>No asumas visión en cualquier proveedor: el Qwen de texto en Groq (y muchos open weights) <strong>no ven</strong>. Cambiar de proveedor puede romper el multimodal aunque el resto del curso conmute solo.</li>
+          <li>No uses multimodal cuando ya tienes el texto: si la factura llega como PDF con texto seleccionable, extraerlo y hacer RAG es más barato y exacto que "leer" la imagen.</li>
+        </ul></div>
+      <div class="box practice"><div class="lab">▸ Para practicar</div>
+        <p>Con una <code class="k">GOOGLE_API_KEY</code>, cambia el <code class="k">PNG_DEMO_1x1</code> por una imagen real (lee un archivo con <code class="k">open(ruta, "rb").read()</code>) y pídele al modelo que la describa. Luego prueba <code class="k">LLM_PROVIDER=groq</code> con el Qwen de texto y observa qué pasa: es la lección de "no todos ven".</p>
+        <p>Segundo reto: añade un <strong>tercer</strong> bloque de imagen al mismo mensaje y pídele al modelo que compare las dos. El formato de bloques lo permite sin cambiar nada más.</p></div>
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Explicar por qué el contenido multimodal es una lista de bloques y no un string.</li>
+          <li>Codificar una imagen en un <code class="k">data:</code> URL con base64 de la stdlib.</li>
+          <li>Construir el bloque <code class="k">image_url</code> que un modelo con visión espera.</li>
+          <li>Anticipar dos trampas: el coste por resolución y los proveedores sin visión.</li>
+        </ul></div>
+      <div class="recap l5">
+        <div class="lab">↺ En una frase</div>
+        <p>Para que el modelo VEA, el <code>content</code> pasa a ser una lista de bloques: uno de texto y uno de <code>image_url</code> con la imagen en base64 dentro de un <code>data:</code> URL — el mismo formato para Gemini y para los compatibles con OpenAI.<span class="arch">archivo: <code>22_multimodal.py</code></span></p>
+      </div>
+    </div></section>
+
     <!-- ================= EXAMEN FINAL ================= -->
     <section id="examen"><div class="col">
       <p class="modtag l5"><span class="bar"></span>Evaluación · Examen final</p>
@@ -3851,6 +4085,9 @@ llm = ChatOpenAI(model="qwen/qwen3-32b",
           <tr><td>Auditoría / trazabilidad</td><td><code>proyecto_final/audit.py</code></td><td><a class="inline" href="#ejercicios">🏆</a></td><td><code>proyecto_final/tests/test_audit.py</code></td></tr>
           <tr><td>Inyección de dependencias</td><td><code>proyecto_final/graph_builder.py</code></td><td><a class="inline" href="#ejercicios">🏆</a></td><td><code>proyecto_final/tests/test_agente.py</code></td></tr>
           <tr><td>Spec-Driven Development (verificador)</td><td><code>verificar_curso.py</code></td><td><a class="inline" href="#m19">19</a></td><td><code>tests/test_verificar_curso.py</code></td></tr>
+          <tr><td>Multi-query y RAG-Fusion</td><td><code>20</code></td><td><a class="inline" href="#m20">20</a></td><td><code>test_offline.py::TestTema20*</code></td></tr>
+          <tr><td>Fine-tuning vs RAG</td><td><code>21</code></td><td><a class="inline" href="#m21">21</a></td><td><code>test_offline.py::TestTema21*</code></td></tr>
+          <tr><td>Multimodal (texto + imagen)</td><td><code>22</code></td><td><a class="inline" href="#m22">22</a></td><td><code>test_offline.py::TestTema22*</code></td></tr>
         </tbody>
       </table></div>
       <div class="box analogy"><div class="lab">◆ ¿Y tus experimentos previos?</div>

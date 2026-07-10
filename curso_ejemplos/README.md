@@ -69,6 +69,9 @@ La columna «Cuota» se refiere al proveedor que tengas activo: con
 | 16 · Evaluación | `16_evaluacion.py` | dataset + métrica + LLM-as-judge opcional | Opcional |
 | 16b · Observabilidad | `16b_observabilidad_langsmith.py` | tracing, tokens y **coste real** | **No** |
 | 17 · Servir el agente | `17_servidor_agente.py` | FastAPI: `POST /chat` con memoria por usuario | Sí |
+| 20 · RAG avanzado | `20_rag_avanzado.py` | multi-query + RAG-Fusion (RRF sobre variantes) | **No** |
+| 21 · Fine-tuning vs RAG | `21_fine_tuning.py` | decidir enfoque + dataset de chat a JSONL | **No** |
+| 22 · Multimodal | `22_multimodal.py` | enviar texto + imagen a un modelo con visión | Sí |
 
 **Proyecto final:** [`proyecto_final/`](proyecto_final/) — el asistente de
 Gobierno de Datos, repartido en 8 módulos y con 44 tests propios.
@@ -117,6 +120,9 @@ montón de scripts: **cada concepto tiene una prueba que lo defiende**.
 | Auditoría / trazabilidad | `proyecto_final/audit.py` | [🏆](ejercicios/ejercicio_proyecto.md) | `proyecto_final/tests/test_audit.py` |
 | Inyección de dependencias | `proyecto_final/graph_builder.py` | [🏆](ejercicios/ejercicio_proyecto.md) | `proyecto_final/tests/test_agente.py` |
 | Spec-Driven Development (verificador) | `verificar_curso.py` | [19](curso-langchain.html#m19) | `tests/test_verificar_curso.py` |
+| Multi-query y RAG-Fusion | `20` | [20](curso-langchain.html#m20) | `test_offline.py::TestTema20*` |
+| Fine-tuning vs RAG | `21` | [21](curso-langchain.html#m21) | `test_offline.py::TestTema21*` |
+| Multimodal (texto + imagen) | `22` | [22](curso-langchain.html#m22) | `test_offline.py::TestTema22*` |
 
 ## 6) Cómo se verifica que esto funciona
 

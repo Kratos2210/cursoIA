@@ -599,3 +599,262 @@ class TestTema14Mcp:
         assert severidades[12.0] == "alta"
         assert severidades[7.0] == "media"
         assert severidades[1.0] == "baja"
+
+
+# ==================================================================
+# TEMA 20 · RAG avanzado: multi-query + RAG-Fusion
+# ==================================================================
+# Los índices de chunk de datos_rag.txt (7 párrafos), para leer los tests:
+CHUNK_REEMBOLSO = 3     # "Política de reembolsos: ..."
+CHUNK_HORARIO_20 = 2    # "Horario de atención: ..."
+
+PREGUNTA_DEVOLUCION = "¿Cómo pido la devolución de mi dinero?"
+
+
+@pytest.fixture(scope="module")
+def m20(importar_ejemplo):
+    return importar_ejemplo("20_rag_avanzado")
+
+
+class TestTema20Expandir:
+    """Multi-query: una pregunta se reescribe de varias formas deterministas."""
+
+    def test_genera_varias_variantes_distintas(self, m20):
+        variantes = m20.expandir_consulta(PREGUNTA_DEVOLUCION)
+        assert len(variantes) >= 3
+        assert len(set(variantes)) == len(variantes)  # todas distintas
+
+    def test_la_original_va_primero(self, m20):
+        variantes = m20.expandir_consulta(PREGUNTA_DEVOLUCION)
+        assert variantes[0] == PREGUNTA_DEVOLUCION
+
+    def test_alguna_variante_usa_el_sinonimo_del_documento(self, m20):
+        """El hueco clásico: el usuario dice 'devolución', el documento 'reembolso'.
+
+        Al menos una reformulación debe traer la palabra que SÍ está en el doc.
+        """
+        variantes = m20.expandir_consulta(PREGUNTA_DEVOLUCION)
+        assert any("reembolso" in v for v in variantes)
+
+    def test_pregunta_sin_sinonimos_igual_devuelve_variantes(self, m20):
+        variantes = m20.expandir_consulta("horario")
+        assert len(variantes) >= 1
+        assert variantes[0] == "horario"
+
+
+class TestTema20Recuperar:
+    """La recuperación con umbral: sin señal, no inventa resultados."""
+
+    def test_devuelve_como_mucho_k(self, m20, chunks_datos_rag):
+        assert len(m20.recuperar("atención reembolso pago", chunks_datos_rag, k=2)) <= 2
+
+    def test_encuentra_el_chunk_de_reembolso_con_su_palabra(self, m20, chunks_datos_rag):
+        assert m20.recuperar("reembolso", chunks_datos_rag, k=1) == [CHUNK_REEMBOLSO]
+
+    def test_sin_ninguna_coincidencia_devuelve_vacio(self, m20, chunks_datos_rag):
+        """El umbral > 0: 'devolución' no está literal en ningún chunk -> nada."""
+        assert m20.recuperar("devolución", chunks_datos_rag, k=3) == []
+
+
+class TestTema20Rrf:
+    """La fusión RRF, con la misma semántica que el TEMA 12."""
+
+    def test_ganar_en_ambas_listas_te_deja_primero(self, m20):
+        assert m20.fusion_rrf([[1, 0, 2], [1, 2, 0]])[0] == 1
+
+    def test_estar_en_ambas_listas_le_gana_a_brillar_en_una(self, m20):
+        assert m20.fusion_rrf([[0, 7], [3, 7]])[0] == 7
+
+    def test_incluye_todos_los_documentos_vistos(self, m20):
+        assert sorted(m20.fusion_rrf([[0, 1], [2]])) == [0, 1, 2]
+
+    def test_lista_vacia_no_aporta_ruido(self, m20):
+        """Una reformulación que no encontró nada ([]) no debe cambiar el resultado."""
+        assert m20.fusion_rrf([[5, 9], []]) == [5, 9]
+
+
+class TestTema20RagFusion:
+    """La prueba que importa: RAG-Fusion RESCATA lo que una sola búsqueda pierde."""
+
+    def test_una_sola_busqueda_no_encuentra_el_chunk_correcto(self, m20, chunks_datos_rag):
+        """El punto de partida: la pregunta cruda no casa con el chunk de reembolsos."""
+        assert CHUNK_REEMBOLSO not in m20.recuperar(PREGUNTA_DEVOLUCION, chunks_datos_rag, k=3)
+
+    def test_rag_fusion_sube_el_chunk_correcto_a_lo_alto(self, m20, chunks_datos_rag):
+        """Con multi-query + RRF, el chunk de reembolsos aparece arriba."""
+        fusion = m20.rag_fusion(PREGUNTA_DEVOLUCION, chunks_datos_rag, k=3)
+        assert CHUNK_REEMBOLSO in fusion
+        assert fusion[0] == CHUNK_REEMBOLSO
+
+    def test_horario_sigue_funcionando(self, m20, chunks_datos_rag):
+        """Regresión: una pregunta que ya casaba directo no debe empeorar."""
+        fusion = m20.rag_fusion("¿Cuál es el horario de soporte?", chunks_datos_rag, k=3)
+        assert fusion[0] == CHUNK_HORARIO_20
+
+
+class TestTema20Comprimir:
+    """Compresión extractiva: solo las frases que tocan la pregunta."""
+
+    def test_conserva_la_frase_relevante(self, m20, chunks_datos_rag):
+        texto = m20.comprimir_contexto(chunks_datos_rag, [CHUNK_REEMBOLSO], PREGUNTA_DEVOLUCION)
+        assert "reembolso" in texto.lower()
+
+    def test_descarta_un_chunk_sin_relacion(self, m20, chunks_datos_rag):
+        """El chunk de horario no tiene nada de reembolsos: se comprime a vacío."""
+        assert m20.comprimir_contexto(chunks_datos_rag, [CHUNK_HORARIO_20], PREGUNTA_DEVOLUCION) == ""
+
+
+# ==================================================================
+# TEMA 21 · Fine-tuning vs RAG: decisión + dataset de chat
+# ==================================================================
+@pytest.fixture(scope="module")
+def m21(importar_ejemplo):
+    return importar_ejemplo("21_fine_tuning")
+
+
+class TestTema21Decision:
+    """La recomendación es una función pura de reglas: casos canónicos."""
+
+    def test_conocimiento_que_cambia_es_rag(self, m21):
+        assert m21.recomendar_enfoque({"conocimiento_cambia_seguido": True}) == "RAG"
+
+    def test_formato_fijo_con_dataset_es_fine_tuning(self, m21):
+        assert m21.recomendar_enfoque({
+            "necesita_formato_o_estilo_fijo": True,
+            "hay_ejemplos_etiquetados": True,
+        }) == "fine-tuning"
+
+    def test_formato_fijo_sin_dataset_cae_en_prompt(self, m21):
+        assert m21.recomendar_enfoque({
+            "necesita_formato_o_estilo_fijo": True,
+            "hay_ejemplos_etiquetados": False,
+        }) == "prompt"
+
+    def test_conocimiento_mas_comportamiento_con_dataset_es_ambos(self, m21):
+        assert m21.recomendar_enfoque({
+            "conocimiento_cambia_seguido": True,
+            "necesita_formato_o_estilo_fijo": True,
+            "hay_ejemplos_etiquetados": True,
+        }) == "ambos"
+
+    def test_presupuesto_bajo_evita_el_fine_tuning(self, m21):
+        """Con dataset y formato fijo, pero sin presupuesto: primero el prompt."""
+        assert m21.recomendar_enfoque({
+            "necesita_formato_o_estilo_fijo": True,
+            "hay_ejemplos_etiquetados": True,
+            "presupuesto_bajo": True,
+        }) == "prompt"
+
+    def test_sin_senales_especiales_es_prompt(self, m21):
+        assert m21.recomendar_enfoque({}) == "prompt"
+
+
+class TestTema21Dataset:
+    """El armado del dataset de chat: la estructura ES el contrato con la plataforma."""
+
+    def test_cada_ejemplo_tiene_los_tres_roles_en_orden(self, m21):
+        dataset = m21.preparar_dataset_chat([("hola", "qué tal")], "sé breve")
+        assert len(dataset) == 1
+        roles = [m["role"] for m in dataset[0]["messages"]]
+        assert roles == ["system", "user", "assistant"]
+
+    def test_el_contenido_se_coloca_donde_toca(self, m21):
+        dataset = m21.preparar_dataset_chat([("¿precio?", "100 soles")], "sistema fijo")
+        msgs = dataset[0]["messages"]
+        assert msgs[0]["content"] == "sistema fijo"
+        assert msgs[1]["content"] == "¿precio?"
+        assert msgs[2]["content"] == "100 soles"
+
+    def test_convierte_todos_los_pares(self, m21):
+        pares = [("a", "1"), ("b", "2"), ("c", "3")]
+        assert len(m21.preparar_dataset_chat(pares, "s")) == 3
+
+    def test_sin_pares_da_dataset_vacio(self, m21):
+        assert m21.preparar_dataset_chat([], "s") == []
+
+
+class TestTema21Jsonl:
+    """JSONL: una línea JSON por registro, y cada línea parseable por sí sola."""
+
+    def test_una_linea_por_registro(self, m21):
+        dataset = m21.preparar_dataset_chat([("a", "1"), ("b", "2")], "s")
+        assert m21.a_jsonl(dataset).count("\n") == 1  # 2 registros -> 1 salto
+
+    def test_cada_linea_es_json_valido(self, m21):
+        import json
+        dataset = m21.preparar_dataset_chat([("a", "1"), ("b", "2")], "s")
+        for linea in m21.a_jsonl(dataset).splitlines():
+            registro = json.loads(linea)
+            assert "messages" in registro
+
+    def test_conserva_tildes_sin_escapar(self, m21):
+        """ensure_ascii=False: la ñ y las tildes se leen en claro en el archivo."""
+        dataset = m21.preparar_dataset_chat([("¿atención?", "sí, mañana")], "en español")
+        assert "atención" in m21.a_jsonl(dataset)
+
+
+# ==================================================================
+# TEMA 22 · Multimodal: construir el mensaje texto + imagen
+# ==================================================================
+@pytest.fixture(scope="module")
+def m22(importar_ejemplo):
+    return importar_ejemplo("22_multimodal")
+
+
+class TestTema22DataUrl:
+    """La imagen se codifica en un data: URL con su base64."""
+
+    def test_prefijo_correcto(self, m22):
+        url = m22.imagen_a_data_url(b"\x89PNG\r\n", mime="image/png")
+        assert url.startswith("data:image/png;base64,")
+
+    def test_respeta_el_mime_que_se_le_pasa(self, m22):
+        assert m22.imagen_a_data_url(b"xx", mime="image/jpeg").startswith("data:image/jpeg;base64,")
+
+    def test_el_base64_es_decodificable_y_recupera_los_bytes(self, m22):
+        import base64
+        datos = b"unos bytes cualquiera \x00\x01\x02"
+        url = m22.imagen_a_data_url(datos)
+        b64 = url.split(",", 1)[1]
+        assert base64.b64decode(b64) == datos
+
+    def test_el_png_demo_es_un_png_de_verdad(self, m22):
+        import base64
+        datos = base64.b64decode(m22.PNG_DEMO_1x1)
+        assert datos[:8] == b"\x89PNG\r\n\x1a\n"  # la firma mágica de un PNG
+
+
+class TestTema22Mensaje:
+    """El mensaje multimodal: dos bloques, texto + imagen, en el formato correcto."""
+
+    def test_tiene_exactamente_dos_bloques(self, m22):
+        msg = m22.mensaje_multimodal("hola", "data:image/png;base64,AAAA")
+        assert len(msg.content) == 2
+
+    def test_el_bloque_de_texto_preserva_el_texto(self, m22):
+        msg = m22.mensaje_multimodal("¿qué ves?", "data:image/png;base64,AAAA")
+        assert msg.content[0]["type"] == "text"
+        assert msg.content[0]["text"] == "¿qué ves?"
+
+    def test_el_bloque_de_imagen_lleva_el_data_url(self, m22):
+        url = "data:image/png;base64,AAAA"
+        msg = m22.mensaje_multimodal("x", url)
+        assert msg.content[1]["type"] == "image_url"
+        assert msg.content[1]["image_url"]["url"] == url
+
+    def test_es_un_humanmessage(self, m22):
+        from langchain_core.messages import HumanMessage
+        assert isinstance(m22.mensaje_multimodal("x", "data:image/png;base64,AAAA"), HumanMessage)
+
+    def test_el_formato_lo_acepta_langchain_google_genai(self, m22):
+        """El contrato de verdad: langchain-google-genai traduce ESTA estructura a
+        una parte 'inline_data' de Gemini. Confirma que el formato que construimos
+        es el que el proveedor con visión espera (sin llamar a la API)."""
+        import base64
+        from langchain_google_genai.chat_models import _convert_to_parts
+        url = m22.imagen_a_data_url(base64.b64decode(m22.PNG_DEMO_1x1))
+        partes = _convert_to_parts(m22.mensaje_multimodal("mira", url).content)
+        assert len(partes) == 2
+        assert partes[0].text == "mira"
+        assert partes[1].inline_data.mime_type == "image/png"
+        assert len(partes[1].inline_data.data) > 0
