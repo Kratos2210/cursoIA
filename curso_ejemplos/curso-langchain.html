@@ -425,6 +425,7 @@
       <a href="#m24"><span class="n">24</span>Vector DBs en producción</a>
       <a href="#m24b"><span class="n">24b</span>Feedback + A/B</a>
       <a href="#m25"><span class="n">25</span>Frontend chat SSE</a>
+      <a href="#m26"><span class="n">26</span>Mapa del ecosistema</a>
       <a href="#examen"><span class="n">📝</span>Examen final</a>
       <a href="#ejercicios"><span class="n">🏋️</span>Ejercicios</a>
       <a href="#faq"><span class="n">?</span>FAQ · errores comunes</a>
@@ -4052,6 +4053,118 @@ data: {"cache_hit": false, "variante": "agente_gobdata_conciso"}</code></pre></f
       <div class="recap l5">
         <div class="lab">↺ En una frase</div>
         <p>Para darle cara al servicio: sirve una <strong>SPA vainilla</strong> desde el propio FastAPI (<code>GET /</code>, leída una vez) y consume su <strong>SSE</strong> con <code>fetch</code>+<code>ReadableStream</code> —troceando por <code>\n\n</code>— porque <code>EventSource</code> no puede hacer POST; luego cierra el A/B votando la <code>variante</code> del evento <code>fin</code>.<span class="arch">archivos: <code>proyecto_llmops/app/frontend.py</code> · <code>app/static/chat.html</code></span></p>
+      </div>
+    </div></section>
+
+    <section id="m26"><div class="col">
+      <p class="modtag l5"><span class="bar"></span>AI Engineer · Módulo 26</p>
+      <h2>El mapa del ecosistema: LangChain no es el único, y eso está bien</h2>
+      <div class="fileref">📋 Módulo de lectura — comparativa honesta de frameworks, sin dependencias nuevas ni script ejecutable. Los <code>snippets</code> de otros frameworks son <strong>ilustrativos</strong>: muestran el "sabor" de su API, no se instalan ni se ejecutan aquí.</div>
+      <p class="modmeta"><span>🎯 <b>Al terminar sabrás:</b> elegir un framework de agentes por <strong>criterio de diseño</strong> —no por moda ni por el último hilo de Twitter— sabiendo qué gana y qué pierde cada uno frente a lo que ya montaste en este curso.</span><span>✅ <b>Necesitas:</b> haber visto el arco completo (agentes m08–m10, <code class="k">StateGraph</code> y HITL m13, RAG m11–m12/m20, inyección de dependencias y tests offline m17b, observabilidad m16). Sin ese mapa mental, la comparativa suena a lista de nombres.</span><span>⏱️ <b>~25 min</b></span></p>
+      <p>Este curso te enseñó <strong>un</strong> camino: LangChain para las piezas (modelo, prompts, tools, RAG) y LangGraph para el control del flujo (grafos de estado, ciclos, pausas humanas). Es un camino bueno y completo, pero no el único. Hay otros frameworks, y algunos hacen <em>ciertas</em> cosas mejor. Saberlo no te vuelve infiel: te vuelve <strong>ingeniero</strong>. La pregunta nunca es "¿cuál es el mejor?" —no existe—, sino "¿cuál encaja en <em>este</em> requisito?". Este módulo te da la brújula para responderla sin humo.</p>
+
+      <div class="box def"><div class="lab">◈ Definición · cinco frameworks y su diferencia de raíz</div>
+        <dl>
+          <dt><strong>LangChain / LangGraph</strong> — el que enseña el curso</dt><dd>Interfaz <strong>unificada</strong> sobre muchos proveedores + <strong>grafos de estado explícitos</strong> (<code class="k">StateGraph</code>) para el flujo. Su fuerte es el <em>control</em> fino y un ecosistema grande (LangSmith para tracing, integraciones a mansalva). El precio: hay que armar el grafo tú.</dd>
+          <dt><strong>LlamaIndex</strong> — <em>RAG e ingesta primero</em></dt><dd>Nace enfocado en <strong>conectar tus datos</strong> al LLM: cargadores, troceado, índices, consultas sobre documentos. Si tu problema es sobre todo "hablar con mis PDFs/BD", su abstracción de ingesta y consulta es más directa que armarla a mano.</dd>
+          <dt><strong>CrewAI</strong> — <em>orquestación de roles de alto nivel</em></dt><dd>Modela el sistema como una <strong>"crew" (tripulación) de agentes con roles</strong> (investigador, redactor…) que colaboran en tareas. Mucha ergonomía y poco código para arrancar; a cambio, menos control del flujo interno que un grafo explícito.</dd>
+          <dt><strong>OpenAI Agents SDK</strong> — <em>agentes livianos, atados al ecosistema OpenAI</em></dt><dd>Un SDK <strong>minimalista</strong> para bucles de agente (tools, handoffs entre agentes, guardrails) pensado alrededor de los modelos y las APIs de OpenAI. Ligero y directo si vives en ese ecosistema; más acoplado a un solo proveedor.</dd>
+          <dt><strong>Pydantic-AI</strong> — <em>type-safety y validación al centro</em></dt><dd>Trae la ergonomía de <strong>Pydantic</strong> (moldes tipados, validación) al mundo de los agentes: defines la <strong>salida como un tipo</strong> y el framework valida que el modelo lo cumpla. Muy cómodo para quien ya piensa en tipos y quiere respuestas estructuradas con garantías.</dd>
+        </dl></div>
+
+      <div class="box analogy"><div class="lab">◆ La caja de herramientas, no el martillo dorado</div>
+        <p>Elegir framework es como elegir vehículo. <strong>LangChain/LangGraph</strong> es una <em>furgoneta con caja de cambios manual</em>: llega a todas partes y controlas cada marcha, pero conduces tú. <strong>LlamaIndex</strong> es un <em>camión de mudanzas</em>: insuperable moviendo tus datos de A a B. <strong>CrewAI</strong> es un <em>bus con conductor</em>: subes, dices el destino en roles y él coordina. <strong>OpenAI Agents SDK</strong> es un <em>coche eléctrico de una sola marca</em>: ágil y afinado… mientras cargues en <em>sus</em> estaciones. <strong>Pydantic-AI</strong> es el que <em>no arranca sin cinturón abrochado</em>: te obliga a que la salida tenga forma válida. Ninguno es "el mejor coche"; depende del viaje.</p></div>
+
+      <h3>La tabla · cuándo elegir cuál (con los criterios que ya sabes)</h3>
+      <p>Las columnas usan los mismos ejes que el curso te enseñó a valorar: control del flujo, inyección de dependencias y testabilidad offline (m17b), human-in-the-loop (m13) y observabilidad (m16). Es un mapa <strong>cualitativo</strong>: no hay un ganador de fila, hay encajes.</p>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Framework</th><th>Brilla en…</th><th>Su filosofía</th><th>Cuándo NO es tu mejor opción</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>LangChain / LangGraph</strong></td>
+            <td>Control fino del flujo (ciclos, ramas, <code class="k">interrupt()</code> para HITL), interfaz multi-proveedor y tracing maduro (LangSmith).</td>
+            <td>Dame las piezas y el grafo; yo decido cómo encajan. El estado es explícito y auditable.</td>
+            <td>Si tu caso es un one-shot lineal trivial: montar un grafo es sobreingeniería (el mismo aviso del m13).</td>
+          </tr>
+          <tr>
+            <td><strong>LlamaIndex</strong></td>
+            <td>Ingesta y RAG: cargar, trocear, indexar y consultar tus documentos con poco andamiaje.</td>
+            <td>Los datos primero: el LLM es la boca, tus documentos son el cerebro.</td>
+            <td>Si el corazón es orquestar agentes con flujos complejos y menos "hablar con documentos".</td>
+          </tr>
+          <tr>
+            <td><strong>CrewAI</strong></td>
+            <td>Prototipar rápido una colaboración multi-rol legible ("investigador → redactor → revisor").</td>
+            <td>Piensa en roles y tareas; yo coordino la tripulación por ti.</td>
+            <td>Cuando necesitas control quirúrgico del paso a paso o auditar cada transición: el alto nivel te esconde el volante.</td>
+          </tr>
+          <tr>
+            <td><strong>OpenAI Agents SDK</strong></td>
+            <td>Agentes livianos y directos si ya vives en el ecosistema OpenAI (tools, handoffs, guardrails).</td>
+            <td>Lo mínimo para un bucle de agente, afinado a nuestros modelos.</td>
+            <td>Si necesitas neutralidad de proveedor o cambiar de modelo sin fricción: hay acoplamiento a un solo proveedor.</td>
+          </tr>
+          <tr>
+            <td><strong>Pydantic-AI</strong></td>
+            <td>Respuestas <strong>estructuradas y validadas</strong>: la salida es un tipo Pydantic con garantías, muy testeable e inyectable.</td>
+            <td>Si no valida contra el molde, no sale. Tipos al centro.</td>
+            <td>Si tu flujo es sobre todo orquestación multi-agente compleja más que "dame esta salida bien tipada".</td>
+          </tr>
+        </tbody>
+      </table></div>
+      <p>Fíjate en algo que el curso repite: <strong>inyección de dependencias, tests offline y observabilidad no son de un framework</strong>, son <em>tuyos</em>. Puedes montar DI y <code class="k">pytest -m offline</code> alrededor de casi cualquiera de estos. El framework decide la <em>ergonomía</em> del flujo; la <em>disciplina</em> de ingeniería la pones tú.</p>
+
+      <h3>El "sabor" de otras APIs (ilustrativo, no se ejecuta aquí)</h3>
+      <p>Para que reconozcas el estilo si lo ves en un repo ajeno. Son formas canónicas y mínimas —el objetivo es el <em>tono</em>, no memorizar firmas.</p>
+      <figure class="code"><figcaption><span class="d"></span>Ilustrativo · CrewAI: describes roles y tareas, la "crew" coordina (NO se instala en este curso)</figcaption><pre><code># pip install crewai  ← NO lo hagas aquí; esto es solo para ver el estilo
+from crewai import Agent, Task, Crew
+
+investigador = Agent(
+    role="Investigador",
+    goal="Reunir datos fiables sobre el tema",
+    backstory="Analista meticuloso al que le encanta citar fuentes.",
+)
+tarea = Task(
+    description="Investiga y resume el estado del arte de X.",
+    expected_output="Un resumen con 3 hallazgos y sus fuentes.",
+    agent=investigador,
+)
+crew = Crew(agents=[investigador], tasks=[tarea])
+resultado = crew.kickoff()   # el alto nivel: das roles y tareas, no el grafo</code></pre></figure>
+      <figure class="code"><figcaption><span class="d"></span>Ilustrativo · Pydantic-AI: la salida es un tipo, el framework valida (NO se instala aquí)</figcaption><pre><code># pip install pydantic-ai  ← NO aquí; solo para ver el "sabor" tipado
+from pydantic import BaseModel
+from pydantic_ai import Agent
+
+class Ciudad(BaseModel):        # el molde de la respuesta
+    nombre: str
+    pais: str
+
+agente = Agent("&lt;proveedor:modelo&gt;", output_type=Ciudad)  # el modelo va como string
+resultado = agente.run_sync("¿Capital de Perú?")
+print(resultado.output.nombre)  # ya es un objeto validado, no texto suelto</code></pre></figure>
+      <p>¿Te suena el segundo? Es la misma idea del <code class="k">with_structured_output()</code> que ya usaste en el m05: salida con molde. Cambia la ergonomía, no el concepto. Eso es justo lo que buscas al mirar otros frameworks: <strong>reconocer las mismas ideas con otra piel</strong>.</p>
+
+      <div class="box warn"><div class="lab">▲ "Más alto nivel" = menos control (y el lock-in tiene factura)</div>
+        <p>Es el mismo tradeoff del m13 (prebuilt vs <code class="k">StateGraph</code>), ahora a escala de framework entero. Cuanto más te resuelve la herramienta por dentro, <strong>menos ves y menos tocas</strong> cuando algo se tuerce en producción. Y cambiar de framework <strong>no es gratis</strong>: reescribes el pegamento, tus tests, tu tracing y a veces tu forma de pensar el estado. Un framework que te ata a <em>un</em> proveedor añade otra factura: el día que quieras cambiar de modelo, pagas la migración. Elige sabiendo qué te ahorras hoy y qué te cuesta el día que necesites abrir el capó.</p></div>
+      <div class="avoid"><div class="lab">⛔ Cuándo NO cambiarte de LangChain (ni saltar de framework por hype)</div>
+        <ul>
+          <li>Si ya tienes <strong>DI + tests offline + observabilidad</strong> montados y funcionando, migrar rara vez paga: tirarías tu red de seguridad para reconstruirla igual en otra sintaxis.</li>
+          <li>No cambies "porque salió uno nuevo y todos hablan de él". La novedad no es un requisito; el <strong>requisito es un requisito</strong>. Si tu problema no cambió, tu herramienta no tiene por qué cambiar.</li>
+          <li>No adoptes un framework de más alto nivel para <em>quitarte</em> el control que en tu caso <strong>sí</strong> necesitas (auditoría paso a paso, HITL fino): te lo esconderá justo cuando lo busques.</li>
+          <li>No mezcles tres frameworks "para lo que cada uno hace mejor" sin medir el coste del pegamento: cada frontera entre ellos es superficie de bugs y de mantenimiento.</li>
+        </ul></div>
+      <div class="box practice"><div class="lab">▸ Para practicar (reflexión, sin código)</div>
+        <p>Toma <strong>un caso real tuyo</strong> (uno del trabajo o una idea propia). Escríbelo en una frase y mapéalo a la tabla: ¿su corazón es <em>datos/RAG</em>, <em>orquestación multi-rol</em>, <em>salida muy tipada</em> o <em>control fino del flujo con pausas humanas</em>? Elige <strong>un</strong> framework y —lo más importante— redacta <em>por qué</em> ese y no los otros cuatro, nombrando el criterio (control, ingesta, ergonomía de roles, type-safety, acoplamiento a proveedor). Si tu justificación es "porque está de moda", vuelve a empezar: no es un criterio.</p></div>
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Nombrar en una frase la <strong>fortaleza distintiva</strong> de cada uno: LangGraph (control/grafo), LlamaIndex (ingesta/RAG), CrewAI (roles de alto nivel), OpenAI Agents SDK (agentes livianos atados a OpenAI), Pydantic-AI (salida tipada y validada).</li>
+          <li>Dado un caso concreto, decir <strong>cuál encaja</strong> y justificarlo con un criterio de ingeniería, no con moda.</li>
+          <li>Explicar el tradeoff "más alto nivel = menos control" y por qué migrar de framework <strong>cuesta</strong> (pegamento, tests, tracing, lock-in de proveedor).</li>
+          <li>Argumentar cuándo <strong>NO</strong> cambiarte: si ya tienes DI, tests y observabilidad, la migración rara vez paga.</li>
+        </ul></div>
+      <div class="recap l5">
+        <div class="lab">↺ En una frase</div>
+        <p>No hay "mejor framework", hay <strong>encajes</strong>: LangGraph para control del flujo, LlamaIndex para datos/RAG, CrewAI para roles de alto nivel, OpenAI Agents SDK para agentes livianos en su ecosistema y Pydantic-AI para salidas tipadas —y como DI, tests y observabilidad los pones <em>tú</em>, se elige por requisito, nunca por moda.<span class="arch">módulo de lectura · sin archivos nuevos · la brújula es la tabla "cuándo elegir cuál"</span></p>
       </div>
     </div></section>
 
