@@ -74,20 +74,32 @@ def construir_agente(
     )
 
 
-def prompt_por_defecto(rol: str = "analyst") -> str:
-    """Las instrucciones base del agente, renderizadas desde `prompts/*.yaml`.
+def prompt_de_variante(variante: str, rol: str = "analyst") -> str:
+    """El prompt de una VARIANTE del A/B, renderizado para el `rol`.
 
-    ⭐ El prompt NO vive aquí. Vive en `prompts/agente_gobdata.yaml`, versionado
-       y con changelog. Este módulo solo lo pide y le pasa el rol. Así un cambio
-       de instrucciones se revisa en el PR como lo que es —un cambio de
-       comportamiento— y no como una f-string enterrada en el código.
+    ⭐ El nombre de la variante ES el nombre del prompt: 'agente_gobdata' (A) y
+       'agente_gobdata_conciso' (B) son los dos archivos de `prompts/`. Cargar
+       por variante es justo lo que cierra el lazo A/B del ADR-0006: el usuario
+       asignado a B ve, de verdad, el prompt de B — no solo se le atribuye el
+       voto a B mientras ambos ven el mismo prompt.
 
     El prompt depende del `rol`: un 'compliance' recibe una sección extra que le
     autoriza a citar los anexos. Esa condicional vive en el YAML (Jinja2), no
     en un `if` de Python.
     """
     from prompts.loader import cargar_cacheado
-    return cargar_cacheado("agente_gobdata").render(rol=rol)
+    return cargar_cacheado(variante).render(rol=rol)
+
+
+def prompt_por_defecto(rol: str = "analyst") -> str:
+    """Las instrucciones base del agente (variante A), desde `prompts/*.yaml`.
+
+    ⭐ El prompt NO vive aquí. Vive en `prompts/agente_gobdata.yaml`, versionado
+       y con changelog. Este módulo solo lo pide y le pasa el rol. Así un cambio
+       de instrucciones se revisa en el PR como lo que es —un cambio de
+       comportamiento— y no como una f-string enterrada en el código.
+    """
+    return prompt_de_variante("agente_gobdata", rol)
 
 
 def crear_tools(llm, retriever, evaluador, rol: str = "analyst", ruta_auditoria=None):
@@ -150,12 +162,12 @@ def crear_tools(llm, retriever, evaluador, rol: str = "analyst", ruta_auditoria=
     return tools
 
 
-def construir_agente_real(rol: str | None = None, usar_pgvector: bool = True):
-    """El agente de verdad: cascada de modelos + pgvector + memoria.
+def _piezas_caras(usar_pgvector: bool = True):
+    """Las piezas 'caras' del agente: modelo (cascada), evaluador y retriever.
 
-    ⚠️ Llama a la API del proveedor y requiere servicios levantados
-    (salvo que usar_pgvector=False). Es el único sitio donde se juntan las
-    piezas 'caras'.
+    ⚠️ Llama a la API del proveedor y requiere servicios levantados (salvo que
+    usar_pgvector=False). Se construyen UNA vez y se comparten entre variantes:
+    lo único que cambia entre A y B es el prompt, no el modelo ni el índice.
     """
     from app import rag as rag_mod
     from app.audit_import import HallazgoCalidad
@@ -174,6 +186,41 @@ def construir_agente_real(rol: str | None = None, usar_pgvector: bool = True):
     else:
         retriever = rag_mod.construir_retriever_memoria()
 
+    return llm, retriever, evaluador
+
+
+def construir_agente_real(rol: str | None = None, usar_pgvector: bool = True):
+    """El agente de verdad (variante A): cascada de modelos + pgvector + memoria.
+
+    Lo usan las evaluaciones (`evals/`), donde no hay A/B: un solo agente basta.
+    El servicio HTTP construye uno POR variante con `construir_agentes_por_variante`.
+    """
+    llm, retriever, evaluador = _piezas_caras(usar_pgvector)
     return construir_agente(
         llm, retriever, evaluador, rol=rol or settings.app_rol_por_defecto
     )
+
+
+def construir_agentes_por_variante(variantes, rol: str | None = None,
+                                   usar_pgvector: bool = True) -> dict:
+    """Un agente por variante del A/B, compartiendo las piezas caras.
+
+    ⭐ CIERRA EL LAZO A/B (ADR-0006). El prompt se hornea al construir el grafo
+       (`create_react_agent(prompt=...)`), así que "usar el prompt de la variante"
+       significa, literalmente, un grafo por variante. Lo caro —modelo, retriever,
+       evaluador— se construye UNA vez y se comparte; solo el prompt (y el grafo
+       ligero que lo envuelve) cambia. Así el `thread_id` fija la variante, y la
+       variante fija el prompt que el usuario ve de verdad: por fin medimos el
+       EFECTO del prompt, no solo repartimos a ciegas.
+
+    Devuelve {variante: agente}. El servicio enruta por la variante pegajosa.
+    """
+    llm, retriever, evaluador = _piezas_caras(usar_pgvector)
+    rol = rol or settings.app_rol_por_defecto
+    return {
+        variante: construir_agente(
+            llm, retriever, evaluador, rol=rol,
+            prompt=prompt_de_variante(variante, rol),
+        )
+        for variante in variantes
+    }

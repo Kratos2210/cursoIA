@@ -235,3 +235,74 @@ class TestEndpointsFeedback:
         # El feedback vive en su propio endpoint: /metrics no gana claves nuevas.
         cliente.post("/feedback", json={"util": True, "variante": "A"})
         assert "tasa_aprobacion" not in cliente.get("/metrics").json()
+
+
+# ==================================================================
+# 4 · El lazo A/B CERRADO: cada variante usa SU prompt (ADR-0006)
+# ==================================================================
+class TestElAgenteUsaElPromptDeSuVariante:
+    """Antes medíamos solo la infraestructura del A/B (repartir + agregar votos);
+    ahora la variante elige el AGENTE, y cada agente estrena el prompt de SU
+    variante. Estos tests fijan justo eso: sin ellos, un refactor podría volver a
+    servir el prompt por defecto a las dos ramas sin que nadie se entere."""
+
+    def test_prompt_de_variante_carga_el_yaml_de_esa_variante(self):
+        from app.agent import prompt_de_variante
+
+        a = prompt_de_variante("agente_gobdata", "analyst")
+        b = prompt_de_variante("agente_gobdata_conciso", "analyst")
+        # Cada variante rinde SU archivo: son textos distintos, no el mismo.
+        assert a != b
+        assert b == loader.cargar("agente_gobdata_conciso").render(rol="analyst")
+
+    def test_construir_agentes_hornea_el_prompt_de_cada_variante(self, monkeypatch):
+        from app import agent as agent_mod
+
+        # Falseamos las piezas caras (modelo, pgvector) y espiamos el prompt con
+        # que se construye cada grafo: es lo único que cambia entre variantes.
+        monkeypatch.setattr(agent_mod, "_piezas_caras",
+                            lambda usar_pgvector=True: (None, None, None))
+        prompts_vistos = {}
+
+        def espia(llm, retriever, evaluador, *, rol="analyst", prompt=None):
+            prompts_vistos[prompt] = rol
+            return f"agente::{prompt}"
+
+        monkeypatch.setattr(agent_mod, "construir_agente", espia)
+
+        agentes = agent_mod.construir_agentes_por_variante(
+            EXPERIMENTO_PROMPT.variantes, rol="analyst")
+
+        # Un agente por variante, cada uno horneado con el prompt de SU archivo.
+        assert set(agentes) == set(EXPERIMENTO_PROMPT.variantes)
+        for variante in EXPERIMENTO_PROMPT.variantes:
+            esperado = agent_mod.prompt_de_variante(variante, "analyst")
+            assert agentes[variante] == f"agente::{esperado}"
+            assert esperado in prompts_vistos
+
+    def test_el_thread_enruta_al_agente_de_su_variante(self, embeddings_falsos,
+                                                       fabrica_agente):
+        # Dos agentes distinguibles; se inyecta uno POR variante.
+        agente_a = fabrica_agente(["soy A"])
+        agente_b = fabrica_agente(["soy B"])
+        agentes = {"agente_gobdata": agente_a, "agente_gobdata_conciso": agente_b}
+        cache = SemanticCache(embeddings_falsos, InMemoryCache(), umbral=0.92)
+
+        # hilo-2 → variante A ; hilo-0 → variante B (asignación pegajosa por hash).
+        assert EXPERIMENTO_PROMPT.variante_de("hilo-2") == "agente_gobdata"
+        assert EXPERIMENTO_PROMPT.variante_de("hilo-0") == "agente_gobdata_conciso"
+
+        with TestClient(crear_app(agentes=agentes, cache=cache)) as cliente:
+            # Preguntas de coseno 0 entre sí: ningún HIT de caché salta al agente.
+            cliente.post("/chat", json={"mensaje": "¿Cuál es el horario de la oficina?",
+                                        "thread_id": "hilo-2"})
+            cliente.post("/chat", json={"mensaje": "¿Hay que cifrar los datos?",
+                                        "thread_id": "hilo-0"})
+
+        def hilos_de(agente):
+            return {inv["config"]["configurable"]["thread_id"]
+                    for inv in agente.invocaciones}
+
+        # Cada hilo activó SOLO el agente de su variante — no el del otro.
+        assert hilos_de(agente_a) == {"hilo-2"}
+        assert hilos_de(agente_b) == {"hilo-0"}

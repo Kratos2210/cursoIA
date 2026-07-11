@@ -52,11 +52,21 @@ más duele.
 ## Alcance de esta entrega (y lo que queda para después)
 
 Aquí el `thread_id` **fija la variante** y el feedback **se agrega por variante**:
-el lazo A/B de medición está cerrado. Lo que aún **no** se hace es re-cablear el
-agente para que use el YAML de la variante asignada (hoy ambas ramas usan el
-prompt por defecto). Ese es el paso siguiente, mecánico: cargar el prompt cuyo
-nombre es la variante. Se deja fuera para no acoplar esta feature al constructor
-del agente real, que necesita Postgres y embeddings.
+el lazo A/B de medición está cerrado.
+
+> **Actualización (2026-07-11): lazo cerrado de punta a punta.** La variante ya
+> **elige el agente**, y cada agente estrena el prompt de **su** variante. Como
+> `create_react_agent(prompt=...)` hornea el prompt al construir el grafo, "usar
+> el prompt de la variante" se implementa como **un grafo por variante**: las
+> piezas caras (modelo en cascada, retriever, evaluador) se construyen **una vez**
+> y se comparten; solo el prompt —y el grafo ligero que lo envuelve— cambia.
+> Vive en `app.agent.construir_agentes_por_variante`, y `crear_app` enruta con
+> `estado["agentes"][variante]`. Con esto ya medimos el **efecto real** del
+> prompt, no solo repartimos a ciegas. Los tests que lo fijan están en
+> `tests/test_ab_feedback.py::TestElAgenteUsaElPromptDeSuVariante`.
+
+Lo que **sí** queda fuera, a conciencia, es persistir el feedback y decidir un
+ganador con significancia estadística (ver "Negativas / limitaciones").
 
 ## Alternativas consideradas
 
@@ -90,15 +100,17 @@ del agente real, que necesita Postgres y embeddings.
   con **significancia estadística** (tamaño de muestra suficiente, un test de
   proporciones), no comparando dos fracciones pequeñas. Este colector da la señal
   cruda; la decisión estadística es de la capa de análisis, no de este proceso.
-- **El agente aún no usa el prompt de la variante** (ver "Alcance"): hoy medimos
-  la infraestructura del A/B, no todavía el efecto real de cambiar el prompt.
 - El reparto es fijo al 50/50 por diseño del hash; un *canary* 95/5 pediría
   particionar el espacio del hash, no solo un módulo.
+- **Un grafo por variante multiplica los grafos, no las piezas caras.** Con dos
+  variantes hay dos grafos, pero comparten modelo, retriever y evaluador. Si el
+  experimento creciera a muchas variantes, cada una añade un grafo (barato); el
+  coste real —el modelo y el índice— no se duplica.
 
 **Cuándo revisar esta decisión**
 1. Cuando haya que **persistir** los votos entre reinicios o agregarlos entre
    workers → mover `ColectorFeedback` a una tabla o a Langfuse.
 2. Cuando se quiera **decidir un ganador** → añadir el test de significancia y no
    fiarse de la tasa cruda.
-3. Cuando se re-cablee el agente al prompt de la variante → cerrar el lazo A/B
-   completo (medir el efecto del prompt, no solo repartir).
+3. ✅ *Hecho (2026-07-11)*: el agente ya usa el prompt de su variante; el lazo A/B
+   mide el efecto del prompt, no solo reparte. Ver "Alcance".

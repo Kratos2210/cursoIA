@@ -4055,7 +4055,7 @@ def deduplicar(chunks):
           <li>No sortees la variante <strong>por request</strong>: sin pegajosidad, el experimento no mide nada.</li>
         </ul></div>
       <div class="box practice"><div class="lab">▸ Para practicar</div>
-        <p>Manda varios <code class="k">POST /chat</code> con distintos <code class="k">thread_id</code> y comprueba en el evento <code class="k">fin</code> que cada hilo cae siempre en la misma variante. Luego vota con <code class="k">POST /feedback</code> y mira cómo <code class="k">GET /feedback</code> mueve la <code class="k">tasa_aprobacion</code>. El paso siguiente (ver <code class="k">ADR-0006</code>): cablear el agente al YAML de su variante para medir el efecto real del prompt.</p></div>
+        <p>Manda varios <code class="k">POST /chat</code> con distintos <code class="k">thread_id</code> y comprueba en el evento <code class="k">fin</code> que cada hilo cae siempre en la misma variante. Luego vota con <code class="k">POST /feedback</code> y mira cómo <code class="k">GET /feedback</code> mueve la <code class="k">tasa_aprobacion</code>. Y el lazo ya está <strong>cerrado de punta a punta</strong> (ver <code class="k">ADR-0006</code>): la variante no solo atribuye el voto, también <strong>elige el agente</strong> — cada uno con el prompt de su YAML (<code class="k">construir_agentes_por_variante</code>), así que la <code class="k">tasa_aprobacion</code> mide el efecto real del prompt.</p></div>
       <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
         <ul>
           <li>Explicar por qué el A/B debe ser pegajoso y por qué el hash lo consigue sin coordinar workers.</li>

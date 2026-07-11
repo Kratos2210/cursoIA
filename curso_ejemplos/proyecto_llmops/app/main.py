@@ -61,9 +61,9 @@ from prompts import experimentos
 
 # Las variantes del A/B de prompts. A = el prompt actual (agente_gobdata),
 # B = la variante concisa (agente_gobdata_conciso.yaml). El `thread_id` fija cuál
-# ve cada usuario, de forma pegajosa (ver prompts/experimentos.py). Cablear el
-# agente al prompt de su variante es el paso siguiente; aquí el thread_id fija la
-# variante y el feedback se agrega por variante — el lazo A/B completo.
+# ve cada usuario, de forma pegajosa (ver prompts/experimentos.py): la variante
+# elige el AGENTE (cada uno con el prompt de su variante), y el feedback se agrega
+# por variante. Lazo A/B cerrado de punta a punta (ver ADR-0006).
 EXPERIMENTO_PROMPT = experimentos.Experimento(
     nombre="prompt_conciso",
     variantes=("agente_gobdata", "agente_gobdata_conciso"),
@@ -104,21 +104,34 @@ class Feedback(BaseModel):
     comentario: str | None = Field(default=None, max_length=2000)
 
 
-def crear_app(agente=None, cache=None, colector=None, feedback=None) -> FastAPI:
+def crear_app(agente=None, agentes=None, cache=None, colector=None, feedback=None) -> FastAPI:
     """Construye la API. Todo lo caro entra por parámetro.
 
-    agente   : el grafo de LangGraph. Si es None, se construye el real (lento).
+    agente   : UN grafo de LangGraph, atajo para inyectar el mismo agente en
+               todas las variantes (lo usan los tests que no miden el prompt).
+    agentes  : {variante: grafo}, un agente por variante del A/B (lo que arma el
+               servicio real). Si ambos son None, se construyen al arrancar.
     cache    : un SemanticCache. Si es None, se construye con el backend que haya.
     colector : dónde se acumulan las métricas del proceso.
     feedback : dónde se acumulan los votos 👍/👎 del A/B. Si es None, se crea uno
                limpio. Como las métricas, va por parámetro para poder inyectar
                uno vacío en cada test.
     """
+    # Normalizamos a un mapa {variante: agente}. Un `agente` suelto se replica a
+    # todas las variantes: sirve para los tests que ejercitan el pipeline sin
+    # medir el efecto del prompt. `None` en ambos → se construye al arrancar.
+    if agentes is not None:
+        agentes_iniciales = dict(agentes)
+    elif agente is not None:
+        agentes_iniciales = {v: agente for v in EXPERIMENTO_PROMPT.variantes}
+    else:
+        agentes_iniciales = None
+
     # `estado` guarda las piezas caras. Construir el agente tarda segundos (carga
     # el modelo de embeddings, conecta a Postgres), así que se hace en el
     # arranque del servidor, no al importar este módulo.
     estado = {
-        "agente": agente,
+        "agentes": agentes_iniciales,
         "cache": cache,
         "colector": colector if colector is not None else metrics.ColectorMetricas(),
         "feedback": feedback if feedback is not None else ColectorFeedback(),
@@ -136,9 +149,11 @@ def crear_app(agente=None, cache=None, colector=None, feedback=None) -> FastAPI:
         apagar. Ahí vaciamos el buffer de trazas: un proceso que muere con el
         buffer lleno pierde en silencio las trazas de sus últimas requests.
         """
-        if estado["agente"] is None:          # pragma: no cover - requiere API real
-            from app.agent import construir_agente_real
-            estado["agente"] = construir_agente_real()
+        if estado["agentes"] is None:         # pragma: no cover - requiere API real
+            from app.agent import construir_agentes_por_variante
+            # Un agente por variante, con SU prompt; comparten las piezas caras.
+            estado["agentes"] = construir_agentes_por_variante(
+                EXPERIMENTO_PROMPT.variantes)
         if estado["cache"] is None:           # pragma: no cover - requiere embeddings
             from app.embeddings import crear_embeddings
             from cache.cache_backends import crear_backend
@@ -186,7 +201,7 @@ def crear_app(agente=None, cache=None, colector=None, feedback=None) -> FastAPI:
             "estado": "ok",
             "modelo": settings.llm_modelo_cheap,
             "tracing": tracing.activo(),
-            "agente_listo": estado["agente"] is not None,
+            "agente_listo": estado["agentes"] is not None,
         }
 
     # ------------------------------------------------------------------
@@ -260,11 +275,12 @@ async def _flujo(peticion: PeticionChat, estado: dict):
 
     # ---- 0) A/B DE PROMPTS -------------------------------------------
     # El thread_id fija la variante de forma PEGAJOSA: la misma conversación cae
-    # siempre en la misma (ver prompts/experimentos.py). Se anuncia en el evento
-    # `fin` para que el cliente pueda mandarla luego en su voto 👍/👎, y así el
-    # feedback se agregue por variante. (Cablear el agente al prompt de la
-    # variante es el paso siguiente; ver ADR-0006.)
+    # siempre en la misma (ver prompts/experimentos.py). La variante (a) elige el
+    # AGENTE que responde —cada uno con el prompt de su variante— y (b) se anuncia
+    # en el evento `fin` para que el cliente la devuelva en su voto 👍/👎, y así el
+    # feedback se agregue por variante. El lazo A/B queda cerrado (ver ADR-0006).
     variante = EXPERIMENTO_PROMPT.variante_de(peticion.thread_id)
+    agente = estado["agentes"][variante]
 
     with metrics.Cronometro() as crono:
         # ---- 1) GUARDRAIL DE ENTRADA -------------------------------------
@@ -305,7 +321,7 @@ async def _flujo(peticion: PeticionChat, estado: dict):
         guardia = streaming.GuardiaDeStream(rol=peticion.rol)
         try:
             async for token in streaming.tokens_del_agente(
-                estado["agente"], pregunta, peticion.thread_id,
+                agente, pregunta, peticion.thread_id,
                 callbacks=tracing.callbacks(),
             ):
                 crono.primer_token()
