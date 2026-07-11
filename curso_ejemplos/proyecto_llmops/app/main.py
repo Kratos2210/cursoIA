@@ -48,10 +48,10 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from fastapi.responses import StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from app import streaming
+from app import frontend, streaming
 from app.config import settings
 from guardrails import input_guard
 from observability import metrics, tracing
@@ -155,6 +155,23 @@ def crear_app(agente=None, cache=None, colector=None, feedback=None) -> FastAPI:
         version="1.0.0",
         lifespan=lifespan,
     )
+
+    # ------------------------------------------------------------------
+    # GET / — el frontend de chat (la cara visible del servicio)
+    # ------------------------------------------------------------------
+    @app.get("/", response_class=HTMLResponse)
+    def pagina_chat() -> str:
+        """Sirve la SPA vainilla de `app/static/chat.html`, ya cargada en memoria.
+
+        Devolver un string ya leído (frontend.PAGINA_CHAT) es lo más barato
+        posible: cero E/S por request. La página consume /chat por SSE con
+        fetch+ReadableStream y vota en /feedback — el mismo servicio, con cara.
+
+        ⚠️ En producción esto va detrás de auth y del mismo origen (o CORS
+           explícito): la demo lo sirve abierto para ser ejecutable sin montar
+           un proveedor de identidad, igual que el `rol` viaja en el body.
+        """
+        return frontend.PAGINA_CHAT
 
     # ------------------------------------------------------------------
     # GET /health — ¿está vivo el servicio?
