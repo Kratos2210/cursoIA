@@ -2609,6 +2609,17 @@ Guarda este número. Si tras cambiar el prompt/modelo baja: REGRESIÓN.</code></
 #   PUNTAJE GLOBAL: 24%   (antes: 100%)  ← ESO es una regresión, detectada
 # Restaura la línea original y el puntaje vuelve a 100%.</code></pre></figure>
         </div></details></div>
+
+      <div class="box def"><div class="lab">◈ La tríada de métricas RAG · qué mide un juez, exactamente</div>
+        <p>"¿La respuesta es buena?" es demasiado vago para un LLM-as-judge. La industria (marcos como <strong>RAGAS</strong>) parte esa pregunta en <strong>tres</strong> preguntas concretas, cada una un juez con su propio prompt — y las tres juntas separan los dos sitios donde un RAG puede fallar: <em>recuperar</em> mal o <em>redactar</em> mal.</p>
+        <dl>
+          <dt>Faithfulness (fidelidad)</dt><dd>¿La respuesta se sostiene <strong>solo</strong> en el contexto recuperado, sin inventar? Es tu medidor directo de alucinación: si el juez encuentra una afirmación que no está en los chunks, baja.</dd>
+          <dt>Answer relevance (relevancia)</dt><dd>¿La respuesta <strong>contesta la pregunta</strong> que se hizo, sin irse por las ramas? Una respuesta fiel al contexto pero que no responde lo pedido puntúa bajo aquí.</dd>
+          <dt>Context precision / recall</dt><dd>La calidad del <em>retriever</em>, no del generador: <strong>precision</strong> = de lo que recuperaste, cuánto era relevante (¿metiste basura?); <strong>recall</strong> = de lo relevante que existía, cuánto llegaste a recuperar (¿te dejaste lo bueno fuera?).</dd>
+        </dl>
+        <p>El diagnóstico es lo valioso: fidelidad baja → el problema está en el <em>generador</em> (prompt, modelo); recall bajo → está en el <em>retriever</em> (chunking, búsqueda del <a class="inline" href="#m12">m12</a>, o la pregunta del <a class="inline" href="#m20">m20</a>). Cada una se implementa como un LLM-as-judge, exactamente el patrón que armaste arriba.</p>
+        <p>Dos encuadres que ordenan todo lo anterior. <strong>Model evals vs product evals:</strong> un <em>model eval</em> pregunta "¿este modelo es bueno en general?" (benchmarks); un <em>product eval</em> pregunta "¿MI app resuelve el caso de MIS usuarios?" — y ese, con tu dataset y tu tríada, es el único que decide si despliegas. <strong>Evaluar un agente</strong> añade una capa: no basta con juzgar el resultado final, hay que mirar la <strong>trayectoria</strong> — ¿eligió las herramientas correctas?, ¿en el orden razonable?, ¿sin pasos inútiles? Un agente que acierta la respuesta por suerte tras tres llamadas equivocadas está roto aunque el resultado pase.</p></div>
+
       <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
         <ul>
           <li>Distinguir <strong>observabilidad</strong> (el sistema en vivo) de <strong>evaluación</strong> (la calidad antes de desplegar).</li>
@@ -3594,6 +3605,17 @@ def rag_fusion(pregunta, chunks, k=3, ancho=3):
       <div class="box practice"><div class="lab">▸ Para practicar</div>
         <p><strong>Predice antes de ejecutar.</strong> Añade al mapa <code class="k">SINONIMOS</code> el par <code class="k">"cancelar" → "reembolso"</code> y cambia la pregunta a <code class="k">"¿Puedo cancelar y recuperar mi dinero?"</code>. ¿Qué variantes genera <code class="k">expandir_consulta</code>? ¿Sube el chunk de reembolsos? Escríbelo en un papel y solo entonces córrelo.</p>
         <p>Segundo reto: haz que <code class="k">comprimir_contexto</code> devuelva también <em>de qué chunk</em> salió cada frase, para poder citar la fuente en la respuesta.</p></div>
+
+      <div class="box def"><div class="lab">◈ Más allá · el catálogo del retrieval de siguiente nivel</div>
+        <p>Multi-query y RAG-Fusion atacan la <em>pregunta</em>. Hay un cajón de técnicas más para cuando ni así llega el recall; no necesitas todas, pero conviene saber que existen y qué problema resuelve cada una:</p>
+        <dl>
+          <dt>HyDE (Hypothetical Document Embeddings)</dt><dd>En vez de buscar con la <em>pregunta</em>, pides al LLM una <strong>respuesta hipotética</strong> y buscas con ESA. ¿Por qué funciona? Una respuesta inventada se parece más —en vocabulario y forma— al documento real que la pregunta seca. Sirve cuando la pregunta y el documento "hablan distinto".</dd>
+          <dt>Sentence-window</dt><dd>Indexas frases sueltas (precisión al buscar) pero al recuperar devuelves la frase <strong>más su vecindario</strong> (la ventana): encuentras fino y entregas con contexto. Sirve cuando el chunk exacto se queda corto de contexto para responder.</dd>
+          <dt>Auto-merging</dt><dd>Chunks pequeños que "conocen" a su chunk padre: si recuperas varios hijos del mismo padre, el sistema los <strong>fusiona</strong> y te da el bloque grande. Sirve para respuestas que necesitan una sección entera, no fragmentos sueltos.</dd>
+          <dt>Query routing</dt><dd>Un clasificador decide <strong>a qué índice o herramienta</strong> mandar la pregunta (la normativa a un store, las cifras a una DB SQL, lo genérico al LLM directo). Sirve cuando tienes varias fuentes y no todas responden lo mismo.</dd>
+        </dl>
+        <p>Regla práctica: <strong>multi-query y RAG-Fusion (este módulo) cubren el 80% de los casos</strong>. Estas cuatro son el 20% restante — se añaden de a una, midiendo con la tríada del <a class="inline" href="#m16">m16</a>, cuando el recall sigue siendo tu cuello de botella y ya no por falta de reformular.</p></div>
+
       <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
         <ul>
           <li>Explicar la diferencia entre mejorar el RAG por el índice (Módulo 12) y por la pregunta (multi-query).</li>
@@ -3660,6 +3682,29 @@ def a_jsonl(registros):
     return "\n".join(json.dumps(r, ensure_ascii=False) for r in registros)</code></pre></figure>
       <div class="box warn"><div class="lab">▲ Fine-tuning NO actualiza conocimiento</div>
         <p>El error caro: afinar un modelo con los precios, el inventario o la FAQ de hoy. Mañana cambian y tu modelo miente con total seguridad — y "reeducarlo" cuesta otro entrenamiento. Los datos que cambian viven en la <strong>biblioteca</strong> (RAG), donde se actualizan sin tocar el modelo. El fine-tuning es para lo que <em>no</em> cambia: la forma.</p></div>
+
+      <div class="box def"><div class="lab">◈ El espectro completo de adaptación · del prompt al pre-entrenamiento</div>
+        <p>"RAG vs fine-tuning" es una foto en blanco y negro de un menú con seis colores. Ordenados de <strong>menos a más</strong> esfuerzo, datos y coste, así se adapta un LLM a tu caso — y la regla de oro es <strong>bajar por la lista solo cuando el escalón anterior se queda corto</strong>:</p>
+        <ol>
+          <li><strong>Prompt (zero-shot)</strong> — solo instrucciones. Cero datos, cambio en segundos. Tu primer intento SIEMPRE.</li>
+          <li><strong>Few-shot</strong> — metes 2–3 ejemplos en el prompt (m26b). Sigue sin entrenar nada; fija un formato "gratis".</li>
+          <li><strong>RAG</strong> — le das conocimiento fresco y citable en el momento (m11). El escalón que resuelve el 90% de los "que sepa lo mío".</li>
+          <li><strong>PEFT / LoRA</strong> — entrenas un <strong>1–2% de los pesos</strong> (unos adaptadores pequeños), no el modelo entero: cabe en una sola GPU, es barato y NO borra lo que el modelo ya sabía (menos "olvido catastrófico"). El fine-tuning que de verdad se usa hoy.</li>
+          <li><strong>Full fine-tuning</strong> — reentrenas todos los pesos. Máximo control del comportamiento, pero caro, lento y con riesgo de olvido; casi nunca se justifica frente a LoRA.</li>
+          <li><strong>Pre-entrenamiento de dominio</strong> — entrenar (casi) desde cero con un corpus enorme del sector, como <strong>BloombergGPT</strong> (finanzas). Coste de millones; solo para quien tiene datos y bolsillo de esa escala.</li>
+        </ol>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Enfoque</th><th>Qué cambias</th><th>Datos que necesitas</th><th>Coste</th></tr></thead>
+          <tbody>
+            <tr><td>Prompt / few-shot</td><td>El texto de entrada</td><td>0–3 ejemplos</td><td>Casi nulo</td></tr>
+            <tr><td>RAG</td><td>El contexto recuperado</td><td>Tus documentos</td><td>Bajo (infra de búsqueda)</td></tr>
+            <tr><td>PEFT / LoRA</td><td>~1–2% de los pesos</td><td>Cientos–miles de ejemplos</td><td>Medio (1 GPU)</td></tr>
+            <tr><td>Full fine-tuning</td><td>Todos los pesos</td><td>Miles de ejemplos de calidad</td><td>Alto</td></tr>
+            <tr><td>Pre-entrenamiento</td><td>El modelo desde cero</td><td>Corpus masivo del dominio</td><td>Millones</td></tr>
+          </tbody>
+        </table></div>
+        <p>Dos matices que cierran el mapa. El <strong>instruction tuning</strong> es el fine-tuning que convierte un modelo "autocompletar" en uno que <em>obedece órdenes</em>: es lo que ya trae de fábrica el modelo que usas. Y el <em>cómo</em> se enseña ese comportamiento —<strong>RLHF y su alternativa DPO</strong>— lo abrimos en el <a class="inline" href="#m27">m27</a>: aquí basta saber que ambos son formas de afinar la <em>conducta</em>, no de meter conocimiento.</p></div>
+
       <div class="avoid"><div class="lab">⛔ Cuándo NO usar esto</div>
         <ul>
           <li>No hagas fine-tuning para meter <strong>datos que cambian</strong> (precios, stock, políticas): eso es RAG. Afinar los congela y los vuelve mentira en cuanto se actualicen.</li>
@@ -4247,6 +4292,17 @@ def self_consistency(respuestas):
         </ul></div>
       <div class="box practice"><div class="lab">▸ Para practicar</div>
         <p>Toma un prompt real del proyecto (el del sistema del agente, o el del m05) y crea una <strong>segunda variante</strong> con CoT o con 2–3 ejemplos few-shot. Mídelas con un mini-dataset como el de este módulo —exact-match o coincidencia de palabra clave— y quédate con la que gane <em>de verdad</em>. Cuando quieras hacerlo con evals serios, es el <a class="inline" href="#m16">m16</a>; y si te suena a artesanía repetitiva, mira <strong>DSPy</strong>: trata el prompt como parámetros a <strong>optimizar</strong> contra una métrica y un set de ejemplos —prompt engineering hecho búsqueda sistemática (solo lectura, no se instala aquí).</p></div>
+      <div class="box def"><div class="lab">◈ El mapa completo de técnicas de prompting · lo que hay más allá de estas cuatro</div>
+        <p>Few-shot, CoT, self-consistency y descomposición son el pan de cada día. Hay una segunda liga de técnicas para razonamiento difícil; igual que en retrieval, no las necesitas todas, pero conviene reconocer el nombre y su para-qué:</p>
+        <dl>
+          <dt>Tree-of-Thoughts (ToT)</dt><dd>CoT es un camino recto; ToT <strong>explora varias ramas</strong> de razonamiento, evalúa cuál promete y puede <strong>retroceder</strong> si una no lleva a nada. Sirve para problemas con búsqueda (planificación, puzzles) donde el primer camino suele ser el equivocado.</dd>
+          <dt>Graph-of-Thought (GoT)</dt><dd>Generaliza el árbol a un <strong>grafo</strong>: ideas que se combinan y se refuerzan entre sí, no solo se ramifican. Sirve cuando los sub-razonamientos deben fusionarse, no elegirse.</dd>
+          <dt>Chain-of-Verification (CoVe)</dt><dd>El modelo responde, luego <strong>se genera preguntas de verificación</strong> sobre su propia respuesta, las contesta y corrige. Reduce alucinaciones — es el mismo espíritu del detector del <a class="inline" href="#m28">m28</a>, pero dentro del propio prompt.</dd>
+          <dt>APE (Automatic Prompt Engineer)</dt><dd>Le pides al <strong>LLM que redacte y optimice sus propios prompts</strong> contra una métrica, en vez de escribirlos tú a mano. Es la idea de DSPy llevada al prompt: prompt engineering como búsqueda automática.</dd>
+          <dt>Active Prompting</dt><dd>Elegir con criterio <strong>qué ejemplos etiquetar</strong> para el few-shot: se marcan los casos donde el modelo duda más, porque son los que más enseñan. Sirve cuando etiquetar cuesta y quieres el máximo por ejemplo.</dd>
+        </dl>
+        <p>Regla práctica: <strong>CoT + self-consistency (este módulo) cubren la mayoría de casos reales</strong>. ToT, GoT y compañía pagan solo cuando el problema es genuinamente de búsqueda o razonamiento multi-paso — y siempre se justifican <em>midiendo</em> (m16), nunca por moda.</p></div>
+
       <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
         <ul>
           <li>Explicar cuándo few-shot gana a describir la tarea, y por qué el orden (demostraciones → pregunta) importa.</li>
