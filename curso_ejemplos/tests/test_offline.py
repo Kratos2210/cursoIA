@@ -1200,3 +1200,73 @@ class TestTema27Atencion:
         claves = [[1.0, 0.0, 1.0], [0.0, 1.0, 0.0], [0.5, 0.0, 0.5]]
         pesos = m27.pesos_atencion(consulta, claves)
         assert pesos.index(max(pesos)) == 0  # la 1ª clave es idéntica a la consulta
+
+
+# ==================================================================
+# TEMA 28 · Desafíos: taxonomía, detector de inconsistencia, fragilidad
+# ==================================================================
+@pytest.fixture(scope="module")
+def m28(importar_ejemplo):
+    return importar_ejemplo("28_alucinaciones")
+
+
+class TestTema28Taxonomia:
+    """La taxonomía es un mapa consultable causa → mitigación → módulo."""
+
+    def test_cada_fila_tiene_los_campos_del_contrato(self, m28):
+        claves = {"causa", "categoria", "senal", "mitigacion", "modulo"}
+        assert m28.TAXONOMIA, "la taxonomía no puede estar vacía"
+        for fila in m28.TAXONOMIA:
+            assert claves <= set(fila), f"fila incompleta: {fila}"
+
+    def test_las_categorias_son_del_marco_de_cuatro(self, m28):
+        """Cada causa cuelga de una de las 4 categorías-paraguas de la teoría."""
+        for fila in m28.TAXONOMIA:
+            assert fila["categoria"] in m28.CATEGORIAS
+
+    def test_apunta_a_modulos_que_ensenaron_la_defensa(self, m28):
+        """Las mitigaciones remiten a módulos reales del curso (RAG, evals, etc.)."""
+        assert m28.modulos_de_mitigacion() <= {"m11", "m16", "m23", "m26b"}
+
+    def test_causas_por_modulo_filtra_bien(self, m28):
+        causas = m28.causas_por_modulo("m11")
+        assert "Falta de grounding" in causas
+        assert all(isinstance(c, str) for c in causas)
+
+    def test_un_modulo_sin_causas_devuelve_lista_vacia(self, m28):
+        assert m28.causas_por_modulo("m99") == []
+
+
+class TestTema28Inconsistencia:
+    """Detector estilo SelfCheckGPT: divergencia entre muestras de una pregunta."""
+
+    def test_todas_iguales_no_divergen(self, m28):
+        assert m28.detectar_inconsistencia(["París", "parís", "París."]) == 0.0
+
+    def test_todas_distintas_divergen_mucho(self, m28):
+        """4 respuestas distintas → 1 - 1/4 = 0.75."""
+        assert m28.detectar_inconsistencia(["1812", "1798", "1820", "1805"]) == 0.75
+
+    def test_ignora_puntuacion_y_mayusculas(self, m28):
+        """'París.' y 'parís' son la MISMA respuesta: no deben inflar la divergencia."""
+        assert m28.detectar_inconsistencia(["París.", "parís"]) == 0.0
+
+    def test_lista_vacia_no_divergencia(self, m28):
+        assert m28.detectar_inconsistencia([]) == 0.0
+
+    def test_es_sospechosa_dispara_sobre_el_umbral(self, m28):
+        assert m28.es_sospechosa(["1812", "1798", "1820", "1805"]) is True
+        assert m28.es_sospechosa(["París", "parís", "París"]) is False
+
+
+class TestTema28Fragilidad:
+    """Fragilidad: variaciones triviales del prompt no deberían cambiar la respuesta."""
+
+    def test_prompt_robusto_da_una_sola_respuesta(self, m28):
+        assert m28.medir_fragilidad(["4", " 4 ", "4."]) == 1
+        assert m28.es_fragil(["4", " 4 ", "4."]) is False
+
+    def test_prompt_fragil_da_varias_respuestas(self, m28):
+        respuestas = ["Sí, es seguro", "No, evítalo", "Depende del caso"]
+        assert m28.medir_fragilidad(respuestas) == 3
+        assert m28.es_fragil(respuestas) is True

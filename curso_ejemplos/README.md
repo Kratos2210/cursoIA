@@ -76,6 +76,7 @@ La columna «Cuota» se refiere al proveedor que tengas activo: con
 | 24 · Vector DBs | `24_vector_db.py` | dedup por hash + índice IVFFlat (recall↔velocidad) | **No** |
 | 26b · Prompt engineering | `26b_prompt_engineering.py` | few-shot · CoT · self-consistency · descomposición | **No** |
 | 27 · Fundamentos del LLM | `27_fundamentos_llm.py` | tokenización BPE · softmax/temperatura · top_k/top_p · perplejidad | **No** |
+| 28 · Desafíos y alucinaciones | `28_alucinaciones.py` | taxonomía causa→mitigación · detector de inconsistencia · fragilidad | **No** |
 
 **Proyecto final:** [`proyecto_final/`](proyecto_final/) — el asistente de
 Gobierno de Datos, repartido en 8 módulos y con 44 tests propios.
@@ -131,6 +132,7 @@ montón de scripts: **cada concepto tiene una prueba que lo defiende**.
 | Vector DBs en producción (dedup · IVFFlat) | `24` | [24](curso-langchain.html#m24) | `test_offline.py::TestTema24*` |
 | Prompt engineering (few-shot · CoT · self-consistency) | `26b` | [26b](curso-langchain.html#m26b) | `test_offline.py::TestTema26b*` |
 | Fundamentos del LLM (tokenización · softmax · muestreo · perplejidad) | `27` | [27](curso-langchain.html#m27) | `test_offline.py::TestTema27*` |
+| Desafíos: alucinaciones y detección (SelfCheckGPT) | `28` | [28](curso-langchain.html#m28) | `test_offline.py::TestTema28*` |
 
 ## 6) Cómo se verifica que esto funciona
 

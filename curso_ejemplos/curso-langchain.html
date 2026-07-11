@@ -428,6 +428,7 @@
       <a href="#m26"><span class="n">26</span>Mapa del ecosistema</a>
       <a href="#m26b"><span class="n">26b</span>Prompt engineering</a>
       <a href="#m27"><span class="n">27</span>Fundamentos del LLM</a>
+      <a href="#m28"><span class="n">28</span>Desafíos y alucinaciones</a>
       <a href="#examen"><span class="n">📝</span>Examen final</a>
       <a href="#ejercicios"><span class="n">🏋️</span>Ejercicios</a>
       <a href="#faq"><span class="n">?</span>FAQ · errores comunes</a>
@@ -3770,6 +3771,19 @@ def mensaje_multimodal(texto, data_url):
       <div class="box analogy"><div class="lab">◆ El portero y el sobre marcado</div>
         <p>Tu contexto recuperado es como un <strong>sobre que te llega por correo</strong>: puedes <em>leer</em> lo que dice, pero no vas a <em>obedecer</em> una nota que diga "dale las llaves de la caja fuerte al portador". Separar DATOS de INSTRUCCIONES es marcar ese sobre como "solo lectura". El detector de patrones es el <strong>portero</strong> que revisa a la entrada; el saneo de la salida es el que revisa a la <strong>salida</strong> — porque a veces el intruso ya está dentro.</p></div>
 
+      <div class="box def"><div class="lab">◈ El panorama completo · más allá de la inyección que ya practicaste</div>
+        <p>Este módulo ataca las tres piezas que se ven <strong>offline</strong>, pero el catálogo de amenazas adversariales es más ancho. Vale conocerlo para no creer que "ya está" con el detector de inyección:</p>
+        <dl>
+          <dt>Jailbreaking</dt><dd>Rodear las reglas del modelo con un <strong>rol o ficción</strong> ("haz de cuenta que eres un modelo sin restricciones…"). Prima hermana de la inyección directa.</dd>
+          <dt>Envenenamiento de datos</dt><dd>Meter ejemplos maliciosos <strong>en los datos de entrenamiento o en el corpus del RAG</strong> para torcer el comportamiento a futuro. La inyección indirecta del <a class="inline" href="#m11">m11</a>/<a class="inline" href="#m12">m12</a> es su versión en tiempo de consulta.</dd>
+          <dt>Backdoor</dt><dd>Un <strong>disparador oculto</strong> (una frase-llave) que el atacante sembró y que activa una conducta anómala solo cuando aparece.</dd>
+          <dt>Inversión de modelo</dt><dd>Reconstruir <strong>datos de entrenamiento</strong> a partir de las respuestas del modelo.</dd>
+          <dt>Inferencia de pertenencia (MIA)</dt><dd>Deducir si <strong>un dato concreto estuvo</strong> en el entrenamiento —un problema de privacidad, no solo de seguridad.</dd>
+        </dl></div>
+
+      <div class="box def"><div class="lab">◈ Privacidad · la otra cara de la seguridad</div>
+        <p>No todo ataque busca que el modelo <em>diga</em> algo malo; algunos buscan <strong>extraer</strong> algo que no debía salir. El <em>gradient leakage</em> reconstruye datos desde los gradientes en entrenamiento distribuido; la <em>inferencia de pertenencia</em> (arriba) huele si tu registro estuvo en el dataset; y la fuga de <strong>PII</strong> (nombres, correos, tarjetas) es la más cotidiana. Defensas: <em>differential privacy</em> y regularización al entrenar, y —lo que sí está en tu mano hoy— el <strong>PII scrubbing</strong> a la salida, que es justo lo que hace <code class="k">redactar_secretos</code> más abajo. La privacidad se diseña; no se parchea al final.</p></div>
+
       <h3>Paso 1 · Detectar la inyección (primera capa)</h3>
       <p>Casi todos los ataques se apoyan en unas pocas frases-palanca. Una lista de patrones las caza y te dice <strong>qué</strong> tipo de ataque vio (útil para loguear y alertar).</p>
       <figure class="code"><figcaption><span class="d"></span>23_seguridad.py · LLM01 · lista negra de patrones</figcaption><pre><code>def detectar_inyeccion(texto):
@@ -4364,6 +4378,82 @@ def self_consistency(respuestas):
       </div>
     </div></section>
 
+    <section id="m28"><div class="col">
+      <p class="modtag l5"><span class="bar"></span>AI Engineer · Módulo 28</p>
+      <h2>Desafíos: alucinaciones y por qué fallan los LLM</h2>
+      <div class="fileref">📋 El ejemplo: <b>curso_ejemplos/28_alucinaciones.py</b> — taxonomía y detectores, 100% offline<span class="tested">✓ cubierto por tests</span></div>
+      <p class="modmeta"><span>🎯 <b>Al terminar sabrás:</b> de dónde vienen las <strong>alucinaciones</strong>, cómo <strong>detectarlas</strong> midiendo la divergencia entre muestras y cómo cada desafío se mitiga con lo que el curso YA te enseñó.</span><span>✅ <b>Necesitas:</b> el <a class="inline" href="#m11">m11</a> (RAG), el <a class="inline" href="#m16">m16</a> (evals), el <a class="inline" href="#m26b">m26b</a> (self-consistency) y el <a class="inline" href="#m27">m27</a> (por qué el modelo predice, no consulta).</span><span>⏱️ <b>~35 min</b></span></p>
+      <p>Un LLM puede afirmar con total aplomo algo <strong>falso</strong>: eso es una <strong>alucinación</strong>. No es un bug que se "arregla" de una vez —es consecuencia de cómo funciona (el <a class="inline" href="#m27">m27</a> lo explicó: predice el siguiente token, no consulta la verdad)—. Lo que SÍ puedes es entender de dónde vienen y montar defensas. Este es un módulo <strong>integrador</strong>: cada desafío se conecta con la mitigación que ya practicaste, y añade dos detectores nuevos y medibles.</p>
+
+      <div class="box def"><div class="lab">◈ El paraguas · los cuatro grandes desafíos de un LLM</div>
+        <p>La teoría los agrupa en cuatro familias; este módulo abre la que más muerde en producción, la <strong>técnica</strong>: la alucinación.</p>
+        <dl>
+          <dt>De datos</dt><dd>Sesgo, conocimiento desactualizado, dependencia de la calidad del corpus.</dd>
+          <dt>Éticos y sociales</dt><dd>Amplificación de sesgos, copyright, privacidad del usuario.</dd>
+          <dt>Técnicos</dt><dd><strong>Alucinación</strong>, interpretabilidad, evaluación, contexto largo. ← aquí entramos.</dd>
+          <dt>De despliegue</dt><dd>Escalabilidad, latencia, coste, seguridad, cumplimiento.</dd>
+        </dl></div>
+
+      <div class="box analogy"><div class="lab">◆ El estudiante que nunca dice "no sé"</div>
+        <p>Un LLM es como un alumno brillante al que <strong>penalizan por quedarse callado</strong>: siempre contesta algo, aunque no lo sepa, y lo hace con la misma seguridad que cuando sí lo sabe. El truco para pillarlo: <strong>pregúntale lo mismo varias veces</strong>. Si lo sabe, repite la misma respuesta; si lo está inventando, cada vez dice algo distinto. Esa <em>dispersión</em> es la señal de alarma —y es exactamente lo que mide el detector de este módulo.</p></div>
+
+      <h3>La taxonomía · de la causa a la mitigación que ya conoces</h3>
+      <p>El corazón del módulo es un <strong>mapa consultable</strong> (no un párrafo que se desactualiza): cada causa de alucinación apunta a su señal, su mitigación y el módulo donde la practicaste.</p>
+      <figure class="code"><figcaption><span class="d"></span>28_alucinaciones.py · TAXONOMIA (estructura de datos consultable)</figcaption><pre><code>TAXONOMIA = [
+    {"causa": "Falta de grounding", "categoria": "datos",
+     "mitigacion": "Grounding con RAG y pedir que cite la fuente.", "modulo": "m11"},
+    {"causa": "Sobregeneralización de patrones", "categoria": "tecnica",
+     "mitigacion": "Self-consistency (votar la moda) y verificación.", "modulo": "m26b"},
+    {"causa": "Sin verificación de la salida", "categoria": "tecnica",
+     "mitigacion": "Evaluar con un dataset y una métrica.", "modulo": "m16"},
+    # …datos desactualizados (m11), contexto insuficiente (m26b), entrada envenenada (m23)
+]</code></pre></figure>
+      <p>Léelo al revés y es un resumen de todo el curso avanzado: contra la alucinación tienes <strong>RAG</strong> (<a class="inline" href="#m11">m11</a>), <strong>evals</strong> (<a class="inline" href="#m16">m16</a>), <strong>self-consistency</strong> (<a class="inline" href="#m26b">m26b</a>) y <strong>guardarraíles</strong> (<a class="inline" href="#m23">m23</a>).</p>
+
+      <h3>Detectar la inconsistencia · el reverso del self-consistency</h3>
+      <p>En el <a class="inline" href="#m26b">m26b</a>, ante varias muestras de la misma pregunta, <strong>votabas la moda</strong> para acertar más. Aquí usamos las mismas muestras al revés: <strong>medimos cuánto discrepan</strong>. Poca dispersión = el modelo sabe; mucha = probablemente inventa. Es la idea de <strong>SelfCheckGPT</strong> reducida a aritmética testeable.</p>
+      <figure class="code"><figcaption><span class="d"></span>28_alucinaciones.py · detectar_inconsistencia (función pura)</figcaption><pre><code>from collections import Counter
+
+def detectar_inconsistencia(respuestas):
+    # respuestas cortas ya extraídas ("París", "1812"), como el voto del m26b.
+    if not respuestas:
+        return 0.0
+    normalizadas = [_normalizar(r) for r in respuestas]   # sin puntuación ni caja
+    mas_comun = Counter(normalizadas).most_common(1)[0][1]
+    return 1 - mas_comun / len(normalizadas)   # 0 = todas iguales; →1 = todas distintas</code></pre></figure>
+      <figure class="code output"><figcaption><span class="d"></span>▸ deberías ver al correr uv run python 28_alucinaciones.py (recortado)</figcaption><pre><code>[2] DETECTAR INCONSISTENCIA (estilo SelfCheckGPT):
+    modelo que SABE     ['París', 'parís', 'París.']
+       → divergencia 0.00  · ¿sospechosa? False
+    modelo que INVENTA  ['1812', '1798', '1820', '1805']
+       → divergencia 0.75  · ¿sospechosa? True</code></pre></figure>
+      <p>El acompañante es <code class="k">medir_fragilidad()</code>: si cambiar una coma o un sinónimo en el prompt cambia la respuesta, el resultado dependía de la <strong>forma</strong>, no del conocimiento —una alerta distinta pero pariente.</p>
+
+      <div class="box def"><div class="lab">◈ Defensas de entrada · el filtro de perplejidad y SmoothLLM</div>
+        <p>Dos ideas de investigación que cierran el círculo con módulos anteriores. El <strong>filtro de perplejidad</strong> reusa el <code class="k">calcular_perplejidad()</code> del <a class="inline" href="#m27">m27</a>: un prompt adversarial suele ser texto "raro" con tokens improbables → perplejidad alta → se marca antes de llegar al modelo. Y <strong>SmoothLLM</strong> hace varias copias del prompt con perturbaciones mínimas y compara las salidas: si un carácter de más tumba el ataque, es que era frágil y malicioso. Ambas son baratas y se apilan sobre los guardarraíles del <a class="inline" href="#m23">m23</a>.</p></div>
+
+      <div class="box warn"><div class="lab">▲ Un detector no es una garantía</div>
+        <p>La divergencia baja significa "el modelo es <strong>consistente</strong>", no "el modelo tiene <strong>razón</strong>": puede equivocarse igual de firme las tres veces (un sesgo del entrenamiento no se disipa muestreando). El detector sube una <em>bandera de sospecha</em> cuando hay dispersión; la verdad se establece con <strong>grounding</strong> (RAG) y <strong>evaluación</strong> (un dataset con respuestas de referencia), no con estadística sobre las propias muestras del modelo.</p></div>
+      <div class="avoid"><div class="lab">⛔ Cuándo NO aplicar esto</div>
+        <ul>
+          <li>No corras el detector en tareas <strong>creativas</strong> (redactar, parafrasear): ahí la variedad entre muestras es deseable, no una alucinación.</li>
+          <li>No pagues <strong>N muestras</strong> para cada consulta trivial: el muestreo múltiple multiplica el coste; resérvalo para respuestas factuales de alto riesgo.</li>
+          <li>No confundas <strong>consistente</strong> con <strong>correcto</strong>: sin una fuente o un dataset, un modelo puede estar seguro y equivocado a la vez.</li>
+        </ul></div>
+      <div class="box practice"><div class="lab">▸ Para practicar</div>
+        <p>Toma una pregunta factual y otra creativa, arma para cada una una lista de "muestras" simuladas y pásalas por <code class="k">detectar_inconsistencia()</code>: verás por qué el umbral que sirve para hechos no sirve para creatividad. Luego mapea un fallo real que hayas visto a una fila de la <code class="k">TAXONOMIA</code> y comprueba que la mitigación es un módulo que ya hiciste.</p></div>
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Explicar por qué un LLM alucina en términos del m27 (predice tokens, no consulta la verdad).</li>
+          <li>Nombrar cuatro causas de alucinación y la mitigación que el curso enseñó para cada una.</li>
+          <li>Implementar un detector de inconsistencia y decir por qué es el reverso del self-consistency.</li>
+          <li>Distinguir "consistente" de "correcto" y saber qué añade el grounding y los evals.</li>
+        </ul></div>
+      <div class="recap l5">
+        <div class="lab">↺ En una frase</div>
+        <p>La alucinación no se "apaga": se <strong>entiende</strong> (el modelo predice, no consulta), se <strong>detecta</strong> midiendo la divergencia entre muestras (reverso del self-consistency) y la fragilidad ante variaciones, y se <strong>mitiga</strong> con lo que ya sabes —RAG, evals, self-consistency y guardarraíles—.<span class="arch">archivos: <code>curso_ejemplos/28_alucinaciones.py</code></span></p>
+      </div>
+    </div></section>
+
     <!-- ================= EXAMEN FINAL ================= -->
     <section id="examen"><div class="col">
       <p class="modtag l5"><span class="bar"></span>Evaluación · Examen final</p>
@@ -4759,6 +4849,7 @@ llm = ChatOpenAI(model="qwen/qwen3-32b",
           <tr><td>Vector DBs en producción (dedup · IVFFlat)</td><td><code>24</code></td><td><a class="inline" href="#m24">24</a></td><td><code>test_offline.py::TestTema24*</code></td></tr>
           <tr><td>Prompt engineering (few-shot · CoT · self-consistency)</td><td><code>26b</code></td><td><a class="inline" href="#m26b">26b</a></td><td><code>test_offline.py::TestTema26b*</code></td></tr>
           <tr><td>Fundamentos del LLM (tokenización · softmax · muestreo · perplejidad)</td><td><code>27</code></td><td><a class="inline" href="#m27">27</a></td><td><code>test_offline.py::TestTema27*</code></td></tr>
+          <tr><td>Desafíos: alucinaciones y detección (SelfCheckGPT)</td><td><code>28</code></td><td><a class="inline" href="#m28">28</a></td><td><code>test_offline.py::TestTema28*</code></td></tr>
         </tbody>
       </table></div>
       <div class="box analogy"><div class="lab">◆ ¿Y tus experimentos previos?</div>
