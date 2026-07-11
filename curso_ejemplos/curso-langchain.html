@@ -423,6 +423,7 @@
       <a href="#m22"><span class="n">22</span>Multimodal</a>
       <a href="#m23"><span class="n">23</span>Seguridad · red-teaming</a>
       <a href="#m24"><span class="n">24</span>Vector DBs en producción</a>
+      <a href="#m24b"><span class="n">24b</span>Feedback + A/B</a>
       <a href="#examen"><span class="n">📝</span>Examen final</a>
       <a href="#ejercicios"><span class="n">🏋️</span>Ejercicios</a>
       <a href="#faq"><span class="n">?</span>FAQ · errores comunes</a>
@@ -3907,6 +3908,72 @@ def deduplicar(chunks):
       <div class="recap l5">
         <div class="lab">↺ En una frase</div>
         <p>Una DB vectorial de verdad hace dos cosas que tu lista en memoria no: <strong>deduplica</strong> antes de indexar e <strong>indexa con ANN</strong> (IVFFlat/HNSW) para no comparar contra todo — cambiando algo de recall por mucha velocidad.<span class="arch">archivo: <code>24_vector_db.py</code></span></p>
+      </div>
+    </div></section>
+
+    <section id="m24b"><div class="col">
+      <p class="modtag l5"><span class="bar"></span>AI Engineer · Módulo 24b</p>
+      <h2>Feedback 👍/👎 y A/B de prompts: mejorar con datos, no con opiniones</h2>
+      <div class="fileref">📋 Es una feature del servicio, no un script: <b>proyecto_llmops/prompts/experimentos.py</b> + <b>proyecto_llmops/observability/feedback.py</b> — 100% offline<span class="tested">✓ cubierto por tests</span></div>
+      <p class="modmeta"><span>🎯 <b>Al terminar sabrás:</b> repartir usuarios entre dos prompts de forma <strong>pegajosa</strong> (A/B) y recoger su <strong>feedback</strong> 👍/👎 agregado por variante — el lazo que convierte "creo que este prompt es mejor" en "mídelo".</span><span>✅ <b>Necesitas:</b> el Módulo 17 (servir por HTTP) y el proyecto LLMOps.</span><span>⏱️ <b>~30 min</b></span></p>
+      <p>Tienes dos redacciones del prompt del sistema: una larga (<code class="k">agente_gobdata</code>) y una concisa (<code class="k">agente_gobdata_conciso</code>). ¿Cuál responde mejor? Eso no lo decide quien escribió el prompt: lo decide el usuario. Para medirlo hacen falta dos piezas que encajan — <strong>repartir</strong> el tráfico entre las dos variantes y <strong>recoger</strong> el 👍/👎 agregado por variante. Sin las dos, no hay experimento.</p>
+
+      <div class="box def"><div class="lab">◈ Definición · Bucketing pegajoso y feedback por variante</div>
+        <dl>
+          <dt>A/B pegajoso (sticky)</dt><dd>El mismo <code class="k">thread_id</code> cae <strong>siempre</strong> en la misma variante. La variante es una <strong>función</strong> del identificador, no un sorteo por request. Si alternara, el usuario vería A y B en la misma conversación y su voto no se podría atribuir a nada.</dd>
+          <dt>Bucketing por hash</dt><dd><code class="k">sha256(thread_id) % nº_variantes</code>. Es <strong>reproducible</strong> (cualquier worker calcula lo mismo sin coordinarse), <strong>sin estado</strong> (no guardas a quién le tocó qué) y <strong>uniforme</strong> (el hash reparte parejo).</dd>
+          <dt>Feedback 👍/👎</dt><dd>Un pulgar se pulsa; una nota de 1 a 5 se piensa. Se agrega por variante en una <code class="k">tasa_aprobacion</code> (👍/total). Comparar esa tasa entre A y B es el resultado del experimento.</dd>
+        </dl></div>
+
+      <div class="box analogy"><div class="lab">◆ La cola del súper que no cambia de fila</div>
+        <p>Imagina que al entrar te asignan una caja por tu número de socio, no al azar en cada compra. Vuelves mañana y te toca la misma caja: puedes comparar de verdad "¿la caja A atiende mejor que la B?" porque cada cliente vive una sola experiencia. Si te reasignaran caja a cada artículo, nadie sabría a qué caja agradecer o culpar. El <strong>hash del <code>thread_id</code></strong> es ese "número de socio": pegajoso y sin que la caja tenga que recordarte.</p></div>
+
+      <h3>Paso 1 · Bucketing determinista y pegajoso por hash</h3>
+      <figure class="code"><figcaption><span class="d"></span>proyecto_llmops/prompts/experimentos.py · asignar_variante (stdlib hashlib)</figcaption><pre><code>def asignar_variante(clave, variantes):
+    # sha256(clave) es un entero de 256 bits repartido uniforme; su módulo
+    # reparte parejo entre variantes. La MISMA clave -&gt; SIEMPRE la misma variante.
+    # ⭐ No se usa hash() de Python: está aleatorizado por proceso
+    #    (PYTHONHASHSEED), así dos workers asignarían distinto al mismo usuario.
+    digest = hashlib.sha256(clave.encode("utf-8")).hexdigest()
+    return variantes[int(digest, 16) % len(variantes)]</code></pre></figure>
+
+      <h3>Paso 2 · El voto, agregado por variante</h3>
+      <p>El feedback vive en <strong>su propio endpoint</strong>, no en <code class="k">/metrics</code>: coste/latencia y satisfacción son ejes distintos, y así el <code class="k">resumen()</code> de métricas no gana claves que sus tests no esperan.</p>
+      <figure class="code"><figcaption><span class="d"></span>proyecto_llmops/observability/feedback.py · resumen() agrega por variante</figcaption><pre><code>def resumen(self):
+    agregado = {}
+    for voto in self.votos:
+        casilla = agregado.setdefault(voto.variante,
+            {"util": 0, "no_util": 0, "total": 0, "tasa_aprobacion": 0.0})
+        casilla["util" if voto.util else "no_util"] += 1
+        casilla["total"] += 1
+    for casilla in agregado.values():             # 👍 / total: ordena A frente a B
+        casilla["tasa_aprobacion"] = round(casilla["util"] / casilla["total"], 3)
+    return agregado</code></pre></figure>
+      <figure class="code output"><figcaption><span class="d"></span>▸ deberías ver al pedir GET /feedback (tras unos votos)</figcaption><pre><code>{
+  "agente_gobdata":         {"util": 8, "no_util": 4, "total": 12, "tasa_aprobacion": 0.667},
+  "agente_gobdata_conciso": {"util": 9, "no_util": 2, "total": 11, "tasa_aprobacion": 0.818}
+}</code></pre></figure>
+
+      <div class="box warn"><div class="lab">▲ El evento <code>fin</code> anuncia la variante — sin romper nada</div>
+        <p>El cambio es <strong>aditivo</strong>: el evento SSE <code class="k">fin</code> de <code class="k">/chat</code> gana una clave <code class="k">"variante"</code> junto a <code class="k">cache_hit</code> y <code class="k">similitud</code>, que <strong>siguen ahí</strong>. Así el cliente sabe qué variante vio y puede devolverla en su voto. Los smoke tests existentes (<code>test_smoke_api.py</code>) no se tocaron y siguen en verde.</p></div>
+      <div class="avoid"><div class="lab">⛔ Cuándo NO fiarte del resultado</div>
+        <ul>
+          <li>No declares ganadora una variante con <strong>tres votos</strong>: 3-0 puede ser azar. El ganador se decide con <strong>significancia estadística</strong>, no comparando dos fracciones pequeñas.</li>
+          <li>No guardes el feedback solo <strong>en memoria</strong> en producción: se pierde al reiniciar y cada worker cuenta lo suyo. Va a una tabla o a Langfuse.</li>
+          <li>No sortees la variante <strong>por request</strong>: sin pegajosidad, el experimento no mide nada.</li>
+        </ul></div>
+      <div class="box practice"><div class="lab">▸ Para practicar</div>
+        <p>Manda varios <code class="k">POST /chat</code> con distintos <code class="k">thread_id</code> y comprueba en el evento <code class="k">fin</code> que cada hilo cae siempre en la misma variante. Luego vota con <code class="k">POST /feedback</code> y mira cómo <code class="k">GET /feedback</code> mueve la <code class="k">tasa_aprobacion</code>. El paso siguiente (ver <code class="k">ADR-0006</code>): cablear el agente al YAML de su variante para medir el efecto real del prompt.</p></div>
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Explicar por qué el A/B debe ser pegajoso y por qué el hash lo consigue sin coordinar workers.</li>
+          <li>Argumentar por qué <code class="k">hashlib.sha256</code> y no <code class="k">hash()</code> de Python.</li>
+          <li>Agregar el feedback por variante en una <code class="k">tasa_aprobacion</code> y decir por qué tres votos no bastan.</li>
+          <li>Añadir una clave a un evento SSE sin romper los tests que dependen de las anteriores.</li>
+        </ul></div>
+      <div class="recap l5">
+        <div class="lab">↺ En una frase</div>
+        <p>Para mejorar un prompt con datos: reparte el tráfico de forma <strong>pegajosa</strong> (<code>hash(thread_id) % n</code>) y recoge el <strong>feedback</strong> 👍/👎 <strong>por variante</strong> — luego compara la <code>tasa_aprobacion</code>, con votos suficientes para que signifique algo.<span class="arch">archivos: <code>proyecto_llmops/prompts/experimentos.py</code> · <code>observability/feedback.py</code></span></p>
       </div>
     </div></section>
 

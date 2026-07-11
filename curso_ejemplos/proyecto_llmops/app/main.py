@@ -56,6 +56,18 @@ from app.config import settings
 from guardrails import input_guard
 from observability import metrics, tracing
 from observability.cost_model import Uso
+from observability.feedback import ColectorFeedback
+from prompts import experimentos
+
+# Las variantes del A/B de prompts. A = el prompt actual (agente_gobdata),
+# B = la variante concisa (agente_gobdata_conciso.yaml). El `thread_id` fija cuál
+# ve cada usuario, de forma pegajosa (ver prompts/experimentos.py). Cablear el
+# agente al prompt de su variante es el paso siguiente; aquí el thread_id fija la
+# variante y el feedback se agrega por variante — el lazo A/B completo.
+EXPERIMENTO_PROMPT = experimentos.Experimento(
+    nombre="prompt_conciso",
+    variantes=("agente_gobdata", "agente_gobdata_conciso"),
+)
 
 
 # ==================================================================
@@ -75,12 +87,32 @@ class PeticionChat(BaseModel):
     #    para que el curso sea ejecutable sin montar un proveedor de identidad.
 
 
-def crear_app(agente=None, cache=None, colector=None) -> FastAPI:
+class Feedback(BaseModel):
+    """El voto 👍/👎 sobre una respuesta. Cierra el lazo del A/B de prompts.
+
+    thread_id : la conversación votada. Fija de forma pegajosa qué variante vio
+                el usuario, así que el servidor puede recalcularla sin confiar en
+                lo que mande el cliente.
+    util      : 👍=true, 👎=false.
+    variante  : opcional. Si el cliente no la manda, el servidor la deriva del
+                thread_id (la misma asignación pegajosa del evento `fin`).
+    comentario: opcional, texto libre del "¿por qué?".
+    """
+    thread_id: str = Field(default="demo")
+    util: bool
+    variante: str | None = None
+    comentario: str | None = Field(default=None, max_length=2000)
+
+
+def crear_app(agente=None, cache=None, colector=None, feedback=None) -> FastAPI:
     """Construye la API. Todo lo caro entra por parámetro.
 
     agente   : el grafo de LangGraph. Si es None, se construye el real (lento).
     cache    : un SemanticCache. Si es None, se construye con el backend que haya.
     colector : dónde se acumulan las métricas del proceso.
+    feedback : dónde se acumulan los votos 👍/👎 del A/B. Si es None, se crea uno
+               limpio. Como las métricas, va por parámetro para poder inyectar
+               uno vacío en cada test.
     """
     # `estado` guarda las piezas caras. Construir el agente tarda segundos (carga
     # el modelo de embeddings, conecta a Postgres), así que se hace en el
@@ -89,6 +121,7 @@ def crear_app(agente=None, cache=None, colector=None) -> FastAPI:
         "agente": agente,
         "cache": cache,
         "colector": colector if colector is not None else metrics.ColectorMetricas(),
+        "feedback": feedback if feedback is not None else ColectorFeedback(),
     }
 
     @asynccontextmanager
@@ -155,6 +188,38 @@ def crear_app(agente=None, cache=None, colector=None) -> FastAPI:
         return resumen
 
     # ------------------------------------------------------------------
+    # POST /feedback — el voto 👍/👎 (el otro extremo del A/B)
+    # ------------------------------------------------------------------
+    @app.post("/feedback")
+    def registrar_feedback(voto: Feedback) -> dict:
+        """Registra un voto y lo agrega por variante. Vive en su PROPIO endpoint:
+
+        no ensucia el `resumen()` de /metrics (hay tests que fijan sus claves) y
+        deja claro que coste/latencia y satisfacción son dos ejes distintos.
+
+        Si el cliente no manda `variante`, se deriva del `thread_id` con la MISMA
+        asignación pegajosa del evento `fin`, para que el voto se atribuya a la
+        variante que el usuario vio de verdad.
+        """
+        variante = voto.variante or EXPERIMENTO_PROMPT.variante_de(voto.thread_id)
+        estado["feedback"].registrar(
+            variante=variante,
+            util=voto.util,
+            thread_id=voto.thread_id,
+            comentario=voto.comentario,
+        )
+        return {"ok": True}
+
+    # ------------------------------------------------------------------
+    # GET /feedback — la tasa de aprobación por variante (el resultado del A/B)
+    # ------------------------------------------------------------------
+    @app.get("/feedback")
+    def resumen_feedback() -> dict:
+        """👍/👎, total y `tasa_aprobacion` por variante. Comparar esa tasa entre
+        A y B es lo que decide el experimento (con suficientes votos: ver ADR-0006)."""
+        return estado["feedback"].resumen()
+
+    # ------------------------------------------------------------------
     # POST /chat — el camino completo
     # ------------------------------------------------------------------
     @app.post("/chat")
@@ -175,6 +240,14 @@ async def _flujo(peticion: PeticionChat, estado: dict):
     """El generador que produce los eventos SSE. Aquí vive el orden de las capas."""
     colector: metrics.ColectorMetricas = estado["colector"]
     cache = estado["cache"]
+
+    # ---- 0) A/B DE PROMPTS -------------------------------------------
+    # El thread_id fija la variante de forma PEGAJOSA: la misma conversación cae
+    # siempre en la misma (ver prompts/experimentos.py). Se anuncia en el evento
+    # `fin` para que el cliente pueda mandarla luego en su voto 👍/👎, y así el
+    # feedback se agregue por variante. (Cablear el agente al prompt de la
+    # variante es el paso siguiente; ver ADR-0006.)
+    variante = EXPERIMENTO_PROMPT.variante_de(peticion.thread_id)
 
     with metrics.Cronometro() as crono:
         # ---- 1) GUARDRAIL DE ENTRADA -------------------------------------
@@ -200,7 +273,8 @@ async def _flujo(peticion: PeticionChat, estado: dict):
                 crono.primer_token()
                 yield streaming.evento_sse({"token": acierto.respuesta})
                 yield streaming.evento_sse(
-                    {"cache_hit": True, "similitud": round(acierto.similitud, 4)},
+                    {"cache_hit": True, "similitud": round(acierto.similitud, 4),
+                     "variante": variante},
                     evento="fin",
                 )
                 colector.registrar(metrics.MetricasRequest(
@@ -238,7 +312,8 @@ async def _flujo(peticion: PeticionChat, estado: dict):
                     if cache is not None:
                         cache.guardar(pregunta, guardia.texto_completo, rol=peticion.rol)
 
-                    yield streaming.evento_sse({"cache_hit": False}, evento="fin")
+                    yield streaming.evento_sse(
+                        {"cache_hit": False, "variante": variante}, evento="fin")
         except Exception as error:  # pragma: no cover - depende del proveedor
             # Un 429 del proveedor, un timeout, Postgres caído. El cliente ya
             # tiene la cabecera 200 y el stream abierto: no podemos devolver un
