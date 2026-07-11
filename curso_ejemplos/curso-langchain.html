@@ -426,6 +426,7 @@
       <a href="#m24b"><span class="n">24b</span>Feedback + A/B</a>
       <a href="#m25"><span class="n">25</span>Frontend chat SSE</a>
       <a href="#m26"><span class="n">26</span>Mapa del ecosistema</a>
+      <a href="#m26b"><span class="n">26b</span>Prompt engineering</a>
       <a href="#examen"><span class="n">📝</span>Examen final</a>
       <a href="#ejercicios"><span class="n">🏋️</span>Ejercicios</a>
       <a href="#faq"><span class="n">?</span>FAQ · errores comunes</a>
@@ -4168,6 +4169,79 @@ print(resultado.output.nombre)  # ya es un objeto validado, no texto suelto</cod
       </div>
     </div></section>
 
+    <section id="m26b"><div class="col">
+      <p class="modtag l5"><span class="bar"></span>AI Engineer · Módulo 26b</p>
+      <h2>Prompt engineering como disciplina: few-shot, CoT, self-consistency y descomposición</h2>
+      <div class="fileref">📋 El ejemplo: <b>curso_ejemplos/26b_prompt_engineering.py</b> — 100% offline en su lógica medible<span class="tested">✓ cubierto por tests</span></div>
+      <p class="modmeta"><span>🎯 <b>Al terminar sabrás:</b> aplicar cuatro técnicas con evidencia —<strong>few-shot</strong>, <strong>chain-of-thought</strong>, <strong>self-consistency</strong> y <strong>descomposición</strong>— y, sobre todo, <strong>medir</strong> si mejoran el resultado en vez de creerlo.</span><span>✅ <b>Necesitas:</b> el m05 (salida estructurada), el m11 (RAG) y el m16 (evaluación): sin una métrica, "mejorar un prompt" es opinión.</span><span>⏱️ <b>~30 min</b></span></p>
+      <p>"Prompt engineering" suena a superstición: dile que es un experto, ponle POR FAVOR en mayúsculas, prométele propina. Nada de eso es disciplina. La disciplina es un puñado de técnicas <strong>con nombre, con motivo y con forma de medirse</strong>. Aquí van cuatro que se sostienen con evidencia —y los prompts del propio curso (el del m05, el del agente del proyecto) son el caso de estudio: no se ajustan a ojo, se ajustan y se <strong>miden</strong>.</p>
+
+      <div class="box def"><div class="lab">◈ Definición · las cuatro técnicas, una frase cada una</div>
+        <dl>
+          <dt>Few-shot (demostración)</dt><dd>En vez de <em>describir</em> la tarea, la <strong>muestras</strong> con k ejemplos resueltos antes de la pregunta real; el modelo imita el patrón.</dd>
+          <dt>Chain-of-thought (CoT)</dt><dd>Le pides que <strong>razone paso a paso</strong> antes de responder; para tareas con pasos intermedios, pensar en voz alta evita el salto directo a una conclusión equivocada.</dd>
+          <dt>Self-consistency</dt><dd>Muestreas <strong>varias</strong> respuestas con temperatura&gt;0 y te quedas con la de <strong>mayoría</strong> (la moda); el ruido aleatorio de las pasadas malas se cancela.</dd>
+          <dt>Descomposición</dt><dd>Partes una tarea grande en <strong>sub-preguntas</strong> simples y resuelves cada una; divide y vencerás, aplicado al prompt.</dd>
+        </dl></div>
+
+      <div class="box analogy"><div class="lab">◆ El examen: chuleta, borrador y segunda opinión</div>
+        <p><strong>Few-shot</strong> es ver tres ejercicios <em>ya resueltos</em> antes de hacer el tuyo: copias el método. <strong>CoT</strong> es que te obliguen a mostrar el <em>procedimiento</em>, no solo el resultado: al escribir los pasos, cazas tu propio error. <strong>Self-consistency</strong> es resolver el problema <em>tres veces</em> por caminos distintos y quedarte con la respuesta que más se repite. <strong>Descomposición</strong> es partir un problemón en apartados a) b) c). Ninguna te enseña algo que no sepas —si ignoras el dato, ningún truco lo inventa—, pero todas te hacen fallar menos por descuido.</p></div>
+
+      <h3>Few-shot · enseñar con ejemplos, no con instrucciones</h3>
+      <figure class="code"><figcaption><span class="d"></span>curso_ejemplos/26b_prompt_engineering.py · construir_prompt_fewshot (función pura)</figcaption><pre><code>def construir_prompt_fewshot(ejemplos, pregunta):
+    # k demostraciones (P→R) y LUEGO la pregunta real, aún sin responder.
+    # El ORDEN importa: el modelo continúa el texto, así que lo último que
+    # ve es la pregunta abierta y su trabajo es cerrarla imitando el patrón.
+    bloques = [f"P: {p}\nR: {r}" for p, r in ejemplos]
+    bloques.append(f"P: {pregunta}\nR:")   # la pregunta real, SIN respuesta
+    return "\n\n".join(bloques)</code></pre></figure>
+
+      <h3>Self-consistency · votar la respuesta de mayoría</h3>
+      <p>Con temperatura&gt;0 cada muestra puede tomar un camino distinto y alguna se equivoca por azar. Muestrear N veces y quedarte con la <strong>moda</strong> es como promediar varias mediciones ruidosas de un termómetro: el error aleatorio se cancela.</p>
+      <figure class="code"><figcaption><span class="d"></span>curso_ejemplos/26b_prompt_engineering.py · self_consistency (votación por mayoría)</figcaption><pre><code>from collections import Counter
+
+def self_consistency(respuestas):
+    if not respuestas:
+        return None
+    conteo = Counter(respuestas)
+    tope = max(conteo.values())
+    # Empate → la que apareció PRIMERO (Counter conserva el orden de inserción).
+    for respuesta in respuestas:
+        if conteo[respuesta] == tope:
+            return respuesta</code></pre></figure>
+      <figure class="code output"><figcaption><span class="d"></span>▸ deberías ver al correr uv run python 26b_prompt_engineering.py</figcaption><pre><code>[4] SELF-CONSISTENCY · 5 muestras ['42', '42', '17', '42', '17']
+    → mayoría (moda): 42
+
+[5] MEDIR LA MEJORA · exactitud sobre el mini-dataset (exact-match):
+    Prompt POBRE  (salto directo)     : 0%
+    Prompt MEJOR  (CoT/descomposición): 100%
+    → estructurar la tarea sube el acierto. En el TEMA 16 esto se
+      mide 'en serio' con un dataset y la tríada RAG, no a ojo.</code></pre></figure>
+      <p>Ese último bloque es el corazón del módulo: un mini-dataset fijo y una métrica <strong>determinista</strong> (exact-match) que demuestran, sin gastar un token, que estructurar la tarea sube el acierto. Es el eco offline de lo que en el <a class="inline" href="#m16">m16</a> se mide "en serio" con la tríada RAG.</p>
+
+      <div class="box warn"><div class="lab">▲ Más ejemplos ≠ siempre mejor; CoT no inventa datos</div>
+        <p>Cada demostración few-shot <strong>gasta contexto y tokens</strong>: veinte ejemplos "por si acaso" encarecen cada llamada y pueden empujar fuera de la ventana lo que de verdad importa. Y <strong>CoT no arregla un modelo que no sabe el dato</strong>: razonar paso a paso ordena lo que el modelo <em>ya</em> sabe; si le falta el hecho, lo que necesitas es RAG (<a class="inline" href="#m11">m11</a>), no más "pensemos paso a paso".</p></div>
+      <div class="avoid"><div class="lab">⛔ Cuándo NO usar estas técnicas</div>
+        <ul>
+          <li>No uses <strong>self-consistency</strong> en tareas deterministas (formatear, extraer un campo): si a temperatura 0 ya sale igual siempre, muestrear N veces solo multiplica el coste sin ganar nada.</li>
+          <li>No pagues N muestras cuando <strong>el coste no compensa</strong>: self-consistency multiplica llamadas: resérvalo para lo que de verdad se beneficia de la votación (razonamiento difícil), no para todo.</li>
+          <li>No metas <strong>20 ejemplos few-shot</strong> "por si acaso": prueba con 2–3, mide, y sube solo si el número lo justifica. Contexto malgastado es dinero y latencia.</li>
+        </ul></div>
+      <div class="box practice"><div class="lab">▸ Para practicar</div>
+        <p>Toma un prompt real del proyecto (el del sistema del agente, o el del m05) y crea una <strong>segunda variante</strong> con CoT o con 2–3 ejemplos few-shot. Mídelas con un mini-dataset como el de este módulo —exact-match o coincidencia de palabra clave— y quédate con la que gane <em>de verdad</em>. Cuando quieras hacerlo con evals serios, es el <a class="inline" href="#m16">m16</a>; y si te suena a artesanía repetitiva, mira <strong>DSPy</strong>: trata el prompt como parámetros a <strong>optimizar</strong> contra una métrica y un set de ejemplos —prompt engineering hecho búsqueda sistemática (solo lectura, no se instala aquí).</p></div>
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Explicar cuándo few-shot gana a describir la tarea, y por qué el orden (demostraciones → pregunta) importa.</li>
+          <li>Decir para qué sirve CoT y qué <strong>no</strong> arregla (un dato que el modelo no tiene).</li>
+          <li>Implementar self-consistency como votación por mayoría y justificar por qué reduce el error aleatorio de una sola pasada.</li>
+          <li>Comparar dos prompts con una métrica determinista y quedarte con el que mide mejor, no con el que "suena" mejor.</li>
+        </ul></div>
+      <div class="recap l5">
+        <div class="lab">↺ En una frase</div>
+        <p>Prompt engineering en serio son cuatro técnicas medibles: <strong>few-shot</strong> (muestra, no describas), <strong>CoT</strong> (razona paso a paso), <strong>self-consistency</strong> (vota la moda de N muestras) y <strong>descomposición</strong> (parte la tarea) —y ninguna vale hasta que la <strong>mides</strong> con un dataset y una métrica, como en el m16; DSPy lleva ese ajuste a la optimización automática.<span class="arch">archivos: <code>curso_ejemplos/26b_prompt_engineering.py</code></span></p>
+      </div>
+    </div></section>
+
     <!-- ================= EXAMEN FINAL ================= -->
     <section id="examen"><div class="col">
       <p class="modtag l5"><span class="bar"></span>Evaluación · Examen final</p>
@@ -4515,6 +4589,7 @@ llm = ChatOpenAI(model="qwen/qwen3-32b",
           <tr><td>Multimodal (texto + imagen)</td><td><code>22</code></td><td><a class="inline" href="#m22">22</a></td><td><code>test_offline.py::TestTema22*</code></td></tr>
           <tr><td>Seguridad y red-teaming (OWASP LLM)</td><td><code>23</code></td><td><a class="inline" href="#m23">23</a></td><td><code>test_redteam.py</code></td></tr>
           <tr><td>Vector DBs en producción (dedup · IVFFlat)</td><td><code>24</code></td><td><a class="inline" href="#m24">24</a></td><td><code>test_offline.py::TestTema24*</code></td></tr>
+          <tr><td>Prompt engineering (few-shot · CoT · self-consistency)</td><td><code>26b</code></td><td><a class="inline" href="#m26b">26b</a></td><td><code>test_offline.py::TestTema26b*</code></td></tr>
         </tbody>
       </table></div>
       <div class="box analogy"><div class="lab">◆ ¿Y tus experimentos previos?</div>

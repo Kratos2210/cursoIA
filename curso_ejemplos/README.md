@@ -74,6 +74,7 @@ La columna «Cuota» se refiere al proveedor que tengas activo: con
 | 22 · Multimodal | `22_multimodal.py` | enviar texto + imagen a un modelo con visión | Sí |
 | 23 · Seguridad | `23_seguridad.py` | red-teaming OWASP LLM: inyección, saneo, secretos | **No** |
 | 24 · Vector DBs | `24_vector_db.py` | dedup por hash + índice IVFFlat (recall↔velocidad) | **No** |
+| 26b · Prompt engineering | `26b_prompt_engineering.py` | few-shot · CoT · self-consistency · descomposición | **No** |
 
 **Proyecto final:** [`proyecto_final/`](proyecto_final/) — el asistente de
 Gobierno de Datos, repartido en 8 módulos y con 44 tests propios.
@@ -127,6 +128,7 @@ montón de scripts: **cada concepto tiene una prueba que lo defiende**.
 | Multimodal (texto + imagen) | `22` | [22](curso-langchain.html#m22) | `test_offline.py::TestTema22*` |
 | Seguridad y red-teaming (OWASP LLM) | `23` | [23](curso-langchain.html#m23) | `test_redteam.py` |
 | Vector DBs en producción (dedup · IVFFlat) | `24` | [24](curso-langchain.html#m24) | `test_offline.py::TestTema24*` |
+| Prompt engineering (few-shot · CoT · self-consistency) | `26b` | [26b](curso-langchain.html#m26b) | `test_offline.py::TestTema26b*` |
 
 ## 6) Cómo se verifica que esto funciona
 

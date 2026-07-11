@@ -978,3 +978,94 @@ class TestTema24Ivf:
         exacto = set(m24.buscar_exacto(consulta, vectores, k=3))
         todas = set(m24.buscar_ivf(consulta, indice, k=3, n_sondas=3))
         assert todas == exacto
+
+
+# ==================================================================
+# TEMA 26b · Prompt engineering: few-shot, CoT, self-consistency, descomposición
+# ==================================================================
+@pytest.fixture(scope="module")
+def m26b(importar_ejemplo):
+    return importar_ejemplo("26b_prompt_engineering")
+
+
+class TestTema26bFewShot:
+    """Few-shot: las demostraciones y la pregunta aparecen, y EN ORDEN."""
+
+    def test_incluye_todos_los_ejemplos_y_la_pregunta(self, m26b):
+        ejemplos = [("2+2", "4"), ("3+3", "6")]
+        prompt = m26b.construir_prompt_fewshot(ejemplos, "5+5")
+        for p, r in ejemplos:
+            assert p in prompt and r in prompt
+        assert "5+5" in prompt
+
+    def test_respeta_el_orden_demostraciones_antes_de_la_pregunta(self, m26b):
+        ejemplos = [("primera", "A"), ("segunda", "B")]
+        prompt = m26b.construir_prompt_fewshot(ejemplos, "final")
+        # El orden del texto: primera, luego segunda, y la pregunta al FINAL.
+        assert prompt.index("primera") < prompt.index("segunda") < prompt.index("final")
+
+    def test_la_pregunta_queda_sin_responder(self, m26b):
+        """La pregunta real cierra el prompt con 'R:' vacío: el modelo la completa."""
+        prompt = m26b.construir_prompt_fewshot([("x", "y")], "z")
+        assert prompt.rstrip().endswith("R:")
+
+
+class TestTema26bCoT:
+    """Chain-of-thought: añade la estructura de razonar paso a paso."""
+
+    def test_conserva_la_pregunta(self, m26b):
+        assert "¿cuánto es 12*12?" in m26b.plantilla_cot("¿cuánto es 12*12?")
+
+    def test_agrega_la_instruccion_de_razonar(self, m26b):
+        salida = m26b.plantilla_cot("una pregunta").lower()
+        assert "paso a paso" in salida
+
+    def test_el_razonamiento_va_despues_de_la_pregunta(self, m26b):
+        salida = m26b.plantilla_cot("PREG")
+        assert salida.index("PREG") < salida.index("paso a paso")
+
+
+class TestTema26bSelfConsistency:
+    """Self-consistency: votación por mayoría (la moda) sobre varias muestras."""
+
+    def test_mayoria_clara(self, m26b):
+        assert m26b.self_consistency(["7", "7", "3", "7"]) == "7"
+
+    def test_una_sola_respuesta(self, m26b):
+        assert m26b.self_consistency(["42"]) == "42"
+
+    def test_empate_devuelve_la_primera_en_aparecer(self, m26b):
+        # "a" y "b" empatan a 2; gana la que apareció primero (orden de inserción).
+        assert m26b.self_consistency(["a", "b", "b", "a"]) == "a"
+
+    def test_lista_vacia_devuelve_none(self, m26b):
+        assert m26b.self_consistency([]) is None
+
+
+class TestTema26bDescomponer:
+    """Descomposición: partir una tarea compuesta en sub-pasos."""
+
+    def test_parte_por_los_conectores(self, m26b):
+        pasos = m26b.descomponer("busca el precio y calcula el IVA y suma el total")
+        assert pasos == ["busca el precio", "calcula el IVA", "suma el total"]
+
+    def test_una_tarea_simple_queda_como_un_solo_paso(self, m26b):
+        assert m26b.descomponer("resume el documento") == ["resume el documento"]
+
+    def test_reconoce_luego_y_punto_y_coma(self, m26b):
+        pasos = m26b.descomponer("descarga el archivo; luego valídalo")
+        assert pasos == ["descarga el archivo", "valídalo"]
+
+
+class TestTema26bHarness:
+    """El harness antes/después: un prompt mejor mide >= que uno peor (offline)."""
+
+    def test_cot_no_es_peor_que_el_directo(self, m26b):
+        marcador = m26b.comparar_estrategias()
+        assert marcador["cot"] >= marcador["directo"]
+
+    def test_cot_acierta_todo_el_mini_dataset(self, m26b):
+        assert m26b.evaluar(m26b.resolver_cot, m26b.DATASET) == 1.0
+
+    def test_la_metrica_de_un_dataset_vacio_es_cero(self, m26b):
+        assert m26b.evaluar(m26b.resolver_cot, []) == 0.0
