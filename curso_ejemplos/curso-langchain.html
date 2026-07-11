@@ -364,6 +364,30 @@
     border-radius:0 0 8px 8px;text-decoration:none;transition:top .15s}
   .skip:focus{top:0}
   main:focus{outline:none}
+  /* ===== Sección Entrevista (banco de preguntas + system design) ===== */
+  #entrevista .ivblock{margin:26px 0}
+  #entrevista .ivblock > h3{margin:0 0 4px}
+  #entrevista .ivblock .sub{color:var(--ink-faint);font-size:.9rem;margin:0 0 14px}
+  #entrevista .qa{border:1px solid var(--line);border-radius:10px;background:var(--surface);
+    margin:8px 0;overflow:hidden}
+  #entrevista .qa > summary{cursor:pointer;list-style:none;padding:13px 16px;font-family:var(--sans);
+    font-weight:600;font-size:.95rem;color:var(--ink);display:flex;gap:10px;align-items:baseline}
+  #entrevista .qa > summary::-webkit-details-marker{display:none}
+  #entrevista .qa > summary::before{content:"▸";color:var(--accent);font-size:.8rem;transition:.15s;flex:none}
+  #entrevista .qa[open] > summary::before{content:"▾"}
+  #entrevista .qa[open] > summary{border-bottom:1px solid var(--line)}
+  #entrevista .qa > summary:hover{background:var(--accent-wash)}
+  #entrevista .qa .mod{margin-left:auto;font-family:var(--mono);font-size:10px;letter-spacing:.06em;
+    color:var(--accent-ink);background:var(--accent-wash);padding:2px 7px;border-radius:20px;
+    white-space:nowrap;align-self:center}
+  #entrevista .qa .ans{padding:14px 16px 4px;font-size:.94rem;color:var(--ink-soft)}
+  #entrevista .qa .ans p{margin:0 0 10px}
+  #entrevista .sd{border:1px solid var(--line-strong);border-left:3px solid var(--l5);border-radius:10px;
+    background:var(--surface);padding:16px 18px;margin:14px 0}
+  #entrevista .sd h4{margin:0 0 6px;font-size:1rem}
+  #entrevista .sd .req{color:var(--ink-faint);font-size:.88rem;margin:0 0 10px}
+  #entrevista .sd ul{margin:6px 0 12px;padding-left:20px}
+  #entrevista .sd ul li{margin:4px 0}
 </style>
 
 <script>
@@ -430,6 +454,7 @@
       <a href="#m27"><span class="n">27</span>Fundamentos del LLM</a>
       <a href="#m28"><span class="n">28</span>Desafíos y alucinaciones</a>
       <a href="#examen"><span class="n">📝</span>Examen final</a>
+      <a href="#entrevista"><span class="n">🎤</span>Entrevista AI Engineer</a>
       <a href="#ejercicios"><span class="n">🏋️</span>Ejercicios</a>
       <a href="#faq"><span class="n">?</span>FAQ · errores comunes</a>
       <a href="#cheat"><span class="n">⚡</span>Cheat sheet</a>
@@ -481,7 +506,7 @@
         <div class="ccard"><div class="cardnum">pieza 2</div><h4>LangGraph</h4><p>El orquestador: agentes que piensan en ciclo (pensar → actuar → observar), recuerdan y sobreviven a fallos.</p></div>
       </div>
       <h3>Cómo estudiar este curso (plan sugerido)</h3>
-      <p>El curso está pensado para <strong>12 sesiones de ~90 minutos</strong> + el proyecto final. La regla de oro: cada módulo se estudia <em>corriendo su ejemplo</em>, no solo leyéndolo — y no avances de nivel sin pasar su <strong>quiz de autoevaluación</strong>. Marca cada módulo completado (el checkbox al final de cada uno): tu avance se guarda en este navegador.</p>
+      <p>El curso está pensado para <strong>13 sesiones de ~90 minutos</strong> + el proyecto final. La regla de oro: cada módulo se estudia <em>corriendo su ejemplo</em>, no solo leyéndolo — y no avances de nivel sin pasar su <strong>quiz de autoevaluación</strong>. Marca cada módulo completado (el checkbox al final de cada uno): tu avance se guarda en este navegador.</p>
       <p>Y cuando termines un nivel, haz sus <a class="inline" href="#ejercicios">ejercicios</a>: leer código no enseña a escribirlo. Cada uno trae pistas progresivas y un criterio de aceptación que puedes verificar tú mismo.</p>
       <div class="tbl-wrap"><table>
         <thead><tr><th>Sesión</th><th>Módulos</th><th>Qué logras</th></tr></thead>
@@ -499,6 +524,7 @@
           <tr><td>10</td><td>18b · 19 · 20</td><td>Elegir modelo/proveedor con criterio, Spec-Driven Development + verificador, y RAG avanzado (multi-query + RAG-Fusion).</td></tr>
           <tr><td>11</td><td>21 · 22 · 23</td><td>Fine-tuning vs RAG, entrada multimodal (texto + imagen) y blindar el prompt (guardrails / red-teaming OWASP).</td></tr>
           <tr><td>12</td><td>24 · 24b · 25 · 26 · 26b</td><td>Vector DBs en producción, feedback + A/B de prompts, chat por SSE, el mapa del ecosistema y prompt engineering medible.</td></tr>
+          <tr><td>13</td><td>27 · 28 + entrevista</td><td>Abres la caja del LLM (tokens, atención, RLHF/DPO, inferencia), entiendes por qué alucina, y practicas el <a class="inline" href="#entrevista">banco de preguntas y los casos de system design</a> de AI Engineer.</td></tr>
         </tbody>
       </table></div>
 
@@ -4706,6 +4732,174 @@ def detectar_inconsistencia(respuestas):
       <div id="examen-total" role="status" aria-live="polite"></div>
     </div></section>
 
+    <!-- ================= ENTREVISTA AI ENGINEER ================= -->
+    <section id="entrevista"><div class="col">
+      <p class="modtag l5"><span class="bar"></span>Preparación · Entrevista de AI Engineer</p>
+      <h2>Entrevista de AI Engineer: preguntas y system design</h2>
+      <p>El examen midió si entendiste el curso. Esto es distinto: son las preguntas que te harán en una <strong>entrevista real</strong> de AI Engineer, con la respuesta que se espera y —lo importante— <strong>el módulo donde la construiste con tus manos</strong>. No memorices la respuesta: abre el módulo, reléelo, y explícala con tus palabras. Al final, tres casos de <strong>system design</strong>: la parte que de verdad separa a quien "sabe la teoría" de quien diseña sistemas.</p>
+      <div class="box practice"><div class="lab">▸ Cómo usar esta sección</div>
+        <p>Lee la pregunta, responde <strong>en voz alta y completa</strong> antes de abrir la respuesta —como en la entrevista de verdad, donde el silencio pensando cuenta. Solo entonces despliega para contrastar. Si tu respuesta se quedó corta, el chip de la derecha te dice a qué módulo volver.</p></div>
+
+      <div class="ivblock">
+        <h3>Bloque 1 · Fundamentos del LLM</h3>
+        <p class="sub">Qué hay dentro de la caja. Módulos 27 y 28.</p>
+
+        <details class="qa"><summary>¿Qué es un token y por qué se cobra por token y no por palabra?<span class="mod">m27</span></summary>
+          <div class="ans"><p>Un token es la unidad en que el modelo parte el texto: normalmente sub-palabras (BPE), no palabras enteras. "proyectos" puede ser <code class="k">proyecto</code>+<code class="k">s</code>; una palabra rara se rompe en varios trozos. El modelo procesa y genera <em>token a token</em>, así que el coste y la ventana de contexto se miden ahí, no en palabras. Por eso el mismo texto en un idioma con peor tokenización cuesta más.</p></div></details>
+
+        <details class="qa"><summary>¿Qué hace realmente <code class="k">temperature=0</code>?<span class="mod">m27</span></summary>
+          <div class="ans"><p>El modelo produce un vector de <em>logits</em>; <em>softmax</em> los vuelve una distribución de probabilidad. La temperatura la escala antes: <code class="k">t=0</code> es el límite <strong>greedy</strong> —siempre el token más probable, salida casi determinista, ideal para extracción y jueces. Subir <code class="k">t</code> aplana la distribución y da más variedad (y más riesgo). No es "creatividad" mágica: es cuánto aplanas la curva antes de muestrear.</p></div></details>
+
+        <details class="qa"><summary>Explica la atención como se la explicarías a alguien no técnico.<span class="mod">m27</span></summary>
+          <div class="ans"><p>Al procesar cada palabra, el modelo decide <strong>a qué otras palabras mirar</strong> y cuánto pesa cada una: en "el banco del río", "banco" mira "río" y ajusta su significado. Técnicamente es un producto punto entre vectores (query·key) que da los pesos. Es lo que rompió la barrera de las RNN: se calcula en paralelo, no palabra por palabra en fila.</p></div></details>
+
+        <details class="qa"><summary>BERT vs GPT: ¿qué diferencia hay entre un encoder y un decoder?<span class="mod">m27</span></summary>
+          <div class="ans"><p>Un <strong>encoder</strong> (BERT) mira la frase entera a la vez y produce una <em>representación</em>: sirve para <em>entender</em> (clasificar, buscar, comparar) — el cross-encoder que usaste en el re-ranking del m12 es esto. Un <strong>decoder</strong> (GPT) genera token a token mirando solo hacia atrás: sirve para <em>producir</em> texto. T5 combina ambos (encoder-decoder). Regla: ¿entender o comparar? encoder. ¿Generar? decoder.</p></div></details>
+
+        <details class="qa"><summary>RLHF vs DPO: ¿por qué el modelo "obedece" y qué las diferencia?<span class="mod">m27</span></summary>
+          <div class="ans"><p>Un modelo base solo autocompleta; para que <em>siga instrucciones</em> se le alinea con preferencias humanas. <strong>RLHF</strong> entrena primero un <em>modelo de recompensa</em> con comparaciones humanas y luego optimiza el LLM contra él con RL — potente pero complejo e inestable. <strong>DPO</strong> logra lo mismo <em>sin</em> modelo de recompensa ni RL: optimiza directamente sobre los pares "preferida vs rechazada". Más simple y estable; por eso ganó terreno.</p></div></details>
+
+        <details class="qa"><summary>¿Qué mide la perplejidad y para qué sirve como defensa?<span class="mod">m27 · m28</span></summary>
+          <div class="ans"><p>La perplejidad mide <strong>cuán sorprendido</strong> está el modelo ante un texto: baja si lo predice bien, alta si le resulta raro. Texto natural → perplejidad baja; una cadena adversarial de tokens sin sentido → perplejidad alta. De ahí el <em>filtro de perplejidad</em> del m28: un prompt con perplejidad anómala es sospechoso de ataque. No es garantía, es una señal barata.</p></div></details>
+
+        <details class="qa"><summary>¿Por qué la inferencia de un LLM es lenta y cara? ¿Qué es el KV cache?<span class="mod">m27</span></summary>
+          <div class="ans"><p>Es <strong>autoregresiva</strong>: cada token nuevo necesita todos los anteriores, así que no se paraleliza la generación — se hace en fila, y por eso existe el <em>streaming</em> del m18. El <strong>KV cache</strong> guarda las claves/valores de atención ya calculados para no recomputarlos en cada paso: acelera muchísimo, a cambio de memoria que crece con la longitud. La <em>cuantización</em> (menos bits por peso) es la otra palanca: por eso un modelo cabe y corre en tu laptop con Ollama.</p></div></details>
+
+        <details class="qa"><summary>¿Qué es un MoE (Mixture of Experts) y por qué importa?<span class="mod">m27</span></summary>
+          <div class="ans"><p>En vez de una red densa donde <em>todos</em> los pesos se activan por token, un MoE tiene muchos "expertos" y un <strong>router</strong> que enciende solo unos pocos por token. Resultado: muchísimos más parámetros (más capacidad) sin pagar más cómputo <em>por token</em>. Mixtral es el ejemplo cultural. Es una de las respuestas al "¿qué viene después del transformer denso?".</p></div></details>
+
+        <details class="qa"><summary>¿Por qué alucina un LLM y cómo lo detectas sin llamar a un humano?<span class="mod">m28</span></summary>
+          <div class="ans"><p>Alucina porque su trabajo es producir texto <em>plausible</em>, no verdadero: sin grounding rellena huecos con lo más probable. Causas típicas: datos desactualizados, contexto insuficiente, sobregeneralización. Detección automática (estilo SelfCheckGPT): muestrea la <strong>misma</strong> pregunta varias veces — si las respuestas <em>divergen</em>, es señal de invención (un hecho real sale consistente). Mitigación de raíz: grounding con RAG (m11) y evals (m16).</p></div></details>
+      </div>
+
+      <div class="ivblock">
+        <h3>Bloque 2 · RAG y recuperación</h3>
+        <p class="sub">Del chunking a las métricas. Módulos 11, 12, 20 y 16.</p>
+
+        <details class="qa"><summary>RAG vs fine-tuning: ¿cuándo cada uno? Es la pregunta trampa clásica.<span class="mod">m21</span></summary>
+          <div class="ans"><p>RAG da <strong>conocimiento</strong> fresco, citable y actualizable (una biblioteca que se lee al responder); fine-tuning fija <strong>comportamiento</strong> —formato, tono, estilo— pero NO mete conocimiento nuevo. "Que sepa lo de mi empresa" casi siempre es RAG. Se combinan cuando quieres datos frescos <em>y</em> un formato fijo. La trampa: mucha gente pide fine-tuning para datos que cambian, y eso los congela en una mentira.</p></div></details>
+
+        <details class="qa"><summary>¿Por qué la búsqueda híbrida gana a solo semántica, y qué es RRF?<span class="mod">m12</span></summary>
+          <div class="ans"><p>La búsqueda densa (embeddings) capta significado pero falla con términos exactos (SKUs, códigos, nombres propios); la léxica (BM25) hace justo lo contrario. <strong>Híbrida</strong> corre ambas y fusiona con <strong>RRF</strong> (Reciprocal Rank Fusion): suma <code class="k">1/(k+rank)</code> de cada lista, premiando lo que aparece bien rankeado en varias. Luego un <em>re-ranker</em> (cross-encoder) reordena el top. Sin fusión, cada método deja huecos del otro.</p></div></details>
+
+        <details class="qa"><summary>¿Qué resuelve multi-query / RAG-Fusion que la búsqueda normal no?<span class="mod">m20</span></summary>
+          <div class="ans"><p>Una sola formulación es una sola apuesta: si el usuario dice "devolución" y el doc dice "reembolso", el chunk correcto queda invisible. Multi-query reformula la pregunta en varias variantes (sinónimos, solo palabras clave), busca con todas y fusiona con RRF. Sube el <strong>recall</strong> a costa de N búsquedas + N llamadas al LLM. Es mejorar el RAG por la <em>pregunta</em>, no por el índice (eso era el m12).</p></div></details>
+
+        <details class="qa"><summary>¿Cómo funciona HyDE y por qué buscar con una respuesta inventada mejora?<span class="mod">m20</span></summary>
+          <div class="ans"><p>HyDE pide al LLM una <strong>respuesta hipotética</strong> a la pregunta y busca con ESA en vez de con la pregunta. Funciona porque una respuesta —aunque inventada— comparte vocabulario y forma con el documento real mucho más que la pregunta seca. Cierra el hueco "cómo pregunta el usuario ↔ cómo está escrito el documento". Útil cuando pregunta y corpus "hablan distinto".</p></div></details>
+
+        <details class="qa"><summary>Explica la tríada de métricas RAG (estilo RAGAS).<span class="mod">m16</span></summary>
+          <div class="ans"><p><strong>Faithfulness</strong>: ¿la respuesta se sostiene solo en el contexto, sin inventar? (medidor de alucinación). <strong>Answer relevance</strong>: ¿responde la pregunta que se hizo? <strong>Context precision/recall</strong>: calidad del retriever — precision = cuánto de lo recuperado era relevante; recall = cuánto de lo relevante recuperaste. El valor es el <em>diagnóstico</em>: fidelidad baja → arregla el generador; recall bajo → arregla el retriever.</p></div></details>
+
+        <details class="qa"><summary>Model evals vs product evals: ¿cuál decide si despliegas?<span class="mod">m16</span></summary>
+          <div class="ans"><p>Un <em>model eval</em> pregunta "¿este modelo es bueno en general?" (benchmarks públicos). Un <em>product eval</em> pregunta "¿MI app resuelve el caso de MIS usuarios?" — con tu dataset, tu tríada, tu contexto. Ese segundo es el único que decide el despliegue: un modelo que arrasa benchmarks puede fallar en tu dominio. Los benchmarks orientan la elección inicial; tus evals de producto la confirman.</p></div></details>
+      </div>
+
+      <div class="ivblock">
+        <h3>Bloque 3 · Adaptación de modelos</h3>
+        <p class="sub">El espectro completo, de un prompt a pre-entrenar. Módulo 21.</p>
+
+        <details class="qa"><summary>LoRA / PEFT vs full fine-tuning: ¿por qué casi siempre LoRA?<span class="mod">m21</span></summary>
+          <div class="ans"><p>Full fine-tuning reentrena <em>todos</em> los pesos: caro, lento y con riesgo de <strong>olvido catastrófico</strong> (pierde capacidades generales). <strong>LoRA/PEFT</strong> entrena solo unos adaptadores pequeños (~1–2% de los pesos): cabe en una GPU, es barato, se guardan/intercambian fácil y no borra lo aprendido. Por eso es el fine-tuning que de verdad se usa hoy; full FT solo cuando LoRA se queda corto y hay presupuesto.</p></div></details>
+
+        <details class="qa"><summary>Nombra el espectro completo de adaptación de menos a más esfuerzo.<span class="mod">m21</span></summary>
+          <div class="ans"><p>1) <strong>Prompt</strong> (zero-shot) → 2) <strong>few-shot</strong> (ejemplos en el prompt) → 3) <strong>RAG</strong> (conocimiento externo) → 4) <strong>PEFT/LoRA</strong> (afinar ~1% de pesos) → 5) <strong>full fine-tuning</strong> → 6) <strong>pre-entrenamiento de dominio</strong> (como BloombergGPT, millones de coste). Regla: baja de escalón solo cuando el anterior se queda corto. La mayoría de problemas se resuelven en los tres primeros.</p></div></details>
+
+        <details class="qa"><summary>¿Qué es el instruction tuning y en qué se diferencia del pre-entrenamiento?<span class="mod">m21 · m27</span></summary>
+          <div class="ans"><p>El <em>pre-entrenamiento</em> enseña a predecir el siguiente token sobre un corpus masivo: produce un modelo base que solo autocompleta. El <strong>instruction tuning</strong> es un fine-tuning posterior con pares (instrucción → respuesta) que lo convierte en uno que <em>obedece órdenes</em>. Encima va el alineamiento (RLHF/DPO) para las preferencias. Es la diferencia entre "un modelo que continúa texto" y "un asistente".</p></div></details>
+
+        <details class="qa"><summary>¿Cuándo se justifica pre-entrenar un modelo de dominio (BloombergGPT)?<span class="mod">m21</span></summary>
+          <div class="ans"><p>Casi nunca. Solo cuando tienes un <strong>corpus enorme y propio</strong> de un dominio muy particular (jerga, estructura, datos que ningún modelo general vio) <em>y</em> presupuesto de millones. Para el 99% de los casos, RAG + quizá LoRA logran lo mismo por órdenes de magnitud menos. Nombrarlo en una entrevista muestra que conoces el techo del espectro, no que lo recomendarías a la ligera.</p></div></details>
+      </div>
+
+      <div class="ivblock">
+        <h3>Bloque 4 · Prompting, agentes y multimodal</h3>
+        <p class="sub">Cómo se razona y se orquesta. Módulos 26b, 10, 13, 15, 22.</p>
+
+        <details class="qa"><summary>CoT vs self-consistency vs Tree-of-Thoughts: ¿cuándo cada uno?<span class="mod">m26b</span></summary>
+          <div class="ans"><p><strong>CoT</strong>: razonar paso a paso en un solo camino — barato, cubre la mayoría. <strong>Self-consistency</strong>: muestrear N respuestas y votar la moda — cancela el error aleatorio, cuesta N× llamadas. <strong>ToT</strong>: explora varias ramas de razonamiento y retrocede — solo para problemas de búsqueda/planificación donde el primer camino suele fallar. Sube de complejidad solo cuando la métrica lo justifica; ninguno inventa datos que el modelo no tiene.</p></div></details>
+
+        <details class="qa"><summary>¿Qué es Chain-of-Verification (CoVe) y qué problema ataca?<span class="mod">m26b · m28</span></summary>
+          <div class="ans"><p>El modelo responde, luego <strong>se genera preguntas de verificación</strong> sobre su propia respuesta, las contesta y se corrige. Ataca la alucinación desde dentro del prompt, sin herramientas externas — es el mismo espíritu del detector de inconsistencias del m28, pero autoaplicado. Útil en respuestas factuales donde un error pasa desapercibido si no te obligas a chequearlo.</p></div></details>
+
+        <details class="qa"><summary>¿Qué es el patrón ReAct y por qué un agente lo necesita?<span class="mod">m10 · m13</span></summary>
+          <div class="ans"><p>ReAct = <em>Reason + Act</em>: el modelo alterna pensar ("necesito el saldo") y actuar (llamar una tool), observa el resultado y repite hasta resolver. Es lo que convierte un LLM que solo habla en un agente que <em>hace</em>: sin el bucle razonar→herramienta→observar, no puede encadenar pasos ni recuperarse de un resultado inesperado. En el curso es <code class="k">create_react_agent</code> sobre un StateGraph.</p></div></details>
+
+        <details class="qa"><summary>¿Cómo evalúas un agente? No basta con mirar la respuesta final.<span class="mod">m16 · m15</span></summary>
+          <div class="ans"><p>Además del <strong>resultado</strong>, evalúas la <strong>trayectoria</strong>: ¿eligió las herramientas correctas?, ¿en orden razonable?, ¿sin pasos inútiles ni bucles? Un agente que acierta la respuesta por suerte tras tres llamadas equivocadas está roto. Se combina LLM-as-judge sobre el resultado + inspección de la traza (m16) sobre el camino. En multiagente, además: ¿el supervisor enrutó al agente correcto?</p></div></details>
+
+        <details class="qa"><summary>¿Cómo "ve" un modelo multimodal por dentro?<span class="mod">m22</span></summary>
+          <div class="ans"><p>Tres piezas: un <strong>encoder de la modalidad</strong> (p.ej. un vision encoder) convierte la imagen en vectores; un <strong>proyector</strong> los mapea al mismo espacio que los tokens de texto; y el <strong>LLM</strong> los procesa como si fueran "tokens de imagen" junto al texto, generando la respuesta. La imagen entra en el prompt como <code class="k">image_url</code>. La clave: el LLM no "ve" píxeles, ve vectores proyectados a su espacio.</p></div></details>
+
+        <details class="qa"><summary>¿Cuándo un sistema multiagente supera a un solo agente con muchas tools?<span class="mod">m15</span></summary>
+          <div class="ans"><p>Cuando las tareas son <em>separables</em> por especialidad y meterlas todas en un agente satura su contexto y confunde la elección de tool. Un <strong>supervisor</strong> enruta a sub-agentes especializados (uno de datos, uno de reportes). Pero tiene coste: más latencia, más llamadas, más puntos de fallo. Un solo agente con 3–5 tools bien elegidas suele ganar; el multiagente se gana cuando la complejidad lo pide.</p></div></details>
+      </div>
+
+      <div class="ivblock">
+        <h3>Bloque 5 · Producción, LLMOps y seguridad</h3>
+        <p class="sub">Lo que separa un demo de un servicio. Módulos 16, 18b, 24, 24b, 23.</p>
+
+        <details class="qa"><summary>Observabilidad vs evaluación: no son lo mismo.<span class="mod">m16</span></summary>
+          <div class="ans"><p><strong>Observabilidad</strong> es ver qué hace el sistema <em>en vivo</em>: trazas, tokens, latencia, coste — sin añadir código. <strong>Evaluación</strong> es medir si las respuestas son <em>buenas</em> contra un dataset, <em>antes</em> de desplegar. Una te dice que el sistema está lento; la otra, que se volvió tonto. Necesitas ambas: trazas para depurar, evals para no regresar.</p></div></details>
+
+        <details class="qa"><summary>¿Qué es una regresión en IA y cómo la atrapas si no tocaste tu código?<span class="mod">m16</span></summary>
+          <div class="ans"><p>Es que algo que funcionaba deje de funcionar. En IA aparece <em>sin</em> tocar tu código: cambia el modelo o el proveedor y cambian tus resultados. Se atrapa con el ritual: corre la MISMA evaluación antes y después de cualquier cambio; si el puntaje baja, no pasa. En equipo, corre automático en CI: nadie integra un cambio que baje la métrica.</p></div></details>
+
+        <details class="qa"><summary>¿Cómo eliges modelo y proveedor para un caso nuevo?<span class="mod">m18b</span></summary>
+          <div class="ans"><p>No por el ranking de moda, sino por el <strong>triángulo coste / latencia / calidad</strong> contra TU caso: corre tu <em>product eval</em> con 2–3 candidatos. Considera privacidad (¿datos sensibles? → modelo local/Ollama), ventana de contexto, y una capa de <em>fallback</em> entre proveedores para resiliencia. El id y el precio se verifican en la web oficial, nunca de memoria — cambian seguido.</p></div></details>
+
+        <details class="qa"><summary>¿Cuándo pasas del vector store en memoria a una DB vectorial de verdad?<span class="mod">m24</span></summary>
+          <div class="ans"><p>El store en memoria (FAISS/InMemory) muere al reiniciar y no escala ni se comparte. Pasas a una DB vectorial (pgvector, Qdrant, etc.) cuando necesitas <strong>persistencia</strong>, <strong>filtros de metadatos</strong>, actualizaciones incrementales, concurrencia o millones de vectores. Para un prototipo o un corpus pequeño y estático, en memoria sobra — no metas infra que no necesitas.</p></div></details>
+
+        <details class="qa"><summary>¿Cómo montas un A/B de prompts que dé datos atribuibles?<span class="mod">m24b</span></summary>
+          <div class="ans"><p>Asignación <strong>pegajosa</strong>: <code class="k">sha256(thread_id) % n</code> — el mismo usuario cae siempre en la misma variante, así su 👍/👎 se atribuye. Si sorteas por request, vería A y B en la misma charla y el feedback no sirve. Recoges feedback por variante, y comparas con una métrica, no con opiniones. El hash es reproducible y sin estado: cualquier worker calcula lo mismo.</p></div></details>
+
+        <details class="qa"><summary>¿Qué es la inyección de prompts y por qué no se "arregla" del todo?<span class="mod">m23</span></summary>
+          <div class="ans"><p>Es colar instrucciones en la <em>entrada</em> (o en un documento que el RAG recupera) para que el modelo ignore su prompt de sistema: "olvida tus reglas y…". No se elimina del todo porque el LLM no distingue de forma dura datos de instrucciones. Se <em>mitiga</em> en capas: separar y marcar el contenido no confiable, validar salidas, límites de permisos de las tools, y filtros — nunca una sola defensa. Va con envenenamiento de datos, backdoors y fuga de datos como la familia de ataques a LLM.</p></div></details>
+      </div>
+
+      <div class="ivblock">
+        <h3>System design · tres casos para diseñar en voz alta</h3>
+        <p class="sub">Lee el enunciado, responde las preguntas guía como si dibujaras en una pizarra, y solo después abre la solución esquemática.</p>
+
+        <div class="sd">
+          <h4>Caso 1 · Chatbot de soporte con la base de conocimiento de la empresa</h4>
+          <p class="req">Restricciones: la documentación cambia cada semana; debe <strong>citar la fuente</strong>; no puede inventar políticas; presupuesto ajustado.</p>
+          <p><strong>Preguntas guía:</strong> ¿RAG o fine-tuning? ¿Cómo garantizas las citas? ¿Dónde metes caché? ¿Qué guardrails? ¿Cómo mides que no alucina?</p>
+          <details class="qa"><summary>Ver solución esquemática<span class="mod">m11·m12·m16·m23</span></summary>
+            <div class="ans">
+              <p><strong>RAG, no fine-tuning</strong>: los datos cambian cada semana → biblioteca, no escuela (m21). Ingesta con chunking + búsqueda híbrida y re-ranking (m12); devuelve el chunk con su metadato de fuente para <strong>citar</strong>.</p>
+              <p><strong>Anti-alucinación</strong>: prompt que obliga a responder solo desde el contexto y a decir "no lo sé" si falta; evalúas con la tríada RAGAS, vigilando <em>faithfulness</em> (m16). <strong>Guardrails</strong>: sanear la entrada y marcar el contexto recuperado como no confiable frente a inyección (m23).</p>
+              <p><strong>Caché</strong>: en preguntas frecuentes idénticas (caché semántico de respuestas) y en los embeddings de los documentos (no re-embedas en cada consulta). <strong>Coste</strong>: modelo pequeño para el grueso, con evals que confirmen que aguanta la calidad (m18b).</p>
+            </div></details>
+        </div>
+
+        <div class="sd">
+          <h4>Caso 2 · Buscador interno potenciado por LLM sobre millones de documentos</h4>
+          <p class="req">Restricciones: millones de documentos con metadatos (área, fecha, permisos); baja latencia; el usuario solo debe ver lo que tiene permiso de ver.</p>
+          <p><strong>Preguntas guía:</strong> ¿Vector store en memoria o DB vectorial? ¿Cómo filtras por permisos? ¿Cómo mejoras el recall sin disparar la latencia? ¿Cómo evalúas la búsqueda?</p>
+          <details class="qa"><summary>Ver solución esquemática<span class="mod">m24·m20·m12·m16</span></summary>
+            <div class="ans">
+              <p><strong>DB vectorial de verdad</strong> (m24): millones de vectores + filtros de metadatos + permisos descartan el store en memoria. Los <strong>permisos se aplican como filtro de metadatos en la propia búsqueda</strong> (pre-filtrado), nunca filtrando después de recuperar: así el modelo jamás ve lo prohibido.</p>
+              <p><strong>Recall vs latencia</strong>: híbrida (denso + léxico) + RRF (m12) como base; multi-query/HyDE (m20) <em>solo</em> si el recall es el cuello de botella, porque multiplican búsquedas. Re-ranking del top-k, no de todo.</p>
+              <p><strong>Evaluación</strong>: context precision/recall sobre un set de consultas etiquetadas (m16); vigilas latencia p95 en las trazas. Caché de embeddings de consultas frecuentes.</p>
+            </div></details>
+        </div>
+
+        <div class="sd">
+          <h4>Caso 3 · Copiloto interno que actúa sobre sistemas (crea tickets, consulta bases)</h4>
+          <p class="req">Restricciones: ejecuta <strong>acciones</strong> reales, no solo responde; algunas son irreversibles; múltiples usuarios concurrentes; auditable.</p>
+          <p><strong>Preguntas guía:</strong> ¿Un agente o varios? ¿Cómo controlas acciones peligrosas? ¿Cómo separas usuarios? ¿Cómo lo evalúas y observas? ¿Cómo lo despliegas?</p>
+          <details class="qa"><summary>Ver solución esquemática<span class="mod">m10·m13·m15·m16·m23·m17</span></summary>
+            <div class="ans">
+              <p><strong>Agente ReAct</strong> (m10/m13) con tools bien tipadas; pasa a <strong>supervisor multiagente</strong> (m15) solo si las especialidades lo piden. Las acciones <strong>irreversibles</strong> pasan por <em>human-in-the-loop</em> (interrupción + confirmación) antes de ejecutarse.</p>
+              <p><strong>Seguridad</strong>: permisos mínimos por tool, validación de argumentos, y defensa frente a inyección que intente disparar acciones (m23). <strong>Concurrencia</strong>: cada usuario aislado por <code class="k">thread_id</code>; el agente se construye una vez al arrancar (m17).</p>
+              <p><strong>Observabilidad + eval</strong>: trazas de cada paso y evaluación por <strong>trayectoria</strong> además del resultado (m16) — ¿usó la tool correcta?, ¿pidió confirmación cuando debía? <strong>Auditoría</strong>: log de cada acción ejecutada con su input y quién la disparó.</p>
+            </div></details>
+        </div>
+      </div>
+    </div></section>
+
     <!-- ================= EJERCICIOS ================= -->
     <section id="ejercicios"><div class="col">
       <p class="modtag l5"><span class="bar"></span>Práctica · Ejercicios</p>
@@ -4828,6 +5022,8 @@ uv run pytest             # corre TUS tests, sin llave y sin cuota</code></pre><
           <tr><td>Servir un chat por SSE (frontend)</td><td><code>fetch("/chat",{method:"POST"})</code> + <code>body.getReader()</code> (no <code>EventSource</code>: es POST)</td><td>25</td></tr>
           <tr><td>Elegir framework con criterio</td><td>mapa del ecosistema: orquestación, RAG, evals, serving — no todo es LangChain</td><td>26</td></tr>
           <tr><td>Mejorar un prompt con método</td><td>few-shot / CoT / <code>self_consistency([...])</code> — y <strong>medirlo</strong></td><td>26b</td></tr>
+          <tr><td>Controlar el muestreo / entender la tokenización</td><td><code>softmax_con_temperatura(logits, t)</code> · <code>muestrear_top_p(...)</code> · <code>calcular_perplejidad(...)</code></td><td>27</td></tr>
+          <tr><td>Detectar una posible alucinación sin humano</td><td><code>detectar_inconsistencia([...])</code> (N muestras → dispersión = señal de alerta)</td><td>28</td></tr>
         </tbody>
       </table></div>
 
