@@ -1,0 +1,76 @@
+{
+  "products": [
+    {
+      "title": "Aretes Argolla Mediana Dorado",
+      "product_type": "Joyería",
+      "tags": ["Aretes", "Bañado en oro", "Colección Julio"],
+      "variants": [{"sku": "AR-001", "price": "19.90", "compare_at_price": null, "available": true}]
+    },
+    {
+      "title": "Aretes Colgantes Perla Plateado",
+      "product_type": "Joyería",
+      "tags": ["Aretes", "Bañado en plata"],
+      "variants": [{"sku": "AR-002", "price": "24.90", "compare_at_price": "34.90", "available": true}]
+    },
+    {
+      "title": "Aretes Piedra Zircón Dorado",
+      "product_type": "Joyería",
+      "tags": ["Aretes", "Zircón"],
+      "variants": [{"sku": "AR-003", "price": "29.90", "compare_at_price": null, "available": false}]
+    },
+    {
+      "title": "Collar Cadena Fina Dorado",
+      "product_type": "Joyería",
+      "tags": ["Collares", "Bañado en oro"],
+      "variants": [{"sku": "CO-001", "price": "39.90", "compare_at_price": null, "available": true}]
+    },
+    {
+      "title": "Collar Dije Corazón Plateado",
+      "product_type": "Joyería",
+      "tags": ["Collares", "Bañado en plata"],
+      "variants": [{"sku": "CO-002", "price": "34.90", "compare_at_price": "49.90", "available": true}]
+    },
+    {
+      "title": "Anillo Ajustable Zircón Plateado",
+      "product_type": "Joyería",
+      "tags": ["Anillos", "Zircón"],
+      "variants": [{"sku": "AN-001", "price": "16.90", "compare_at_price": null, "available": true}]
+    },
+    {
+      "title": "Pulsera Acero Eslabones Dorado",
+      "product_type": "Joyería",
+      "tags": ["Pulseras", "Acero"],
+      "variants": [{"sku": "PU-001", "price": "22.90", "compare_at_price": null, "available": true}]
+    },
+    {
+      "title": "Cartera Crossbody Clásica Negro",
+      "product_type": "Joyería",
+      "tags": ["Carteras Y Mochilas", "Bolsos y Carteras para mujer"],
+      "variants": [{"sku": "CA-001", "price": "69.90", "compare_at_price": null, "available": true}]
+    },
+    {
+      "title": "Mochila 2 en 1 Travel Fucsia",
+      "product_type": "Joyería",
+      "tags": ["Mochila", "Promocional"],
+      "variants": [{"sku": "MO-001", "price": "12.90", "compare_at_price": "39.90", "available": true}]
+    },
+    {
+      "title": "Set Ganchos Pico de Pato Flor Dorado",
+      "product_type": "Joyería",
+      "tags": ["Accesorio De Cabello", "Clip"],
+      "variants": [{"sku": "GA-001", "price": "10.90", "compare_at_price": null, "available": true}]
+    },
+    {
+      "title": "Set Colets Básicos 15 Unidades",
+      "product_type": "Joyería",
+      "tags": ["Accesorio De Cabello", "Basico"],
+      "variants": [{"sku": "GA-002", "price": "6.90", "compare_at_price": null, "available": true}]
+    },
+    {
+      "title": "Cepillo de Cabello con Espejo Negro",
+      "product_type": "Joyería",
+      "tags": ["Belleza", "Basico"],
+      "variants": [{"sku": "BE-001", "price": "14.90", "compare_at_price": null, "available": true}]
+    }
+  ]
+}

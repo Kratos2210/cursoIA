@@ -146,8 +146,9 @@ build-backend = "hatchling.build"
 bypass-selection = true
 
 [tool.pytest.ini_options]
-# Tres suites: los ejemplos, el proyecto final modular y el proyecto LLMOps.
-testpaths = ["tests", "proyecto_final/tests", "proyecto_llmops/tests"]
+# Cuatro suites: los ejemplos, el proyecto final modular, el proyecto LLMOps y
+# el proyecto retail.
+testpaths = ["tests", "proyecto_final/tests", "proyecto_llmops/tests", "proyecto_retail/tests"]
 # Añade al path la carpeta del curso (para 'import util'), la del proyecto
 # LLMOps (para 'import app.config', 'import guardrails.rbac'…) y la del
 # proyecto final (para 'import config', 'import rag'…, igual que main.py).
@@ -156,6 +157,11 @@ testpaths = ["tests", "proyecto_final/tests", "proyecto_llmops/tests"]
 #    los dos ofrecen un 'app'. Aquí gana el paquete proyecto_llmops/app/ y no
 #    el shim proyecto_final/app.py. (Y por eso app/ necesita su __init__.py:
 #    sin él sería un namespace package y perdería igual, fuese cual fuese el orden.)
+#
+# ⚠️ proyecto_retail NO va en pythonpath: sus módulos se importan con el prefijo
+#    completo 'proyecto_retail.app…' (desde '.'), justo para NO chocar con el
+#    'app'/'guardrails' de proyecto_llmops. Por eso su carpeta es un paquete
+#    (proyecto_retail/__init__.py) y aquí basta con '.'.
 pythonpath = [".", "proyecto_llmops", "proyecto_final"]
 # Cualquier archivo que empiece con test_ se considera test.
 #
