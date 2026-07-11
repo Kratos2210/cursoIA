@@ -458,6 +458,7 @@
       <a href="#m27"><span class="n">27</span>Fundamentos del LLM</a>
       <a href="#m28"><span class="n">28</span>Desafíos y alucinaciones</a>
       <a href="#m29"><span class="n">29</span>Caso real 2 · Retail</a>
+      <a href="#m30"><span class="n">30</span>Memoria de largo plazo</a>
       <a href="#examen"><span class="n">📝</span>Examen final</a>
       <a href="#entrevista"><span class="n">🎤</span>Entrevista AI Engineer</a>
       <a href="#ejercicios"><span class="n">🏋️</span>Ejercicios</a>
@@ -1612,7 +1613,7 @@ print(r["messages"][-1].content)</code></pre></figure>
       <figure class="code output"><figcaption><span class="d"></span>▸ deberías ver (algo así)</figcaption><pre><code>Con el 18% de descuento, pagarías 2870 soles. ¿Te ayudo con algo más?</code></pre></figure>
       <p>Mucho más corto que el Módulo 08: LangGraph une cerebro + herramientas + memoria y corre el ciclo A→D solo. El <code class="k">prompt=</code> da personalidad; el <code class="k">thread_id</code> separa usuarios.</p>
       <div class="box analogy"><div class="lab">◆ Novedad LangChain 1.x · el camino recomendado</div>
-        <p>En LangChain 1.x el estándar recomendado es <code class="k">from langchain.agents import create_agent</code> (misma idea, API más limpia, soporta "middleware"). El curso usa <code class="k">create_react_agent</code> de <code class="k">langgraph.prebuilt</code> porque es el que ya tenías y <strong>sigue funcionando</strong> — son primos —, pero al usarlo verás un aviso de <em>deprecation</em> (<code class="k">LangGraphDeprecatedSinceV10</code>): la función se mudó a <code class="k">langchain.agents.create_agent</code>. Migrar es cambiar el import (y añadir el paquete <code class="k">langchain</code>); todo lo demás de este módulo queda igual.</p></div>
+        <p>En LangChain 1.x el estándar recomendado es <code class="k">from langchain.agents import create_agent</code> (misma idea, API más limpia, soporta "middleware"). El curso usa <code class="k">create_react_agent</code> de <code class="k">langgraph.prebuilt</code> porque es el que ya tenías y <strong>sigue funcionando</strong> — son primos —, pero al usarlo verás un aviso de <em>deprecation</em> (<code class="k">LangGraphDeprecatedSinceV10</code>): la función se mudó a <code class="k">langchain.agents.create_agent</code>. Migrar es cambiar el import y añadir el paquete —<code class="k">uv add langchain</code>—; todo lo demás de este módulo queda igual.</p></div>
       <h3>Streaming token a token</h3>
       <figure class="code"><figcaption><span class="d"></span>streaming en un agente</figcaption><pre><code>from langchain_core.messages import AIMessageChunk
 
@@ -2899,7 +2900,7 @@ vector store servido (el retriever se cambia sin tocar la cadena).</code></pre><
     <section id="m17b"><div class="col">
       <p class="modtag l4"><span class="bar"></span>Nivel Producción · Módulo 17b</p>
       <h2>Tests y CI: la red que te deja cambiar cosas sin miedo</h2>
-      <div class="fileref">📋 Existe de verdad: <b>curso_ejemplos/tests/</b> · <b>proyecto_final/tests/</b> · <b>proyecto_llmops/tests/</b> · <b>.github/workflows/ci.yml</b> — 383 tests, ninguno gasta cuota</div>
+      <div class="fileref">📋 Existe de verdad: <b>curso_ejemplos/tests/</b> · <b>proyecto_final/tests/</b> · <b>proyecto_llmops/tests/</b> · <b>proyecto_retail/tests/</b> · <b>.github/workflows/ci.yml</b> — 642 tests, ninguno gasta cuota</div>
       <p class="modmeta"><span>🎯 <b>Al terminar sabrás:</b> testear IA sin gastar cuota (modelo falso, marcador <code class="k">offline</code>) y montar CI.</span><span>✅ <b>Necesitas:</b> Módulo 17.</span><span>⏱️ <b>~45 min</b></span></p>
       <p>Todo el nivel de producción se apoya en una idea silenciosa: <strong>puedes cambiar el código porque algo te avisa si lo rompes</strong>. Sin eso, cada refactor es una apuesta y cada actualización de librería, una noche larga. Este módulo enseña cómo está tejida esa red — la del propio curso, que puedes correr ahora mismo.</p>
       <div class="box def"><div class="lab">◈ Definición · Test, doble de prueba y CI</div>
@@ -2955,7 +2956,7 @@ vector store servido (el retriever se cambia sin tocar la cadena).</code></pre><
       <div class="flow" role="img" aria-label="Flujo de CI: haces commit y push, GitHub Actions corre pytest en modo offline; si sale verde el cambio se puede mergear, si sale rojo se corrige antes de integrar.">
         <div class="step"><div class="num">1</div><div class="ti">Commit + push</div><div class="de">Subes tu cambio al repositorio.</div></div><div class="arw">→</div>
         <div class="step hl"><div class="num">2</div><div class="ti">GitHub Actions</div><div class="de">Arranca solo, sin que nadie se lo pida.</div></div><div class="arw">→</div>
-        <div class="step"><div class="num">3</div><div class="ti"><code>pytest -m offline</code></div><div class="de">Los 383 tests, sin llave ni cuota.</div></div><div class="arw">→</div>
+        <div class="step"><div class="num">3</div><div class="ti"><code>pytest -m offline</code></div><div class="de">Los 642 tests, sin llave ni cuota.</div></div><div class="arw">→</div>
         <div class="step"><div class="num">✅ / ❌</div><div class="ti">Verde o rojo</div><div class="de">Verde → se mergea. Rojo → se corrige antes de integrar.</div></div>
       </div>
       <figure class="code"><figcaption><span class="d"></span>.github/workflows/ci.yml · el corazón del workflow</figcaption><pre><code>strategy:
@@ -3006,7 +3007,7 @@ def test_la_linea_lleva_la_severidad():
         </ul></div>
           <div class="recap l4">
         <div class="lab">↺ En una frase</div>
-        <p>Testear IA consiste en fijar todo lo que <em>no</em> es el modelo y sustituir el modelo por un guion. Por eso la CI puede correr los 383 tests sin tener tu llave.<span class="arch">archivos: <code>tests/</code> · <code>.github/workflows/ci.yml</code></span></p>
+        <p>Testear IA consiste en fijar todo lo que <em>no</em> es el modelo y sustituir el modelo por un guion. Por eso la CI puede correr los 642 tests sin tener tu llave.<span class="arch">archivos: <code>tests/</code> · <code>.github/workflows/ci.yml</code></span></p>
       </div>
     </div></section>
 
@@ -3277,6 +3278,13 @@ OPENAI_API_KEY=sk-...      # openai      (default gpt-5.4-mini)
           <p><strong>3.</strong> <strong>On-premise (④) o cloud gestionado en tu VPC (③, Bedrock/Vertex).</strong> Los datos de clientes de un banco no pueden viajar a un servidor público de terceros por regulación. Bedrock deja usar Claude sin que las llamadas salgan de la VPC de AWS y hereda su compliance (SOC 2, etc.); on-premise da control total a cambio de operar el hardware. Una API de pago pública (①) queda descartada aunque sea la más cómoda.</p>
         </details></div>
 
+      <div class="box def"><div class="lab">◈ Dos palancas de coste que la tabla no muestra: caché de prompt y Batch API</div>
+        <p>El precio por token de arriba asume que pagas <em>cada</em> token <em>cada</em> vez. Dos mecanismos rompen ese supuesto y pueden recortar la factura a la mitad o más:</p>
+        <dl>
+          <dt>caché de prompt (prompt caching)</dt><dd>Si tu prompt repite un prefijo largo en cada llamada —el <em>system prompt</em>, los ejemplos few-shot, el documento de contexto—, el proveedor <strong>cachea</strong> ese prefijo y te cobra esos tokens con un <strong>descuento fuerte</strong> (hasta del orden de 10× más baratos, según el proveedor) en las llamadas siguientes. La ganancia crece cuanto más largo y estable sea el prefijo: un agente con 2K tokens de instrucciones que atiende miles de consultas paga esas instrucciones casi gratis a partir de la segunda.</dd>
+          <dt>Batch API (procesamiento por lotes)</dt><dd>Para trabajo que <strong>no</strong> es interactivo —evaluar un dataset (<a class="inline" href="#m16">m16</a>), enriquecer un catálogo, clasificar miles de reclamos— mandas todo junto y aceptas la respuesta en minutos/horas en vez de segundos. A cambio, típicamente ~<strong>50% de descuento</strong>. La regla: si nadie espera la respuesta en pantalla, va por batch.</dd>
+        </dl>
+        <p>Ambas se combinan con la disciplina del <a class="inline" href="#m16">m16b</a>: mide primero el coste real en tokens, y luego decide dónde aplicar caché (prefijos repetidos) y batch (trabajo diferible).</p></div>
       <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
         <ul>
           <li>Distinguir un modelo de pago de uno de open weights, y por qué "abierto" no es "gratis".</li>
@@ -3295,7 +3303,7 @@ OPENAI_API_KEY=sk-...      # openai      (default gpt-5.4-mini)
       <div class="lvbanner" style="--lvc:var(--l5)"><div class="k">LLMOps · De prototipo a producto</div><p>El capstone funciona en tu portátil. Esto es lo que le falta para funcionar en una financiera, con usuarios, con auditores y con una factura.</p></div>
       <p class="modtag l5"><span class="bar"></span>Proyecto · LLMOps</p>
       <h2>El ciclo de vida LLMOps: gobernanza, coste, observabilidad y evaluación</h2>
-      <div class="fileref">📋 Proyecto ejecutable: <b>curso_ejemplos/proyecto_llmops/</b> — servicio FastAPI + Postgres/pgvector + Redis + Langfuse.<span class="tested">✓ 197 tests, sin API ni servicios</span></div>
+      <div class="fileref">📋 Proyecto ejecutable: <b>curso_ejemplos/proyecto_llmops/</b> — servicio FastAPI + Postgres/pgvector + Redis + Langfuse.<span class="tested">✓ 232 tests, sin API ni servicios</span></div>
       <p class="modmeta"><span>🎯 <b>Al terminar sabrás:</b> qué separa un prototipo que funciona de un producto que se puede operar.</span><span>✅ <b>Necesitas:</b> el Módulo 18.</span><span>⏱️ <b>~120 min</b></span></p>
 
       <p>El <a class="inline" href="#m18">capstone</a> responde bien. Le falta todo lo demás: nadie sabe cuánto cuesta, nadie ve por qué respondió lo que respondió, un usuario puede convencerlo de ignorar sus instrucciones, y cuando alguien cambie el prompt <em>no habrá forma de saber si empeoró</em>. <strong>La respuesta a eso no es cambiar de modelo cada semana. Es LLMOps.</strong></p>
@@ -3473,7 +3481,7 @@ def test_la_segunda_pregunta_igual_no_llama_al_agente(self, cliente):
       <p>Ese «nunca llega al agente» es la parte que importa: es lo que ahorra dinero y lo que evita el riesgo. Y solo se puede <em>afirmar</em> contando las invocaciones del doble.</p>
 
       <div class="box analogy"><div class="lab">◆ Los dos workflows de CI, y por qué son dos</div>
-        <p><code class="k">ci.yml</code> corre en <strong>cada push</strong>: 383 tests offline, gratis, nunca llama a la API. <code class="k">eval-gate.yml</code> corre <strong>a mano o antes de una release</strong>: sí gasta cuota y sí puede vetar el deploy. Confundirlos es el error clásico — o pagas una evaluación completa por cada commit de un README, o no evalúas nunca porque «la CI ya pasa».</p></div>
+        <p><code class="k">ci.yml</code> corre en <strong>cada push</strong>: 642 tests offline, gratis, nunca llama a la API. <code class="k">eval-gate.yml</code> corre <strong>a mano o antes de una release</strong>: sí gasta cuota y sí puede vetar el deploy. Confundirlos es el error clásico — o pagas una evaluación completa por cada commit de un README, o no evalúas nunca porque «la CI ya pasa».</p></div>
 
       <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
         <ul>
@@ -3647,6 +3655,13 @@ def rag_fusion(pregunta, chunks, k=3, ancho=3):
         </dl>
         <p>Regla práctica: <strong>multi-query y RAG-Fusion (este módulo) cubren el 80% de los casos</strong>. Estas cuatro son el 20% restante — se añaden de a una, midiendo con la tríada del <a class="inline" href="#m16">m16</a>, cuando el recall sigue siendo tu cuello de botella y ya no por falta de reformular.</p></div>
 
+      <div class="box def"><div class="lab">◈ Cuando las relaciones importan: GraphRAG</div>
+        <p>Todo lo anterior mejora el RAG <em>vectorial</em>: recuperas los fragmentos más <strong>parecidos</strong> a la pregunta. Pero hay preguntas que ningún fragmento suelto contesta —"¿qué conecta a este proveedor con aquel incidente?", "¿cuáles son los tres temas que atraviesan todo el corpus?"—. Ahí entra <strong>GraphRAG</strong>: en vez de (o además de) indexar texto, un LLM extrae <strong>entidades y relaciones</strong> y arma un <strong>grafo de conocimiento</strong>; la recuperación entonces <em>navega</em> ese grafo (vecindarios, caminos, comunidades) en lugar de solo medir similitud.</p>
+        <ul>
+          <li><strong>Gana</strong> en preguntas <em>multi-salto</em> (cruzar varios documentos para unir hechos) y de <em>agregación global</em> (resumir o "temar" todo el corpus), donde el top-k vectorial se queda corto porque la respuesta no vive en ningún fragmento único.</li>
+          <li><strong>Cuesta</strong> construir el grafo (muchas llamadas al LLM para extraer entidades) y mantenerlo al día. Para QA factual simple —"¿cuál es la política de devoluciones?"— el RAG vectorial del <a class="inline" href="#m11">m11</a>/<a class="inline" href="#m12">m12</a> es más barato y basta.</li>
+        </ul>
+        <p>Regla práctica: empieza vectorial; sube a GraphRAG solo cuando veas que las preguntas de tus usuarios <em>cruzan</em> documentos y el top-k nunca trae todo lo necesario.</p></div>
       <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
         <ul>
           <li>Explicar la diferencia entre mejorar el RAG por el índice (Módulo 12) y por la pregunta (multi-query).</li>
@@ -3817,6 +3832,14 @@ def mensaje_multimodal(texto, data_url):
       <div class="box practice"><div class="lab">▸ Para practicar</div>
         <p>Con una <code class="k">GOOGLE_API_KEY</code>, cambia el <code class="k">PNG_DEMO_1x1</code> por una imagen real (lee un archivo con <code class="k">open(ruta, "rb").read()</code>) y pídele al modelo que la describa. Luego prueba <code class="k">LLM_PROVIDER=groq</code> con el Qwen de texto y observa qué pasa: es la lección de "no todos ven".</p>
         <p>Segundo reto: añade un <strong>tercer</strong> bloque de imagen al mismo mensaje y pídele al modelo que compare las dos. El formato de bloques lo permite sin cambiar nada más.</p></div>
+      <div class="box def"><div class="lab">◈ Más allá de VER: oír, hablar y generar imágenes</div>
+        <p>La imagen de entrada es solo una esquina del multimodal. El espectro completo tiene cuatro esquinas, y todas se arman con el mismo patrón de bloques que acabas de aprender:</p>
+        <dl>
+          <dt>oír (audio → texto)</dt><dd>El modelo transcribe o razona sobre un audio. Mismo patrón que la imagen, pero el bloque es <code class="k">media</code> con su <code class="k">mime_type</code> (verificado contra el paquete): <code class="k">{"type":"media","mime_type":"audio/wav","data": "&lt;base64&gt;"}</code>. Lo tienes armado en <b>curso_ejemplos/22b_voz.py</b>.</dd>
+          <dt>hablar (texto → audio, TTS)</dt><dd>La síntesis de voz NO es un mensaje de chat: es una petición aparte cuya <em>respuesta son bytes de audio</em>, no texto. En <code class="k">22b_voz.py</code> armas su payload (<code class="k">input</code>, <code class="k">voice</code>, <code class="k">format</code>).</dd>
+          <dt>generar imágenes (texto → imagen)</dt><dd>Modelos texto→imagen (Imagen de Google, DALL·E, la generación de Gemini) devuelven una imagen, no texto. También es una API distinta de la de chat.</dd>
+        </dl>
+        <p class="mini">▲ Regla que se repite: el bloque <code class="k">media</code>/<code class="k">image_url</code> viaja igual, pero <strong>el proveedor tiene que soportar esa modalidad</strong> (Gemini oye y ve; un modelo de solo texto en Groq, no). Y audio/imagen pesan más que el texto: cuestan más y tardan más, así que mídelo (<a class="inline" href="#m16">m16b</a>) antes de meterlo en el camino caliente.</p></div>
       <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
         <ul>
           <li>Explicar por qué el contenido multimodal es una lista de bloques y no un string.</li>
@@ -3995,6 +4018,13 @@ def deduplicar(chunks):
         </ul></div>
       <div class="box practice"><div class="lab">▸ Para practicar</div>
         <p>Cambia <code class="k">n_listas</code> en <code class="k">construir_ivf</code> y observa cómo cambian los tamaños de las listas y el recall con <code class="k">n_sondas=1</code>. Luego busca una consulta cuyo vecino correcto caiga en otra lista: verás el recall subir de 0 a 1 al aumentar las sondas. Es el trade-off en vivo.</p></div>
+      <div class="box def"><div class="lab">◈ En producción, el índice por defecto suele ser HNSW (no IVFFlat)</div>
+        <p>Este módulo implementó <strong>IVFFlat</strong> para <em>tocar</em> el trade-off recall↔velocidad con las manos. Pero cuando saltas a una DB vectorial real (<code class="k">pgvector</code>, Qdrant, Milvus), el índice por defecto casi siempre es <strong>HNSW</strong> (un grafo navegable jerárquico):</p>
+        <ul>
+          <li><strong>HNSW</strong>: mejor recall a alta velocidad <em>sin</em> entrenar centroides, y tolera bien un índice que crece. A cambio, ocupa <strong>más memoria</strong> y se construye más lento. Es el que elegirías por defecto para servir búsquedas.</li>
+          <li><strong>IVFFlat</strong>: más ligero en memoria y de construcción rápida, pero exige entrenar los centroides sobre datos representativos y afinar <code class="k">n_sondas</code>. Rinde peor si el conjunto cambia mucho después de entrenarlo.</li>
+        </ul>
+        <p>La decisión no cambia tu código de búsqueda: en <code class="k">pgvector</code> es una línea al crear el índice (<code class="k">USING hnsw</code> vs <code class="k">USING ivfflat</code>). Elige HNSW salvo que la memoria sea tu cuello de botella.</p></div>
       <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
         <ul>
           <li>Explicar por qué deduplicar antes de indexar ahorra coste y mejora el ranking.</li>
@@ -4546,7 +4576,7 @@ def detectar_inconsistencia(respuestas):
       <p class="modtag l5"><span class="bar"></span>AI Engineer · Módulo 29 · Caso real 2</p>
       <h2>Caso real 2 · Asistente de compras para retail: del catálogo vivo a la recomendación fiable</h2>
       <div class="fileref">📋 Copia y ejecuta: <b>curso_ejemplos/29_caso_retail.py</b> — 100% offline, no gasta cuota<span class="tested">✓ cubierto por tests</span></div>
-      <p class="modmeta"><span>🎯 <b>Al terminar sabrás:</b> diseñar un caso de IA end-to-end para un negocio real —del dato crudo al eval— y aplicar la regla de oro del retail: <strong>precio y stock jamás salen del modelo</strong>.</span><span>✅ <b>Necesitas:</b> el m05 (salida estructurada), el m11 (RAG), el m16 (evals) y el m23 (guardrails).</span><span>⏱️ <b>~45 min</b></span></p>
+      <p class="modmeta"><span>🎯 <b>Al terminar sabrás:</b> diseñar un caso de IA end-to-end para un negocio real —del dato crudo al eval— y aplicar la regla de oro del retail: <strong>precio y stock jamás salen del modelo</strong>.</span><span>✅ <b>Necesitas:</b> el m05 (salida estructurada), el m11 (RAG), el m16 (evals) y el m23 (guardrails).</span><span>⏱️ <b>~60 min</b></span></p>
 
       <p>El primer caso del curso (el capstone del <a class="inline" href="#m18">m18</a>) fue gobierno de datos en una financiera: documentos, normativa, auditoría. Este segundo caso es el mundo opuesto y es <strong>real y verificable</strong>: <strong>Sifrah</strong>, cadena peruana de bisutería y accesorios de moda para mujer, con más de <strong>90 tiendas</strong> a nivel nacional (Lima, Arequipa, Trujillo, Cusco, Piura…) y e-commerce sobre Shopify. Y aquí el regalo para quien aprende: su catálogo es <strong>público</strong> — como toda tienda Shopify, <code class="k">sifrah.com/products.json</code> devuelve los productos con título, tags, precio, precio de oferta y disponibilidad. Datos reales, de una empresa real, sin pedir permiso ni llave. <em>(Caso de estudio pedagógico sobre datos públicos; el curso no está afiliado a la marca.)</em></p>
 
@@ -4582,8 +4612,51 @@ def detectar_inconsistencia(respuestas):
         <div class="step"><div class="num">4</div><div class="ti">Búsqueda</div><div class="de">Filtros DUROS + ranking (m11/m24).</div></div><div class="arw">→</div>
         <div class="step hl"><div class="num">5</div><div class="ti">Grounding</div><div class="de">Responder SOLO con lo recuperado (m23/m28).</div></div><div class="arw">→</div>
         <div class="step"><div class="num">6</div><div class="ti">Eval</div><div class="de">¿Respeta presupuesto y precios? (m16).</div></div><div class="arw">→</div>
-        <div class="step"><div class="num">7</div><div class="ti">Producción</div><div class="de">El stack del proyecto_llmops, tal cual.</div></div>
+        <div class="step"><div class="num">7</div><div class="ti">Producción</div><div class="de">El stack LLMOps, en <a class="inline" href="#m29-proyecto">proyecto_retail/</a>.</div></div>
       </div>
+
+      <h3>La arquitectura: cómo fluye una petición</h3>
+      <p>El pipeline de siete pasos de arriba es la <em>narrativa</em>. Vista como <strong>arquitectura</strong>, se lee en tres capas: el camino de una petición en tiempo real, la capa de datos que le da los hechos, y las capas de producción que la hacen servible y medible. Las tres son el <a class="inline" href="#m29-proyecto">proyecto_retail/</a> —el build organizado del caso, al estilo del <a class="inline" href="#llmops">proyecto_llmops</a>—.</p>
+
+      <p class="flowcap">Capa runtime · <b>el camino de una petición</b></p>
+      <div class="flow" role="img" aria-label="Capa de tiempo de ejecución: la petición del usuario pasa por el LLM que extrae filtros tipados, la búsqueda con filtros duros, el LLM que redacta, el guardrail de grounding de precios, y sale la respuesta o un 'no tengo'.">
+        <div class="step"><div class="num">in</div><div class="ti">Petición</div><div class="de">"aretes dorados por menos de S/25".</div></div><div class="arw">→</div>
+        <div class="step hl"><div class="num">m05</div><div class="ti">Filtros tipados</div><div class="de">LLM → Pydantic (categoría, color, tope).</div></div><div class="arw">→</div>
+        <div class="step"><div class="num">m24</div><div class="ti">Búsqueda</div><div class="de">Filtros DUROS (WHERE) + ranking.</div></div><div class="arw">→</div>
+        <div class="step"><div class="num">m02</div><div class="ti">LLM redacta</div><div class="de">Tono de vendedora, solo lo recuperado.</div></div><div class="arw">→</div>
+        <div class="step hl"><div class="num">m23</div><div class="ti">Grounding ✔/✖</div><div class="de">¿Cada precio existe? Reintento → fallback.</div></div><div class="arw">→</div>
+        <div class="step"><div class="num">out</div><div class="ti">Respuesta</div><div class="de">Fiel por construcción — o "no tengo".</div></div>
+      </div>
+
+      <p class="flowcap">Capa de datos · <b>los hechos nunca salen del modelo</b></p>
+      <div class="flow" role="img" aria-label="Capa de datos: el products.json de Shopify se normaliza con el ETL y produce un catálogo tipado, que es lo que alimenta la búsqueda y el guardrail de precios.">
+        <div class="step"><div class="num">1</div><div class="ti">products.json</div><div class="de">El catálogo público de Shopify (dato crudo).</div></div><div class="arw">→</div>
+        <div class="step"><div class="num">2</div><div class="ti">ETL</div><div class="de">Precio a número, promo, categoría derivada.</div></div><div class="arw">→</div>
+        <div class="step hl"><div class="num">3</div><div class="ti">Catálogo tipado</div><div class="de">La fuente de verdad de la búsqueda y el grounding.</div></div>
+      </div>
+
+      <p class="flowcap">Capa de producción · <b>proyecto_retail/ (estándar LLMOps)</b></p>
+      <div class="flow" role="img" aria-label="Capa de producción: FastAPI sirve por SSE, con guardrails de entrada y salida, caché semántico, A/B de prompts y trazas con costo por consulta.">
+        <div class="step"><div class="num">m17·m25</div><div class="ti">FastAPI SSE</div><div class="de">Sirve el chat token a token.</div></div><div class="arw">→</div>
+        <div class="step"><div class="num">m23</div><div class="ti">Guardrails E/S</div><div class="de">Anti-inyección y anti-precio-inventado.</div></div><div class="arw">→</div>
+        <div class="step"><div class="num">m11</div><div class="ti">Caché semántico</div><div class="de">La pregunta repetida, a costo ~0.</div></div><div class="arw">→</div>
+        <div class="step"><div class="num">m24b</div><div class="ti">A/B del prompt</div><div class="de">Dos tonos de vendedora, feedback por variante.</div></div><div class="arw">→</div>
+        <div class="step"><div class="num">m16</div><div class="ti">Trazas + costo</div><div class="de">Latencia, TTFT y coste por consulta.</div></div>
+      </div>
+
+      <p>Cada pieza del asistente tiene su módulo de origen y su archivo en el proyecto. Esta es la traducción de "el curso entero" a componentes:</p>
+      <div class="tbl-wrap"><table>
+        <thead><tr><th>Pieza</th><th>En la maqueta (m29)</th><th>En producción (proyecto_retail/)</th><th>Módulo</th></tr></thead>
+        <tbody>
+          <tr><td>ETL del dato sucio</td><td>reglas de categoría en el <code>.py</code></td><td><code>app/etl.py</code></td><td><a class="inline" href="#m29">29</a></td></tr>
+          <tr><td>Entender la petición</td><td>regex determinista</td><td><code>app/intent.py</code> · <code>with_structured_output</code></td><td><a class="inline" href="#m5">05</a></td></tr>
+          <tr><td>Buscar (filtros duros + ranking)</td><td><code>buscar_productos</code></td><td><code>app/search.py</code></td><td><a class="inline" href="#m24">24</a> · <a class="inline" href="#m11">11</a></td></tr>
+          <tr><td>Redactar con tono de marca</td><td>plantilla fija</td><td><code>app/agent.py</code> + <code>prompts/vendedora.yaml</code></td><td><a class="inline" href="#m2">02</a></td></tr>
+          <tr><td>Grounding de precios</td><td><code>respuesta_es_fiel</code></td><td><code>guardrails/price_guard.py</code></td><td><a class="inline" href="#m23">23</a> · <a class="inline" href="#m28">28</a></td></tr>
+          <tr><td>Evaluar (misma métrica)</td><td><code>evaluar_asistente</code></td><td><code>evals/</code> + CI gate</td><td><a class="inline" href="#m16">16</a></td></tr>
+          <tr><td>Servir + observar</td><td>—</td><td><code>app/main.py</code> · <code>cache/</code> · <code>observability/</code></td><td><a class="inline" href="#m17">17</a> · <a class="inline" href="#m24b">24b</a></td></tr>
+        </tbody>
+      </table></div>
 
       <h3>Paso 2 · ETL: la categoría no se confía, se deriva</h3>
       <figure class="code"><figcaption><span class="d"></span>29_caso_retail.py · normalizar_producto (el dato real nunca llega listo)</figcaption><pre><code>def normalizar_producto(crudo):
@@ -4652,6 +4725,19 @@ def detectar_inconsistencia(respuestas):
       <h3>Paso 7 · De la maqueta a producción (ya lo tienes construido)</h3>
       <p>Este pipeline se monta tal cual sobre el stack del <a class="inline" href="#llmops">proyecto_llmops</a>: servirlo por SSE con FastAPI (<a class="inline" href="#m17">m17</a>/<a class="inline" href="#m25">m25</a>), guardrails de entrada y salida (<a class="inline" href="#m23">m23</a>), caché semántico para las preguntas repetidas, A/B del prompt de la vendedora (<a class="inline" href="#m24b">m24b</a>) y trazas con coste por consulta (<a class="inline" href="#m16">m16</a>). Lo que añadirías con presupuesto: embeddings + re-ranking reales (<a class="inline" href="#m12">m12</a>) en vez del solape de términos, multi-query (<a class="inline" href="#m20">m20</a>) para el vocabulario de la calle ("aros"/"aretes" — ya lo probaste en miniatura con los sinónimos), "busca por foto" con visión (<a class="inline" href="#m22">m22</a>), y la integración con el inventario por tienda — que es donde el caso 3 del menú se encuentra con este.</p>
 
+      <h3 id="m29-proyecto">Paso 8 · El build organizado: de la maqueta al proyecto</h3>
+      <div class="fileref">📁 El proyecto entero: <b>curso_ejemplos/proyecto_retail/</b> — corre 100% offline; su README trae el diagrama y el mapa "quiero X → miro Y"<span class="tested">✓ 61 tests</span></div>
+      <p>Todo lo anterior vive, además, como un <strong>proyecto con estructura de producción</strong> —la misma relación que el <a class="inline" href="#llmops">proyecto_llmops</a> tiene con los módulos sueltos—. Ahí el LLM está cableado de verdad: la intención ya no es un regex sino <code class="k">llm.with_structured_output(FiltrosCompra)</code> (el <a class="inline" href="#m5">m05</a>), y la respuesta la redacta el modelo con tono de vendedora. Lo que <strong>no</strong> cambia es la interfaz: <em>petición → filtros → productos → texto</em>. Por eso subir el eslabón no reescribe el pipeline —y el guardrail de precios sigue vigilando igual, con el mismo <code class="k">respuesta_es_fiel</code>—.</p>
+      <p>El lazo que cierra el caso está en <code class="k">app/agent.py</code>: el LLM redacta, el guardrail verifica, y si cita un precio que no existe se <strong>reintenta una vez</strong> con la lista de precios permitidos; si vuelve a fallar, gana el <strong>fallback determinista</strong> (fiel por construcción). Una respuesta con un precio inventado <strong>no puede salir</strong>. Alrededor, las capas del estándar LLMOps: guardrails de entrada/salida, caché semántico, A/B de prompts con feedback por variante, trazas con coste, y un <strong>CI gate</strong> con cero tolerancia al precio inventado. El <em>por qué</em> de cada decisión está en <code class="k">proyecto_retail/docs/adr/</code>.</p>
+      <div class="box def"><div class="lab">◈ La estructura, de un vistazo</div>
+        <dl>
+          <dt><code class="k">app/</code></dt><dd>etl · intent (m05) · search · agent (el lazo) · llm · main (FastAPI SSE) + el chat.</dd>
+          <dt><code class="k">guardrails/</code></dt><dd><code class="k">price_guard.py</code> ⭐ (anti-precio-inventado) · input/output guard · policy.</dd>
+          <dt><code class="k">cache/ · observability/ · prompts/</code></dt><dd>caché semántico · métricas/coste/tracing · los prompts como código + el A/B.</dd>
+          <dt><code class="k">evals/</code></dt><dd>dataset versionado · la métrica retail · el CI gate que bloquea un deploy que rompe la fidelidad.</dd>
+          <dt><code class="k">data/ · docs/</code></dt><dd>catálogo demo + el <code class="k">fetch</code> del real · runbook + ADRs.</dd>
+        </dl></div>
+
       <div class="box warn"><div class="lab">▲ Precio y stock JAMÁS salen del modelo</div>
         <p>El catálogo real cambia <strong>a diario</strong> (colecciones por temporada, promos que entran y salen). Por eso este caso es <strong>RAG y no fine-tuning</strong> —la biblioteca, no la escuela (<a class="inline" href="#m21">m21</a>)—: afinar un modelo con los precios de julio es fabricar un mentiroso para agosto. Y el LLM solo <strong>redacta</strong> sobre lo recuperado: un precio inventado en retail no es una anécdota, es un reclamo — y en Perú, un problema con Indecopi.</p></div>
       <div class="avoid"><div class="lab">⛔ Cuándo NO hacer esto</div>
@@ -4668,10 +4754,106 @@ def detectar_inconsistencia(respuestas):
           <li>Explicar por qué la categoría se <em>deriva</em> del título+tags y no se confía del <code class="k">product_type</code>.</li>
           <li>Defender que el presupuesto es un filtro <strong>duro</strong> (WHERE) y no una señal de ranking.</li>
           <li>Escribir un guardrail determinista que impida citar precios fuera del catálogo — y explicar por qué "no encontré" es mejor respuesta que un sustituto inválido.</li>
+          <li>Cablear el LLM real (<code class="k">with_structured_output</code>) y cerrar el lazo redacción → verificación → reintento → fallback determinista, de modo que un precio inventado nunca salga.</li>
+          <li>Organizar el caso como un proyecto LLMOps (<code class="k">proyecto_retail/</code>): guardrails, evals con CI gate, caché, serving y ADRs.</li>
         </ul></div>
       <div class="recap l5">
         <div class="lab">↺ En una frase</div>
-        <p>Un caso real de retail es el curso entero en miniatura: ETL del dato sucio, intención con salida estructurada, búsqueda con filtros duros, respuesta con grounding y un eval que atrapa al descuidado — con la regla de oro tatuada: <strong>el LLM redacta; el catálogo pone precios y stock</strong>.<span class="arch">archivo: <code>29_caso_retail.py</code> (offline)</span></p>
+        <p>Un caso real de retail es el curso entero en miniatura: ETL del dato sucio, intención con salida estructurada, búsqueda con filtros duros, respuesta con grounding y un eval que atrapa al descuidado — con la regla de oro tatuada: <strong>el LLM redacta; el catálogo pone precios y stock</strong>.<span class="arch">archivos: <code>29_caso_retail.py</code> (la maqueta) · <code>proyecto_retail/</code> (el build LLMOps)</span></p>
+      </div>
+    </div></section>
+
+    <!-- ================= M30 · MEMORIA DE LARGO PLAZO ================= -->
+    <section id="m30"><div class="col">
+      <div class="lvbanner" style="--lvc:var(--l5)"><div class="k">AI Engineer · La memoria que sobrevive a la conversación</div><p>Tu agente ya recuerda lo dicho en un hilo (el checkpointer del m10/m13). Pero abre otra conversación y no sabe quién eres. Esto es lo que le falta para recordarte mañana.</p></div>
+      <p class="modtag l5"><span class="bar"></span>AI Engineer · Módulo 30</p>
+      <h2>Memoria de largo plazo: recordar ENTRE conversaciones</h2>
+      <div class="fileref">📋 Copia y ejecuta: <b>curso_ejemplos/30_memoria_largo_plazo.py</b> — 100% offline, no gasta cuota<span class="tested">✓ cubierto por tests</span></div>
+      <p class="modmeta"><span>🎯 <b>Al terminar sabrás:</b> dar al agente memoria que persiste entre conversaciones con el <code class="k">store</code> de LangGraph, y por qué es una pieza distinta del checkpointer.</span><span>✅ <b>Necesitas:</b> el <a class="inline" href="#m10">m10</a> (checkpointer) y el <a class="inline" href="#m13">m13</a> (StateGraph).</span><span>⏱️ <b>~35 min</b></span></p>
+
+      <p>El <a class="inline" href="#m10">checkpointer</a> te dio memoria <strong>conversacional</strong>: dentro de un mismo <code class="k">thread_id</code>, el agente recuerda lo que se dijo tres turnos atrás. Pero esa memoria está <strong>atada al hilo</strong>. Cierra la conversación, abre otra mañana (otro <code class="k">thread_id</code>) y el agente vuelve a preguntarte cómo te llamas. Para un asistente que atiende al mismo usuario muchas veces, eso es inaceptable: necesita <strong>memoria de largo plazo</strong>, hechos sobre el usuario que sobreviven a la conversación.</p>
+
+      <div class="box def"><div class="lab">◈ Definición · checkpointer vs store</div>
+        <p>LangGraph separa dos memorias porque resuelven problemas distintos:</p>
+        <dl>
+          <dt>checkpointer (memoria de trabajo)</dt><dd>Guarda el <strong>estado de una conversación</strong>, indexado por <code class="k">thread_id</code>. Es lo que hace que el agente siga el hilo. Se olvida al cambiar de hilo — y así debe ser.</dd>
+          <dt>store (memoria de largo plazo)</dt><dd>Guarda <strong>datos indexados por <em>namespace</em> + clave</strong>, independientes del hilo. Es donde viven los hechos del usuario ("se llama Ana", "es alérgica al maní") para recuperarlos en cualquier conversación futura.</dd>
+          <dt>namespace</dt><dd>Una <strong>tupla</strong> que agrupa memorias como carpetas: usamos <code class="k">("memorias", user_id)</code> para que las de un usuario nunca se mezclen con las de otro.</dd>
+        </dl></div>
+
+      <div class="box analogy"><div class="lab">◆ La pizarra y la ficha del cliente</div>
+        <p>El <strong>checkpointer</strong> es la <strong>pizarra</strong> de una sala de reuniones: apuntas ahí lo que importa <em>durante</em> la reunión, y al terminar se borra para la siguiente. El <strong>store</strong> es la <strong>ficha del cliente en el CRM</strong>: cuando el cliente vuelve —otra reunión, otro día, otra pizarra— abres su ficha y ahí sigue todo lo que aprendiste de él. Un buen asistente usa las dos: la pizarra para seguir <em>esta</em> charla, la ficha para reconocerte en la <em>próxima</em>.</p></div>
+
+      <h3>El CRUD mínimo sobre el store</h3>
+      <p>El store es un almacén clave→valor por namespace. Tres operaciones bastan (firmas verificadas contra el paquete instalado, no de memoria):</p>
+      <figure class="code"><figcaption><span class="d"></span>30_memoria_largo_plazo.py · guardar y recuperar (100% offline)</figcaption><pre><code>from langgraph.store.memory import InMemoryStore
+
+def namespace_de(user_id):                 # el "cajón" de UN usuario
+    return ("memorias", user_id)           # tupla: agrupa como carpetas
+
+def guardar_hecho(store, user_id, clave, valor):
+    # value va como dict (el store guarda JSON, no strings sueltos): deja sitio
+    # para enriquecerlo luego (fecha, fuente) sin cambiar cómo se lee.
+    store.put(namespace_de(user_id), clave, {"dato": valor})
+
+def recuperar_hechos(store, user_id):
+    # search sobre el namespace del usuario trae TODOS sus items.
+    items = store.search(namespace_de(user_id))
+    return {item.key: item.value["dato"] for item in items}</code></pre></figure>
+
+      <h3>Decidir qué vale la pena recordar</h3>
+      <p>La regla de oro: <strong>no guardes la conversación entera, guarda el hecho destilado</strong>. Aquí la extracción es determinista (regex, testeable byte a byte); en producción suele hacerla el propio LLM con <a class="inline" href="#m5">salida estructurada (m05)</a>, pero la idea es la misma.</p>
+      <figure class="code"><figcaption><span class="d"></span>de una frase del usuario a un hecho memorable (o a nada)</figcaption><pre><code>extraer_preferencia("hola, me llamo Ana")         # -&gt; ("nombre", "Ana")
+extraer_preferencia("soy alérgica al maní")       # -&gt; ("alergia", "maní")
+extraer_preferencia("prefiero respuestas cortas") # -&gt; ("estilo", "cortas")
+extraer_preferencia("¿qué tal el clima?")         # -&gt; None  (nada que recordar)</code></pre></figure>
+
+      <h3>El agente que consulta su memoria</h3>
+      <p>Al agente se le pasa el <code class="k">store</code> igual que el checkpointer. Una tool lo alcanza con <code class="k">get_store()</code> —LangGraph se lo inyecta en tiempo de ejecución— y así el modelo puede decir "según recuerdo, te llamas Ana" en una conversación <strong>nueva</strong>.</p>
+      <figure class="code"><figcaption><span class="d"></span>create_react_agent con las DOS memorias</figcaption><pre><code>from langgraph.config import get_store
+
+@tool
+def recordar_sobre_el_usuario() -&gt; str:
+    """Devuelve lo que se sabe del usuario (nombre, alergias, preferencias)."""
+    hechos = recuperar_hechos(get_store(), user_id)   # el MISMO store del agente
+    return "; ".join(f"{k}: {v}" for k, v in hechos.items()) or "No recuerdo nada aún."
+
+agente = create_react_agent(
+    llm, tools=[recordar_sobre_el_usuario],
+    store=store,                 # memoria de LARGO PLAZO (entre conversaciones)
+    checkpointer=MemorySaver(),  # memoria de TRABAJO (dentro de la conversación)
+)</code></pre></figure>
+
+      <div class="box warn"><div class="lab">▲ El store necesita un backend real para persistir de verdad</div>
+        <p><code class="k">InMemoryStore</code> vive en RAM: perfecto para aprender y testear, pero se borra al reiniciar el proceso. Para que la memoria sobreviva a un despliegue usa un backend persistente —<code class="k">PostgresStore</code> (el mismo Postgres del checkpointer) o Redis—. La <em>interfaz</em> (<code class="k">put</code>/<code class="k">get</code>/<code class="k">search</code>) es idéntica: cambias dónde vive, no cómo lo usas.</p></div>
+
+      <div class="box cuando-no"><div class="lab">⛔ Cuándo NO usar memoria de largo plazo</div>
+        <ul>
+          <li><strong>No metas TODO en la ficha.</strong> Guardar cada mensaje ensucia la memoria, sube el coste (más contexto en cada prompt) y esconde lo importante. Guarda hechos destilados y estables, no el historial.</li>
+          <li><strong>Datos que cambian rápido</strong> (el saldo de una cuenta, el stock) NO son memoria: se consultan a la fuente en cada turno, como en el <a class="inline" href="#m29">m29</a>. La memoria es para lo que <em>define</em> al usuario, no para hechos volátiles.</li>
+          <li><strong>PII sin consentimiento.</strong> Recordar "es alérgica al maní" es dato de salud: aplica el <a class="inline" href="#m23">m23</a> (consentimiento, minimización, borrado a pedido). Una memoria que no se puede borrar es un problema legal, no una feature.</li>
+        </ul></div>
+
+      <div class="box practice"><div class="lab">✎ Para practicar</div>
+        <ol>
+          <li>Corre <code class="k">30_memoria_largo_plazo.py</code>: verás que lo aprendido en el hilo <code class="k">dia-1</code> se recupera en <code class="k">dia-2</code>. Cambia las frases de la conversación 1 y comprueba qué se recuerda.</li>
+          <li>Añade un patrón nuevo a <code class="k">extraer_preferencia</code> (p. ej. "trabajo en …" → <code class="k">ocupacion</code>) y un test que lo cubra.</li>
+          <li>Escribe una función <code class="k">olvidar(store, user_id, clave)</code> que borre un hecho (pista: <code class="k">store.delete(namespace, key)</code>). Es el "borrado a pedido" que exige la privacidad.</li>
+        </ol>
+        <details class="sol"><summary>Ver pista de la 3</summary>
+          <p><code class="k">store.delete(namespace_de(user_id), clave)</code> elimina esa clave del namespace del usuario; luego <code class="k">recuperar_hechos</code> ya no la trae. Con eso, un usuario que pide "olvida mi dirección" queda atendido sin tocar el resto de su ficha.</p>
+        </details></div>
+
+      <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
+        <ul>
+          <li>Explicar en una frase la diferencia entre checkpointer (por hilo) y store (por namespace).</li>
+          <li>Guardar y recuperar hechos de un usuario con <code class="k">put</code>/<code class="k">search</code>, aislados por <code class="k">user_id</code>.</li>
+          <li>Pasarle el <code class="k">store</code> a un agente y leerlo desde una tool con <code class="k">get_store()</code>.</li>
+          <li>Decir qué NO debe ir a la memoria (datos volátiles, ruido, PII sin consentimiento).</li>
+        </ul></div>
+      <div class="recap l5">
+        <div class="lab">↺ En una frase</div>
+        <p>El checkpointer recuerda <strong>la conversación</strong> (por <code>thread_id</code>); el store recuerda <strong>al usuario</strong> (por <code>namespace</code>) y sobrevive a la conversación — dale las dos y tu agente te reconoce mañana.<span class="arch">archivo: <code>30_memoria_largo_plazo.py</code></span></p>
       </div>
     </div></section>
 
@@ -4679,9 +4861,9 @@ def detectar_inconsistencia(respuestas):
     <section id="examen"><div class="col">
       <p class="modtag l5"><span class="bar"></span>Evaluación · Examen final</p>
       <h2>Examen final: ¿ya lo tienes?</h2>
-      <p>Hazlo cuando hayas terminado los cuatro niveles. Son <strong>20 preguntas nuevas</strong> —no las de los quizzes, sino los mismos conceptos vistos desde otro ángulo— repartidas en cinco bloques, uno por nivel. Cada bloque te da su nota al completarlo; cuando termines los cinco, verás abajo tu <strong>nota total sobre 20</strong> con el desglose por nivel.</p>
+      <p>Hazlo cuando hayas terminado los cuatro niveles. Son <strong>24 preguntas nuevas</strong> —no las de los quizzes, sino los mismos conceptos vistos desde otro ángulo— repartidas en seis bloques: uno por nivel y un sexto sobre el <strong>caso real de retail</strong> (m29). Cada bloque te da su nota al completarlo; cuando termines los seis, verás abajo tu <strong>nota total sobre 24</strong> con el desglose.</p>
       <div class="box analogy"><div class="lab">◆ Cómo leer tu nota</div>
-        <p><strong>Aprobado: 14/20</strong> (70%). Pero mira también el desglose: un bloque por debajo de <strong>2 de 4</strong> es la señal de que ese nivel pide un repaso antes de construir en producción — no un "suspenso", una pista de dónde volver. Cada respuesta se bloquea al primer clic, igual que en los quizzes: piénsala antes de tocar.</p></div>
+        <p><strong>Aprobado: 17/24</strong> (70%). Pero mira también el desglose: un bloque por debajo de <strong>2 de 4</strong> es la señal de que ese nivel pide un repaso antes de construir en producción — no un "suspenso", una pista de dónde volver. Cada respuesta se bloquea al primer clic, igual que en los quizzes: piénsala antes de tocar.</p></div>
 
       <div class="quiz">
         <div class="qhead">Bloque 1 · Nivel Básico (módulos 01–04)</div>
@@ -4868,6 +5050,43 @@ def detectar_inconsistencia(respuestas):
         <p class="score"></p>
       </div>
 
+      <div class="quiz">
+        <div class="qhead">Bloque 6 · Caso real de retail (módulo 29)</div>
+        <div class="q"><p class="enun">1 · El <code class="k">products.json</code> real dice <code class="k">product_type: "Joyería"</code> hasta en la mochila. ¿Qué haces?</p>
+          <div class="opts">
+            <button type="button">Confías en <code>product_type</code>: para eso lo trae la API</button>
+            <button type="button" data-ok>Derivas la categoría del título y los tags, porque el campo miente</button>
+            <button type="button">Descartas la mochila por no ser joyería</button>
+          </div>
+          <p class="fb">El dato real llega sucio: 249 de 250 productos dicen "Joyería". La categoría de verdad se DERIVA en el ETL, no se confía (Módulo 29).</p>
+        </div>
+        <div class="q"><p class="enun">2 · "Aretes por menos de S/25" y hay unos preciosos de S/39.90. ¿Qué hace la búsqueda?</p>
+          <div class="opts">
+            <button type="button">Los muestra más abajo: son "menos relevantes"</button>
+            <button type="button" data-ok>Los EXCLUYE: el presupuesto es un filtro duro (WHERE), no una señal de ranking</button>
+            <button type="button">Los muestra y avisa que se pasan del tope</button>
+          </div>
+          <p class="fb">Un producto que se pasa del tope no es "menos relevante": es inválido. Filtro duro primero, ranking solo entre los válidos (Módulo 29 · m24).</p>
+        </div>
+        <div class="q"><p class="enun">3 · La primera versión respondía "Para «…hasta S/80» te recomiendo…" y el guardrail saltó. ¿Por qué, y cuál es la cura?</p>
+          <div class="opts">
+            <button type="button">Falló el modelo; se sube la temperatura para variar la respuesta</button>
+            <button type="button" data-ok>El S/80 es del usuario, no del catálogo: la cura es no re-inyectar su texto en la salida</button>
+            <button type="button">El guardrail está mal calibrado; se baja el umbral</button>
+          </div>
+          <p class="fb">El guardrail verifica que cada S/xx.xx citado exista en el catálogo. Ecoar la cifra del usuario la mete donde no debe: la misma higiene del m23 contra la inyección (Módulo 29).</p>
+        </div>
+        <div class="q"><p class="enun">4 · El catálogo cambia a diario (promos, stock). ¿RAG o fine-tuning para los precios?</p>
+          <div class="opts">
+            <button type="button">Fine-tuning mensual con los precios del mes</button>
+            <button type="button" data-ok>RAG: el precio se recupera del catálogo en cada consulta; el modelo solo redacta</button>
+            <button type="button">Fine-tuning una vez y luego parches con prompt</button>
+          </div>
+          <p class="fb">Afinar con los precios de julio es fabricar un mentiroso para agosto. Dato que cambia → RAG. Y el LLM nunca pone el precio: eso es del catálogo (Módulo 29 · m21).</p>
+        </div>
+        <p class="score"></p>
+      </div>
+
       <div id="examen-total" role="status" aria-live="polite"></div>
     </div></section>
 
@@ -4875,7 +5094,7 @@ def detectar_inconsistencia(respuestas):
     <section id="entrevista"><div class="col">
       <p class="modtag l5"><span class="bar"></span>Preparación · Entrevista de AI Engineer</p>
       <h2>Entrevista de AI Engineer: preguntas y system design</h2>
-      <p>El examen midió si entendiste el curso. Esto es distinto: son las preguntas que te harán en una <strong>entrevista real</strong> de AI Engineer, con la respuesta que se espera y —lo importante— <strong>el módulo donde la construiste con tus manos</strong>. No memorices la respuesta: abre el módulo, reléelo, y explícala con tus palabras. Al final, tres casos de <strong>system design</strong>: la parte que de verdad separa a quien "sabe la teoría" de quien diseña sistemas.</p>
+      <p>El examen midió si entendiste el curso. Esto es distinto: son las preguntas que te harán en una <strong>entrevista real</strong> de AI Engineer, con la respuesta que se espera y —lo importante— <strong>el módulo donde la construiste con tus manos</strong>. No memorices la respuesta: abre el módulo, reléelo, y explícala con tus palabras. Al final, cuatro casos de <strong>system design</strong>: la parte que de verdad separa a quien "sabe la teoría" de quien diseña sistemas.</p>
       <div class="box practice"><div class="lab">▸ Cómo usar esta sección</div>
         <p>Lee la pregunta, responde <strong>en voz alta y completa</strong> antes de abrir la respuesta —como en la entrevista de verdad, donde el silencio pensando cuenta. Solo entonces despliega para contrastar. Si tu respuesta se quedó corta, el chip de la derecha te dice a qué módulo volver.</p></div>
 
@@ -4998,7 +5217,7 @@ def detectar_inconsistencia(respuestas):
       </div>
 
       <div class="ivblock">
-        <h3>System design · tres casos para diseñar en voz alta</h3>
+        <h3>System design · cuatro casos para diseñar en voz alta</h3>
         <p class="sub">Lee el enunciado, responde las preguntas guía como si dibujaras en una pizarra, y solo después abre la solución esquemática.</p>
 
         <div class="sd">
@@ -5034,6 +5253,19 @@ def detectar_inconsistencia(respuestas):
               <p><strong>Agente ReAct</strong> (m10/m13) con tools bien tipadas; pasa a <strong>supervisor multiagente</strong> (m15) solo si las especialidades lo piden. Las acciones <strong>irreversibles</strong> pasan por <em>human-in-the-loop</em> (interrupción + confirmación) antes de ejecutarse.</p>
               <p><strong>Seguridad</strong>: permisos mínimos por tool, validación de argumentos, y defensa frente a inyección que intente disparar acciones (m23). <strong>Concurrencia</strong>: cada usuario aislado por <code class="k">thread_id</code>; el agente se construye una vez al arrancar (m17).</p>
               <p><strong>Observabilidad + eval</strong>: trazas de cada paso y evaluación por <strong>trayectoria</strong> además del resultado (m16) — ¿usó la tool correcta?, ¿pidió confirmación cuando debía? <strong>Auditoría</strong>: log de cada acción ejecutada con su input y quién la disparó.</p>
+            </div></details>
+        </div>
+
+        <div class="sd">
+          <h4>Caso 4 · Asistente de compras sobre un catálogo vivo (retail)</h4>
+          <p class="req">Restricciones: el catálogo cambia a diario (precios, promos, stock); <strong>jamás</strong> puede citar un precio que no existe; la clienta habla en jerga ("aros", "baratito"); presupuesto ajustado.</p>
+          <p><strong>Preguntas guía:</strong> ¿Dónde vive el catálogo, RAG o fine-tuning? ¿Cómo entiende la petición? ¿El presupuesto es filtro o ranking? ¿Cómo garantizas que no invente un precio? ¿Cómo lo evalúas y qué bloquea un deploy?</p>
+          <details class="qa"><summary>Ver solución esquemática<span class="mod">m29·m05·m21·m23·m16</span></summary>
+            <div class="ans">
+              <p><strong>RAG, no fine-tuning</strong> (m21): el catálogo cambia a diario, así que se recupera en cada consulta; afinar con los precios de este mes es fabricar un mentiroso para el próximo. El LLM entiende y redacta; el catálogo pone los hechos.</p>
+              <p><strong>Entender la petición</strong>: <code class="k">with_structured_output</code> a un molde tipado (m05) — presupuesto, categoría, color. <strong>Presupuesto = filtro DURO</strong> (un WHERE, m24), no señal de ranking: un producto que se pasa del tope es inválido, no "menos relevante"; solo entre los válidos se ordena por afinidad.</p>
+              <p><strong>Anti-precio-inventado</strong>: guardrail determinista que verifica que cada S/xx.xx citado exista en lo recuperado (m23); si falla, reintento correctivo y luego fallback a una respuesta armada por plantilla, fiel por construcción. No un LLM-judge: la verdad —el catálogo— está a mano, y comprobar un precio es una resta, no un juicio.</p>
+              <p><strong>Eval + gate</strong>: métrica que exige respetar presupuesto, stock y fidelidad de precios (m16); el CI gate tiene <strong>cero tolerancia</strong> a un precio inventado — un solo caso infiel bloquea el deploy aunque la media pase. Alrededor: caché semántico para las repetidas y A/B del tono de la vendedora.</p>
             </div></details>
         </div>
       </div>
@@ -5164,6 +5396,7 @@ uv run pytest             # corre TUS tests, sin llave y sin cuota</code></pre><
           <tr><td>Controlar el muestreo / entender la tokenización</td><td><code>softmax_con_temperatura(logits, t)</code> · <code>muestrear_top_p(...)</code> · <code>calcular_perplejidad(...)</code></td><td>27</td></tr>
           <tr><td>Detectar una posible alucinación sin humano</td><td><code>detectar_inconsistencia([...])</code> (N muestras → dispersión = señal de alerta)</td><td>28</td></tr>
           <tr><td>Recomendar productos sin inventar precios</td><td>filtros duros del catálogo + <code>respuesta_es_fiel(...)</code> (grounding determinista)</td><td>29</td></tr>
+          <tr><td>Recordar al usuario entre conversaciones</td><td><code>store.put(("memorias", uid), "nombre", {"dato": "Ana"})</code></td><td>30</td></tr>
         </tbody>
       </table></div>
 
@@ -5237,12 +5470,15 @@ llm = ChatOpenAI(model="qwen/qwen3-32b",
           <tr><td>Multi-query y RAG-Fusion</td><td><code>20</code></td><td><a class="inline" href="#m20">20</a></td><td><code>test_offline.py::TestTema20*</code></td></tr>
           <tr><td>Fine-tuning vs RAG</td><td><code>21</code></td><td><a class="inline" href="#m21">21</a></td><td><code>test_offline.py::TestTema21*</code></td></tr>
           <tr><td>Multimodal (texto + imagen)</td><td><code>22</code></td><td><a class="inline" href="#m22">22</a></td><td><code>test_offline.py::TestTema22*</code></td></tr>
+          <tr><td>Voz: audio de entrada y síntesis (TTS)</td><td><code>22b</code></td><td><a class="inline" href="#m22">22</a></td><td><code>test_offline.py::TestTema22bVoz*</code></td></tr>
           <tr><td>Seguridad y red-teaming (OWASP LLM)</td><td><code>23</code></td><td><a class="inline" href="#m23">23</a></td><td><code>test_redteam.py</code></td></tr>
           <tr><td>Vector DBs en producción (dedup · IVFFlat)</td><td><code>24</code></td><td><a class="inline" href="#m24">24</a></td><td><code>test_offline.py::TestTema24*</code></td></tr>
           <tr><td>Prompt engineering (few-shot · CoT · self-consistency)</td><td><code>26b</code></td><td><a class="inline" href="#m26b">26b</a></td><td><code>test_offline.py::TestTema26b*</code></td></tr>
           <tr><td>Fundamentos del LLM (tokenización · softmax · muestreo · perplejidad)</td><td><code>27</code></td><td><a class="inline" href="#m27">27</a></td><td><code>test_offline.py::TestTema27*</code></td></tr>
           <tr><td>Desafíos: alucinaciones y detección (SelfCheckGPT)</td><td><code>28</code></td><td><a class="inline" href="#m28">28</a></td><td><code>test_offline.py::TestTema28*</code></td></tr>
           <tr><td>Caso real 2: asistente de compras retail (ETL · grounding · eval)</td><td><code>29</code></td><td><a class="inline" href="#m29">29</a></td><td><code>test_offline.py::TestTema29*</code></td></tr>
+          <tr><td>Caso retail en producción (proyecto LLMOps)</td><td><code>proyecto_retail/</code></td><td><a class="inline" href="#m29-proyecto">29</a></td><td><code>proyecto_retail/tests</code></td></tr>
+          <tr><td>Memoria de largo plazo (recordar entre conversaciones)</td><td><code>30</code></td><td><a class="inline" href="#m30">30</a></td><td><code>test_offline.py::TestTema30*</code></td></tr>
         </tbody>
       </table></div>
       <div class="box analogy"><div class="lab">◆ ¿Y tus experimentos previos?</div>
@@ -5366,7 +5602,7 @@ llm = ChatOpenAI(model="qwen/qwen3-32b",
 
     <footer><div class="col">
       <p>Curso generado a partir de tu código en <code class="k">spec-sdd/studylangchain</code> y <code class="k">studylangchainnivelinter</code>. Estudia nivel por nivel y practica cada bloque en su archivo.</p>
-      <p>Tú escribes el código en <code class="k">mi-curso-ia/</code>. La versión de referencia de cada tema, comentada línea por línea y cubierta por <strong>383 tests que no gastan cuota</strong>, está publicada en <a class="inline" href="https://github.com/Kratos2210/cursoIA/tree/main/curso_ejemplos">github.com/Kratos2210/cursoIA</a> — consúltala <em>después</em> de intentarlo.</p>
+      <p>Tú escribes el código en <code class="k">mi-curso-ia/</code>. La versión de referencia de cada tema, comentada línea por línea y cubierta por <strong>642 tests que no gastan cuota</strong>, está publicada en <a class="inline" href="https://github.com/Kratos2210/cursoIA/tree/main/curso_ejemplos">github.com/Kratos2210/cursoIA</a> — consúltala <em>después</em> de intentarlo.</p>
       <p>Si algo falla, empieza por la <a class="inline" href="#faq">FAQ de errores</a>.</p>
       <p>Datawith.AI · Alberto Ruiz — Lima, Perú</p>
     </div></footer>
@@ -5656,13 +5892,14 @@ llm = ChatOpenAI(model="qwen/qwen3-32b",
         detalle.push({nombre:nombre,ok:ok,total:qs});
       });
       if(completos!==bloques.length){totalEl.classList.remove('show');return;}
-      var aprobado=aciertos>=14;
+      var minimo=Math.ceil(preguntas*0.7);
+      var aprobado=aciertos>=minimo;
       var lis=detalle.map(function(d){
         var flojo=d.ok<2?' <em>— repasa este nivel</em>':'';
         return '<li><b>'+d.nombre+':</b> '+d.ok+'/'+d.total+flojo+'</li>';
       }).join('');
       totalEl.innerHTML='<p class="big">Nota total: '+aciertos+' de '+preguntas+
-        (aprobado?' — ¡aprobado! 🎉':' — aún no llegas al 14/20')+'</p>'+
+        (aprobado?' — ¡aprobado! 🎉':' — aún no llegas al '+minimo+'/'+preguntas)+'</p>'+
         '<p class="verdict">'+(aprobado?
           'Dominas el curso de punta a punta. Si algún bloque quedó flojo, es un buen sitio al que volver antes de construir en producción.':
           'Vas bien, pero repasa los niveles donde más fallaste y vuelve a intentarlo — el curso no es una carrera.')+'</p>'+

@@ -3,7 +3,7 @@
 Cada archivo es **autónomo**: lo abres en VS Code, lo corres y funciona solo.
 Están comentados **sección por sección** para que entiendas cada línea.
 
-Y todo está **verificado por 383 tests** que corren sin gastar un solo token
+Y todo está **verificado por 642 tests** que corren sin gastar un solo token
 (ver [§6](#6-cómo-se-verifica-que-esto-funciona)).
 
 ## 1) Requisitos (una sola vez)
@@ -72,15 +72,22 @@ La columna «Cuota» se refiere al proveedor que tengas activo: con
 | 20 · RAG avanzado | `20_rag_avanzado.py` | multi-query + RAG-Fusion (RRF sobre variantes) | **No** |
 | 21 · Fine-tuning vs RAG | `21_fine_tuning.py` | decidir enfoque + dataset de chat a JSONL | **No** |
 | 22 · Multimodal | `22_multimodal.py` | enviar texto + imagen a un modelo con visión | Sí |
+| 22b · Voz (audio in/out) | `22b_voz.py` | audio de entrada (STT) · síntesis de voz (TTS) · generación multimodal | No |
 | 23 · Seguridad | `23_seguridad.py` | red-teaming OWASP LLM: inyección, saneo, secretos | **No** |
 | 24 · Vector DBs | `24_vector_db.py` | dedup por hash + índice IVFFlat (recall↔velocidad) | **No** |
 | 26b · Prompt engineering | `26b_prompt_engineering.py` | few-shot · CoT · self-consistency · descomposición | **No** |
 | 27 · Fundamentos del LLM | `27_fundamentos_llm.py` | tokenización BPE · softmax/temperatura · top_k/top_p · perplejidad | **No** |
 | 28 · Desafíos y alucinaciones | `28_alucinaciones.py` | taxonomía causa→mitigación · detector de inconsistencia · fragilidad | **No** |
 | 29 · Caso real 2: retail | `29_caso_retail.py` | ETL de catálogo Shopify · filtros duros · grounding de precios · eval | **No** |
+| 30 · Memoria de largo plazo | `30_memoria_largo_plazo.py` | store vs checkpointer · hechos del usuario entre conversaciones · namespaces | **No** |
 
 **Proyecto final:** [`proyecto_final/`](proyecto_final/) — el asistente de
 Gobierno de Datos, repartido en 8 módulos y con 44 tests propios.
+
+**Proyecto retail:** [`proyecto_retail/`](proyecto_retail/) — el caso del m29
+(asistente de compras Sifrah) llevado a un proyecto LLMOps organizado: el LLM
+cableado de verdad (m05), guardrail de precios, caché semántico, A/B de prompts,
+evals con CI gate, serving FastAPI/SSE y ADRs. 61 tests, 100% offline.
 
 ## 4) Ejercicios
 
@@ -129,18 +136,21 @@ montón de scripts: **cada concepto tiene una prueba que lo defiende**.
 | Multi-query y RAG-Fusion | `20` | [20](curso-langchain.html#m20) | `test_offline.py::TestTema20*` |
 | Fine-tuning vs RAG | `21` | [21](curso-langchain.html#m21) | `test_offline.py::TestTema21*` |
 | Multimodal (texto + imagen) | `22` | [22](curso-langchain.html#m22) | `test_offline.py::TestTema22*` |
+| Voz: audio de entrada y síntesis (TTS) | `22b` | [22](curso-langchain.html#m22) | `test_offline.py::TestTema22bVoz*` |
 | Seguridad y red-teaming (OWASP LLM) | `23` | [23](curso-langchain.html#m23) | `test_redteam.py` |
 | Vector DBs en producción (dedup · IVFFlat) | `24` | [24](curso-langchain.html#m24) | `test_offline.py::TestTema24*` |
 | Prompt engineering (few-shot · CoT · self-consistency) | `26b` | [26b](curso-langchain.html#m26b) | `test_offline.py::TestTema26b*` |
 | Fundamentos del LLM (tokenización · softmax · muestreo · perplejidad) | `27` | [27](curso-langchain.html#m27) | `test_offline.py::TestTema27*` |
 | Desafíos: alucinaciones y detección (SelfCheckGPT) | `28` | [28](curso-langchain.html#m28) | `test_offline.py::TestTema28*` |
 | Caso real 2: asistente de compras retail (ETL · grounding · eval) | `29` | [29](curso-langchain.html#m29) | `test_offline.py::TestTema29*` |
+| Caso retail en producción (proyecto LLMOps) | `proyecto_retail/` | [29](curso-langchain.html#m29-proyecto) | `proyecto_retail/tests` |
+| Memoria de largo plazo (recordar entre conversaciones) | `30` | [30](curso-langchain.html#m30) | `test_offline.py::TestTema30*` |
 
 ## 6) Cómo se verifica que esto funciona
 
 ```bash
 cd curso_ejemplos
-uv run pytest -m offline        # 383 tests, ~15 s, CERO llamadas a la API
+uv run pytest -m offline        # 642 tests, ~20 s, CERO llamadas a la API
 ```
 
 Qué cubren:

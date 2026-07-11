@@ -1414,3 +1414,106 @@ class TestTema29Eval:
 
     def test_sin_casos_la_nota_es_cero(self, m29, catalogo29):
         assert m29.evaluar_asistente([], m29.asistente_honesto, catalogo29) == 0.0
+
+
+# ==================================================================
+# TEMA 30 · Memoria de largo plazo con el store (100% offline)
+# ==================================================================
+@pytest.fixture(scope="module")
+def m30(importar_ejemplo):
+    return importar_ejemplo("30_memoria_largo_plazo")
+
+
+@pytest.fixture()
+def store30(m30):
+    """Un InMemoryStore limpio por test (function scope: no arrastra estado)."""
+    from langgraph.store.memory import InMemoryStore
+    return InMemoryStore()
+
+
+class TestTema30Store:
+    """El CRUD sobre el store: guardar y recuperar hechos del usuario."""
+
+    def test_guardar_y_recuperar(self, m30, store30):
+        m30.guardar_hecho(store30, "ana", "nombre", "Ana")
+        assert m30.recuperar_hechos(store30, "ana") == {"nombre": "Ana"}
+
+    def test_las_memorias_de_dos_usuarios_no_se_mezclan(self, m30, store30):
+        """El aislamiento es la razón de meter el user_id en el namespace."""
+        m30.guardar_hecho(store30, "ana", "nombre", "Ana")
+        m30.guardar_hecho(store30, "beto", "nombre", "Beto")
+        assert m30.recuperar_hechos(store30, "ana") == {"nombre": "Ana"}
+        assert m30.recuperar_hechos(store30, "beto") == {"nombre": "Beto"}
+
+    def test_usuario_sin_memorias_devuelve_vacio(self, m30, store30):
+        assert m30.recuperar_hechos(store30, "nadie") == {}
+
+    def test_el_namespace_lleva_el_user_id(self, m30):
+        assert m30.namespace_de("ana") == ("memorias", "ana")
+
+
+class TestTema30Extraccion:
+    """Decidir QUÉ vale la pena recordar (determinista → testeable)."""
+
+    def test_nombre(self, m30):
+        assert m30.extraer_preferencia("hola, me llamo Ana") == ("nombre", "Ana")
+
+    def test_alergia(self, m30):
+        assert m30.extraer_preferencia("soy alérgica al maní") == ("alergia", "maní")
+
+    def test_estilo(self, m30):
+        assert m30.extraer_preferencia("prefiero respuestas cortas") == ("estilo", "cortas")
+
+    def test_ciudad(self, m30):
+        assert m30.extraer_preferencia("vivo en Lima") == ("ciudad", "Lima")
+
+    def test_frase_sin_hecho_no_guarda_ruido(self, m30):
+        """No todo turno aporta un hecho: devolver None es la respuesta correcta."""
+        assert m30.extraer_preferencia("¿qué tal el clima?") is None
+
+
+class TestTema30MemoriaEntreHilos:
+    """El punto del módulo: el store sobrevive al cambio de thread_id."""
+
+    def test_lo_aprendido_en_un_hilo_se_recupera_en_otro(self, m30, store30):
+        # "Conversación 1": el usuario se presenta.
+        for frase in ["me llamo Ana", "vivo en Lima", "soy alérgica al maní"]:
+            pref = m30.extraer_preferencia(frase)
+            if pref:
+                m30.guardar_hecho(store30, "ana", *pref)
+        # "Conversación 2" (otro thread_id): el mismo store recuerda todo.
+        recuerdo = m30.recuperar_hechos(store30, "ana")
+        assert recuerdo == {"nombre": "Ana", "ciudad": "Lima", "alergia": "maní"}
+
+
+# ==================================================================
+# TEMA 22b · Voz: audio de entrada (STT) y síntesis (TTS) — offline
+# ==================================================================
+@pytest.fixture(scope="module")
+def m22b(importar_ejemplo):
+    return importar_ejemplo("22b_voz")
+
+
+class TestTema22bVoz:
+    """Armar las peticiones de voz (comprensión de audio y TTS) sin llamar a la API."""
+
+    def test_audio_a_bloque_lleva_mime_y_base64(self, m22b):
+        import base64
+        bloque = m22b.audio_a_bloque(b"RIFF....WAVE", "audio/wav")
+        assert bloque["type"] == "media"
+        assert bloque["mime_type"] == "audio/wav"
+        assert base64.b64decode(bloque["data"]) == b"RIFF....WAVE"
+
+    def test_mensaje_con_audio_tiene_texto_y_audio(self, m22b):
+        msg = m22b.mensaje_con_audio("transcribe esto", b"RIFF....WAVE")
+        assert len(msg.content) == 2
+        assert msg.content[0]["type"] == "text"
+        assert msg.content[1]["type"] == "media"
+
+    def test_peticion_tts_arma_el_payload(self, m22b):
+        pet = m22b.peticion_tts("hola", "verse", "mp3")
+        assert pet == {"input": "hola", "voice": "verse", "format": "mp3"}
+
+    def test_tts_rechaza_voz_desconocida(self, m22b):
+        with pytest.raises(ValueError):
+            m22b.peticion_tts("x", "inexistente")
