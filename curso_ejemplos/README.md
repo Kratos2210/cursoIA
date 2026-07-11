@@ -77,6 +77,7 @@ La columna «Cuota» se refiere al proveedor que tengas activo: con
 | 26b · Prompt engineering | `26b_prompt_engineering.py` | few-shot · CoT · self-consistency · descomposición | **No** |
 | 27 · Fundamentos del LLM | `27_fundamentos_llm.py` | tokenización BPE · softmax/temperatura · top_k/top_p · perplejidad | **No** |
 | 28 · Desafíos y alucinaciones | `28_alucinaciones.py` | taxonomía causa→mitigación · detector de inconsistencia · fragilidad | **No** |
+| 29 · Caso real 2: retail | `29_caso_retail.py` | ETL de catálogo Shopify · filtros duros · grounding de precios · eval | **No** |
 
 **Proyecto final:** [`proyecto_final/`](proyecto_final/) — el asistente de
 Gobierno de Datos, repartido en 8 módulos y con 44 tests propios.
@@ -133,6 +134,7 @@ montón de scripts: **cada concepto tiene una prueba que lo defiende**.
 | Prompt engineering (few-shot · CoT · self-consistency) | `26b` | [26b](curso-langchain.html#m26b) | `test_offline.py::TestTema26b*` |
 | Fundamentos del LLM (tokenización · softmax · muestreo · perplejidad) | `27` | [27](curso-langchain.html#m27) | `test_offline.py::TestTema27*` |
 | Desafíos: alucinaciones y detección (SelfCheckGPT) | `28` | [28](curso-langchain.html#m28) | `test_offline.py::TestTema28*` |
+| Caso real 2: asistente de compras retail (ETL · grounding · eval) | `29` | [29](curso-langchain.html#m29) | `test_offline.py::TestTema29*` |
 
 ## 6) Cómo se verifica que esto funciona
 

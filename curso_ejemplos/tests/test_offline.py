@@ -1270,3 +1270,147 @@ class TestTema28Fragilidad:
         respuestas = ["Sí, es seguro", "No, evítalo", "Depende del caso"]
         assert m28.medir_fragilidad(respuestas) == 3
         assert m28.es_fragil(respuestas) is True
+
+
+# ==================================================================
+# TEMA 29 · Caso real 2: asistente de compras retail (100% offline)
+# ==================================================================
+@pytest.fixture(scope="module")
+def m29(importar_ejemplo):
+    return importar_ejemplo("29_caso_retail")
+
+
+@pytest.fixture(scope="module")
+def catalogo29(m29):
+    return m29.cargar_catalogo()
+
+
+class TestTema29Etl:
+    """El ETL: del products.json crudo a un producto usable."""
+
+    def test_el_precio_string_se_vuelve_float(self, m29):
+        producto = m29.normalizar_producto(m29.CATALOGO_CRUDO[0])
+        assert isinstance(producto["precio"], float)
+
+    def test_promo_cuando_compare_at_es_mayor(self, m29):
+        con_promo = m29.normalizar_producto({
+            "title": "X", "product_type": "Joyería", "tags": [],
+            "variants": [{"sku": "T-1", "price": "12.90",
+                          "compare_at_price": "39.90", "available": True}]})
+        sin_promo = m29.normalizar_producto({
+            "title": "X", "product_type": "Joyería", "tags": [],
+            "variants": [{"sku": "T-2", "price": "12.90",
+                          "compare_at_price": None, "available": True}]})
+        assert con_promo["en_promo"] is True
+        assert sin_promo["en_promo"] is False
+
+    def test_la_categoria_se_deriva_no_se_confia(self, m29):
+        """La lección del dato real: product_type dice 'Joyería' hasta en la
+        mochila. La categoría sale del título+tags."""
+        mochila = m29.normalizar_producto({
+            "title": "Mochila 2 en 1 Travel Fucsia", "product_type": "Joyería",
+            "tags": ["Mochila"],
+            "variants": [{"sku": "T-3", "price": "12.90",
+                          "compare_at_price": None, "available": True}]})
+        assert mochila["categoria"] == "mochilas"          # NO "joyería"
+
+    def test_el_cepillo_es_belleza_no_cabello(self, m29, catalogo29):
+        """'Cepillo de Cabello' contiene 'cabello', pero su categoría real es
+        belleza: el orden de las reglas del ETL importa."""
+        cepillo = next(p for p in catalogo29 if p["sku"] == "BE-001")
+        assert cepillo["categoria"] == "belleza"
+
+
+class TestTema29Filtros:
+    """Extraer intención: presupuesto, categoría y color desde la petición."""
+
+    def test_presupuesto_menos_de(self, m29):
+        assert m29.extraer_filtros("aretes por menos de 25 soles")["presupuesto"] == 25.0
+
+    def test_presupuesto_hasta_con_simbolo(self, m29):
+        assert m29.extraer_filtros("una cartera hasta S/80")["presupuesto"] == 80.0
+
+    def test_sin_presupuesto_es_none(self, m29):
+        assert m29.extraer_filtros("aretes dorados")["presupuesto"] is None
+
+    def test_categoria_y_color(self, m29):
+        filtros = m29.extraer_filtros("quiero aretes dorados")
+        assert filtros["categoria"] == "aretes"
+        assert filtros["color"] == "dorado"
+
+    def test_sinonimos_de_la_clienta(self, m29):
+        """'aros' y 'pelo' no están en el catálogo, pero sí en la calle."""
+        assert m29.extraer_filtros("unos aros plateados")["categoria"] == "aretes"
+        assert m29.extraer_filtros("algo para el pelo")["categoria"] == "cabello"
+
+
+class TestTema29Busqueda:
+    """Filtros DUROS primero (precio, stock, categoría), ranking después."""
+
+    def test_respeta_el_presupuesto(self, m29, catalogo29):
+        resultados = m29.buscar_productos(
+            {"presupuesto": 25.0, "categoria": "aretes", "color": None}, catalogo29)
+        assert resultados and all(p["precio"] <= 25.0 for p in resultados)
+
+    def test_excluye_lo_no_disponible(self, m29, catalogo29):
+        """AR-003 (aretes zircón) está agotado: no debe recomendarse jamás."""
+        resultados = m29.buscar_productos(
+            {"presupuesto": None, "categoria": "aretes", "color": None}, catalogo29)
+        assert all(p["sku"] != "AR-003" for p in resultados)
+
+    def test_el_color_pedido_sube_al_primer_lugar(self, m29, catalogo29):
+        resultados = m29.buscar_productos(
+            {"presupuesto": 25.0, "categoria": "aretes", "color": "dorado"}, catalogo29)
+        assert "dorado" in resultados[0]["texto"]
+
+    def test_sin_candidatos_devuelve_vacio_no_inventa(self, m29, catalogo29):
+        """'Nada cumple' es una respuesta válida (la regla del m20): un
+        sustituto fuera de presupuesto NO lo es."""
+        resultados = m29.buscar_productos(
+            {"presupuesto": 5.0, "categoria": "carteras", "color": None}, catalogo29)
+        assert resultados == []
+
+
+class TestTema29Grounding:
+    """El guardrail del retail: ningún precio citado fuera del catálogo."""
+
+    def test_respuesta_con_precios_del_catalogo_es_fiel(self, m29, catalogo29):
+        productos = m29.buscar_productos(
+            {"presupuesto": 25.0, "categoria": "aretes", "color": None}, catalogo29)
+        respuesta = m29.armar_respuesta(productos)
+        assert m29.respuesta_es_fiel(respuesta, productos) is True
+
+    def test_un_precio_inventado_viola_el_guardrail(self, m29, catalogo29):
+        productos = m29.buscar_productos(
+            {"presupuesto": 25.0, "categoria": "aretes", "color": None}, catalogo29)
+        con_invento = m29.armar_respuesta(productos) + "\n- Collar Mágico a S/99.90"
+        assert m29.respuesta_es_fiel(con_invento, productos) is False
+
+    def test_sin_productos_la_respuesta_es_honesta(self, m29):
+        respuesta = m29.armar_respuesta([])
+        assert "no encontré" in respuesta.lower()
+        assert m29.precios_citados(respuesta) == set()
+
+
+class TestTema29Eval:
+    """La misma métrica juzga al asistente honesto y al descuidado (m16)."""
+
+    CASOS = [
+        {"peticion": "aretes dorados por menos de 25 soles"},
+        {"peticion": "un collar hasta S/35"},
+        {"peticion": "algo para el pelo, máximo 8 soles"},
+        {"peticion": "una cartera hasta S/80"},
+    ]
+
+    def test_el_asistente_honesto_aprueba_todo(self, m29, catalogo29):
+        nota = m29.evaluar_asistente(self.CASOS, m29.asistente_honesto, catalogo29)
+        assert nota == 1.0
+
+    def test_el_eval_atrapa_al_descuidado(self, m29, catalogo29):
+        """Ignorar el presupuesto DEBE bajar la nota: si no la baja, la métrica
+        no mide nada."""
+        nota = m29.evaluar_asistente(self.CASOS, m29.asistente_descuidado, catalogo29)
+        assert nota < 1.0
+
+    def test_sin_casos_la_nota_es_cero(self, m29, catalogo29):
+        assert m29.evaluar_asistente([], m29.asistente_honesto, catalogo29) == 0.0
