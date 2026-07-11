@@ -39,7 +39,7 @@ def crear_modelo(nombre_modelo: str):
     """Construye un ChatModel del proveedor que diga el .env.
 
     Parámetro:
-      nombre_modelo: p.ej. 'qwen/qwen3-32b' (Groq) o 'gemini-2.0-flash' (Google).
+      nombre_modelo: p.ej. 'qwen/qwen3-32b' (Groq) o 'gemini-3.1-flash-lite' (Google).
 
     Los imports van dentro para no pagar el coste de librerías que no se usan:
     quien corre con Groq no necesita tener instalado langchain-google-genai.

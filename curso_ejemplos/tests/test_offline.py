@@ -22,7 +22,9 @@ LÓGICA:
 Ejecuta:  uv run pytest curso_ejemplos/tests/ -m offline -v
 """
 import asyncio
+import math
 import os
+import random
 import sys
 from collections import Counter
 
@@ -599,3 +601,672 @@ class TestTema14Mcp:
         assert severidades[12.0] == "alta"
         assert severidades[7.0] == "media"
         assert severidades[1.0] == "baja"
+
+
+# ==================================================================
+# TEMA 20 · RAG avanzado: multi-query + RAG-Fusion
+# ==================================================================
+# Los índices de chunk de datos_rag.txt (7 párrafos), para leer los tests:
+CHUNK_REEMBOLSO = 3     # "Política de reembolsos: ..."
+CHUNK_HORARIO_20 = 2    # "Horario de atención: ..."
+
+PREGUNTA_DEVOLUCION = "¿Cómo pido la devolución de mi dinero?"
+
+
+@pytest.fixture(scope="module")
+def m20(importar_ejemplo):
+    return importar_ejemplo("20_rag_avanzado")
+
+
+class TestTema20Expandir:
+    """Multi-query: una pregunta se reescribe de varias formas deterministas."""
+
+    def test_genera_varias_variantes_distintas(self, m20):
+        variantes = m20.expandir_consulta(PREGUNTA_DEVOLUCION)
+        assert len(variantes) >= 3
+        assert len(set(variantes)) == len(variantes)  # todas distintas
+
+    def test_la_original_va_primero(self, m20):
+        variantes = m20.expandir_consulta(PREGUNTA_DEVOLUCION)
+        assert variantes[0] == PREGUNTA_DEVOLUCION
+
+    def test_alguna_variante_usa_el_sinonimo_del_documento(self, m20):
+        """El hueco clásico: el usuario dice 'devolución', el documento 'reembolso'.
+
+        Al menos una reformulación debe traer la palabra que SÍ está en el doc.
+        """
+        variantes = m20.expandir_consulta(PREGUNTA_DEVOLUCION)
+        assert any("reembolso" in v for v in variantes)
+
+    def test_pregunta_sin_sinonimos_igual_devuelve_variantes(self, m20):
+        variantes = m20.expandir_consulta("horario")
+        assert len(variantes) >= 1
+        assert variantes[0] == "horario"
+
+
+class TestTema20Recuperar:
+    """La recuperación con umbral: sin señal, no inventa resultados."""
+
+    def test_devuelve_como_mucho_k(self, m20, chunks_datos_rag):
+        assert len(m20.recuperar("atención reembolso pago", chunks_datos_rag, k=2)) <= 2
+
+    def test_encuentra_el_chunk_de_reembolso_con_su_palabra(self, m20, chunks_datos_rag):
+        assert m20.recuperar("reembolso", chunks_datos_rag, k=1) == [CHUNK_REEMBOLSO]
+
+    def test_sin_ninguna_coincidencia_devuelve_vacio(self, m20, chunks_datos_rag):
+        """El umbral > 0: 'devolución' no está literal en ningún chunk -> nada."""
+        assert m20.recuperar("devolución", chunks_datos_rag, k=3) == []
+
+
+class TestTema20Rrf:
+    """La fusión RRF, con la misma semántica que el TEMA 12."""
+
+    def test_ganar_en_ambas_listas_te_deja_primero(self, m20):
+        assert m20.fusion_rrf([[1, 0, 2], [1, 2, 0]])[0] == 1
+
+    def test_estar_en_ambas_listas_le_gana_a_brillar_en_una(self, m20):
+        assert m20.fusion_rrf([[0, 7], [3, 7]])[0] == 7
+
+    def test_incluye_todos_los_documentos_vistos(self, m20):
+        assert sorted(m20.fusion_rrf([[0, 1], [2]])) == [0, 1, 2]
+
+    def test_lista_vacia_no_aporta_ruido(self, m20):
+        """Una reformulación que no encontró nada ([]) no debe cambiar el resultado."""
+        assert m20.fusion_rrf([[5, 9], []]) == [5, 9]
+
+
+class TestTema20RagFusion:
+    """La prueba que importa: RAG-Fusion RESCATA lo que una sola búsqueda pierde."""
+
+    def test_una_sola_busqueda_no_encuentra_el_chunk_correcto(self, m20, chunks_datos_rag):
+        """El punto de partida: la pregunta cruda no casa con el chunk de reembolsos."""
+        assert CHUNK_REEMBOLSO not in m20.recuperar(PREGUNTA_DEVOLUCION, chunks_datos_rag, k=3)
+
+    def test_rag_fusion_sube_el_chunk_correcto_a_lo_alto(self, m20, chunks_datos_rag):
+        """Con multi-query + RRF, el chunk de reembolsos aparece arriba."""
+        fusion = m20.rag_fusion(PREGUNTA_DEVOLUCION, chunks_datos_rag, k=3)
+        assert CHUNK_REEMBOLSO in fusion
+        assert fusion[0] == CHUNK_REEMBOLSO
+
+    def test_horario_sigue_funcionando(self, m20, chunks_datos_rag):
+        """Regresión: una pregunta que ya casaba directo no debe empeorar."""
+        fusion = m20.rag_fusion("¿Cuál es el horario de soporte?", chunks_datos_rag, k=3)
+        assert fusion[0] == CHUNK_HORARIO_20
+
+
+class TestTema20Comprimir:
+    """Compresión extractiva: solo las frases que tocan la pregunta."""
+
+    def test_conserva_la_frase_relevante(self, m20, chunks_datos_rag):
+        texto = m20.comprimir_contexto(chunks_datos_rag, [CHUNK_REEMBOLSO], PREGUNTA_DEVOLUCION)
+        assert "reembolso" in texto.lower()
+
+    def test_descarta_un_chunk_sin_relacion(self, m20, chunks_datos_rag):
+        """El chunk de horario no tiene nada de reembolsos: se comprime a vacío."""
+        assert m20.comprimir_contexto(chunks_datos_rag, [CHUNK_HORARIO_20], PREGUNTA_DEVOLUCION) == ""
+
+
+# ==================================================================
+# TEMA 21 · Fine-tuning vs RAG: decisión + dataset de chat
+# ==================================================================
+@pytest.fixture(scope="module")
+def m21(importar_ejemplo):
+    return importar_ejemplo("21_fine_tuning")
+
+
+class TestTema21Decision:
+    """La recomendación es una función pura de reglas: casos canónicos."""
+
+    def test_conocimiento_que_cambia_es_rag(self, m21):
+        assert m21.recomendar_enfoque({"conocimiento_cambia_seguido": True}) == "RAG"
+
+    def test_formato_fijo_con_dataset_es_fine_tuning(self, m21):
+        assert m21.recomendar_enfoque({
+            "necesita_formato_o_estilo_fijo": True,
+            "hay_ejemplos_etiquetados": True,
+        }) == "fine-tuning"
+
+    def test_formato_fijo_sin_dataset_cae_en_prompt(self, m21):
+        assert m21.recomendar_enfoque({
+            "necesita_formato_o_estilo_fijo": True,
+            "hay_ejemplos_etiquetados": False,
+        }) == "prompt"
+
+    def test_conocimiento_mas_comportamiento_con_dataset_es_ambos(self, m21):
+        assert m21.recomendar_enfoque({
+            "conocimiento_cambia_seguido": True,
+            "necesita_formato_o_estilo_fijo": True,
+            "hay_ejemplos_etiquetados": True,
+        }) == "ambos"
+
+    def test_presupuesto_bajo_evita_el_fine_tuning(self, m21):
+        """Con dataset y formato fijo, pero sin presupuesto: primero el prompt."""
+        assert m21.recomendar_enfoque({
+            "necesita_formato_o_estilo_fijo": True,
+            "hay_ejemplos_etiquetados": True,
+            "presupuesto_bajo": True,
+        }) == "prompt"
+
+    def test_sin_senales_especiales_es_prompt(self, m21):
+        assert m21.recomendar_enfoque({}) == "prompt"
+
+
+class TestTema21Dataset:
+    """El armado del dataset de chat: la estructura ES el contrato con la plataforma."""
+
+    def test_cada_ejemplo_tiene_los_tres_roles_en_orden(self, m21):
+        dataset = m21.preparar_dataset_chat([("hola", "qué tal")], "sé breve")
+        assert len(dataset) == 1
+        roles = [m["role"] for m in dataset[0]["messages"]]
+        assert roles == ["system", "user", "assistant"]
+
+    def test_el_contenido_se_coloca_donde_toca(self, m21):
+        dataset = m21.preparar_dataset_chat([("¿precio?", "100 soles")], "sistema fijo")
+        msgs = dataset[0]["messages"]
+        assert msgs[0]["content"] == "sistema fijo"
+        assert msgs[1]["content"] == "¿precio?"
+        assert msgs[2]["content"] == "100 soles"
+
+    def test_convierte_todos_los_pares(self, m21):
+        pares = [("a", "1"), ("b", "2"), ("c", "3")]
+        assert len(m21.preparar_dataset_chat(pares, "s")) == 3
+
+    def test_sin_pares_da_dataset_vacio(self, m21):
+        assert m21.preparar_dataset_chat([], "s") == []
+
+
+class TestTema21Jsonl:
+    """JSONL: una línea JSON por registro, y cada línea parseable por sí sola."""
+
+    def test_una_linea_por_registro(self, m21):
+        dataset = m21.preparar_dataset_chat([("a", "1"), ("b", "2")], "s")
+        assert m21.a_jsonl(dataset).count("\n") == 1  # 2 registros -> 1 salto
+
+    def test_cada_linea_es_json_valido(self, m21):
+        import json
+        dataset = m21.preparar_dataset_chat([("a", "1"), ("b", "2")], "s")
+        for linea in m21.a_jsonl(dataset).splitlines():
+            registro = json.loads(linea)
+            assert "messages" in registro
+
+    def test_conserva_tildes_sin_escapar(self, m21):
+        """ensure_ascii=False: la ñ y las tildes se leen en claro en el archivo."""
+        dataset = m21.preparar_dataset_chat([("¿atención?", "sí, mañana")], "en español")
+        assert "atención" in m21.a_jsonl(dataset)
+
+
+# ==================================================================
+# TEMA 22 · Multimodal: construir el mensaje texto + imagen
+# ==================================================================
+@pytest.fixture(scope="module")
+def m22(importar_ejemplo):
+    return importar_ejemplo("22_multimodal")
+
+
+class TestTema22DataUrl:
+    """La imagen se codifica en un data: URL con su base64."""
+
+    def test_prefijo_correcto(self, m22):
+        url = m22.imagen_a_data_url(b"\x89PNG\r\n", mime="image/png")
+        assert url.startswith("data:image/png;base64,")
+
+    def test_respeta_el_mime_que_se_le_pasa(self, m22):
+        assert m22.imagen_a_data_url(b"xx", mime="image/jpeg").startswith("data:image/jpeg;base64,")
+
+    def test_el_base64_es_decodificable_y_recupera_los_bytes(self, m22):
+        import base64
+        datos = b"unos bytes cualquiera \x00\x01\x02"
+        url = m22.imagen_a_data_url(datos)
+        b64 = url.split(",", 1)[1]
+        assert base64.b64decode(b64) == datos
+
+    def test_el_png_demo_es_un_png_de_verdad(self, m22):
+        import base64
+        datos = base64.b64decode(m22.PNG_DEMO_1x1)
+        assert datos[:8] == b"\x89PNG\r\n\x1a\n"  # la firma mágica de un PNG
+
+
+class TestTema22Mensaje:
+    """El mensaje multimodal: dos bloques, texto + imagen, en el formato correcto."""
+
+    def test_tiene_exactamente_dos_bloques(self, m22):
+        msg = m22.mensaje_multimodal("hola", "data:image/png;base64,AAAA")
+        assert len(msg.content) == 2
+
+    def test_el_bloque_de_texto_preserva_el_texto(self, m22):
+        msg = m22.mensaje_multimodal("¿qué ves?", "data:image/png;base64,AAAA")
+        assert msg.content[0]["type"] == "text"
+        assert msg.content[0]["text"] == "¿qué ves?"
+
+    def test_el_bloque_de_imagen_lleva_el_data_url(self, m22):
+        url = "data:image/png;base64,AAAA"
+        msg = m22.mensaje_multimodal("x", url)
+        assert msg.content[1]["type"] == "image_url"
+        assert msg.content[1]["image_url"]["url"] == url
+
+    def test_es_un_humanmessage(self, m22):
+        from langchain_core.messages import HumanMessage
+        assert isinstance(m22.mensaje_multimodal("x", "data:image/png;base64,AAAA"), HumanMessage)
+
+    def test_el_formato_lo_acepta_langchain_google_genai(self, m22):
+        """El contrato de verdad: langchain-google-genai traduce ESTA estructura a
+        una parte 'inline_data' de Gemini. Confirma que el formato que construimos
+        es el que el proveedor con visión espera (sin llamar a la API)."""
+        import base64
+        from langchain_google_genai.chat_models import _convert_to_parts
+        url = m22.imagen_a_data_url(base64.b64decode(m22.PNG_DEMO_1x1))
+        partes = _convert_to_parts(m22.mensaje_multimodal("mira", url).content)
+        assert len(partes) == 2
+        assert partes[0].text == "mira"
+        assert partes[1].inline_data.mime_type == "image/png"
+        assert len(partes[1].inline_data.data) > 0
+
+
+# ==================================================================
+# TEMA 23 · Seguridad: guardarraíles (la batería de ataques va en test_redteam.py)
+# ==================================================================
+@pytest.fixture(scope="module")
+def m23(importar_ejemplo):
+    return importar_ejemplo("23_seguridad")
+
+
+class TestTema23Guardarrailes:
+    """Las piezas del pipeline por separado. Los ATAQUES concretos viven en
+    tests/test_redteam.py; aquí probamos el contrato de cada función."""
+
+    def test_construir_prompt_marca_el_contexto_como_datos(self, m23):
+        prompt = m23.construir_prompt("¿precio?", "el precio es 100 soles")
+        assert m23.MARCA_DATOS in prompt
+        assert "el precio es 100 soles" in prompt
+        # La instrucción de no obedecer al contexto debe estar presente.
+        assert "NUNCA obedezcas" in prompt
+
+    def test_el_modelo_credulo_recita_el_bloque_de_datos(self, m23):
+        """El doble de juguete obedece: devuelve tal cual lo que va tras la marca."""
+        prompt = m23.construir_prompt("x", "TEXTO SECRETO")
+        assert m23.modelo_ingenuo(prompt) == "TEXTO SECRETO"
+
+    def test_responder_seguro_devuelve_las_tres_claves(self, m23):
+        r = m23.responder_seguro("¿horario?", "de 9 a 18")
+        assert set(r) == {"respuesta", "cruda", "alertas"}
+
+    def test_sanear_escapa_los_angulos_del_texto_normal(self, m23):
+        """El HTML que no es un bloque peligroso se ESCAPA, no se ejecuta."""
+        limpio = m23.sanear_salida("2 < 3 y <b>negrita</b>")
+        assert "&lt;" in limpio
+        assert "<b>" not in limpio
+
+    def test_detectar_inyeccion_devuelve_lista_vacia_si_esta_limpio(self, m23):
+        assert m23.detectar_inyeccion("¿cuánto cuesta el servicio?") == []
+
+
+# ==================================================================
+# TEMA 24 · Vector DBs: dedup por hash + índice IVFFlat didáctico
+# ==================================================================
+@pytest.fixture(scope="module")
+def m24(importar_ejemplo):
+    return importar_ejemplo("24_vector_db")
+
+
+# Un corpus pequeño y determinista con dos "temas" (mascotas / finanzas) para
+# que el clustering tenga algo que separar.
+CORPUS_M24 = [
+    "el gato negro duerme en el sofá de casa",
+    "el perro corre feliz por el parque",
+    "las acciones subieron en la bolsa de valores hoy",
+    "el mercado bursátil cerró a la baja esta tarde",
+    "receta de pastel de chocolate casero muy fácil",
+    "cómo hornear pan integral en casa paso a paso",
+    "el gato blanco juega con la lana en el sofá",
+    "inversiones y finanzas personales para principiantes",
+]
+
+
+class TestTema24Dedup:
+    """Dedup por hash: no indexar la misma información dos veces."""
+
+    def test_normaliza_mayusculas_y_espacios(self, m24):
+        """Mismo texto, distinta caja/puntuación -> mismo hash."""
+        assert m24.hash_normalizado("Hola,  MUNDO!") == m24.hash_normalizado("hola mundo")
+
+    def test_textos_distintos_dan_hashes_distintos(self, m24):
+        assert m24.hash_normalizado("gato") != m24.hash_normalizado("perro")
+
+    def test_deduplicar_quita_exactos_y_casi_exactos(self, m24):
+        chunks = ["El horario es de 9 a 18.", "el horario es de 9 a 18", "Formas de pago: Yape."]
+        unicos = m24.deduplicar(chunks)
+        assert len(unicos) == 2
+
+    def test_deduplicar_conserva_el_orden_y_la_primera_aparicion(self, m24):
+        chunks = ["primero", "segundo", "PRIMERO"]
+        assert m24.deduplicar(chunks) == ["primero", "segundo"]
+
+
+class TestTema24Ivf:
+    """Índice IVFFlat: sondar solo las listas cercanas, con el trade-off recall↔velocidad."""
+
+    def _indice(self, m24, n_listas=3):
+        vectores = [m24.vectorizar(t) for t in CORPUS_M24]
+        return vectores, m24.construir_ivf(vectores, n_listas=n_listas)
+
+    def test_cada_vector_cae_en_exactamente_una_lista(self, m24):
+        _, indice = self._indice(m24)
+        asignados = sorted(i for lista in indice.listas for i in lista)
+        assert asignados == list(range(len(CORPUS_M24)))
+
+    def test_encuentra_el_vecino_correcto(self, m24):
+        """La consulta es (casi) un documento: con sondas suficientes, sale primero."""
+        vectores, indice = self._indice(m24)
+        consulta = m24.vectorizar("el gato juega en el sofá")
+        # Con todas las sondas, IVF ve todo -> el mejor vecino real está en el top.
+        top = m24.buscar_ivf(consulta, indice, k=3, n_sondas=3)
+        exacto = m24.buscar_exacto(consulta, vectores, k=3)
+        assert exacto[0] in top
+
+    def test_subir_sondas_no_empeora_el_recall(self, m24):
+        vectores, indice = self._indice(m24)
+        consulta = m24.vectorizar("finanzas y bolsa de valores")
+        exacto = set(m24.buscar_exacto(consulta, vectores, k=3))
+        recalls = []
+        for sondas in (1, 2, 3):
+            aprox = set(m24.buscar_ivf(consulta, indice, k=3, n_sondas=sondas))
+            recalls.append(len(aprox & exacto) / len(exacto))
+        # Monótono no decreciente: más sondas nunca dan menos recall.
+        assert recalls == sorted(recalls)
+
+    def test_con_todas_las_sondas_iguala_al_escaneo_exacto(self, m24):
+        vectores, indice = self._indice(m24, n_listas=3)
+        consulta = m24.vectorizar("receta de pan y pastel casero")
+        exacto = set(m24.buscar_exacto(consulta, vectores, k=3))
+        todas = set(m24.buscar_ivf(consulta, indice, k=3, n_sondas=3))
+        assert todas == exacto
+
+
+# ==================================================================
+# TEMA 26b · Prompt engineering: few-shot, CoT, self-consistency, descomposición
+# ==================================================================
+@pytest.fixture(scope="module")
+def m26b(importar_ejemplo):
+    return importar_ejemplo("26b_prompt_engineering")
+
+
+class TestTema26bFewShot:
+    """Few-shot: las demostraciones y la pregunta aparecen, y EN ORDEN."""
+
+    def test_incluye_todos_los_ejemplos_y_la_pregunta(self, m26b):
+        ejemplos = [("2+2", "4"), ("3+3", "6")]
+        prompt = m26b.construir_prompt_fewshot(ejemplos, "5+5")
+        for p, r in ejemplos:
+            assert p in prompt and r in prompt
+        assert "5+5" in prompt
+
+    def test_respeta_el_orden_demostraciones_antes_de_la_pregunta(self, m26b):
+        ejemplos = [("primera", "A"), ("segunda", "B")]
+        prompt = m26b.construir_prompt_fewshot(ejemplos, "final")
+        # El orden del texto: primera, luego segunda, y la pregunta al FINAL.
+        assert prompt.index("primera") < prompt.index("segunda") < prompt.index("final")
+
+    def test_la_pregunta_queda_sin_responder(self, m26b):
+        """La pregunta real cierra el prompt con 'R:' vacío: el modelo la completa."""
+        prompt = m26b.construir_prompt_fewshot([("x", "y")], "z")
+        assert prompt.rstrip().endswith("R:")
+
+
+class TestTema26bCoT:
+    """Chain-of-thought: añade la estructura de razonar paso a paso."""
+
+    def test_conserva_la_pregunta(self, m26b):
+        assert "¿cuánto es 12*12?" in m26b.plantilla_cot("¿cuánto es 12*12?")
+
+    def test_agrega_la_instruccion_de_razonar(self, m26b):
+        salida = m26b.plantilla_cot("una pregunta").lower()
+        assert "paso a paso" in salida
+
+    def test_el_razonamiento_va_despues_de_la_pregunta(self, m26b):
+        salida = m26b.plantilla_cot("PREG")
+        assert salida.index("PREG") < salida.index("paso a paso")
+
+
+class TestTema26bSelfConsistency:
+    """Self-consistency: votación por mayoría (la moda) sobre varias muestras."""
+
+    def test_mayoria_clara(self, m26b):
+        assert m26b.self_consistency(["7", "7", "3", "7"]) == "7"
+
+    def test_una_sola_respuesta(self, m26b):
+        assert m26b.self_consistency(["42"]) == "42"
+
+    def test_empate_devuelve_la_primera_en_aparecer(self, m26b):
+        # "a" y "b" empatan a 2; gana la que apareció primero (orden de inserción).
+        assert m26b.self_consistency(["a", "b", "b", "a"]) == "a"
+
+    def test_lista_vacia_devuelve_none(self, m26b):
+        assert m26b.self_consistency([]) is None
+
+
+class TestTema26bDescomponer:
+    """Descomposición: partir una tarea compuesta en sub-pasos."""
+
+    def test_parte_por_los_conectores(self, m26b):
+        pasos = m26b.descomponer("busca el precio y calcula el IVA y suma el total")
+        assert pasos == ["busca el precio", "calcula el IVA", "suma el total"]
+
+    def test_una_tarea_simple_queda_como_un_solo_paso(self, m26b):
+        assert m26b.descomponer("resume el documento") == ["resume el documento"]
+
+    def test_reconoce_luego_y_punto_y_coma(self, m26b):
+        pasos = m26b.descomponer("descarga el archivo; luego valídalo")
+        assert pasos == ["descarga el archivo", "valídalo"]
+
+
+class TestTema26bHarness:
+    """El harness antes/después: un prompt mejor mide >= que uno peor (offline)."""
+
+    def test_cot_no_es_peor_que_el_directo(self, m26b):
+        marcador = m26b.comparar_estrategias()
+        assert marcador["cot"] >= marcador["directo"]
+
+    def test_cot_acierta_todo_el_mini_dataset(self, m26b):
+        assert m26b.evaluar(m26b.resolver_cot, m26b.DATASET) == 1.0
+
+    def test_la_metrica_de_un_dataset_vacio_es_cero(self, m26b):
+        assert m26b.evaluar(m26b.resolver_cot, []) == 0.0
+
+
+# ==================================================================
+# TEMA 27 · Fundamentos: tokenización BPE, softmax, muestreo, perplejidad
+# ==================================================================
+@pytest.fixture(scope="module")
+def m27(importar_ejemplo):
+    return importar_ejemplo("27_fundamentos_llm")
+
+
+class TestTema27Bpe:
+    """Tokenizador BPE: determinista y con el plural costando un token más."""
+
+    CORPUS = ["proyecto", "objeto", "efecto", "afecto", "insecto", "dialecto"]
+
+    def test_aprender_merges_es_determinista(self, m27):
+        """Mismo corpus → mismas fusiones, sin azar: se puede testear byte a byte."""
+        a = m27.aprender_merges(self.CORPUS, 12)
+        b = m27.aprender_merges(self.CORPUS, 12)
+        assert a == b
+
+    def test_tokenizar_es_determinista(self, m27):
+        merges = m27.aprender_merges(self.CORPUS, 12)
+        assert m27.tokenizar_bpe("proyecto", merges) == m27.tokenizar_bpe("proyecto", merges)
+
+    def test_el_plural_cuesta_un_token_mas(self, m27):
+        """'proyectos' se tokeniza en más piezas que 'proyecto' (la 's' suelta)."""
+        merges = m27.aprender_merges(self.CORPUS, 12)
+        singular = m27.tokenizar_bpe("proyecto", merges)
+        plural = m27.tokenizar_bpe("proyectos", merges)
+        assert len(plural) > len(singular)
+        assert plural[-1] == "s"
+
+    def test_reconstruye_la_palabra_original(self, m27):
+        """Unir los tokens devuelve la palabra: BPE parte, no pierde información."""
+        merges = m27.aprender_merges(self.CORPUS, 12)
+        assert "".join(m27.tokenizar_bpe("dialecto", merges)) == "dialecto"
+
+    def test_sin_merges_son_los_caracteres_sueltos(self, m27):
+        assert m27.tokenizar_bpe("hola", []) == ["h", "o", "l", "a"]
+
+
+class TestTema27Softmax:
+    """Softmax con temperatura: suma 1 y se concentra/aplana según t."""
+
+    LOGITS = [2.0, 1.0, 0.2, -1.0]
+
+    def test_suma_uno(self, m27):
+        assert math.isclose(sum(m27.softmax_con_temperatura(self.LOGITS, 1.0)), 1.0)
+
+    def test_temperatura_baja_concentra_mas_que_alta(self, m27):
+        """A menor t, más masa en el token mayor (distribución más picuda)."""
+        fria = m27.softmax_con_temperatura(self.LOGITS, 0.5)
+        caliente = m27.softmax_con_temperatura(self.LOGITS, 2.0)
+        assert max(fria) > max(caliente)
+
+    def test_temperatura_cero_es_greedy(self, m27):
+        """t=0 → toda la masa en el logit máximo (límite determinista, como m01)."""
+        probs = m27.softmax_con_temperatura(self.LOGITS, 0.0)
+        assert probs == [1.0, 0.0, 0.0, 0.0]
+
+    def test_conserva_el_orden_de_los_logits(self, m27):
+        """El token de mayor logit es siempre el de mayor probabilidad."""
+        probs = m27.softmax_con_temperatura(self.LOGITS, 1.0)
+        assert probs.index(max(probs)) == self.LOGITS.index(max(self.LOGITS))
+
+    def test_lista_vacia_devuelve_vacio(self, m27):
+        assert m27.softmax_con_temperatura([], 1.0) == []
+
+
+class TestTema27Muestreo:
+    """top_k / top_p: recortan la distribución antes de muestrear (Random inyectado)."""
+
+    LOGITS = [3.0, 2.0, 0.5, -2.0]
+
+    def test_top_k_solo_devuelve_los_k_mejores(self, m27):
+        """Con k=2, muchas pasadas nunca salen de los índices 0 y 1."""
+        rng = random.Random(0)
+        elegidos = {m27.muestrear_top_k(self.LOGITS, 2, rng) for _ in range(50)}
+        assert elegidos <= {0, 1}
+
+    def test_top_k_uno_es_greedy(self, m27):
+        """k=1 → siempre el token de mayor logit, pase lo que pase el azar."""
+        rng = random.Random(7)
+        assert all(m27.muestrear_top_k(self.LOGITS, 1, rng) == 0 for _ in range(20))
+
+    def test_top_k_es_reproducible_con_la_misma_semilla(self, m27):
+        seq_a = [m27.muestrear_top_k(self.LOGITS, 3, random.Random(99)) for _ in range(5)]
+        seq_b = [m27.muestrear_top_k(self.LOGITS, 3, random.Random(99)) for _ in range(5)]
+        assert seq_a == seq_b
+
+    def test_top_p_se_queda_en_el_nucleo(self, m27):
+        """Con p pequeño, el núcleo es casi solo el token dominante (índice 0)."""
+        rng = random.Random(0)
+        elegidos = {m27.muestrear_top_p(self.LOGITS, 0.5, rng) for _ in range(50)}
+        assert elegidos <= {0, 1}
+
+
+class TestTema27Perplejidad:
+    """Perplejidad: baja para texto que el modelo esperaba, alta para el improbable."""
+
+    def test_texto_predecible_tiene_menor_perplejidad(self, m27):
+        fluido = m27.calcular_perplejidad([0.9, 0.85, 0.8, 0.92])
+        basura = m27.calcular_perplejidad([0.05, 0.1, 0.02, 0.08])
+        assert fluido < basura
+
+    def test_certeza_total_da_perplejidad_uno(self, m27):
+        """Si el modelo asignó prob. 1 a cada token, no hubo sorpresa: PPL=1."""
+        assert math.isclose(m27.calcular_perplejidad([1.0, 1.0, 1.0]), 1.0)
+
+    def test_probabilidad_cero_es_sorpresa_infinita(self, m27):
+        assert m27.calcular_perplejidad([0.5, 0.0, 0.5]) == float("inf")
+
+    def test_lista_vacia_es_infinito(self, m27):
+        assert m27.calcular_perplejidad([]) == float("inf")
+
+
+class TestTema27Atencion:
+    """Atención: la clave más parecida a la consulta se lleva el mayor peso."""
+
+    def test_los_pesos_suman_uno(self, m27):
+        pesos = m27.pesos_atencion([1.0, 0.0], [[1.0, 0.0], [0.0, 1.0]])
+        assert math.isclose(sum(pesos), 1.0)
+
+    def test_mira_mas_a_la_clave_mas_afin(self, m27):
+        consulta = [1.0, 0.0, 1.0]
+        claves = [[1.0, 0.0, 1.0], [0.0, 1.0, 0.0], [0.5, 0.0, 0.5]]
+        pesos = m27.pesos_atencion(consulta, claves)
+        assert pesos.index(max(pesos)) == 0  # la 1ª clave es idéntica a la consulta
+
+
+# ==================================================================
+# TEMA 28 · Desafíos: taxonomía, detector de inconsistencia, fragilidad
+# ==================================================================
+@pytest.fixture(scope="module")
+def m28(importar_ejemplo):
+    return importar_ejemplo("28_alucinaciones")
+
+
+class TestTema28Taxonomia:
+    """La taxonomía es un mapa consultable causa → mitigación → módulo."""
+
+    def test_cada_fila_tiene_los_campos_del_contrato(self, m28):
+        claves = {"causa", "categoria", "senal", "mitigacion", "modulo"}
+        assert m28.TAXONOMIA, "la taxonomía no puede estar vacía"
+        for fila in m28.TAXONOMIA:
+            assert claves <= set(fila), f"fila incompleta: {fila}"
+
+    def test_las_categorias_son_del_marco_de_cuatro(self, m28):
+        """Cada causa cuelga de una de las 4 categorías-paraguas de la teoría."""
+        for fila in m28.TAXONOMIA:
+            assert fila["categoria"] in m28.CATEGORIAS
+
+    def test_apunta_a_modulos_que_ensenaron_la_defensa(self, m28):
+        """Las mitigaciones remiten a módulos reales del curso (RAG, evals, etc.)."""
+        assert m28.modulos_de_mitigacion() <= {"m11", "m16", "m23", "m26b"}
+
+    def test_causas_por_modulo_filtra_bien(self, m28):
+        causas = m28.causas_por_modulo("m11")
+        assert "Falta de grounding" in causas
+        assert all(isinstance(c, str) for c in causas)
+
+    def test_un_modulo_sin_causas_devuelve_lista_vacia(self, m28):
+        assert m28.causas_por_modulo("m99") == []
+
+
+class TestTema28Inconsistencia:
+    """Detector estilo SelfCheckGPT: divergencia entre muestras de una pregunta."""
+
+    def test_todas_iguales_no_divergen(self, m28):
+        assert m28.detectar_inconsistencia(["París", "parís", "París."]) == 0.0
+
+    def test_todas_distintas_divergen_mucho(self, m28):
+        """4 respuestas distintas → 1 - 1/4 = 0.75."""
+        assert m28.detectar_inconsistencia(["1812", "1798", "1820", "1805"]) == 0.75
+
+    def test_ignora_puntuacion_y_mayusculas(self, m28):
+        """'París.' y 'parís' son la MISMA respuesta: no deben inflar la divergencia."""
+        assert m28.detectar_inconsistencia(["París.", "parís"]) == 0.0
+
+    def test_lista_vacia_no_divergencia(self, m28):
+        assert m28.detectar_inconsistencia([]) == 0.0
+
+    def test_es_sospechosa_dispara_sobre_el_umbral(self, m28):
+        assert m28.es_sospechosa(["1812", "1798", "1820", "1805"]) is True
+        assert m28.es_sospechosa(["París", "parís", "París"]) is False
+
+
+class TestTema28Fragilidad:
+    """Fragilidad: variaciones triviales del prompt no deberían cambiar la respuesta."""
+
+    def test_prompt_robusto_da_una_sola_respuesta(self, m28):
+        assert m28.medir_fragilidad(["4", " 4 ", "4."]) == 1
+        assert m28.es_fragil(["4", " 4 ", "4."]) is False
+
+    def test_prompt_fragil_da_varias_respuestas(self, m28):
+        respuestas = ["Sí, es seguro", "No, evítalo", "Depende del caso"]
+        assert m28.medir_fragilidad(respuestas) == 3
+        assert m28.es_fragil(respuestas) is True

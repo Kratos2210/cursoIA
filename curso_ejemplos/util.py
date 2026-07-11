@@ -27,25 +27,48 @@ import os
 # un cupo mucho más generoso y sirve `qwen/qwen3-32b`, que basta de sobra para
 # todo lo que se practica aquí.
 #
-# ⭐ POR QUÉ UNA SOLA CLASE SIRVE PARA LOS DOS. Casi todo el mercado (Groq,
-#    Ollama, Together, OpenAI) habla el MISMO dialecto: la API de OpenAI. Por
-#    eso `ChatOpenAI` + `base_url` los cubre a todos. Gemini no lo habla, y por
-#    eso tiene su propia rama. No es que LangChain tenga un adaptador por
-#    proveedor: es que el mercado convergió en un protocolo.
+# ⭐ POR QUÉ UNA SOLA CLASE SIRVE PARA CASI TODOS. Casi todo el mercado (Groq,
+#    Ollama, Together, OpenAI, OpenRouter, DeepSeek) habla el MISMO dialecto:
+#    la API de OpenAI. Por eso `ChatOpenAI` + `base_url` los cubre a todos.
+#    Gemini y Claude NO lo hablan, y por eso tienen su propia rama. No es que
+#    LangChain tenga un adaptador por proveedor: es que el mercado convergió
+#    en un protocolo.
 #
 # Cambiar de proveedor es cambiar el .env, NO el código:
 #
-#   LLM_PROVIDER=groq     → qwen/qwen3-32b vía Groq. Llave gratis en
-#                           https://console.groq.com/keys  (GROQ_API_KEY)
-#   LLM_PROVIDER=google   → Gemini, el proveedor por defecto del curso.
-#   LLM_PROVIDER=ollama   → un modelo en tu máquina. Sin llave y sin cuota.
+#   LLM_PROVIDER=groq       → qwen/qwen3-32b vía Groq. Llave gratis en
+#                             https://console.groq.com/keys  (GROQ_API_KEY)
+#   LLM_PROVIDER=google     → Gemini, el proveedor por defecto del curso.
+#   LLM_PROVIDER=ollama     → un modelo en tu máquina. Sin llave y sin cuota.
+#   LLM_PROVIDER=openai     → gpt-5.4-mini. Llave (de pago) en
+#                             https://platform.openai.com/api-keys  (OPENAI_API_KEY)
+#   LLM_PROVIDER=anthropic  → claude-haiku-4-5. Rama propia, como Gemini. Llave en
+#                             https://console.anthropic.com/settings/keys  (ANTHROPIC_API_KEY)
+#   LLM_PROVIDER=openrouter → agregador: UNA llave para cientos de modelos, con
+#                             variantes ':free'. https://openrouter.ai/keys  (OPENROUTER_API_KEY)
+#   LLM_PROVIDER=deepseek   → deepseek-v4-flash. De pago, pero muy barato. Llave en
+#                             https://platform.deepseek.com/api_keys  (DEEPSEEK_API_KEY)
 PROVEEDOR_POR_DEFECTO = "google"
 
 # El modelo que usa cada proveedor si no dices otro (LLM_MODELO en el .env).
 MODELOS_POR_DEFECTO = {
-    "google": "gemini-2.0-flash",
+    "google": "gemini-3.1-flash-lite",
     "groq": "qwen/qwen3-32b",
     "ollama": "qwen3:8b",
+    "openai": "gpt-5.4-mini",
+    "anthropic": "claude-haiku-4-5",
+    "openrouter": "meta-llama/llama-3.3-70b-instruct:free",
+    # OJO: `deepseek-chat` y `deepseek-reasoner` son alias que DeepSeek deprecó
+    # el 2026-07-24. Apuntamos al nombre real: v4-flash sirve los dos modos.
+    "deepseek": "deepseek-v4-flash",
+}
+
+# Proveedores con CLASE PROPIA en LangChain (no hablan el dialecto de OpenAI),
+# y de qué variable de entorno sale su llave. `variable_de_llave()` mira aquí
+# PRIMERO; los demás proveedores se resuelven por _COMPATIBLES_OPENAI.
+_PROVEEDORES_NATIVOS = {
+    "google": "GOOGLE_API_KEY",
+    "anthropic": "ANTHROPIC_API_KEY",
 }
 
 # Dónde vive la API de cada proveedor compatible con OpenAI, y de qué variable
@@ -53,6 +76,9 @@ MODELOS_POR_DEFECTO = {
 _COMPATIBLES_OPENAI = {
     "groq": ("https://api.groq.com/openai/v1", "GROQ_API_KEY"),
     "ollama": ("http://localhost:11434/v1", "OLLAMA_API_KEY"),
+    "openai": ("https://api.openai.com/v1", "OPENAI_API_KEY"),
+    "openrouter": ("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY"),
+    "deepseek": ("https://api.deepseek.com/v1", "DEEPSEEK_API_KEY"),
 }
 
 
@@ -77,8 +103,8 @@ def modelo_por_defecto(nombre_proveedor: str | None = None) -> str:
 def variable_de_llave(nombre_proveedor: str | None = None) -> str:
     """Cómo se llama la variable de entorno con la llave de ese proveedor."""
     nombre_proveedor = nombre_proveedor or proveedor()
-    if nombre_proveedor == "google":
-        return "GOOGLE_API_KEY"
+    if nombre_proveedor in _PROVEEDORES_NATIVOS:
+        return _PROVEEDORES_NATIVOS[nombre_proveedor]
     if nombre_proveedor in _COMPATIBLES_OPENAI:
         return _COMPATIBLES_OPENAI[nombre_proveedor][1]
     raise ValueError(f"LLM_PROVIDER='{nombre_proveedor}' no existe.")
@@ -124,9 +150,20 @@ def _crear_chat_openai_compatible(modelo: str, temperature: float, activo: str):
     base_url, variable = _COMPATIBLES_OPENAI[activo]
 
     extra: dict = {}
+    # ⚠️ Cada proveedor esconde el <think> con SU parámetro; no son intercambiables
+    #    (mandarle `reasoning_format` a quien no es Groq devuelve un 400).
     if activo == "groq" and _es_modelo_de_razonamiento(modelo):
         # "hidden" descarta el <think>; "raw" lo deja dentro del contenido.
+        # `reasoning_format` es EXCLUSIVO de Groq.
         extra["reasoning_format"] = os.getenv("GROQ_RAZONAMIENTO", "hidden")
+    elif activo == "openrouter" and _es_modelo_de_razonamiento(modelo):
+        # OpenRouter unifica el suyo bajo `reasoning`: {"exclude": True} descarta
+        # la cadena de pensamiento (el equivalente al "hidden" de Groq).
+        # DeepSeek y OpenAI no necesitan parche: deepseek-v4-flash sale en modo
+        # NO pensante por defecto (el modo pensante se pide con `thinking`), y
+        # cuando piensa devuelve el razonamiento en un campo APARTE del
+        # contenido, así que no ensucia las salidas del curso.
+        extra["reasoning"] = {"exclude": True}
 
     class _ChatCompatible(ChatOpenAI):
         """ChatOpenAI con `with_structured_output` en modo function_calling.
@@ -174,6 +211,14 @@ def crear_llm(temperature: float = 0.0, modelo: str | None = None):
     if activo == "google":
         from langchain_google_genai import ChatGoogleGenerativeAI
         return ChatGoogleGenerativeAI(model=modelo, temperature=temperature)
+
+    if activo == "anthropic":
+        # Claude, como Gemini, NO habla el dialecto de OpenAI → rama propia con
+        # su clase de LangChain. El import va dentro a propósito, por el mismo
+        # motivo que las demás ramas: quien corre con otro proveedor no paga el
+        # coste de importar `langchain-anthropic`.
+        from langchain_anthropic import ChatAnthropic
+        return ChatAnthropic(model=modelo, temperature=temperature)
 
     return _crear_chat_openai_compatible(modelo, temperature, activo)
 

@@ -49,8 +49,9 @@ from util import (crear_llm as _crear_llm_del_curso, es_error_cuota, mensaje_cuo
 # Por eso un RAG con contexto gigante NO es lo caro: lo caro es una respuesta larga.
 PRECIOS = {
     #  modelo                     entrada    salida     (USD por 1M de tokens)
-    "gemini-2.0-flash":        {"entrada": 0.10, "salida": 0.40},
+    "gemini-3.1-flash-lite":   {"entrada": 0.25, "salida": 1.50},
     "gemini-2.5-flash":        {"entrada": 0.30, "salida": 2.50},
+    "gemini-2.0-flash":        {"entrada": 0.10, "salida": 0.40},   # apagado el 2026-06-01
     "qwen/qwen3-32b":          {"entrada": 0.29, "salida": 0.59},
     "llama-3.3-70b-versatile": {"entrada": 0.59, "salida": 0.79},
     "qwen3:8b":                {"entrada": 0.0,  "salida": 0.0},   # local: no cuesta dinero
@@ -58,7 +59,7 @@ PRECIOS = {
 
 # ⚠️ El modelo activo NO puede ser una constante de módulo. Sale del .env, y el
 #    .env se carga en main() con load_dotenv() — que corre DESPUÉS de importar.
-#    Una constante calculada aquí arriba diría "gemini-2.0-flash" mientras el
+#    Una constante calculada aquí arriba diría "gemini-3.1-flash-lite" mientras el
 #    programa habla con Groq, y costearía con la tabla equivocada. Es una
 #    función, y se pregunta cuando ya hay respuesta.
 def modelo_activo() -> str:

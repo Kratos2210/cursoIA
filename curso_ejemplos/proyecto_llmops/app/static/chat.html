@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<!--
+  chat.html · La cara visible del servicio GobData
+  ================================================
+  Una SOLA página, HTML + CSS + JS vainilla. Sin build, sin framework, sin CDN,
+  sin una sola dependencia externa. Todo lo que ves (estilos y lógica) viaja
+  dentro de este archivo, así el chat abre en un navegador SIN conexión a
+  internet: es la demo del servicio, no una app de producción.
+
+  El servidor la sirve tal cual en GET / (ver app/frontend.py y app/main.py).
+  El JS de abajo consume el streaming SSE de POST /chat y cierra el lazo del A/B
+  votando en POST /feedback. Los comentarios explican el PORQUÉ de cada decisión
+  no obvia (por qué fetch y no EventSource, por qué un thread_id por pestaña…).
+-->
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>GobData · chat</title>
+  <style>
+    /* Estilos sobrios, sin librerías. Un solo color de acento y buen contraste. */
+    :root {
+      --bg: #0f1115; --panel: #171a21; --panel2: #1e222b; --texto: #e6e8ee;
+      --tenue: #9aa3b2; --acento: #4c8bf5; --borde: #2a2f3a;
+      --usuario: #24314a; --asistente: #1e222b; --error: #b23b3b; --ok: #2f7d46;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--texto);
+      font: 16px/1.55 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 24px 16px 32px;
+      min-height: 100vh; display: flex; flex-direction: column; }
+    header h1 { margin: 0 0 4px; font-size: 1.4rem; }
+    header .sub { margin: 0 0 16px; color: var(--tenue); font-size: .92rem; }
+    .controls { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .controls label { color: var(--tenue); font-size: .9rem; }
+    select, input, button { font: inherit; }
+    select { background: var(--panel2); color: var(--texto); border: 1px solid var(--borde);
+      border-radius: 8px; padding: 6px 10px; }
+    main { flex: 1; background: var(--panel); border: 1px solid var(--borde);
+      border-radius: 12px; padding: 16px; overflow-y: auto; min-height: 280px;
+      display: flex; flex-direction: column; gap: 12px; }
+    .msg { max-width: 88%; padding: 10px 14px; border-radius: 12px; white-space: pre-wrap;
+      word-wrap: break-word; }
+    .msg.user { align-self: flex-end; background: var(--usuario); }
+    .msg.bot { align-self: flex-start; background: var(--asistente); border: 1px solid var(--borde); }
+    .msg.bot.err { border-color: var(--error); color: #ffd7d7; }
+    .escribiendo { color: var(--tenue); font-style: italic; }
+    .feedback { margin-top: 8px; display: flex; gap: 8px; align-items: center; }
+    .feedback button { background: var(--panel2); border: 1px solid var(--borde);
+      border-radius: 8px; padding: 4px 10px; cursor: pointer; color: var(--texto); }
+    .feedback button:hover:not(:disabled) { border-color: var(--acento); }
+    .feedback button:disabled { opacity: .5; cursor: default; }
+    .gracias { color: var(--ok); font-size: .88rem; }
+    .variante { color: var(--tenue); font-size: .78rem; margin-top: 4px; }
+    form { display: flex; gap: 8px; margin-top: 12px; }
+    input { flex: 1; background: var(--panel2); color: var(--texto);
+      border: 1px solid var(--borde); border-radius: 8px; padding: 10px 12px; }
+    input:focus, select:focus, button:focus { outline: 2px solid var(--acento); outline-offset: 1px; }
+    #enviar { background: var(--acento); color: #fff; border: none; border-radius: 8px;
+      padding: 10px 18px; cursor: pointer; font-weight: 600; }
+    #enviar:disabled { opacity: .6; cursor: default; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>GobData · chat</h1>
+      <p class="sub">Agente de gobierno de datos — con guardrails, caché semántico y A/B de prompts por dentro.</p>
+    </header>
+
+    <!-- El selector de rol se manda en el body: cambia qué normativa puede ver el
+         agente (RBAC) y en qué caché se busca. En producción el rol NO lo elige el
+         cliente (saldría del token de auth); aquí es visible para VER el efecto. -->
+    <div class="controls">
+      <label for="rol">Rol</label>
+      <select id="rol">
+        <option value="public">public</option>
+        <option value="analyst" selected>analyst</option>
+        <option value="compliance">compliance</option>
+      </select>
+    </div>
+
+    <main id="conversacion" aria-live="polite" aria-label="Conversación"></main>
+
+    <form id="formulario" autocomplete="off">
+      <input id="entrada" name="entrada" type="text" placeholder="Pregunta sobre la normativa…"
+             aria-label="Tu mensaje" maxlength="4000" required />
+      <button id="enviar" type="submit">Enviar</button>
+    </form>
+  </div>
+
+  <script>
+  "use strict";
+  (function () {
+    const conversacion = document.getElementById("conversacion");
+    const formulario = document.getElementById("formulario");
+    const entrada = document.getElementById("entrada");
+    const botonEnviar = document.getElementById("enviar");
+    const selectorRol = document.getElementById("rol");
+
+    // ── thread_id estable por PESTAÑA ────────────────────────────────────────
+    // El A/B es PEGAJOSO: el servidor deriva la variante de sha256(thread_id),
+    // así que si el id cambiara en cada mensaje, el usuario saltaría entre
+    // variantes y su voto no se podría atribuir. Un id por sesión de pestaña lo
+    // mantiene fijo toda la conversación. crypto.randomUUID() es del navegador.
+    const THREAD_ID = "web-" + crypto.randomUUID();
+
+    // Crea una burbuja de mensaje y la añade al panel. Devuelve el nodo para
+    // poder ir APPENDeando tokens en la del asistente según llegan.
+    function burbuja(clase, texto) {
+      const div = document.createElement("div");
+      div.className = "msg " + clase;
+      div.textContent = texto || "";
+      conversacion.appendChild(div);
+      conversacion.scrollTop = conversacion.scrollHeight;
+      return div;
+    }
+
+    // Los botones 👍/👎 que aparecen tras el evento `fin`. Al votar mandan la
+    // `variante` que el servidor anunció, cerrando visualmente el lazo del A/B.
+    function pintarFeedback(nodoBot, variante) {
+      const barra = document.createElement("div");
+      barra.className = "feedback";
+      const gracias = document.createElement("span");
+      gracias.className = "gracias";
+
+      const arriba = document.createElement("button");
+      const abajo = document.createElement("button");
+
+      async function votar(util) {
+        arriba.disabled = abajo.disabled = true;   // un voto por respuesta
+        try {
+          await fetch("/feedback", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            // El servidor sabe derivar la variante del thread_id, pero la
+            // mandamos explícita: es la que el usuario vio (la del evento `fin`).
+            body: JSON.stringify({ thread_id: THREAD_ID, util: util, variante: variante }),
+          });
+          gracias.textContent = "¡Gracias por tu voto!";
+        } catch (e) {
+          gracias.textContent = "No se pudo registrar el voto.";
+        }
+      }
+
+      arriba.type = "button"; arriba.textContent = "👍";
+      arriba.setAttribute("aria-label", "Respuesta útil");
+      arriba.addEventListener("click", () => votar(true));
+
+      abajo.type = "button"; abajo.textContent = "👎";
+      abajo.setAttribute("aria-label", "Respuesta no útil");
+      abajo.addEventListener("click", () => votar(false));
+
+      barra.appendChild(arriba);
+      barra.appendChild(abajo);
+      barra.appendChild(gracias);
+      nodoBot.appendChild(barra);
+
+      if (variante) {
+        const etq = document.createElement("div");
+        etq.className = "variante";
+        etq.textContent = "variante: " + variante;
+        nodoBot.appendChild(etq);
+      }
+    }
+
+    // Procesa UN bloque de evento SSE ya separado (líneas). Devuelve el objeto
+    // {evento, datos} o null si no era parseable. El formato lo fija
+    // app/streaming.py (evento_sse): líneas `event:` y `data:`, y el evento por
+    // defecto ("message") NO trae línea `event:`.
+    function parsearBloque(bloque) {
+      let evento = null;
+      const partesData = [];
+      for (const linea of bloque.split("\n")) {
+        if (linea.startsWith("event:")) evento = linea.slice(6).trim();
+        else if (linea.startsWith("data:")) partesData.push(linea.slice(5).trim());
+      }
+      if (partesData.length === 0) return null;
+      let datos;
+      try { datos = JSON.parse(partesData.join("\n")); }
+      catch (e) { return null; }
+      return { evento: evento, datos: datos };
+    }
+
+    async function enviar(mensaje) {
+      burbuja("user", mensaje);
+      const nodoBot = burbuja("bot", "");
+      nodoBot.classList.add("escribiendo");
+      nodoBot.textContent = "escribiendo…";      // indicador de TTFT: hasta el 1er token
+
+      let primerToken = true;
+      let variante = null;
+
+      // ── POR QUÉ fetch + ReadableStream y NO EventSource ────────────────────
+      // EventSource, la API nativa de SSE del navegador, SOLO hace GET y no deja
+      // mandar cuerpo ni cabeceras. Nuestro /chat es POST con un JSON (mensaje,
+      // rol, thread_id), así que leemos el stream a mano: fetch nos da el cuerpo
+      // como un ReadableStream y lo troceamos por eventos SSE nosotros.
+      let respuesta;
+      try {
+        respuesta = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            mensaje: mensaje,
+            rol: selectorRol.value,
+            thread_id: THREAD_ID,
+          }),
+        });
+      } catch (e) {
+        nodoBot.classList.remove("escribiendo");
+        nodoBot.classList.add("err");
+        nodoBot.textContent = "No se pudo conectar con el servicio.";
+        return;
+      }
+
+      const lector = respuesta.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      // Bucle de lectura: acumulamos bytes decodificados en `buffer` y partimos
+      // por la línea en blanco (\n\n) que separa eventos SSE. El último trozo
+      // (sin \n\n aún) es un evento PARCIAL: se queda en el buffer para la vuelta
+      // siguiente.
+      while (true) {
+        const { value, done } = await lector.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        let corte;
+        while ((corte = buffer.indexOf("\n\n")) !== -1) {
+          const bloque = buffer.slice(0, corte);
+          buffer = buffer.slice(corte + 2);
+          const evt = parsearBloque(bloque);
+          if (!evt) continue;
+
+          if (!evt.evento && evt.datos.token !== undefined) {
+            // Evento por defecto con clave `token`: un trozo de la respuesta.
+            if (primerToken) {
+              nodoBot.classList.remove("escribiendo");
+              nodoBot.textContent = "";
+              primerToken = false;
+            }
+            nodoBot.textContent += evt.datos.token;
+            conversacion.scrollTop = conversacion.scrollHeight;
+          } else if (evt.evento === "fin") {
+            // Fin normal: capturamos la variante y ofrecemos votar 👍/👎.
+            variante = evt.datos.variante || null;
+            if (primerToken) {          // por si el nodo sigue con "escribiendo…"
+              nodoBot.classList.remove("escribiendo");
+              if (nodoBot.textContent === "escribiendo…") nodoBot.textContent = "";
+            }
+            pintarFeedback(nodoBot, variante);
+          } else if (evt.evento === "bloqueado" || evt.evento === "error") {
+            // Guardrail o error del proveedor: se cuenta por el canal de eventos.
+            nodoBot.classList.remove("escribiendo");
+            nodoBot.classList.add("err");
+            nodoBot.textContent = evt.datos.error || "La petición fue bloqueada.";
+          }
+        }
+      }
+    }
+
+    formulario.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const mensaje = entrada.value.trim();
+      if (!mensaje) return;
+      entrada.value = "";
+      botonEnviar.disabled = true;
+      entrada.disabled = true;
+      try {
+        await enviar(mensaje);
+      } finally {
+        botonEnviar.disabled = false;
+        entrada.disabled = false;
+        entrada.focus();
+      }
+    });
+  })();
+  </script>
+</body>
+</html>

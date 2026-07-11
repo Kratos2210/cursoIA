@@ -3,7 +3,7 @@
 Cada archivo es **autónomo**: lo abres en VS Code, lo corres y funciona solo.
 Están comentados **sección por sección** para que entiendas cada línea.
 
-Y todo está **verificado por 353 tests** que corren sin gastar un solo token
+Y todo está **verificado por 383 tests** que corren sin gastar un solo token
 (ver [§6](#6-cómo-se-verifica-que-esto-funciona)).
 
 ## 1) Requisitos (una sola vez)
@@ -69,19 +69,30 @@ La columna «Cuota» se refiere al proveedor que tengas activo: con
 | 16 · Evaluación | `16_evaluacion.py` | dataset + métrica + LLM-as-judge opcional | Opcional |
 | 16b · Observabilidad | `16b_observabilidad_langsmith.py` | tracing, tokens y **coste real** | **No** |
 | 17 · Servir el agente | `17_servidor_agente.py` | FastAPI: `POST /chat` con memoria por usuario | Sí |
+| 20 · RAG avanzado | `20_rag_avanzado.py` | multi-query + RAG-Fusion (RRF sobre variantes) | **No** |
+| 21 · Fine-tuning vs RAG | `21_fine_tuning.py` | decidir enfoque + dataset de chat a JSONL | **No** |
+| 22 · Multimodal | `22_multimodal.py` | enviar texto + imagen a un modelo con visión | Sí |
+| 23 · Seguridad | `23_seguridad.py` | red-teaming OWASP LLM: inyección, saneo, secretos | **No** |
+| 24 · Vector DBs | `24_vector_db.py` | dedup por hash + índice IVFFlat (recall↔velocidad) | **No** |
+| 26b · Prompt engineering | `26b_prompt_engineering.py` | few-shot · CoT · self-consistency · descomposición | **No** |
+| 27 · Fundamentos del LLM | `27_fundamentos_llm.py` | tokenización BPE · softmax/temperatura · top_k/top_p · perplejidad | **No** |
+| 28 · Desafíos y alucinaciones | `28_alucinaciones.py` | taxonomía causa→mitigación · detector de inconsistencia · fragilidad | **No** |
 
 **Proyecto final:** [`proyecto_final/`](proyecto_final/) — el asistente de
-Gobierno de Datos, repartido en 8 módulos y con 43 tests propios.
+Gobierno de Datos, repartido en 8 módulos y con 44 tests propios.
 
 ## 4) Ejercicios
 
-Leer código no enseña a escribirlo. En [`ejercicios/`](ejercicios/) hay 7
+Leer código no enseña a escribirlo. En [`ejercicios/`](ejercicios/) hay 12
 ejercicios con enunciado, **pistas progresivas**, criterio de aceptación
-verificable y solución aparte.
+verificable y solución aparte —incluidos los de temas avanzados (MCP, patrón
+supervisor, evaluación, coste y servir el agente por HTTP).
 
-Los dos que no puedes saltarte —y no gastan cuota— son
+Los que no puedes saltarte —y no gastan cuota— son
 [`ejercicio_12_rerank.md`](ejercicios/ejercicio_12_rerank.md) (predice el ranking
-antes de ejecutarlo) y [`ejercicio_13_hitl.md`](ejercicios/ejercicio_13_hitl.md).
+antes de ejecutarlo) y [`ejercicio_13_hitl.md`](ejercicios/ejercicio_13_hitl.md);
+y en la recta final, buena parte de los avanzados (14, 15, 16b y 17) también son
+100% offline.
 
 Ningún ejercicio cablea el proveedor: llaman a `util.crear_llm()`, que lee
 `LLM_PROVIDER` del `.env`. Cuando Gemini te dé un 429, pásate a Groq sin tocar
@@ -105,19 +116,29 @@ montón de scripts: **cada concepto tiene una prueba que lo defiende**.
 | BM25 · coseno · RRF · re-rank | `12` | [12](ejercicios/ejercicio_12_rerank.md) | `test_offline.py::TestTema12*` (25 tests) |
 | `StateGraph` (nodos y aristas) | `13` | — | `test_offline.py::TestTema13bHumanInTheLoop` |
 | Human-in-the-loop | `13b` | [13](ejercicios/ejercicio_13_hitl.md) | `test_offline.py::TestTema13bHumanInTheLoop` |
-| MCP (servidor + cliente) | `14` | — | `test_offline.py::TestTema14Mcp` |
-| Patrón supervisor | `15` | — | `test_offline.py::TestTema15Supervisor` |
-| Evaluación con dataset | `16` | — | *(el propio ejemplo es la métrica)* |
-| Tokens, coste y tracing | `16b` | — | `test_offline.py::TestTema16bObservabilidad` |
-| Servir por HTTP | `17` | [🏆 nivel 5](ejercicios/ejercicio_proyecto.md) | `test_imports.py` |
+| MCP (servidor + cliente) | `14` | [14](ejercicios/ejercicio_14_mcp.md) | `test_offline.py::TestTema14Mcp` |
+| Patrón supervisor | `15` | [15](ejercicios/ejercicio_15_supervisor.md) | `test_offline.py::TestTema15Supervisor` |
+| Evaluación con dataset | `16` | [16](ejercicios/ejercicio_16_evaluacion.md) | *(el propio ejemplo es la métrica)* |
+| Tokens, coste y tracing | `16b` | [16b](ejercicios/ejercicio_16b_costes.md) | `test_offline.py::TestTema16bObservabilidad` |
+| Servir por HTTP | `17` | [17](ejercicios/ejercicio_17_api.md) | `test_imports.py` |
+| Elegir modelo y proveedor | `util.py` | [18b](curso-langchain.html#m18b) | `test_util.py::TestProveedoresNuevos` |
 | Auditoría / trazabilidad | `proyecto_final/audit.py` | [🏆](ejercicios/ejercicio_proyecto.md) | `proyecto_final/tests/test_audit.py` |
 | Inyección de dependencias | `proyecto_final/graph_builder.py` | [🏆](ejercicios/ejercicio_proyecto.md) | `proyecto_final/tests/test_agente.py` |
+| Spec-Driven Development (verificador) | `verificar_curso.py` | [19](curso-langchain.html#m19) | `tests/test_verificar_curso.py` |
+| Multi-query y RAG-Fusion | `20` | [20](curso-langchain.html#m20) | `test_offline.py::TestTema20*` |
+| Fine-tuning vs RAG | `21` | [21](curso-langchain.html#m21) | `test_offline.py::TestTema21*` |
+| Multimodal (texto + imagen) | `22` | [22](curso-langchain.html#m22) | `test_offline.py::TestTema22*` |
+| Seguridad y red-teaming (OWASP LLM) | `23` | [23](curso-langchain.html#m23) | `test_redteam.py` |
+| Vector DBs en producción (dedup · IVFFlat) | `24` | [24](curso-langchain.html#m24) | `test_offline.py::TestTema24*` |
+| Prompt engineering (few-shot · CoT · self-consistency) | `26b` | [26b](curso-langchain.html#m26b) | `test_offline.py::TestTema26b*` |
+| Fundamentos del LLM (tokenización · softmax · muestreo · perplejidad) | `27` | [27](curso-langchain.html#m27) | `test_offline.py::TestTema27*` |
+| Desafíos: alucinaciones y detección (SelfCheckGPT) | `28` | [28](curso-langchain.html#m28) | `test_offline.py::TestTema28*` |
 
 ## 6) Cómo se verifica que esto funciona
 
 ```bash
 cd curso_ejemplos
-uv run pytest -m offline        # 353 tests, ~15 s, CERO llamadas a la API
+uv run pytest -m offline        # 383 tests, ~15 s, CERO llamadas a la API
 ```
 
 Qué cubren:
@@ -181,22 +202,30 @@ Y tres decisiones documentadas, con sus consecuencias negativas escritas:
 [caché semántico](proyecto_llmops/docs/adr/0005-semantic-cache.md).
 Cuando algo se rompa: [su runbook](proyecto_llmops/docs/README_runbook.md).
 
-## 9) Cambiar de proveedor (Groq, Ollama, fastembed)
+## 9) Cambiar de proveedor (Gemini, Groq, OpenAI, Claude, OpenRouter, DeepSeek, Ollama)
 
 Ningún archivo del curso instancia un modelo a mano. Todos llaman a
-`util.crear_llm()` y a `util.crear_embeddings()`, que leen el `.env`.
+`util.crear_llm()` y a `util.crear_embeddings()`, que leen el `.env`. Cambiar de
+proveedor es cambiar una línea, nunca el código. **Cuál elegir** para una
+solución real (pago vs. open weights, precios, dónde corre) se explica en el
+Módulo 18b (`curso-langchain.html#m18b`).
 
 | Quiero… | En el `.env` | Instalar |
 |---------|--------------|----------|
 | Gemini (por defecto) | `LLM_PROVIDER=google` + `GOOGLE_API_KEY` | — |
 | **Groq · `qwen/qwen3-32b`** | `LLM_PROVIDER=groq` + `GROQ_API_KEY` | — |
 | Ollama en mi máquina | `LLM_PROVIDER=ollama` + `LLM_MODELO=qwen3:8b` | `ollama serve` |
+| OpenAI · `gpt-5.4-mini` | `LLM_PROVIDER=openai` + `OPENAI_API_KEY` | — |
+| Anthropic · `claude-haiku-4-5` | `LLM_PROVIDER=anthropic` + `ANTHROPIC_API_KEY` | — |
+| OpenRouter (agregador, tiene `:free`) | `LLM_PROVIDER=openrouter` + `OPENROUTER_API_KEY` | — |
+| DeepSeek · `deepseek-v4-flash` | `LLM_PROVIDER=deepseek` + `DEEPSEEK_API_KEY` | — |
 | Otro modelo del mismo proveedor | `LLM_MODELO=llama-3.3-70b-versatile` | — |
 | **Embeddings sin cuota** | `EMBEDDINGS_PROVIDER=fastembed` | `uv sync --extra emb` |
 
-Una sola clase (`ChatOpenAI` con otra `base_url`) cubre Groq, Ollama, Together y
-OpenAI: el mercado convergió en el dialecto de la API de OpenAI. Gemini no lo
-habla, y por eso conserva su propia rama en `crear_llm()`.
+Una sola clase (`ChatOpenAI` con otra `base_url`) cubre Groq, Ollama, OpenAI,
+OpenRouter y DeepSeek: el mercado convergió en el dialecto de la API de OpenAI.
+Gemini y Claude (Anthropic) no lo hablan, y por eso conservan su propia rama en
+`crear_llm()`.
 
 ### ⚠️ Los embeddings NO siguen a `LLM_PROVIDER`
 

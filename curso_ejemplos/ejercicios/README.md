@@ -29,6 +29,11 @@ La columna «¿Gasta cuota?» se refiere al proveedor que tengas activo — con
 | 11 | [Anti-alucinación del RAG](ejercicio_11_rag.md) | RAG | `11_rag.py` | Sí | ⚠️ chat sí, embeddings no |
 | 12 | [Predice el ranking](ejercicio_12_rerank.md) | Híbrido + re-ranking | `12_rag_hibrido_rerank.py` | **No** | — |
 | 13 | [Escalar cuando el humano rechaza](ejercicio_13_hitl.md) | LangGraph + HITL | `13b_human_in_the_loop.py` | **No** | — |
+| 14 | [Una tercera tool MCP](ejercicio_14_mcp.md) | MCP servidor + cliente | `14_mcp_servidor_cliente.py` | **No** | — |
+| 15 | [Un tercer especialista](ejercicio_15_supervisor.md) | Patrón supervisor | `15_supervisor_multiagente.py` | **No** | — |
+| 16 | [Casos trampa en el dataset](ejercicio_16_evaluacion.md) | Evaluación | `16_evaluacion.py` | Parcial | ✅ chat (juez) |
+| 16b | [Predice la factura](ejercicio_16b_costes.md) | Observabilidad + coste | `16b_observabilidad_langsmith.py` | **No** | — |
+| 17 | [Un endpoint nuevo, sin API](ejercicio_17_api.md) | Servir el agente | `17_servidor_agente.py` | **No** | — |
 | 🏆 | [Extender el proyecto final](ejercicio_proyecto.md) | Todo junto | `proyecto_final/` | Parcial | ⚠️ chat sí, embeddings no |
 
 ## ⚡ Si la cuota de Gemini se te agota (429)
@@ -70,9 +75,10 @@ Y de paso aprendes algo que muerde en producción: cambiar de modelo de embeddin
 **no** es cambiar de proveedor de chat. **Invalida el índice entero**, porque los
 vectores viejos y los nuevos viven en espacios distintos. Hay que reindexar.
 
-**Salida 2 — Haz los ejercicios offline.** Los ejercicios 12 y 13 no llaman a
-ningún modelo y, no por casualidad, son los dos que más enseñan sobre
-*ingeniería* de RAG y agentes.
+**Salida 2 — Haz los ejercicios offline.** Los ejercicios 12, 13, 14, 15, 16b y
+17 no llaman a ningún modelo y, no por casualidad, son los que más enseñan sobre
+*ingeniería* de RAG, agentes, MCP, coste y despliegue. Un 429 no es excusa: es
+una invitación a practicar justo lo que importa.
 
 ## Cómo saber que lo hiciste bien
 

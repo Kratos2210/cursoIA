@@ -36,8 +36,11 @@ PRECIOS: dict[str, dict[str, float]] = {
     "qwen/qwen3-32b":            {"entrada": 0.29, "salida": 0.59},
     "llama-3.3-70b-versatile":   {"entrada": 0.59, "salida": 0.79},
     # --- Google (el resto del curso) ---
-    "gemini-2.0-flash":          {"entrada": 0.10, "salida": 0.40},
+    "gemini-3.1-flash-lite":     {"entrada": 0.25, "salida": 1.50},
     "gemini-2.5-flash":          {"entrada": 0.30, "salida": 2.50},
+    # Apagado el 2026-06-01. Se queda para que los costes históricos que ya
+    # tengas registrados sigan calculándose con la tarifa que se cobró.
+    "gemini-2.0-flash":          {"entrada": 0.10, "salida": 0.40},
     # --- Local: no cuesta dinero, cuesta tu electricidad y tu RAM ---
     "qwen3:8b":                  {"entrada": 0.0, "salida": 0.0},
 }
