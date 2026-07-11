@@ -22,7 +22,9 @@ LÓGICA:
 Ejecuta:  uv run pytest curso_ejemplos/tests/ -m offline -v
 """
 import asyncio
+import math
 import os
+import random
 import sys
 from collections import Counter
 
@@ -1069,3 +1071,132 @@ class TestTema26bHarness:
 
     def test_la_metrica_de_un_dataset_vacio_es_cero(self, m26b):
         assert m26b.evaluar(m26b.resolver_cot, []) == 0.0
+
+
+# ==================================================================
+# TEMA 27 · Fundamentos: tokenización BPE, softmax, muestreo, perplejidad
+# ==================================================================
+@pytest.fixture(scope="module")
+def m27(importar_ejemplo):
+    return importar_ejemplo("27_fundamentos_llm")
+
+
+class TestTema27Bpe:
+    """Tokenizador BPE: determinista y con el plural costando un token más."""
+
+    CORPUS = ["proyecto", "objeto", "efecto", "afecto", "insecto", "dialecto"]
+
+    def test_aprender_merges_es_determinista(self, m27):
+        """Mismo corpus → mismas fusiones, sin azar: se puede testear byte a byte."""
+        a = m27.aprender_merges(self.CORPUS, 12)
+        b = m27.aprender_merges(self.CORPUS, 12)
+        assert a == b
+
+    def test_tokenizar_es_determinista(self, m27):
+        merges = m27.aprender_merges(self.CORPUS, 12)
+        assert m27.tokenizar_bpe("proyecto", merges) == m27.tokenizar_bpe("proyecto", merges)
+
+    def test_el_plural_cuesta_un_token_mas(self, m27):
+        """'proyectos' se tokeniza en más piezas que 'proyecto' (la 's' suelta)."""
+        merges = m27.aprender_merges(self.CORPUS, 12)
+        singular = m27.tokenizar_bpe("proyecto", merges)
+        plural = m27.tokenizar_bpe("proyectos", merges)
+        assert len(plural) > len(singular)
+        assert plural[-1] == "s"
+
+    def test_reconstruye_la_palabra_original(self, m27):
+        """Unir los tokens devuelve la palabra: BPE parte, no pierde información."""
+        merges = m27.aprender_merges(self.CORPUS, 12)
+        assert "".join(m27.tokenizar_bpe("dialecto", merges)) == "dialecto"
+
+    def test_sin_merges_son_los_caracteres_sueltos(self, m27):
+        assert m27.tokenizar_bpe("hola", []) == ["h", "o", "l", "a"]
+
+
+class TestTema27Softmax:
+    """Softmax con temperatura: suma 1 y se concentra/aplana según t."""
+
+    LOGITS = [2.0, 1.0, 0.2, -1.0]
+
+    def test_suma_uno(self, m27):
+        assert math.isclose(sum(m27.softmax_con_temperatura(self.LOGITS, 1.0)), 1.0)
+
+    def test_temperatura_baja_concentra_mas_que_alta(self, m27):
+        """A menor t, más masa en el token mayor (distribución más picuda)."""
+        fria = m27.softmax_con_temperatura(self.LOGITS, 0.5)
+        caliente = m27.softmax_con_temperatura(self.LOGITS, 2.0)
+        assert max(fria) > max(caliente)
+
+    def test_temperatura_cero_es_greedy(self, m27):
+        """t=0 → toda la masa en el logit máximo (límite determinista, como m01)."""
+        probs = m27.softmax_con_temperatura(self.LOGITS, 0.0)
+        assert probs == [1.0, 0.0, 0.0, 0.0]
+
+    def test_conserva_el_orden_de_los_logits(self, m27):
+        """El token de mayor logit es siempre el de mayor probabilidad."""
+        probs = m27.softmax_con_temperatura(self.LOGITS, 1.0)
+        assert probs.index(max(probs)) == self.LOGITS.index(max(self.LOGITS))
+
+    def test_lista_vacia_devuelve_vacio(self, m27):
+        assert m27.softmax_con_temperatura([], 1.0) == []
+
+
+class TestTema27Muestreo:
+    """top_k / top_p: recortan la distribución antes de muestrear (Random inyectado)."""
+
+    LOGITS = [3.0, 2.0, 0.5, -2.0]
+
+    def test_top_k_solo_devuelve_los_k_mejores(self, m27):
+        """Con k=2, muchas pasadas nunca salen de los índices 0 y 1."""
+        rng = random.Random(0)
+        elegidos = {m27.muestrear_top_k(self.LOGITS, 2, rng) for _ in range(50)}
+        assert elegidos <= {0, 1}
+
+    def test_top_k_uno_es_greedy(self, m27):
+        """k=1 → siempre el token de mayor logit, pase lo que pase el azar."""
+        rng = random.Random(7)
+        assert all(m27.muestrear_top_k(self.LOGITS, 1, rng) == 0 for _ in range(20))
+
+    def test_top_k_es_reproducible_con_la_misma_semilla(self, m27):
+        seq_a = [m27.muestrear_top_k(self.LOGITS, 3, random.Random(99)) for _ in range(5)]
+        seq_b = [m27.muestrear_top_k(self.LOGITS, 3, random.Random(99)) for _ in range(5)]
+        assert seq_a == seq_b
+
+    def test_top_p_se_queda_en_el_nucleo(self, m27):
+        """Con p pequeño, el núcleo es casi solo el token dominante (índice 0)."""
+        rng = random.Random(0)
+        elegidos = {m27.muestrear_top_p(self.LOGITS, 0.5, rng) for _ in range(50)}
+        assert elegidos <= {0, 1}
+
+
+class TestTema27Perplejidad:
+    """Perplejidad: baja para texto que el modelo esperaba, alta para el improbable."""
+
+    def test_texto_predecible_tiene_menor_perplejidad(self, m27):
+        fluido = m27.calcular_perplejidad([0.9, 0.85, 0.8, 0.92])
+        basura = m27.calcular_perplejidad([0.05, 0.1, 0.02, 0.08])
+        assert fluido < basura
+
+    def test_certeza_total_da_perplejidad_uno(self, m27):
+        """Si el modelo asignó prob. 1 a cada token, no hubo sorpresa: PPL=1."""
+        assert math.isclose(m27.calcular_perplejidad([1.0, 1.0, 1.0]), 1.0)
+
+    def test_probabilidad_cero_es_sorpresa_infinita(self, m27):
+        assert m27.calcular_perplejidad([0.5, 0.0, 0.5]) == float("inf")
+
+    def test_lista_vacia_es_infinito(self, m27):
+        assert m27.calcular_perplejidad([]) == float("inf")
+
+
+class TestTema27Atencion:
+    """Atención: la clave más parecida a la consulta se lleva el mayor peso."""
+
+    def test_los_pesos_suman_uno(self, m27):
+        pesos = m27.pesos_atencion([1.0, 0.0], [[1.0, 0.0], [0.0, 1.0]])
+        assert math.isclose(sum(pesos), 1.0)
+
+    def test_mira_mas_a_la_clave_mas_afin(self, m27):
+        consulta = [1.0, 0.0, 1.0]
+        claves = [[1.0, 0.0, 1.0], [0.0, 1.0, 0.0], [0.5, 0.0, 0.5]]
+        pesos = m27.pesos_atencion(consulta, claves)
+        assert pesos.index(max(pesos)) == 0  # la 1ª clave es idéntica a la consulta
