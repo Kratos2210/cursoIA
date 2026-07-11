@@ -227,10 +227,14 @@
     border:1px solid var(--good);border-radius:20px;padding:1px 9px;white-space:nowrap;opacity:.85}
 
   /* METADATOS por módulo (objetivo · prerrequisitos · tiempo) */
-  .modmeta{display:flex;flex-wrap:wrap;gap:6px 18px;margin:0 0 22px;padding:11px 15px;
-    border-radius:9px;background:var(--surface-2);border:1px solid var(--line);
+  .modmeta{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 18px;margin:0 0 22px;
+    padding:11px 15px;border-radius:9px;background:var(--surface-2);border:1px solid var(--line);
     font-family:var(--sans);font-size:.82rem;color:var(--ink-soft);line-height:1.45}
-  .modmeta span{display:inline-flex;align-items:baseline;gap:5px}
+  /* Cada meta es un flex item; su interior fluye como TEXTO normal (no como
+     flex, que apilaría en columnas cuando hay varios <code>/<strong>/<a>).
+     min-width:0 deja que el texto largo se ajuste dentro de su columna en vez
+     de desbordar; el tamaño lo sigue marcando el contenido, como antes. */
+  .modmeta span{display:block;min-width:0}
   .modmeta b{color:var(--ink);font-weight:600}
 
   /* CHECKPOINT de capacidad (¿puedes ya…?) */
