@@ -2276,6 +2276,10 @@ agente = create_react_agent(llm, tools=herramientas_mcp)</code></pre></figure>
           <p>Todo el ciclo (servidor + cliente + descubrimiento + invocación) ya está armado y corriendo en <code class="k">curso_ejemplos/14_mcp_servidor_cliente.py</code> — su salida es la que viste más arriba, en "Un intercambio MCP".</p>
           <p>Reto extra: añádele una tercera tool <code class="k">@mcp.tool()</code> (por ejemplo <code class="k">listar_reglas()</code>) y verifica que el cliente la descubre <em>sin tocar el código del cliente</em>.</p>
         </div></details></div>
+      <div class="box def"><div class="lab">◈ Cuando no hay API: computer use (el agente opera la pantalla)</div>
+        <p>MCP y las tools del <a class="inline" href="#m7">m07</a> asumen que existe una <strong>API</strong> o un protocolo al que llamar. ¿Y cuándo no lo hay —una web sin API pública, un ERP legacy, un panel interno hecho a mano—? Ahí entra <strong>computer use</strong> (o <em>browser use</em>): en vez de llamar a una función, el modelo <strong>ve una captura de pantalla</strong> y emite <strong>acciones de humano</strong> (mover el ratón, hacer clic, teclear, hacer scroll). Claude, OpenAI y otros exponen esta capacidad; frameworks como <code class="k">browser-use</code> la envuelven para la web.</p>
+        <div class="box warn"><div class="lab">▲ Es el último recurso, no el primero</div>
+          <p>Operar una GUI es <strong>lento</strong> (cada paso es una captura + una decisión del modelo), <strong>frágil</strong> (si la interfaz cambia de sitio un botón, se rompe) y <strong>peligroso</strong> (un agente que puede hacer clic en cualquier cosa puede borrar, comprar o enviar lo que no debía). Reglas: córrelo en un <strong>sandbox</strong> aislado, con <strong>aprobación humana</strong> para acciones irreversibles (el <a class="inline" href="#m13">HITL del m13</a>) y límites de alcance. Si existe una API o un servidor MCP, <strong>siempre</strong> es preferible: computer use es el puente para lo que no tiene puerta de entrada programática.</p></div></div>
       <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
         <ul>
           <li>Explicar qué problema resuelve MCP: pasar de M×N integraciones a medida a M+N.</li>
@@ -2485,6 +2489,15 @@ spec:
           <p>Una respuesta razonable para el RAG del curso:</p>
           <p><strong>Ingesta</strong> (cargar/trocear/indexar) → <em>serverless</em>: corre solo cuando llegan documentos nuevos, escala a cero el resto del día. <strong>Retrieval</strong> → K8s con 2 réplicas: liviano pero de latencia crítica. <strong>Ranking</strong> → K8s con autoscaler: el cross-encoder es pesado y es el primero que se satura. <strong>Orquestación/agente</strong> → K8s, stateless, con el checkpointer en Postgres. <strong>Inferencia</strong> → es la API de Gemini (ya es "serverless de Google"); tu gateway solo añade fallbacks y límites.</p>
         </div></details></div>
+      <div class="box def"><div class="lab">◈ Del manifiesto que arranca al deploy que aguanta producción</div>
+        <p>El <code class="k">Deployment</code> + <code class="k">Service</code> de arriba <em>levanta</em> tu agente, pero un despliegue de verdad necesita cuatro piezas más —la diferencia entre "corre en mi clúster" y "aguanta usuarios reales":</p>
+        <dl>
+          <dt>probes (readiness / liveness)</dt><dd>Kubernetes no manda tráfico a un pod hasta que su <em>readiness probe</em> dice "listo", y <strong>reinicia</strong> el pod si su <em>liveness probe</em> deja de responder. Sin ellas, mandas peticiones a un pod que aún carga el modelo, o dejas vivo uno colgado.</dd>
+          <dt>autoescalado (HPA)</dt><dd>El <code class="k">HorizontalPodAutoscaler</code> sube y baja réplicas según CPU o latencia. Es lo que convierte el "2 réplicas fijas" en "2 cuando hay calma, 20 en el pico".</dd>
+          <dt>secrets (no en el YAML)</dt><dd>La <code class="k">API key</code> jamás va en el manifiesto: va en un <code class="k">Secret</code> (o un gestor externo tipo Vault) y se inyecta como variable de entorno. El <a class="inline" href="#m23">m23</a> ya te avisó: una llave en texto plano es una fuga esperando pasar.</dd>
+          <dt>ingress + límites de recursos</dt><dd>El <code class="k">Ingress</code> expone el <code class="k">Service</code> al mundo con TLS y enrutado por ruta/host; los <em>requests/limits</em> de CPU y memoria dejan que el scheduler ubique bien los pods y evitan que uno se coma el nodo (o que lo maten por OOM).</dd>
+        </dl>
+        <p>No hace falta que lo escribas hoy —tu proveedor gestionado (<a class="inline" href="#m18b">m18b</a>) o un Helm chart traen buenos defaults—, pero sí reconocer qué falta: sin probes, secrets, HPA e ingress, el YAML de ejemplo es una demo, no un servicio.</p></div>
       <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
         <ul>
           <li>Dibujar tu RAG como servicios independientes y señalar la línea entre lo que recuerda y lo que no.</li>

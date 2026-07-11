@@ -227,4 +227,8 @@ Tras el bloque A (§6), se ejecutó el **bloque B** del backlog (§7). Cambios:
 
 **Nuevo baseline:** **642 tests** offline en verde (antes 628; +14). Verificador coherente: 46 anclas, `#mapa == §5` con **32 filas**. Cero deps nuevas.
 
-**Sigue pendiente (baja prioridad, no abordado):** computer use / automatización de navegador (🔴) y despliegue real en K8s/serverless (m15b sigue conceptual). Ninguno es núcleo del rol.
+**Cierre de los dos pendientes de baja prioridad (mismo día):**
+- **✔ Computer use (🔴→🟡):** caja ◈ en `m14` (cuando no hay API, el agente opera la GUI; riesgos y por qué es el último recurso, con sandbox + HITL).
+- **✔ Deploy real K8s (🟡→🟡+):** caja ◈ en `m15b` (qué falta más allá del manifiesto de ejemplo: probes, HPA, secrets, ingress, requests/limits).
+
+Ambas solo-HTML, sin deps ni ejemplos ejecutables (no son testeables offline). Baseline sin cambios: 642 tests, verificador verde (46 anclas, 32 filas). Con esto **el backlog de la auditoría queda cerrado**.
