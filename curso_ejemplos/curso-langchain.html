@@ -479,7 +479,7 @@
         <div class="ccard"><div class="cardnum">pieza 2</div><h4>LangGraph</h4><p>El orquestador: agentes que piensan en ciclo (pensar → actuar → observar), recuerdan y sobreviven a fallos.</p></div>
       </div>
       <h3>Cómo estudiar este curso (plan sugerido)</h3>
-      <p>El curso está pensado para <strong>9 sesiones de ~90 minutos</strong> + el proyecto final. La regla de oro: cada módulo se estudia <em>corriendo su ejemplo</em>, no solo leyéndolo — y no avances de nivel sin pasar su <strong>quiz de autoevaluación</strong>. Marca cada módulo completado (el checkbox al final de cada uno): tu avance se guarda en este navegador.</p>
+      <p>El curso está pensado para <strong>12 sesiones de ~90 minutos</strong> + el proyecto final. La regla de oro: cada módulo se estudia <em>corriendo su ejemplo</em>, no solo leyéndolo — y no avances de nivel sin pasar su <strong>quiz de autoevaluación</strong>. Marca cada módulo completado (el checkbox al final de cada uno): tu avance se guarda en este navegador.</p>
       <p>Y cuando termines un nivel, haz sus <a class="inline" href="#ejercicios">ejercicios</a>: leer código no enseña a escribirlo. Cada uno trae pistas progresivas y un criterio de aceptación que puedes verificar tú mismo.</p>
       <div class="tbl-wrap"><table>
         <thead><tr><th>Sesión</th><th>Módulos</th><th>Qué logras</th></tr></thead>
@@ -494,6 +494,9 @@
           <tr><td>8</td><td>14 · 15 · 16 · 16b</td><td>MCP, el patrón supervisor, observabilidad y cuánto cuesta cada consulta.</td></tr>
           <tr><td>9</td><td>17 · 17b + quiz Producción</td><td>Repo productivo, ADRs, runbook — y los tests que sostienen todo.</td></tr>
           <tr><td>final</td><td>18 · Capstone</td><td>El sistema completo de gobierno de datos, por fases (2-3 sesiones).</td></tr>
+          <tr><td>10</td><td>18b · 19 · 20</td><td>Elegir modelo/proveedor con criterio, Spec-Driven Development + verificador, y RAG avanzado (multi-query + RAG-Fusion).</td></tr>
+          <tr><td>11</td><td>21 · 22 · 23</td><td>Fine-tuning vs RAG, entrada multimodal (texto + imagen) y blindar el prompt (guardrails / red-teaming OWASP).</td></tr>
+          <tr><td>12</td><td>24 · 24b · 25 · 26 · 26b</td><td>Vector DBs en producción, feedback + A/B de prompts, chat por SSE, el mapa del ecosistema y prompt engineering medible.</td></tr>
         </tbody>
       </table></div>
 
@@ -4246,9 +4249,9 @@ def self_consistency(respuestas):
     <section id="examen"><div class="col">
       <p class="modtag l5"><span class="bar"></span>Evaluación · Examen final</p>
       <h2>Examen final: ¿ya lo tienes?</h2>
-      <p>Hazlo cuando hayas terminado los cuatro niveles. Son <strong>16 preguntas nuevas</strong> —no las de los quizzes, sino los mismos conceptos vistos desde otro ángulo— repartidas en cuatro bloques, uno por nivel. Cada bloque te da su nota al completarlo; cuando termines los cuatro, verás abajo tu <strong>nota total sobre 16</strong> con el desglose por nivel.</p>
+      <p>Hazlo cuando hayas terminado los cuatro niveles. Son <strong>20 preguntas nuevas</strong> —no las de los quizzes, sino los mismos conceptos vistos desde otro ángulo— repartidas en cinco bloques, uno por nivel. Cada bloque te da su nota al completarlo; cuando termines los cinco, verás abajo tu <strong>nota total sobre 20</strong> con el desglose por nivel.</p>
       <div class="box analogy"><div class="lab">◆ Cómo leer tu nota</div>
-        <p><strong>Aprobado: 11/16</strong> (70%). Pero mira también el desglose: un bloque por debajo de <strong>2 de 4</strong> es la señal de que ese nivel pide un repaso antes de construir en producción — no un "suspenso", una pista de dónde volver. Cada respuesta se bloquea al primer clic, igual que en los quizzes: piénsala antes de tocar.</p></div>
+        <p><strong>Aprobado: 14/20</strong> (70%). Pero mira también el desglose: un bloque por debajo de <strong>2 de 4</strong> es la señal de que ese nivel pide un repaso antes de construir en producción — no un "suspenso", una pista de dónde volver. Cada respuesta se bloquea al primer clic, igual que en los quizzes: piénsala antes de tocar.</p></div>
 
       <div class="quiz">
         <div class="qhead">Bloque 1 · Nivel Básico (módulos 01–04)</div>
@@ -4398,6 +4401,43 @@ def self_consistency(respuestas):
         <p class="score"></p>
       </div>
 
+      <div class="quiz">
+        <div class="qhead">Bloque 5 · Nivel AI Engineer (módulos 20–26b)</div>
+        <div class="q"><p class="enun">1 · RAG-Fusion lanza la pregunta en 4 variantes y cada una devuelve su ranking. ¿Cómo los combina?</p>
+          <div class="opts">
+            <button type="button">Promedia los puntajes de similitud de cada variante</button>
+            <button type="button" data-ok>Con RRF: suma según el <em>puesto</em> de cada chunk en cada ranking, no sus puntajes</button>
+            <button type="button">Se queda con el ranking de la variante que dio el puntaje más alto</button>
+          </div>
+          <p class="fb">Es el mismo RRF del Módulo 12, pero fusionando rankings de distintas <em>preguntas</em>: premia al chunk que aparece en varias listas, sin comparar puntajes de escalas distintas (Módulo 20).</p>
+        </div>
+        <div class="q"><p class="enun">2 · Tu empresa cambia sus políticas cada mes y quieres que el asistente responda con la última. ¿RAG o fine-tuning?</p>
+          <div class="opts">
+            <button type="button">Fine-tuning: así el modelo "aprende" tus políticas</button>
+            <button type="button" data-ok>RAG: el conocimiento que cambia va al índice; el fine-tuning es para el estilo/formato, no para los datos</button>
+            <button type="button">Fine-tuning mensual, reentrenando con cada versión</button>
+          </div>
+          <p class="fb">Datos que cambian → RAG (actualizas el índice, no reentrenas). Fine-tuning enseña <em>comportamiento</em>: tono, formato, un estilo de respuesta (Módulo 21).</p>
+        </div>
+        <div class="q"><p class="enun">3 · En una tarea de razonamiento, muestreas 5 respuestas con temperatura&gt;0 y te quedas con la moda. ¿Qué ganas y qué NO?</p>
+          <div class="opts">
+            <button type="button">Ganas conocimiento nuevo que el modelo no tenía</button>
+            <button type="button" data-ok>Reduces el error <em>aleatorio</em> de una sola pasada votando la mayoría; pero si el dato no lo sabe, ningún truco lo inventa</button>
+            <button type="button">Aceleras la respuesta porque una de las 5 termina antes</button>
+          </div>
+          <p class="fb">Self-consistency cancela el ruido de las pasadas malas (como promediar mediciones), pero ni ella ni CoT añaden hechos que el modelo no tiene: para eso, RAG (Módulo 26b).</p>
+        </div>
+        <div class="q"><p class="enun">4 · Haces A/B de dos prompts. ¿Por qué asignas la variante con <code class="k">sha256(thread_id) % n</code> y no con un sorteo por request?</p>
+          <div class="opts">
+            <button type="button">Porque el sorteo aleatorio gasta más CPU</button>
+            <button type="button" data-ok>Para que sea <em>pegajoso</em>: el mismo hilo cae siempre en la misma variante y su voto se puede atribuir</button>
+            <button type="button">Porque el hash cifra el <code>thread_id</code> por privacidad</button>
+          </div>
+          <p class="fb">Si alternara por request, el usuario vería A y B en la misma charla y su 👍/👎 no se podría atribuir. El hash es reproducible y sin estado: cualquier worker calcula lo mismo (Módulo 24b).</p>
+        </div>
+        <p class="score"></p>
+      </div>
+
       <div id="examen-total" role="status" aria-live="polite"></div>
     </div></section>
 
@@ -4514,6 +4554,15 @@ uv run pytest             # corre TUS tests, sin llave y sin cuota</code></pre><
           <tr><td>Escalar un servicio y balancearlo</td><td><code>kind: Deployment</code> + <code>replicas: 3</code> · <code>kind: Service</code> (K8s)</td><td>15b</td></tr>
           <tr><td>Que alguien lo use de verdad</td><td><code>@app.post("/chat")</code> + <code>thread_id</code> por usuario</td><td>17</td></tr>
           <tr><td>Cambiar código sin miedo</td><td><code>uv run pytest -m offline</code></td><td>17b</td></tr>
+          <tr><td>Expandir la pregunta antes de buscar</td><td>multi-query + <code>fusion_rrf([...])</code> (RAG-Fusion sobre variantes)</td><td>20</td></tr>
+          <tr><td>Decidir fine-tuning vs RAG</td><td>datos que cambian → RAG; estilo/formato → fine-tuning</td><td>21</td></tr>
+          <tr><td>Mandar texto + imagen a un modelo con visión</td><td><code>HumanMessage(content=[{"type":"text",…},{"type":"image_url",…}])</code></td><td>22</td></tr>
+          <tr><td>Blindar el prompt (guardrails / red-teaming)</td><td>validación en capas: sanear entrada → instrucción → filtrar salida</td><td>23</td></tr>
+          <tr><td>Índice vectorial a escala</td><td>dedup por hash + <code>IVFFlat</code> (ajusta recall ↔ velocidad con <code>nprobe</code>)</td><td>24</td></tr>
+          <tr><td>Feedback 👍/👎 + A/B de prompts</td><td><code>sha256(thread_id) % n</code> (bucketing pegajoso) + <code>tasa_aprobacion</code> por variante</td><td>24b</td></tr>
+          <tr><td>Servir un chat por SSE (frontend)</td><td><code>fetch("/chat",{method:"POST"})</code> + <code>body.getReader()</code> (no <code>EventSource</code>: es POST)</td><td>25</td></tr>
+          <tr><td>Elegir framework con criterio</td><td>mapa del ecosistema: orquestación, RAG, evals, serving — no todo es LangChain</td><td>26</td></tr>
+          <tr><td>Mejorar un prompt con método</td><td>few-shot / CoT / <code>self_consistency([...])</code> — y <strong>medirlo</strong></td><td>26b</td></tr>
         </tbody>
       </table></div>
 
@@ -5003,13 +5052,13 @@ llm = ChatOpenAI(model="qwen/qwen3-32b",
         detalle.push({nombre:nombre,ok:ok,total:qs});
       });
       if(completos!==bloques.length){totalEl.classList.remove('show');return;}
-      var aprobado=aciertos>=11;
+      var aprobado=aciertos>=14;
       var lis=detalle.map(function(d){
         var flojo=d.ok<2?' <em>— repasa este nivel</em>':'';
         return '<li><b>'+d.nombre+':</b> '+d.ok+'/'+d.total+flojo+'</li>';
       }).join('');
       totalEl.innerHTML='<p class="big">Nota total: '+aciertos+' de '+preguntas+
-        (aprobado?' — ¡aprobado! 🎉':' — aún no llegas al 11/16')+'</p>'+
+        (aprobado?' — ¡aprobado! 🎉':' — aún no llegas al 14/20')+'</p>'+
         '<p class="verdict">'+(aprobado?
           'Dominas el curso de punta a punta. Si algún bloque quedó flojo, es un buen sitio al que volver antes de construir en producción.':
           'Vas bien, pero repasa los niveles donde más fallaste y vuelve a intentarlo — el curso no es una carrera.')+'</p>'+
