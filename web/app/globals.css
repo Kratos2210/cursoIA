@@ -234,9 +234,9 @@ a:hover { color: var(--accent); }
 .quiz-sub .hint { font-size: 13px; color: var(--ink-faint); }
 .quiz-score { margin-left: auto; font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--ink-faint); }
 .quiz-score.perfect { color: var(--good); }
-.q { margin-bottom: 20px; }
+.q { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
 .q:last-child { margin-bottom: 0; }
-.q .enun { font-weight: 600; font-size: 15.5px; color: var(--ink); margin: 0 0 11px; }
+.q .enun { font-weight: 600; font-size: 15.5px; color: var(--ink); margin: 0 0 3px; }
 .opts { display: flex; flex-direction: column; gap: 8px; }
 .opt { text-align: left; font-family: inherit; font-size: 14px; background: var(--sunken); border: 1px solid var(--line-2); color: var(--ink); padding: 12px 15px; border-radius: 10px; cursor: pointer; }
 .opt:disabled { cursor: default; }
@@ -274,3 +274,76 @@ a:hover { color: var(--accent); }
 .pager .lbl { display: block; font-weight: 600; font-size: 14px; color: var(--ink); margin-top: 4px; }
 .pager .prev { text-align: left; }
 .pager .next { text-align: right; grid-column: 2; }
+
+/* ============ MDX CONTENT (converted course) ============ */
+.article h2 { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; color: var(--ink); margin: 36px 0 12px; }
+.article ul, .article ol { margin: 16px 0; padding-left: 1.4em; color: var(--ink-soft); font-size: 16px; line-height: 1.7; }
+.article li { margin: 7px 0; }
+.article a { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px; text-decoration-color: var(--line-2); }
+.article a:hover { color: var(--accent); text-decoration-color: var(--accent); }
+.article :not(pre) > code { font-family: var(--font-mono); font-size: 0.85em; background: var(--surface-2); padding: 2px 6px; border-radius: 5px; color: var(--accent-ink); }
+.article strong, .article b { color: var(--ink); font-weight: 700; }
+
+/* shiki code blocks as v2 dark figures */
+.article pre { margin: 22px 0; padding: 16px 18px; background: var(--code-bg) !important; border: 1px solid var(--line); border-radius: 12px; overflow-x: auto; }
+.article pre code { font-family: var(--font-mono); font-size: 13px; line-height: 1.7; background: none; padding: 0; color: var(--code-ink); }
+.article pre code span { background: none !important; }
+/* dual-theme shiki: pick the variable set matching the active theme */
+[data-theme="dark"] .article .shiki, [data-theme="dark"] .article .shiki span { color: var(--shiki-dark) !important; }
+:root:not([data-theme="dark"]) .article .shiki, :root:not([data-theme="dark"]) .article .shiki span { color: var(--shiki-light); }
+
+/* markdown tables (GFM) */
+.article table { width: 100%; border-collapse: collapse; font-size: 14px; margin: 20px 0; display: block; overflow-x: auto; border: 1px solid var(--line); border-radius: 12px; }
+.article thead { background: var(--surface-2); }
+.article th { text-align: left; padding: 11px 14px; font-weight: 700; color: var(--ink); border-bottom: 1px solid var(--line); }
+.article td { padding: 11px 14px; color: var(--ink-soft); border-bottom: 1px solid var(--line); vertical-align: top; }
+.article tr:last-child td { border-bottom: 0; }
+.article td code, .article th code { font-family: var(--font-mono); font-size: 0.86em; color: var(--accent-ink); background: none; padding: 0; }
+
+/* checkpoint (v2 green-ish) */
+.checkpoint { background: color-mix(in srgb, var(--good) 8%, var(--surface)); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; margin: 22px 0; }
+.checkpoint .box-lab { color: var(--good); }
+.checkpoint ul { margin: 4px 0 0; }
+
+/* avoid (rose) */
+.avoid { background: color-mix(in srgb, #b0323f 8%, var(--surface)); border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; margin: 22px 0; }
+.avoid .box-lab { color: #c04452; }
+[data-theme="dark"] .avoid .box-lab { color: #e0808c; }
+
+/* flow / step */
+.flow { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; margin: 22px 0; }
+.step { flex: 1 1 150px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; }
+.step-num { font-family: var(--font-mono); font-weight: 700; font-size: 13px; color: var(--accent); }
+.step-title { font-weight: 700; color: var(--ink); margin-top: 2px; }
+.step-desc { font-size: 13.5px; color: var(--ink-soft); margin-top: 4px; line-height: 1.5; }
+.flowcap { font-size: 13px; color: var(--ink-faint); font-style: italic; margin: 4px 0 0; text-align: center; }
+
+/* level banner */
+.lvbanner { border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; margin: 8px 0 22px; background: var(--surface); }
+.lvbanner-title { font-weight: 800; font-size: 15px; margin-bottom: 4px; }
+.lvbanner p { margin: 0; color: var(--ink-soft); font-size: 15px; line-height: 1.6; }
+
+/* interview / grouped blocks */
+.ivblock { margin: 22px 0; }
+.ivblock h3 { margin-top: 24px; }
+.ivblock .sub { color: var(--ink-faint); font-size: 14px; margin-top: -8px; }
+
+/* definition list */
+.deflist { margin: 16px 0; }
+.deflist dt { font-weight: 700; color: var(--ink); margin-top: 12px; }
+.deflist dd { margin: 3px 0 0; padding-left: 14px; color: var(--ink-soft); font-size: 15px; line-height: 1.6; border-left: 2px solid var(--line-2); }
+
+.ichip { display: inline-block; font-family: var(--font-mono); font-size: 0.78rem; background: var(--sunken); border: 1px solid var(--line-2); border-radius: 999px; padding: 1px 9px; margin: 0 3px; color: var(--ink-soft); }
+.arch { display: block; font-family: var(--font-mono); font-size: 13px; background: var(--sunken); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin-top: 8px; color: var(--ink); }
+.note-src { font-size: 13px; color: var(--ink-faint); font-style: italic; margin: 10px 0; }
+.formula-block { text-align: center; font-family: var(--font-mono); font-size: 14px; background: var(--sunken); border: 1px solid var(--line); border-radius: 9px; padding: 14px; margin: 16px 0; color: var(--ink); }
+
+/* Q&A (FAQ / interview) */
+details.qa { border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; margin: 10px 0; background: var(--surface); }
+details.qa > summary { cursor: pointer; font-weight: 600; font-size: 15px; color: var(--ink); list-style: none; }
+details.qa > summary::-webkit-details-marker { display: none; }
+details.qa > summary::after { content: " +"; color: var(--ink-faint); float: right; }
+details.qa[open] > summary::after { content: " –"; }
+.qa-answer { margin-top: 10px; color: var(--ink-soft); font-size: 15px; line-height: 1.7; }
+.qa-answer p:first-child { margin-top: 0; }
+.sol-body { margin-top: 12px; }

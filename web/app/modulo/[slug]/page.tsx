@@ -1,15 +1,13 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import { ITEMS, moduleBySlug, neighbors } from "@/lib/roadmap";
+import { MODULE_ITEMS, moduleBySlug, neighbors } from "@/lib/roadmap";
 import { ModuleFooter } from "@/components/app/ModuleFooter";
-import { ComingSoon } from "@/components/app/ComingSoon";
-import { M00 } from "@/components/modules/M00";
-import { M04 } from "@/components/modules/M04";
+import { KindTag, FileRef } from "@/components/content/ui";
 
 export const dynamicParams = false;
 
 export function generateStaticParams() {
-  return ITEMS.filter((i) => i.kind === "module").map((i) => ({ slug: i.slug }));
+  return MODULE_ITEMS.map((i) => ({ slug: i.slug }));
 }
 
 export async function generateMetadata({
@@ -32,11 +30,28 @@ export default async function ModulePage({
   if (!item) notFound();
 
   const { prev, next } = neighbors(item.id);
-  const content = slug === "00" ? <M00 /> : slug === "04" ? <M04 /> : <ComingSoon item={item} />;
+  const { default: Content } = await import(`../../../content/modules/${slug}.mdx`);
+  const chips = [item.goals, item.prereqs, item.minutes].filter(Boolean) as string[];
 
   return (
     <div className="view">
-      {content}
+      <article className="article">
+        <KindTag colorVar={item.colorVar}>
+          {item.levelName} · Módulo {item.num}
+        </KindTag>
+        <h1>{item.title}</h1>
+        {item.pyFile ? <FileRef file={item.pyFile} tested={item.tested} /> : null}
+        {chips.length ? (
+          <div className="meta-chips">
+            {chips.map((c, i) => (
+              <span className="meta-chip" key={i}>
+                {c}
+              </span>
+            ))}
+          </div>
+        ) : null}
+        <Content />
+      </article>
       <ModuleFooter id={item.id} prev={prev} next={next} />
     </div>
   );

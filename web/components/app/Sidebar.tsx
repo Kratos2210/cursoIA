@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
-import { LEVELS, ALL_IDS, TOTAL_ITEMS } from "@/lib/roadmap";
+import { LEVELS, EXTRA_ITEMS, ALL_IDS, type Item } from "@/lib/roadmap";
 import { useApp } from "./AppProvider";
 
 export function Sidebar() {
@@ -12,32 +12,28 @@ export function Sidebar() {
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
 
-  const levels = useMemo(() => {
-    return LEVELS.map((lvl) => {
-      const items = [
-        ...lvl.mods.map((m) => ({
-          id: m.id,
-          num: m.num,
-          title: m.title,
-          built: !!m.built,
-          isProject: false,
-          href: `/modulo/${/^\d+$/.test(m.num) ? m.num : m.id}`,
-        })),
-        {
-          id: lvl.proj.id,
-          num: "★",
-          title: lvl.proj.title,
-          built: false,
-          isProject: true,
-          href: `/proyecto/${lvl.n}`,
-        },
-      ].filter((it) => !q || it.title.toLowerCase().includes(q) || it.num.includes(q));
-      return { lvl, items };
-    }).filter((g) => g.items.length > 0);
-  }, [q]);
+  const match = (it: Item) => !q || it.title.toLowerCase().includes(q) || it.num.toLowerCase().includes(q);
 
-  const pct = ready ? Math.round((doneCount(ALL_IDS) / TOTAL_ITEMS) * 100) : 0;
-  const noHits = q.length > 0 && levels.length === 0;
+  const groups = useMemo(
+    () =>
+      LEVELS.map((lvl) => ({ lvl, items: lvl.items.filter(match) })).filter((g) => g.items.length > 0),
+    [q]
+  );
+  const extras = useMemo(() => EXTRA_ITEMS.filter(match), [q]);
+  const noHits = q.length > 0 && groups.length === 0 && extras.length === 0;
+
+  const pct = ready ? Math.round((doneCount(ALL_IDS) / ALL_IDS.length) * 100) : 0;
+
+  const Row = ({ it }: { it: Item }) => {
+    const active = pathname === it.href;
+    return (
+      <Link href={it.href} className={`navlink${active ? " active" : ""}`}>
+        <span className="num">{it.num}</span>
+        <span className="grow">{it.title}</span>
+        {ready && isDone(it.id) ? <span className="check">✓</span> : null}
+      </Link>
+    );
+  };
 
   return (
     <aside className="sidebar">
@@ -62,41 +58,36 @@ export function Sidebar() {
       </div>
 
       <nav className="nav" aria-label="Índice del curso">
-        {levels.map(({ lvl, items }) => {
-          const groupIds = [...lvl.mods.map((m) => m.id), lvl.proj.id];
-          const done = ready ? doneCount(groupIds) : 0;
+        {groups.map(({ lvl, items }) => {
+          const done = ready ? doneCount(lvl.items.map((i) => i.id)) : 0;
           return (
-            <div key={lvl.id}>
+            <div key={lvl.key}>
               <div className="navsec">
                 <span className="dot" style={{ background: `var(${lvl.colorVar})` }} />
-                {lvl.shortName}
+                {lvl.short}
                 <span className="cnt">
-                  {done}/{groupIds.length}
+                  {done}/{lvl.items.length}
                 </span>
               </div>
-              {items.map((it) => {
-                const active = pathname === it.href;
-                return (
-                  <Link
-                    key={it.id}
-                    href={it.href}
-                    className={`navlink${active ? " active" : ""}${it.isProject ? " is-project" : ""}`}
-                  >
-                    <span
-                      className="num"
-                      style={it.isProject ? { color: `var(${lvl.colorVar})` } : undefined}
-                    >
-                      {it.num}
-                    </span>
-                    <span className="grow">{it.title}</span>
-                    {ready && isDone(it.id) ? <span className="check">✓</span> : null}
-                    {!it.built && !(ready && isDone(it.id)) ? <span className="soon">pronto</span> : null}
-                  </Link>
-                );
-              })}
+              {items.map((it) => (
+                <Row key={it.id} it={it} />
+              ))}
             </div>
           );
         })}
+
+        {extras.length ? (
+          <div>
+            <div className="navsec">
+              <span className="dot" style={{ background: "var(--ink-faint)" }} />
+              Referencia
+            </div>
+            {extras.map((it) => (
+              <Row key={it.id} it={it} />
+            ))}
+          </div>
+        ) : null}
+
         {noHits ? <p className="nav-empty">Sin resultados para “{query}”</p> : null}
       </nav>
 
