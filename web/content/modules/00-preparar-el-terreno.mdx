@@ -149,6 +149,29 @@ echo "GOOGLE_API_KEY=tu_llave_secreta"        >> .env
 
 Esos comandos hacen dos cosas distintas y conviene no confundirlas. `uv init` crea la carpeta del proyecto con un `pyproject.toml` **vacío de dependencias**. `uv add` es lo que las escribe ahí dentro *y* las instala. Si te saltas los `uv add`, tienes un proyecto perfectamente válido… que no sabe nada de LangChain.
 
+<Box kind="warn" label="▲ Mac con chip Intel: el error de onnxruntime">
+
+Si tu Mac es **Intel** (no Apple Silicon), los `uv add` de arriba que traen `langchain-chroma` y `fastembed` pueden cortarse así:
+
+```text title="▸ el síntoma"
+error: Distribution `onnxruntime==1.27.0` can't be installed because it
+doesn't have a source distribution or wheel for the current platform
+hint: You're on macOS (`macosx_13_0_x86_64`), but `onnxruntime` only has
+wheels for … `macosx_14_0_arm64` …
+```
+
+No es tu código: `chromadb` arrastra `onnxruntime`, y desde la versión **1.24** ese paquete dejó de publicar binarios para Mac Intel (`x86_64`). La última con binario es la **1.23.2**. La solución es ponerle un techo en tu `pyproject.toml` y repetir la instalación:
+
+```python title="pyproject.toml · añade este bloque, luego repite los uv add"
+[tool.uv]
+# onnxruntime dejó de publicar wheels para Mac Intel desde la 1.24
+constraint-dependencies = ["onnxruntime<1.24"]
+```
+
+Con eso `uv` resuelve `onnxruntime` a la **1.23.2** y todo instala. Solo afecta a Macs Intel; en Apple Silicon, Linux o Windows no verás este error ni necesitas el bloque.
+
+</Box>
+
 <Box kind="warn" label="▲ El primer tropiezo de todo el mundo">
 
 Al verificar la instalación verás esto:

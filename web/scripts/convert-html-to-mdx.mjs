@@ -503,12 +503,15 @@ function gotText(mdx, meta) {
   // Reconstruct plain text from generated MDX to detect dropped content.
   const props = [];
   mdx.replace(/(?:label|title|summary|num|n)="([^"]*)"/g, (_, v) => (props.push(v), ""));
-  // Set code-fence bodies aside FIRST: they legitimately contain "<" (e.g.
-  // `if t <= 0:`) which the tag stripper below would otherwise eat.
+  // Set code aside FIRST: both fenced blocks and inline spans legitimately
+  // contain "<" (e.g. `if t <= 0:` or `onnxruntime<1.24`), which the tag
+  // stripper below would otherwise treat as an opening tag and eat.
   const codes = [];
   let t = mdx
     .replace(/^export const meta[\s\S]*?;\n/, "")
-    .replace(/```[^\n]*\n([\s\S]*?)```/g, (_, code) => (codes.push(code), " "));
+    .replace(/```[^\n]*\n([\s\S]*?)```/g, (_, code) => (codes.push(code), " "))
+    .replace(/``([^\n]+?)``/g, (_, code) => (codes.push(code), " "))
+    .replace(/`([^`\n]+)`/g, (_, code) => (codes.push(code), " "));
   t = t
     .replace(/<[^>]+>/g, " ")
     .replace(/\\([\\`<{}|])/g, "$1")

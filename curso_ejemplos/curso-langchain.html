@@ -591,6 +591,18 @@ echo "GOOGLE_API_KEY=tu_llave_secreta"        >> .env
 
       <p>Esos comandos hacen dos cosas distintas y conviene no confundirlas. <code class="k">uv init</code> crea la carpeta del proyecto con un <code class="k">pyproject.toml</code> <strong>vacío de dependencias</strong>. <code class="k">uv add</code> es lo que las escribe ahí dentro <em>y</em> las instala. Si te saltas los <code class="k">uv add</code>, tienes un proyecto perfectamente válido… que no sabe nada de LangChain.</p>
 
+      <div class="box warn"><div class="lab">▲ Mac con chip Intel: el error de <code class="k">onnxruntime</code></div>
+        <p>Si tu Mac es <strong>Intel</strong> (no Apple Silicon), los <code class="k">uv add</code> de arriba que traen <code class="k">langchain-chroma</code> y <code class="k">fastembed</code> pueden cortarse así:</p>
+        <figure class="code output"><figcaption><span class="d"></span>▸ el síntoma</figcaption><pre><code>error: Distribution `onnxruntime==1.27.0` can't be installed because it
+doesn't have a source distribution or wheel for the current platform
+hint: You're on macOS (`macosx_13_0_x86_64`), but `onnxruntime` only has
+wheels for … `macosx_14_0_arm64` …</code></pre></figure>
+        <p>No es tu código: <code class="k">chromadb</code> arrastra <code class="k">onnxruntime</code>, y desde la versión <strong>1.24</strong> ese paquete dejó de publicar binarios para Mac Intel (<code class="k">x86_64</code>). La última con binario es la <strong>1.23.2</strong>. La solución es ponerle un techo en tu <code class="k">pyproject.toml</code> y repetir la instalación:</p>
+        <figure class="code"><figcaption><span class="d"></span>pyproject.toml · añade este bloque, luego repite los uv add</figcaption><pre><code>[tool.uv]
+# onnxruntime dejó de publicar wheels para Mac Intel desde la 1.24
+constraint-dependencies = ["onnxruntime&lt;1.24"]</code></pre></figure>
+        <p>Con eso <code class="k">uv</code> resuelve <code class="k">onnxruntime</code> a la <strong>1.23.2</strong> y todo instala. Solo afecta a Macs Intel; en Apple Silicon, Linux o Windows no verás este error ni necesitas el bloque.</p></div>
+
       <div class="box warn"><div class="lab">▲ El primer tropiezo de todo el mundo</div>
         <p>Al verificar la instalación verás esto:</p>
         <figure class="code output"><figcaption><span class="d"></span>▸ el síntoma</figcaption><pre><code>$ uv run python -c "from dotenv import load_dotenv; print('listo')"
@@ -5361,6 +5373,7 @@ uv run pytest             # corre TUS tests, sin llave y sin cuota</code></pre><
           <tr><td>Con Groq, las respuestas empiezan con <code>&lt;think&gt;…&lt;/think&gt;</code></td><td><code>qwen3</code> es un modelo de razonamiento y Groq devuelve su cadena de pensamiento dentro del contenido.</td><td>Ya lo resuelve <code>util.crear_llm()</code> (<code>reasoning_format: hidden</code>). Si lo ves, es que instanciaste <code>ChatOpenAI</code> a mano. Para verlo a propósito: <code>GROQ_RAZONAMIENTO=raw</code>.</td></tr>
           <tr><td><code>400 · This model does not support response format json_schema</code></td><td><code>with_structured_output()</code> pide <code>json_schema</code>, y <code>qwen3-32b</code> no lo soporta en Groq.</td><td>Ya lo resuelve <code>util.crear_llm()</code> usando <code>method="function_calling"</code>. Si instancias el modelo a mano, pásale ese <code>method</code>.</td></tr>
           <tr><td><code>EMBEDDINGS_PROVIDER=fastembed</code> y falla con <code>No module named 'fastembed'</code></td><td>El extra no está instalado. Va aparte porque descarga un modelo de ~220 MB.</td><td><code>uv sync --extra emb</code>. Cambiar de modelo de embeddings <strong>invalida cualquier índice ya construido</strong>: hay que reindexar (en el curso da igual, se reconstruye en cada arranque).</td></tr>
+          <tr><td><code>onnxruntime … doesn't have a … wheel for the current platform</code> (en <code>uv add</code> de <code>chroma</code>/<code>fastembed</code>)</td><td>Estás en un <strong>Mac Intel</strong> (<code>x86_64</code>). <code>chromadb</code> arrastra <code>onnxruntime</code>, que desde la <strong>1.24</strong> ya no publica binarios para esa plataforma.</td><td>En tu <code>pyproject.toml</code> añade <code>[tool.uv]</code> con <code>constraint-dependencies = ["onnxruntime&lt;1.24"]</code> y repite el <code>uv add</code>: resuelve a la <strong>1.23.2</strong> (la última con wheel Intel). Detalle en el <a class="inline" href="#m0">Módulo 00</a>. Solo afecta a Macs Intel.</td></tr>
           <tr><td>El script "se queda pensando" sin imprimir</td><td>Está esperando a la API (normal en la primera llamada) o el stream no vacía el buffer.</td><td>Dale 15–30 segundos. En streaming, imprime con <code>flush=True</code> como hacen los ejemplos.</td></tr>
         </tbody>
       </table></div>
