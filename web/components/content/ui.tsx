@@ -24,10 +24,16 @@ export function FileRef({ file, tested }: { file: string; tested?: boolean }) {
 export function MetaChips({ children }: Kids) {
   return <div className="meta-chips">{children}</div>;
 }
-export function MetaChip({ icon, label, children }: Kids & { icon: string; label?: string }) {
+export function MetaChip({
+  icon,
+  label,
+  wide,
+  children,
+}: Kids & { icon: string; label?: string; wide?: boolean }) {
   return (
-    <span className="meta-chip">
-      {icon} {label ? <b>{label}</b> : null} {children}
+    <span className={`meta-chip${wide ? " wide" : ""}`}>
+      {icon ? <span className="mc-icon">{icon}</span> : null}
+      {label ? <b>{label}:</b> : null} <span className="mc-text">{children}</span>
     </span>
   );
 }

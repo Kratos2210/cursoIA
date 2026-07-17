@@ -12,8 +12,23 @@ import {
 } from "@/lib/roadmap";
 import { useApp } from "./AppProvider";
 
+// Sum the "~NN min" hints of a level's modules into a rough "≈ N h" estimate.
+function levelTime(items: { minutes: string | null }[]): string {
+  const mins = items.reduce((sum, m) => {
+    const n = m.minutes ? parseInt(m.minutes.replace(/[^\d]/g, ""), 10) : 0;
+    return sum + (Number.isFinite(n) ? n : 0);
+  }, 0);
+  if (mins < 60) return `≈ ${mins} min`;
+  const h = mins / 60;
+  return `≈ ${Number.isInteger(h) ? h : h.toFixed(1)} h`;
+}
+
 export function Dashboard() {
   const { ready, isDone, doneCount } = useApp();
+
+  const scrollToRoadmap = () => {
+    document.getElementById("roadmap")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const pct = ready ? Math.round((doneCount(ALL_IDS) / ALL_IDS.length) * 100) : 0;
   const firstIncomplete = MODULE_ITEMS.find((i) => !(ready && isDone(i.id))) ?? MODULE_ITEMS[0];
@@ -44,9 +59,9 @@ export function Dashboard() {
           <Link href={continueHref} className="btn-primary">
             {continueLabel} →
           </Link>
-          <Link href={MODULE_ITEMS[0]?.href ?? "/"} className="btn-ghost">
-            Empezar desde cero
-          </Link>
+          <button type="button" className="btn-ghost" onClick={scrollToRoadmap}>
+            Ver el temario
+          </button>
         </div>
       </div>
 
@@ -59,7 +74,7 @@ export function Dashboard() {
         ))}
       </div>
 
-      <h2 className="roadmap-h">El roadmap</h2>
+      <h2 className="roadmap-h" id="roadmap">El roadmap</h2>
       <p className="roadmap-sub">
         Sigue el orden. Cada módulo se estudia corriendo su ejemplo — no solo leyéndolo — y no
         avances de nivel sin pasar su autoevaluación.
@@ -93,6 +108,7 @@ export function Dashboard() {
                     <span className="rm-count">
                       {done}/{lvl.items.length} módulos
                     </span>
+                    <span className="rm-time">{levelTime(lvl.items)}</span>
                   </div>
                   <div className="rm-chips">
                     {lvl.items.map((m) => {

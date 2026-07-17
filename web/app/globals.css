@@ -207,6 +207,7 @@ a:hover { color: var(--accent); }
 .rm-card-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .rm-card-head h3 { margin: 0; font-size: 17.5px; font-weight: 800; letter-spacing: -0.015em; color: var(--ink); }
 .rm-count { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums; margin-left: auto; }
+.rm-time { font-family: var(--font-mono); font-size: 10.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
 .rm-desc { margin: 6px 0 0; font-size: 14px; line-height: 1.6; color: var(--ink-soft); }
 .rm-chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
 .chip { font-family: inherit; font-size: 12px; color: var(--ink-soft); background: var(--sunken); border: 1px solid var(--line-2); padding: 6px 11px; border-radius: 999px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
@@ -241,8 +242,11 @@ a:hover { color: var(--accent); }
 .fileref .tested { color: var(--good); font-family: var(--font-mono); font-size: 11px; }
 
 .meta-chips { display: flex; flex-wrap: wrap; gap: 10px; margin: 22px 0 4px; }
-.meta-chip { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line); padding: 7px 12px; border-radius: 9px; }
-.meta-chip b { color: var(--ink); }
+.meta-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; line-height: 1.5; color: var(--ink-soft); background: var(--surface); border: 1px solid var(--line); padding: 8px 13px; border-radius: 9px; }
+.meta-chip b { color: var(--ink); font-weight: 700; }
+.meta-chip .mc-icon { flex: none; }
+.meta-chip.wide { flex-basis: 100%; align-items: flex-start; }
+.meta-chip.wide .mc-text { color: var(--ink); }
 
 /* boxes */
 .box { border: 1px solid var(--line); border-radius: 14px; padding: 18px 20px; margin: 22px 0; }
@@ -341,6 +345,16 @@ a:hover { color: var(--accent); }
 .pager .lbl { display: block; font-weight: 600; font-size: 14px; color: var(--ink); margin-top: 4px; }
 .pager .prev { text-align: left; }
 .pager .next { text-align: right; grid-column: 2; }
+/* once the module is marked done, the "next" step gets a clear primary nudge */
+.pager .next.primary { background: var(--accent); border-color: var(--accent); }
+.pager .next.primary .kick { color: rgba(255,255,255,0.85); }
+.pager .next.primary .lbl { color: #fff; }
+.pager .next.primary:hover { border-color: var(--accent); filter: brightness(1.05); }
+
+/* end-of-course closing banner (last module) */
+.mod-finish { display: block; margin-top: 20px; background: var(--accent-wash); border: 1px solid var(--accent-soft); border-radius: 12px; padding: 16px 20px; font-size: 15px; color: var(--ink); }
+.mod-finish:hover { color: var(--ink); border-color: var(--accent); }
+.mod-finish b { color: var(--accent-ink); }
 
 /* ============ MDX CONTENT (converted course) ============ */
 .article h2 { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; color: var(--ink); margin: 36px 0 12px; }

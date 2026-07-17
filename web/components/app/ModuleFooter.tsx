@@ -21,6 +21,13 @@ export function ModuleFooter({
       <button className={`complete-btn${done ? " done" : ""}`} onClick={() => toggleComplete(id)}>
         {done ? "✓ Módulo completado — desmarcar" : "Marcar módulo como completado"}
       </button>
+
+      {!next ? (
+        <Link href="/recurso/examen" className="mod-finish">
+          🎓 Terminaste el temario — sigue con el <b>examen final</b> →
+        </Link>
+      ) : null}
+
       <div className="pager">
         {prev ? (
           <Link href={prev.href} className="prev">
@@ -33,7 +40,7 @@ export function ModuleFooter({
           <span />
         )}
         {next ? (
-          <Link href={next.href} className="next">
+          <Link href={next.href} className={`next${done ? " primary" : ""}`}>
             <span className="kick">Siguiente →</span>
             <span className="lbl">
               {next.num} · {next.title}
