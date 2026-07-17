@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { MODULE_ITEMS, moduleBySlug, neighbors } from "@/lib/roadmap";
 import { ModuleFooter } from "@/components/app/ModuleFooter";
+import { OnThisPage } from "@/components/app/OnThisPage";
+import { ReadingProgress } from "@/components/app/ReadingProgress";
 import { KindTag, FileRef } from "@/components/content/ui";
 
 export const dynamicParams = false;
@@ -34,25 +36,31 @@ export default async function ModulePage({
   const chips = [item.goals, item.prereqs, item.minutes].filter(Boolean) as string[];
 
   return (
-    <div className="view">
-      <article className="article">
-        <KindTag colorVar={item.colorVar}>
-          {item.levelName} · Módulo {item.num}
-        </KindTag>
-        <h1>{item.title}</h1>
-        {item.pyFile ? <FileRef file={item.pyFile} tested={item.tested} /> : null}
-        {chips.length ? (
-          <div className="meta-chips">
-            {chips.map((c, i) => (
-              <span className="meta-chip" key={i}>
-                {c}
-              </span>
-            ))}
-          </div>
-        ) : null}
-        <Content />
-      </article>
-      <ModuleFooter id={item.id} prev={prev} next={next} />
-    </div>
+    <>
+      <ReadingProgress />
+      <div className="view mod-view">
+      <div className="mod-main">
+        <article className="article">
+          <KindTag colorVar={item.colorVar}>
+            {item.levelName} · Módulo {item.num}
+          </KindTag>
+          <h1>{item.title}</h1>
+          {item.pyFile ? <FileRef file={item.pyFile} tested={item.tested} /> : null}
+          {chips.length ? (
+            <div className="meta-chips">
+              {chips.map((c, i) => (
+                <span className="meta-chip" key={i}>
+                  {c}
+                </span>
+              ))}
+            </div>
+          ) : null}
+          <Content />
+        </article>
+        <ModuleFooter id={item.id} prev={prev} next={next} />
+      </div>
+      <OnThisPage />
+      </div>
+    </>
   );
 }

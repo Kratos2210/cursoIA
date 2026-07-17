@@ -7,7 +7,7 @@ import { LEVELS, EXTRA_ITEMS, ALL_IDS, type Item } from "@/lib/roadmap";
 import { useApp } from "./AppProvider";
 
 export function Sidebar() {
-  const { ready, theme, isDone, doneCount, toggleTheme, reset } = useApp();
+  const { ready, theme, isDone, doneCount, toggleTheme, reset, navOpen, closeNav } = useApp();
   const pathname = usePathname();
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
@@ -36,7 +36,13 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="sidebar">
+    <>
+      <div
+        className={`nav-overlay${navOpen ? " open" : ""}`}
+        onClick={closeNav}
+        aria-hidden
+      />
+      <aside id="course-sidebar" className={`sidebar${navOpen ? " open" : ""}`}>
       <Link href="/" className="brand">
         <span className="brand-mark">
           <span />
@@ -100,7 +106,11 @@ export function Sidebar() {
           <div className="prog-fill" style={{ width: `${pct}%` }} />
         </div>
         <div className="foot-btns">
-          <button className="theme" onClick={toggleTheme}>
+          <button
+            className="theme"
+            onClick={toggleTheme}
+            aria-label={theme === "light" ? "Cambiar a tema oscuro" : "Cambiar a tema claro"}
+          >
             {theme === "light" ? "◐ Oscuro" : "◑ Claro"}
           </button>
           <button className="reset" title="Reiniciar progreso" onClick={reset} aria-label="Reiniciar progreso">
@@ -108,6 +118,7 @@ export function Sidebar() {
           </button>
         </div>
       </div>
-    </aside>
+      </aside>
+    </>
   );
 }

@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { EXTRA_ITEMS, extraBySlug } from "@/lib/roadmap";
 import { ModuleFooter } from "@/components/app/ModuleFooter";
+import { OnThisPage } from "@/components/app/OnThisPage";
+import { ReadingProgress } from "@/components/app/ReadingProgress";
 import { KindTag } from "@/components/content/ui";
 
 export const dynamicParams = false;
@@ -32,13 +34,19 @@ export default async function ExtraPage({
   const { default: Content } = await import(`../../../content/extras/${slug}.mdx`);
 
   return (
-    <div className="view">
-      <article className="article">
-        <KindTag colorVar="--accent">Referencia</KindTag>
-        <h1>{item.title}</h1>
-        <Content />
-      </article>
-      <ModuleFooter id={item.id} prev={null} next={null} />
-    </div>
+    <>
+      <ReadingProgress />
+      <div className="view mod-view">
+        <div className="mod-main">
+          <article className="article">
+            <KindTag colorVar="--accent">Referencia</KindTag>
+            <h1>{item.title}</h1>
+            <Content />
+          </article>
+          <ModuleFooter id={item.id} prev={null} next={null} />
+        </div>
+        <OnThisPage />
+      </div>
+    </>
   );
 }

@@ -3,6 +3,7 @@ import { Manrope, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AppProvider } from "@/components/app/AppProvider";
 import { Sidebar } from "@/components/app/Sidebar";
+import { MobileBar } from "@/components/app/MobileBar";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -34,11 +35,17 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body>
+        <a href="#contenido" className="skip-link">
+          Saltar al contenido
+        </a>
         <AppProvider>
           <div className="app">
             <Sidebar />
             <main className="main" data-main>
-              <div className="main-inner">{children}</div>
+              <MobileBar />
+              <div className="main-inner" id="contenido" tabIndex={-1}>
+                {children}
+              </div>
             </main>
           </div>
         </AppProvider>

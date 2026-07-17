@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 type Theme = "light" | "dark";
 const STORAGE_KEY = "curso_ia_v3";
@@ -14,6 +15,9 @@ type AppState = {
   toggleTheme: () => void;
   toggleComplete: (id: string) => void;
   reset: () => void;
+  navOpen: boolean;
+  toggleNav: () => void;
+  closeNav: () => void;
 };
 
 const AppContext = createContext<AppState | null>(null);
@@ -32,6 +36,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [ready, setReady] = useState(false);
   const [theme, setThemeState] = useState<Theme>("light");
   const [completed, setCompleted] = useState<Set<string>>(new Set());
+  const [navOpen, setNavOpen] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     const s = read();
@@ -40,6 +46,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCompleted(new Set(s.completed ?? []));
     setReady(true);
   }, []);
+
+  // Close the mobile drawer whenever navigation lands on a new route.
+  useEffect(() => {
+    setNavOpen(false);
+  }, [pathname]);
+
+  // Close the drawer on Escape while it is open.
+  useEffect(() => {
+    if (!navOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setNavOpen(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [navOpen]);
 
   const persist = useCallback((next: { completed?: string[]; theme?: Theme }) => {
     const current = read();
@@ -77,6 +98,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     persist({ completed: [] });
   }, [persist]);
 
+  const toggleNav = useCallback(() => setNavOpen((o) => !o), []);
+  const closeNav = useCallback(() => setNavOpen(false), []);
+
   const value: AppState = {
     ready,
     theme,
@@ -86,6 +110,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     toggleTheme,
     toggleComplete,
     reset,
+    navOpen,
+    toggleNav,
+    closeNav,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
