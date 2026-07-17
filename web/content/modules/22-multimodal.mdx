@@ -1,0 +1,133 @@
+export const meta = {
+  "id": "m22",
+  "slug": "22-multimodal",
+  "title": "Multimodal: un modelo que además VE",
+  "kind": "module",
+  "level": 5,
+  "levelName": "AI Engineer",
+  "order": 27,
+  "badge": "22",
+  "pyFile": "22_multimodal.py",
+  "fileref": "📋 Copia y ejecuta: curso_ejemplos/22_multimodal.py — el armado del mensaje es offline; la llamada real necesita un modelo con visión✓ cubierto por tests",
+  "tested": true,
+  "goals": "🎯 Al terminar sabrás: construir un mensaje con texto + imagen en el formato que espera un modelo con visión.",
+  "prereqs": "✅ Necesitas: el Módulo 01 (mensajes) y el 03 (interfaz unificada).",
+  "minutes": "⏱️ ~30 min"
+};
+
+Hasta aquí todo fue texto → texto. Los modelos con **visión** (Gemini, GPT-5, Claude) reciben además **imágenes**: le mandas la foto de una factura y te la extrae, la captura de un error y te lo explica, un diagrama y te lo describe. Lo único nuevo es cómo se *arma* el mensaje: el contenido deja de ser un string y pasa a ser una **lista de bloques**.
+
+<Box kind="def" label="◈ Definición · Contenido multimodal por bloques">
+
+Un `HumanMessage` multimodal lleva en su `content` una **lista** donde cada elemento es un **bloque** con su `type`: uno de texto y uno de imagen. La imagen no viaja como bytes crudos (el JSON es texto) sino codificada en **base64** dentro de un `data:` URL.
+
+<DefList>
+  <Term>data: URL</Term>
+  <Def>Una imagen incrustada como texto: `data:image/png;base64,iVBOR…`. El prefijo dice el tipo (MIME) y que lo que sigue es base64.</Def>
+  <Term>base64</Term>
+  <Def>Reescribe bytes binarios como texto ASCII para que quepan en el JSON de la petición. La stdlib de Python lo hace con `base64.b64encode`.</Def>
+  <Term>bloque `image_url`</Term>
+  <Def>El formato "chat completions" `{"type":"image_url","image_url":{"url": data_url}}`. Es el que `langchain-google-genai` traduce a la parte `inline_data` que la API de Gemini espera — y el mismo que hablan los proveedores compatibles con OpenAI.</Def>
+  <Term>modelo con visión</Term>
+  <Def>No todos ven. Gemini sí; el Qwen de texto en Groq, no. Si el proveedor no tiene visión, el bloque de imagen se ignora o da error.</Def>
+</DefList>
+
+</Box>
+
+<Box kind="analogy" label="◆ Un sobre con dos hojas">
+
+El mensaje multimodal es un **sobre** con dos hojas dentro: una con tu pregunta escrita y otra con la imagen pegada. El modelo abre el sobre y lee *ambas* como una sola entrada — "mira esto Y respóndeme aquello". El `data:` URL es la imagen "fotocopiada en texto" para que quepa en el sobre.
+
+</Box>
+
+### Paso 1 · La imagen como data: URL
+
+```python title="22_multimodal.py · bytes → data: URL (stdlib base64)"
+import base64
+
+def imagen_a_data_url(datos, mime="image/png"):
+    # PORQUÉ base64: el JSON de la petición es texto y no lleva bytes crudos.
+    # base64 reescribe los bytes como ASCII; el prefijo dice qué tipo de imagen es.
+    b64 = base64.b64encode(datos).decode("ascii")
+    return f"data:{mime};base64,{b64}"
+```
+
+### Paso 2 · El mensaje con dos bloques
+
+El `content` es una lista: bloque de texto y bloque de imagen. Este es el formato que **verificamos contra el paquete instalado**, no de memoria — el test confirma que `langchain-google-genai` lo traduce a una parte de imagen de Gemini.
+
+```python title="22_multimodal.py · el mensaje multimodal"
+from langchain_core.messages import HumanMessage
+
+def mensaje_multimodal(texto, data_url):
+    return HumanMessage(content=[
+        {"type": "text",      "text": texto},
+        {"type": "image_url", "image_url": {"url": data_url}},
+    ])
+
+# ...y se envía como cualquier otro mensaje (la llamada real necesita API key):
+#   util.crear_llm().invoke([mensaje_multimodal(pregunta, data_url)])
+```
+
+```text title="▸ deberías ver al correr 22_multimodal.py sin llave (recortado)"
+== Mensaje multimodal construido ==
+  Bloques: 2
+  [0] type='text' · text='¿Qué ves en esta imagen? Descríbela en una frase.'
+  [1] type='image_url' · url=data:image/png;base64,iVBORw0KGgoAAAANSU…
+
+(⏸️  Sin API key: no llamo al modelo. Pon la llave en .env para verlo en acción.)
+```
+
+<Box kind="warn" label="▲ Las imágenes cuestan tokens (y no todos ven)">
+
+Una imagen se cobra como un buen puñado de tokens, y crece con su resolución. Manda fotos **redimensionadas**, no la captura de 4000×3000 del teléfono: pagas de más por detalle que el modelo no necesita. Y verifica que el proveedor **tenga visión** — mandarle una imagen a un modelo de solo texto es, en el mejor caso, dinero tirado.
+
+</Box>
+
+<Avoid label="⛔ Cuándo NO usar esto">
+
+- No mandes imágenes **enormes sin redimensionar**: disparas tokens y coste por resolución que no aporta.
+- No asumas visión en cualquier proveedor: el Qwen de texto en Groq (y muchos open weights) **no ven**. Cambiar de proveedor puede romper el multimodal aunque el resto del curso conmute solo.
+- No uses multimodal cuando ya tienes el texto: si la factura llega como PDF con texto seleccionable, extraerlo y hacer RAG es más barato y exacto que "leer" la imagen.
+
+</Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Con una `GOOGLE_API_KEY`, cambia el `PNG_DEMO_1x1` por una imagen real (lee un archivo con `open(ruta, "rb").read()`) y pídele al modelo que la describa. Luego prueba `LLM_PROVIDER=groq` con el Qwen de texto y observa qué pasa: es la lección de "no todos ven".
+
+Segundo reto: añade un **tercer** bloque de imagen al mismo mensaje y pídele al modelo que compare las dos. El formato de bloques lo permite sin cambiar nada más.
+
+</Box>
+
+<Box kind="def" label="◈ Más allá de VER: oír, hablar y generar imágenes">
+
+La imagen de entrada es solo una esquina del multimodal. El espectro completo tiene cuatro esquinas, y todas se arman con el mismo patrón de bloques que acabas de aprender:
+
+<DefList>
+  <Term>oír (audio → texto)</Term>
+  <Def>El modelo transcribe o razona sobre un audio. Mismo patrón que la imagen, pero el bloque es `media` con su `mime_type` (verificado contra el paquete): `{"type":"media","mime_type":"audio/wav","data": "<base64>"}`. Lo tienes armado en **curso_ejemplos/22b_voz.py**.</Def>
+  <Term>hablar (texto → audio, TTS)</Term>
+  <Def>La síntesis de voz NO es un mensaje de chat: es una petición aparte cuya *respuesta son bytes de audio*, no texto. En `22b_voz.py` armas su payload (`input`, `voice`, `format`).</Def>
+  <Term>generar imágenes (texto → imagen)</Term>
+  <Def>Modelos texto→imagen (Imagen de Google, DALL·E, la generación de Gemini) devuelven una imagen, no texto. También es una API distinta de la de chat.</Def>
+</DefList>
+
+▲ Regla que se repite: el bloque `media`/`image_url` viaja igual, pero **el proveedor tiene que soportar esa modalidad** (Gemini oye y ve; un modelo de solo texto en Groq, no). Y audio/imagen pesan más que el texto: cuestan más y tardan más, así que mídelo ([m16b](/modulos/16-observabilidad-y-costo)) antes de meterlo en el camino caliente.
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar por qué el contenido multimodal es una lista de bloques y no un string.
+- Codificar una imagen en un `data:` URL con base64 de la stdlib.
+- Construir el bloque `image_url` que un modelo con visión espera.
+- Anticipar dos trampas: el coste por resolución y los proveedores sin visión.
+
+</Checkpoint>
+
+<Recap level={5} label="↺ En una frase">
+
+Para que el modelo VEA, el `content` pasa a ser una lista de bloques: uno de texto y uno de `image_url` con la imagen en base64 dentro de un `data:` URL — el mismo formato para Gemini y para los compatibles con OpenAI.<Arch>archivo: `22_multimodal.py`</Arch>
+
+</Recap>

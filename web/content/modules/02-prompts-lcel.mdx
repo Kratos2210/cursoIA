@@ -1,0 +1,104 @@
+export const meta = {
+  "id": "m2",
+  "slug": "02-prompts-lcel",
+  "title": "Prompts + LCEL: la línea de ensamblaje",
+  "kind": "module",
+  "level": 1,
+  "levelName": "Básico",
+  "order": 3,
+  "badge": "02",
+  "pyFile": "02_prompts_lcel.py",
+  "fileref": "📋 Copia y ejecuta: curso_ejemplos/02_prompts_lcel.py✓ cubierto por tests",
+  "tested": true,
+  "goals": "🎯 Al terminar sabrás: armar cadenas con plantillas de prompt y el operador | (LCEL).",
+  "prereqs": "✅ Necesitas: Módulo 01.",
+  "minutes": "⏱️ ~25 min"
+};
+
+Un **prompt template** es un molde con huecos `{variables}`. Y aquí aparece la idea central de LangChain moderno: **LCEL**, que conecta pasos con el operador tubería `|`.
+
+<Box kind="def" label="◈ Definición · LCEL">
+
+**LCEL** (*LangChain Expression Language*, Lenguaje de Expresión de LangChain) es una forma **declarativa** de construir cadenas de procesamiento: en lugar de escribir paso a paso *cómo* se llama a cada pieza, **declaras el orden** en que se conectan y LangChain se encarga del resto.
+
+"Declarativo" tiene una consecuencia práctica y no es decoración: como LangChain conoce la forma completa de la cadena antes de ejecutarla, puede darte gratis paralelismo en `batch`, streaming token a token, versiones asíncronas y reintentos — sin que tú escribas nada de eso.
+
+#### La magia del operador tubería (`|`)
+
+La sintaxis imita las **tuberías de Unix**: `|` encadena componentes de modo que **la salida de uno es la entrada del siguiente**. Una cadena básica tiene tres bloques:
+
+Prompt (plantilla)  |  Modelo (LLM)  |  Parser (analizador de salida)
+
+<DefList>
+  <Term>PromptTemplate</Term>
+  <Def>El **molde** de tus instrucciones. En vez de un mensaje fijo, defines una plantilla con variables (`"Traduce al {idioma}: {texto}"`) y reutilizas la misma estructura para entradas distintas.</Def>
+  <Term>Model</Term>
+  <Def>El **cerebro**: el modelo de lenguaje (Gemini, GPT, Claude). Recibe el prompt ya rellenado y genera la respuesta.</Def>
+  <Term>OutputParser</Term>
+  <Def>El **formateador**. Toma la respuesta cruda del modelo (un `AIMessage`) y la convierte en algo que tu programa pueda usar directo: texto plano con `StrOutputParser`, o un objeto/JSON con parsers estructurados.</Def>
+</DefList>
+
+</Box>
+
+<Box kind="analogy" label="◆ Analogía">
+
+El `|` es una **línea de ensamblaje**: el dato entra por la izquierda y avanza de estación en estación. *prompt* arma el mensaje → *modelo* lo responde → *parser* limpia la salida.
+
+</Box>
+
+```python title="chain.py · tu primera cadena LCEL"
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+
+prompt = ChatPromptTemplate.from_template(
+    "Eres analista de atención al cliente. Clasifica el sentimiento "
+    "(Positivo/Negativo/Neutro) de esta reseña y responde en una frase.\n"
+    "Reseña: {review}"
+)
+
+cadena = prompt | llm | StrOutputParser()   # prompt -> modelo -> texto limpio
+
+print(cadena.invoke({"review": "El producto llegó tarde y roto."}))
+```
+
+```text title="▸ deberías ver (algo así)"
+Negativo. El cliente expresa molestia porque el producto llegó tarde y dañado.
+```
+
+`StrOutputParser()` convierte la respuesta del modelo en **texto plano**, para no escribir `.content` todo el tiempo.
+
+<Box kind="practice" label="▸ Para practicar">
+
+Modifica el prompt para que además **traduzca la reseña al inglés**. Solo cambias el molde: la cadena `prompt | llm | parser` sigue igual. Eso es el poder de LCEL.
+
+<Solution summary="Ver una solución">
+
+```python title="solución · solo cambia el molde"
+prompt = ChatPromptTemplate.from_template(
+    "Eres analista de atención al cliente. Para esta reseña:\n"
+    "1) Clasifica el sentimiento (Positivo/Negativo/Neutro).\n"
+    "2) Tradúcela al inglés.\n"
+    "Reseña: {review}"
+)
+# la cadena NO se toca:
+print((prompt | llm | StrOutputParser()).invoke({"review": "El producto llegó tarde y roto."}))
+```
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar qué es un prompt template y por qué un molde con `{variables}` es reutilizable.
+- Decir qué hace el operador `|`: la salida de cada pieza es la entrada de la siguiente.
+- Nombrar los tres bloques de una cadena básica (prompt `|` modelo `|` parser).
+- Reconocer para qué sirve `StrOutputParser()` (dejar texto plano en vez de un `AIMessage`).
+
+</Checkpoint>
+
+<Recap level={1} label="↺ En una frase">
+
+Un prompt es una **plantilla reutilizable**, no un texto fijo. Y el operador `|` encadena prompt → modelo → parser en un solo objeto invocable.<Arch>archivo: `02_prompts_lcel.py`</Arch>
+
+</Recap>

@@ -1,0 +1,190 @@
+export const meta = {
+  "id": "m11",
+  "slug": "11-rag-profesional",
+  "title": "RAG profesional",
+  "kind": "module",
+  "level": 3,
+  "levelName": "Avanzado",
+  "order": 12,
+  "badge": "11",
+  "pyFile": "11_rag.py",
+  "fileref": "📋 Copia y ejecuta: curso_ejemplos/11_rag.py (usa datos_rag.txt)✓ cubierto por tests",
+  "tested": true,
+  "goals": "🎯 Al terminar sabrás: montar un RAG profesional con loaders, splitter y vector store persistente.",
+  "prereqs": "✅ Necesitas: Módulos 02–06.",
+  "minutes": "⏱️ ~50 min"
+};
+
+RAG (Retrieval-Augmented Generation) le da al modelo *tus* documentos. Es un **examen a libro abierto**: busca los fragmentos relevantes y se los pasa como contexto antes de responder.
+
+<Box kind="def" label="◈ Definición · RAG">
+
+**RAG** (*Retrieval-Augmented Generation*, generación aumentada por recuperación) es una técnica para que el modelo responda usando **documentos tuyos que nunca vio en su entrenamiento**. No se reentrena nada: antes de preguntarle, buscas los fragmentos relevantes y se los pegas en el prompt como contexto.
+
+Resuelve tres problemas de un golpe: el modelo no conoce tus datos privados, su conocimiento tiene fecha de corte, y cuando no sabe algo tiende a inventarlo. Con RAG, la respuesta se apoya en texto que tú controlas — y puedes exigirle que cite de dónde salió.
+
+<DefList>
+  <Term>embedding</Term>
+  <Def>Un texto convertido en una **lista de números** que captura su significado. Dos textos que hablan de lo mismo tienen embeddings cercanos, aunque no compartan ni una palabra.</Def>
+  <Term>vector store</Term>
+  <Def>La base de datos que guarda esos números y sabe encontrar los más cercanos a una consulta. Es lo que hace la búsqueda "por significado" en vez de por coincidencia literal.</Def>
+  <Term>chunk</Term>
+  <Def>Un trozo del documento original. Se trocea porque no cabe entero en el prompt y porque un fragmento enfocado recupera mejor que un capítulo completo.</Def>
+  <Term>retriever</Term>
+  <Def>La pieza que recibe la pregunta y devuelve los `k` chunks más relevantes. Es un Runnable, así que entra en una cadena LCEL como cualquier otro eslabón.</Def>
+</DefList>
+
+</Box>
+
+Casi todo el mundo dibuja RAG como una sola tubería, y por eso confunde dos cosas que ocurren en momentos distintos. Son **dos caminos**: uno se recorre *una vez*, cuando preparas tus documentos; el otro, *en cada pregunta*. Este es el mapa completo — los módulos 11 y 12 lo recorren entero, pieza por pieza.
+
+Camino A · **una sola vez**, cuando indexas tus documentos
+
+<Flow>
+  <Step n="A1" title="Documento">PDF, web, base de datos… un loader lo lee.</Step>
+  <Step n="A2" title="Chunking">Trocear respetando párrafos, con solapamiento.</Step>
+  <Step n="A3" title="Embeddings">Cada chunk se convierte en su huella numérica.</Step>
+  <Step n="A4" title="Vector store">Guardado en disco. Aquí termina el trabajo caro.</Step>
+</Flow>
+
+Camino B · **en cada pregunta** del usuario
+
+<Flow>
+  <Step n="B1" title="Pregunta">Se vectoriza con el *mismo* modelo de embeddings.</Step>
+  <Step n="B2" title="Retrieval">El vector store devuelve los k más parecidos.</Step>
+  <Step n="B3" title="Re-rank">Segundo filtro que reordena. Módulo 12.</Step>
+  <Step n="B4" title="LLM">Lee pregunta + fragmentos y redacta.</Step>
+  <Step n="B5" title="Respuesta">Fundamentada en *tus* documentos.</Step>
+</Flow>
+
+<Box kind="warn" label="▲ El puente entre los dos caminos">
+
+**A3 y B1 tienen que usar el mismo modelo de embeddings.** Si indexas con uno y consultas con otro, las huellas viven en espacios distintos y la búsqueda devuelve basura — sin lanzar ningún error. Es el bug de RAG más silencioso que existe.
+
+</Box>
+
+En el nivel básico troceabas a mano. En profesional usas herramientas dedicadas: un **loader**, un **text splitter** que respeta párrafos, y un vector store **persistente** (se guarda en disco).
+
+```python title="RAG pro · loaders + splitter + Chroma persistente"
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_chroma import Chroma
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
+docs = PyPDFLoader("docs/normativa.pdf").load()
+
+splitter = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=100)
+fragmentos = splitter.split_documents(docs)   # respeta frases y párrafos
+
+embeddings = GoogleGenerativeAIEmbeddings(model="gemini-embedding-001")
+
+# Chroma PERSISTENTE: indexa una vez, reutiliza en cada arranque
+vs = Chroma.from_documents(fragmentos, embedding=embeddings,
+                           persist_directory="./chroma_db")
+
+retriever = vs.as_retriever(search_type="mmr", search_kwargs={"k": 4})
+
+# Y al consultarlo:
+docs = retriever.invoke("¿cuál es la política de reembolsos?")
+print(len(docs), "fragmentos")
+print(docs[0].page_content[:80])
+```
+
+```text title="▸ deberías ver (algo así — el retriever devuelve los k fragmentos más relevantes)"
+4 fragmentos
+Política de reembolsos: los reembolsos se procesan en un plazo de 10 días hábil…
+```
+
+<Box kind="analogy" label="◆ Dos mejoras clave">
+
+**RecursiveCharacterTextSplitter** corta por párrafos/frases (no a ciegas cada 500 caracteres), así no parte ideas a la mitad. **MMR** (Maximal Marginal Relevance) trae resultados relevantes *y variados*, evitando 4 fragmentos casi idénticos.
+
+</Box>
+
+### ¿Y si no quiero pagar por vectorizar? `fastembed`
+
+Fíjate en la línea `GoogleGenerativeAIEmbeddings(...)`. Cada vez que indexas un documento y cada vez que haces una pregunta, esa línea **llama a la API de Google y consume cuota**. Indexar un PDF de 200 páginas son cientos de llamadas antes de que el modelo de chat haya dicho una sola palabra.
+
+Y hay un problema peor si usas Groq: **Groq no tiene endpoint de embeddings**. Puedes mover el chat, pero el RAG se queda sin quien vectorice.
+
+<Box kind="def" label="◈ Definición · fastembed">
+
+**fastembed** es una librería de Python que ejecuta modelos de embeddings **en tu propia máquina**, sin llamar a ninguna API. Le das texto, te devuelve vectores. Cero cuota, cero red (después de la primera descarga), cero dependencia de que una empresa mantenga vivo un endpoint.
+
+Lo interesante es *cómo*. Un modelo de embeddings normalmente se ejecuta con **PyTorch**, una librería de varios cientos de megabytes pensada para *entrenar* redes neuronales. Pero nosotros no entrenamos nada: solo queremos ejecutar el modelo hacia adelante, una vez por texto. fastembed usa **ONNX Runtime**, un motor especializado justo en eso — ejecutar modelos ya entrenados, rápido y ligero.
+
+<DefList>
+  <Term>ONNX</Term>
+  <Def>*Open Neural Network Exchange*. Un formato estándar para guardar un modelo ya entrenado, independiente de la librería con la que se entrenó. Es el "PDF de los modelos": lo escribe cualquiera, lo lee cualquiera.</Def>
+  <Term>ONNX Runtime</Term>
+  <Def>El motor que ejecuta esos modelos. Optimizado para **inferencia** (usar el modelo), no para entrenamiento. De ahí que pese ~70 MB en vez de los ~800 MB de PyTorch.</Def>
+  <Term>inferencia</Term>
+  <Def>Usar un modelo ya entrenado para producir una salida. Lo contrario de *entrenamiento*, que es ajustar sus pesos. El 99% del código que escribirás en tu vida hace inferencia.</Def>
+</DefList>
+
+</Box>
+
+El modelo que usa el curso es `paraphrase-multilingual-MiniLM-L12-v2`: **multilingüe a propósito**, porque nuestros documentos están en español y un modelo entrenado solo en inglés colocaría "reembolso" y "refund" en rincones distintos del espacio vectorial. Produce vectores de **384 dimensiones**.
+
+```bash title="terminal · una vez"
+uv sync --extra emb        # o, en tu proyecto:  uv add fastembed
+```
+
+```python title=".env · y ya está"
+EMBEDDINGS_PROVIDER=fastembed
+```
+
+No hay que tocar el código: `util.crear_embeddings()` lee esa variable y devuelve el motor correcto. La primera ejecución descarga el modelo (~220 MB) a una caché local; a partir de ahí el RAG funciona **incluso sin conexión a internet**.
+
+|  | `gemini-embedding-001` (API) | `fastembed` (local) |
+| --- | --- | --- |
+| Coste por vector | Consume cuota | **$0** |
+| Primera vez | Instantáneo | Descarga ~220 MB |
+| Necesita internet | Siempre | Solo la primera vez |
+| Velocidad | Latencia de red por lote | Depende de tu CPU; en corpus pequeños, más rápido |
+| Calidad | Algo mejor en textos largos | Suficiente para RAG de documentos |
+| Si el proveedor cae… | Tu RAG cae | Sigue funcionando |
+
+<Box kind="warn" label="▲ Elegir motor de embeddings NO es como elegir modelo de chat">
+
+Cambiar de modelo de chat, en el peor caso, te da una respuesta con otro estilo. Cambiar de modelo de **embeddings** con un índice ya construido **invalida el índice entero**: los vectores viejos y los nuevos viven en espacios distintos, así que compararlos no da un resultado *peor* — da un resultado *sin sentido*. Y sin lanzar ningún error.
+
+Es exactamente el bug silencioso del aviso de arriba (A3 y B1 deben usar el mismo modelo), visto desde otro ángulo. **Si cambias `EMBEDDINGS_PROVIDER`, reindexa.** En este curso da igual —los ejemplos reconstruyen el índice en cada arranque—, pero con un Chroma persistente o un pgvector, no.
+
+</Box>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Indexa un PDF tuyo, borra el script y vuelve a correrlo: al ser persistente, no re-indexa. Compara respuestas con `k=2` vs `k=6`.
+
+<Solution summary="Ver una solución">
+
+```python title="solución · reutilizar el índice persistente"
+# Segunda corrida: NO uses from_documents (re-indexaría). Abre el existente:
+vs = Chroma(persist_directory="./chroma_db", embedding_function=embeddings)
+
+for k in (2, 6):
+    docs = vs.as_retriever(search_kwargs={"k": k}).invoke("¿política de reembolsos?")
+    print(f"k={k} -> {len(docs)} fragmentos")
+# k=2: contexto corto, puede faltar información.
+# k=6: más completo, pero más tokens y algo de ruido. El punto medio se MIDE.
+```
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar los dos caminos de RAG: indexar *una vez* vs. recuperar *en cada pregunta*.
+- Decir por qué indexar y consultar deben usar el **mismo** modelo de embeddings.
+- Montar un vector store persistente (Chroma) que no re-indexe en cada arranque.
+- Ajustar `k` y entender el compromiso entre contexto corto y ruido.
+
+</Checkpoint>
+
+<Recap level={3} label="↺ En una frase">
+
+RAG son **dos caminos**: indexar una vez (cargar → trocear → embeddings → vector store) y recuperar en cada pregunta. Ambos deben usar el *mismo* modelo de embeddings.<Arch>archivo: `11_rag.py`</Arch>
+
+</Recap>

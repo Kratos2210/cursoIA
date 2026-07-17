@@ -1,0 +1,119 @@
+export const meta = {
+  "id": "m25",
+  "slug": "25-frontend-chat-sse",
+  "title": "Frontend de chat SSE: la cara visible del servicio, en HTML vainilla",
+  "kind": "module",
+  "level": 5,
+  "levelName": "AI Engineer",
+  "order": 31,
+  "badge": "25",
+  "pyFile": null,
+  "fileref": "📋 Es una feature del servicio, no un script: proyecto_llmops/app/frontend.py + proyecto_llmops/app/static/chat.html — 100% offline✓ cubierto por tests",
+  "tested": true,
+  "goals": "🎯 Al terminar sabrás: servir una SPA vainilla desde el propio FastAPI y consumir el streaming SSE de POST /chat con fetch + ReadableStream, cerrando el lazo del A/B con los votos 👍/👎.",
+  "prereqs": "✅ Necesitas: el Módulo 17 (servir por HTTP) y el m24b (el A/B y el evento fin con variante).",
+  "minutes": "⏱️ ~30 min"
+};
+
+El servicio ya hace mucho por dentro —guardrails, caché semántico, tracing, A/B— pero nadie lo ve. Le falta cara. Se la damos con una **sola página** de HTML+CSS+JS, sin build, sin framework, sin CDN, sin una sola dependencia: abre en un navegador aunque no haya internet. El reto no es pintar burbujas: es **consumir el streaming SSE** que emite `/chat`, y ahí la API cómoda del navegador (`EventSource`) no nos sirve.
+
+<Box kind="def" label="◈ Definición · SSE por fetch, y una página que se sirve a sí misma">
+
+<DefList>
+  <Term>SSE con `fetch` + `ReadableStream`</Term>
+  <Def>Leemos `response.body.getReader()`, decodificamos con `TextDecoder`, acumulamos en un buffer y partimos por la línea en blanco (`\n\n`) que separa eventos. El trozo sin cerrar se queda en el buffer para la próxima vuelta.</Def>
+  <Term>Por qué NO `EventSource`</Term>
+  <Def>La API nativa de SSE del navegador **solo hace GET** y no deja mandar cuerpo ni cabeceras. Nuestro `/chat` es **POST** con un JSON (`mensaje`, `rol`, `thread_id`): hay que leer el stream a mano.</Def>
+  <Term>Página autocontenida</Term>
+  <Def>HTML, `<style>` y `<script>` en un mismo archivo. Cero assets externos = cero superficie de red = abre offline. Se lee **una vez** al importar (`frontend.PAGINA_CHAT`) y la ruta `GET /` la envuelve en un `HTMLResponse`.</Def>
+</DefList>
+
+</Box>
+
+<Box kind="analogy" label="◆ El grifo y el vaso">
+
+`EventSource` es un dispensador de agua con un solo botón: pulsas y sale, pero no puedes decirle *qué* quieres. Con `fetch`+`ReadableStream` abres tú el grifo (mandas tu pedido en el POST) y llenas el vaso a sorbos, según cae. El buffer es el vaso: vas juntando gotas (bytes) hasta tener un sorbo completo (un evento terminado en `\n\n`) antes de beberlo.
+
+</Box>
+
+### Paso 1 · La ruta que sirve la página (leída una sola vez)
+
+El HTML no cambia mientras el proceso vive, así que releerlo del disco en cada request sería E/S por nada. Se carga al importar y queda en memoria; el `--reload` de uvicorn re-importa y re-lee al editarlo.
+
+```python title="proyecto_llmops/app/main.py · GET / (dentro de crear_app) + app/frontend.py"
+# app/frontend.py — se lee UNA vez al importar
+PAGINA_CHAT = (Path(__file__).parent / "static" / "chat.html").read_text("utf-8")
+
+# app/main.py — la ruta solo envuelve el string ya cargado
+@app.get("/", response_class=HTMLResponse)
+def pagina_chat():
+    return frontend.PAGINA_CHAT   # cero E/S por request
+```
+
+### Paso 2 · El parser SSE del cliente (fetch + ReadableStream)
+
+```python title="proyecto_llmops/app/static/chat.html · el bucle de lectura del stream"
+const resp = await fetch("/chat", {          // POST: por eso no EventSource
+  method: "POST", headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ mensaje, rol, thread_id: THREAD_ID }),
+});
+const lector = resp.body.getReader(), dec = new TextDecoder();
+let buffer = "";
+while (true) {
+  const { value, done } = await lector.read();
+  if (done) break;
+  buffer += dec.decode(value, { stream: true });
+  let corte;
+  while ((corte = buffer.indexOf("\n\n")) !== -1) {   // un evento SSE completo
+    const bloque = buffer.slice(0, corte); buffer = buffer.slice(corte + 2);
+    const evt = parsearBloque(bloque);                // separa event: y data:
+    if (!evt.evento && evt.datos.token !== undefined) append(evt.datos.token);
+    else if (evt.evento === "fin") mostrarVoto(evt.datos.variante);   // 👍/👎
+    else if (evt.evento === "bloqueado" || evt.evento === "error") pintarError(evt.datos.error);
+  }
+}
+```
+
+```text title="▸ lo que viaja por el cable (el formato de app/streaming.py)"
+data: {"token": "Sí, la Regla 1 exige "}
+
+data: {"token": "cifrado AES-256."}
+
+event: fin
+data: {"cache_hit": false, "variante": "agente_gobdata_conciso"}
+```
+
+<Box kind="warn" label="▲ Esto es la demo, no producción">
+
+La página se sirve **abierta** para que el curso sea ejecutable sin montar identidad. En producción va detrás de **auth** y del **mismo origen** (o CORS explícito), y `/metrics` **no** se expone público. El `thread_id` se genera uno por pestaña (`crypto.randomUUID()`) para que el A/B sea **pegajoso**: si cambiara por mensaje, el voto no se podría atribuir a una variante.
+
+</Box>
+
+<Avoid label="⛔ Cuándo NO hacerlo así">
+
+- No uses **`EventSource` para un POST**: solo hace GET. Si tu endpoint necesita cuerpo, es `fetch`+`ReadableStream` (o cambia el endpoint a GET, que aquí no queremos).
+- No metas la **API key** del LLM en el front: el navegador la enseña a cualquiera. La clave vive en el servidor; el front solo habla con *tu* servicio.
+- No confíes en el `rol` que manda el cliente en producción: un rol que elige el cliente vuelve el RBAC decorativo (ya se avisa en `main.py`). Deriva el rol del token de auth.
+
+</Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Levanta el servicio (`uv run uvicorn proyecto_llmops.app.main:app --reload`) y abre `http://localhost:8000/`. Manda una pregunta y mira aparecer la respuesta token a token; cambia el `rol` a `public` y observa cómo cambia lo que el agente puede ver (RBAC). Vota 👍/👎 y consulta `GET /feedback`: tu voto movió la `tasa_aprobacion` de la variante que te tocó.
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar por qué `EventSource` no vale para un `/chat` que es POST, y qué lo sustituye.
+- Trocear un stream SSE a mano: buffer, corte por `\n\n` y evento parcial que se guarda para la próxima lectura.
+- Servir una página autocontenida desde FastAPI leyéndola **una vez**, y decir por qué no en cada request.
+- Cerrar el lazo del A/B desde el front: capturar la `variante` del evento `fin` y devolverla en el voto a `/feedback`.
+
+</Checkpoint>
+
+<Recap level={5} label="↺ En una frase">
+
+Para darle cara al servicio: sirve una **SPA vainilla** desde el propio FastAPI (`GET /`, leída una vez) y consume su **SSE** con `fetch`+`ReadableStream` —troceando por `\n\n`— porque `EventSource` no puede hacer POST; luego cierra el A/B votando la `variante` del evento `fin`.<Arch>archivos: `proyecto_llmops/app/frontend.py` · `app/static/chat.html`</Arch>
+
+</Recap>

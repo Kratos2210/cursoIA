@@ -1,0 +1,262 @@
+export const meta = {
+  "id": "m12",
+  "slug": "12-recuperar-re-rankear",
+  "title": "RAG en profundidad: recuperar + re-rankear",
+  "kind": "module",
+  "level": 3,
+  "levelName": "Avanzado",
+  "order": 13,
+  "badge": "12",
+  "pyFile": "12_rag_hibrido_rerank.py",
+  "fileref": "📋 Copia y ejecuta: curso_ejemplos/12_rag_hibrido_rerank.py — 100% offline, no gasta cuota✓ cubierto por tests",
+  "tested": true,
+  "goals": "🎯 Al terminar sabrás: mejorar el RAG con búsqueda híbrida (BM25+denso), fusión RRF y re-ranking.",
+  "prereqs": "✅ Necesitas: Módulo 11.",
+  "minutes": "⏱️ ~55 min"
+};
+
+En el Módulo 11 armaste un RAG que funciona. Aquí lo llevamos a **calidad de producción**: entender qué pasa en cada etapa del pipeline, dónde se pierde calidad, dónde se gana latencia, y las dos técnicas que más mejoran los resultados: la **búsqueda híbrida** y el **re-ranking**.
+
+<Box kind="def" label="◈ Definición · Búsqueda híbrida y re-ranking">
+
+La **búsqueda híbrida** combina dos formas de buscar que fallan de maneras distintas: la *vectorial* (por significado) y la *léxica* (por palabras exactas). La vectorial encuentra "cifrado" cuando preguntas por "encriptación", pero se pierde con un código como `DQ-014`. La léxica hace justo lo contrario. Juntas, se tapan los huecos.
+
+El **re-ranking** es un **segundo filtro**: recuperas muchos candidatos rápido y baratos, y luego un modelo más caro y más preciso los reordena para quedarse con los mejores. Recuperar es rápido y tonto; re-rankear es lento y listo. Por eso van en ese orden.
+
+<DefList>
+  <Term>BM25</Term>
+  <Def>El algoritmo clásico de búsqueda por palabras clave. Premia los términos raros y penaliza los documentos largos. No entiende sinónimos — y ahí está su virtud: no "interpreta" tu código de error.</Def>
+  <Term>RRF (Reciprocal Rank Fusion)</Term>
+  <Def>La receta para **fusionar dos rankings** sin comparar puntuaciones incomparables. Solo mira la posición: un documento que salió 2.º en ambas listas gana a uno que salió 1.º en una y 40.º en la otra.</Def>
+  <Term>cross-encoder</Term>
+  <Def>El re-ranker típico: en vez de comparar dos vectores ya calculados, lee **pregunta y chunk juntos**. Mucho más preciso y mucho más lento — por eso solo se le dan 20 candidatos, no 10.000.</Def>
+  <Term>precision@k</Term>
+  <Def>De los `k` resultados que devolviste, cuántos eran realmente relevantes. Es la métrica que convierte "creo que mejoró" en un número. Mídela antes y después de cada cambio.</Def>
+</DefList>
+
+</Box>
+
+### Anatomía del pipeline: dos caminos distintos
+
+Un RAG de producción tiene dos flujos que conviene analizar por separado. El de **ingesta** corre pocas veces (cuando llegan documentos nuevos) y puede ser lento sin que nadie lo note. El de **consulta** corre en *cada pregunta*: su latencia es la que siente el usuario.
+
+<Flow>
+  <Step n="ingesta 1" title="Cargar">Leer PDFs, webs, bases de datos.</Step>
+  <Step n="ingesta 2" title="Trocear">Chunks con solapamiento.</Step>
+  <Step n="ingesta 3" title="Vectorizar">Un embedding por chunk.</Step>
+  <Step n="ingesta 4" title="Indexar">Guardar en el vector store.</Step>
+</Flow>
+
+<Flow>
+  <Step n="consulta" title="Pregunta">El usuario escribe.</Step>
+  <Step n="rápido" title="Recuperar">Trae 20 candidatos por similitud.</Step>
+  <Step n="preciso" title="Re-rankear">Un cross-encoder deja los 3 mejores.</Step>
+  <Step n="final" title="Generar">El LLM responde con contexto limpio.</Step>
+</Flow>
+
+Para optimizar hay que saber **dónde duele cada etapa**. Esta tabla es tu mapa de diagnóstico:
+
+| Etapa | Qué puede salir mal | Cuánto pesa en la latencia |
+| --- | --- | --- |
+| Trocear (chunking) | Chunks que parten una idea a la mitad: el retriever trae medio dato. | Nada (ocurre en ingesta), pero define la calidad de todo lo demás. |
+| Recuperar (vectorial) | Trae texto "parecido" pero irrelevante; falla con códigos exactos. | Decenas de milisegundos. Casi gratis. |
+| Buscar por palabras (BM25) | Falla con sinónimos: "médico" no encuentra "doctor". | Milisegundos. |
+| Re-rankear (cross-encoder) | Un `top_n` demasiado alto devuelve el mismo ruido, pero más lento. | Cientos de ms; crece con cada candidato que debe leer. |
+| Generar (LLM) | Alucina si el contexto llegó sucio o incompleto. | Segundos. La etapa más cara: por eso el contexto debe llegar limpio. |
+
+### Chunking: el corte importa más de lo que parece
+
+Todo lo que el sistema podrá responder depende de cómo cortaste los documentos. Dos estrategias que ya usaste:
+
+- **Por párrafos** (Módulo 11): respeta unidades de sentido. Ideal si el documento está bien estructurado.
+- **Por caracteres con solapamiento** (tu `proyectorag`): corta cada N caracteres y retrocede un poco en cada corte, para que ninguna frase quede huérfana de contexto.
+
+```python title="proyectorag/app_rag.py · chunking con solapamiento, paso a paso"
+# Corta bloques de 500 caracteres que se "pisan" 50 entre sí.
+def trocear(texto, tamano=500, solape=50):
+    chunks, inicio = [], 0
+    while inicio < len(texto):
+        chunks.append(texto[inicio:inicio + tamano])
+        inicio += tamano - solape   # retrocede 50: la frase cortada reaparece completa
+    return chunks
+```
+
+En producción, `RecursiveCharacterTextSplitter` (Módulo 11) combina ambas ideas: intenta cortar por párrafo, si no puede corta por frase, y solo como último recurso por carácter.
+
+### Re-ranking: el segundo filtro
+
+El buscador vectorial es rápido pero impreciso: entre sus primeros resultados hay joyas y basura mezcladas. Un **re-ranker** es un segundo filtro, más lento pero mucho más certero, que reordena y deja arriba lo verdaderamente relevante.
+
+<Box kind="analogy" label="◆ Por qué acierta más (y tarda más)">
+
+El buscador vectorial compara **huellas precalculadas**: nunca lee tu pregunta junto al documento. El cross-encoder sí: lee **pregunta + fragmento juntos** y puntúa qué tan bien uno responde al otro. Es como seleccionar personal: filtrar currículums por palabras clave es rápido; *entrevistar* acierta mucho más, pero no puedes entrevistar a mil. Por eso primero recuperas 20 y solo "entrevistas" a esos.
+
+</Box>
+
+```python title="re-ranking con cross-encoder"
+from langchain.retrievers import ContextualCompressionRetriever
+from langchain.retrievers.document_compressors import CrossEncoderReranker
+from langchain_community.cross_encoders import HuggingFaceCrossEncoder
+
+modelo_rerank = HuggingFaceCrossEncoder(model_name="BAAI/bge-reranker-base")
+reranker = CrossEncoderReranker(model=modelo_rerank, top_n=3)
+
+retriever_pro = ContextualCompressionRetriever(
+    base_compressor=reranker,
+    base_retriever=vs.as_retriever(search_kwargs={"k": 20}),  # trae 20...
+)                                                             # ...y quedan 3
+```
+
+### Búsqueda híbrida (denso + palabras clave)
+
+La búsqueda por significado falla con códigos exactos ("ISO-27001", un SKU, un nombre propio); la de palabras (BM25) falla con sinónimos. **Combinarlas cubre los huecos de ambas.**
+
+```python title="EnsembleRetriever"
+from langchain_community.retrievers import BM25Retriever
+from langchain.retrievers import EnsembleRetriever
+
+bm25  = BM25Retriever.from_documents(fragmentos)          # por palabras clave
+denso = vs.as_retriever(search_kwargs={"k": 5})            # por significado
+hibrido = EnsembleRetriever(retrievers=[bm25, denso], weights=[0.4, 0.6])
+```
+
+¿Y cómo se mezclan dos rankings con puntajes incompatibles (BM25 devuelve "7.3", el vectorial "0.42")? No se suman los puntajes: se usa el **puesto**. La técnica se llama **RRF** (Reciprocal Rank Fusion) y cabe en seis líneas — quien aparece *en ambas* listas, gana:
+
+```python title="12_rag_hibrido_rerank.py · fusión RRF hecha a mano"
+def fusionar_rrf(*rankings, k=60):
+    puntajes = {}
+    for ranking in rankings:                  # cada ranking: docs ordenados
+        for puesto, doc in enumerate(ranking):
+            # 1º lugar vale 1/61, 2º vale 1/62... aparecer en ambas listas suma
+            puntajes[doc] = puntajes.get(doc, 0) + 1 / (k + puesto + 1)
+    return sorted(puntajes, key=puntajes.get, reverse=True)
+```
+
+```text title="▸ deberías ver al correr 12_rag_hibrido_rerank.py (recortado)"
+Documento troceado en 7 chunks (uno por párrafo).
+
+Pregunta: ¿Cuál es el horario de atención de soporte?
+
+=== Ranking 1 · BM25 (palabras exactas) ===
+  1º · chunk 2: Horario de atención: Nuestro horario de atención al cliente…
+...
+=== Ranking 4 · RE-RANKEADO (los 3 finalistas) ===
+  1º · chunk 2: Horario de atención: Nuestro horario de atención al cliente…
+```
+
+<Box kind="warn" label="▲ Lo que RRF premia (y lo que NO)">
+
+Casi todo el mundo dice que RRF "premia al que queda equilibrado en ambas listas". **Es falso**, y se demuestra con una calculadora. Con `k=60`, un documento que queda 1º y 3º suma `1/61 + 1/63 = 0.032266`; uno que queda 2º y 2º suma `1/62 + 1/62 = 0.032258`. Gana el *extremista*, no el consistente: la curva `1/(k+puesto)` es **convexa**, así que el promedio de los extremos supera al del medio.
+
+Lo que RRF premia de verdad es **estar presente en ambas listas**. Un documento 2º y 2º (`0.032258`) aplasta a uno que fue 1º en una lista pero que la otra *ni vio* (`1/61 = 0.016393`): la ausencia no suma nada. Ese, y no el equilibrio, es el mecanismo. Hay un test que lo fija en `tests/test_offline.py` — de hecho, ese test corrigió a quien escribió esta explicación.
+
+</Box>
+
+### Tres formas de fallar que este pipeline no te cuenta
+
+Corre el ejemplo con la pregunta *"¿Cómo pido la devolución de mi dinero?"* — el documento habla de **reembolso**. Verás fallar tres cosas a la vez, y cada una es una lección de producción:
+
+<Grid3>
+
+<Card num="fallo 1" title="Sinónimos">
+
+"devolución" y "reembolso" no comparten letras: su coseno es **0.0**. El chunk correcto es invisible. Y ojo: el buscador "vectorial" del ejemplo cuenta *palabras*, así que falla igual que BM25.
+
+</Card>
+
+<Card num="fallo 2" title="Stopwords">
+
+¿Quién gana? El chunk del **título**, que no responde nada. Solo comparte la palabra "de" — pero es tan corto que la normalización por longitud de BM25 lo catapulta.
+
+</Card>
+
+<Card num="fallo 3" title="Empates silenciosos">
+
+Ninguna palabra casa, así que el re-ranker puntúa **0.0 a todos** y desempata por el índice del chunk. Devuelve tres finalistas con toda la confianza del mundo. Es un orden *arbitrario*.
+
+</Card>
+
+</Grid3>
+
+<Box kind="warn" label="▲ El tercero es el peligroso">
+
+Los fallos 1 y 2 se ven. El 3 **no**: el sistema no lanza ningún error, no avisa de nada, simplemente devuelve basura ordenada. Por eso un re-ranker de producción devuelve también el **puntaje**, no solo el orden — para que quien lo llama pueda decir *"todos por debajo del umbral: no tengo respuesta"*. Un ranking sin puntajes es una opinión disfrazada de dato.
+
+</Box>
+
+La cura del fallo 1 son **embeddings de verdad** (los del Módulo 11), que sí colocan "devolución" y "reembolso" cerca. La del 2, eliminar *stopwords* antes de indexar. La del 3, umbrales. Y hay un cuarto fallo, más sutil, que descubres al medir: **fusionar dos buscadores que se equivocan igual no arregla nada** — RRF fusiona *opiniones*, y aquí las dos opiniones son la misma (coincidencia léxica). Un híbrido de verdad combina señales *independientes*: léxica + semántica.
+
+### ¿Recupera bien? No lo adivines: mídelo
+
+La métrica más simple es **precision@k**: de los `k` fragmentos que trajiste, ¿cuántos eran realmente útiles para responder? Si traes 4 y solo 1 sirve, tu precisión es 25% — y los otros 3 son ruido que confunde al modelo y cuesta tokens. Para medirla necesitas un **banco de preguntas** con su fragmento correcto conocido (tu `proyectorag/preguntas.txt` es exactamente eso). En el Módulo 16 convertimos ese banco en una evaluación automática.
+
+<Box kind="warn" label="▲ Compromiso latencia ↔ calidad">
+
+Cada capa (más `k`, re-ranker, híbrido) mejora la **calidad del ranking** pero suma **latencia**. Regla práctica: recupera barato y ancho (20 candidatos con vectorial+BM25, milisegundos) y refina caro y angosto (re-rankear solo esos 20, no todo el corpus). En producción se busca el punto donde la precisión sube sin que la respuesta tarde demasiado — y se *mide*, no se supone.
+
+</Box>
+
+Mídelo de verdad sobre `datos_rag.txt`. Con 4 preguntas *fáciles* (que usan las mismas palabras del documento), las cuatro configuraciones dan **100%**: ese dataset no mide nada. Añade las dos preguntas difíciles de arriba (la de sinónimos y una de morfología, *"proyecto"* vs *"proyectos"*) y aparece la verdad:
+
+| Configuración | precision@1 (4 fáciles) | precision@1 (+2 difíciles) |
+| --- | --- | --- |
+| Solo BM25 | 100% | 67% |
+| Solo vectorial | 100% | 67% |
+| Híbrido (RRF) | 100% | 67% *— no mejora a sus componentes* |
+| Híbrido + re-ranking | 100% | **83%** |
+
+Dos conclusiones incómodas y verdaderas. Primero: **un dataset de preguntas fáciles te dice que tu RAG es perfecto**, y es el error nº1 al construir un set de evaluación. Segundo: con 6 preguntas, cada una vale 16.7% — estos números *no demuestran nada* estadísticamente. Antes de celebrar que un cambio "mejoró un 4%", pregúntate cuántos ejemplos lo respaldan.
+
+<Box kind="analogy" label="◆ La regla que sí se lleva a producción">
+
+**No puedes arreglar en el re-ranking lo que perdiste en la recuperación.** Si el chunk correcto no está entre los candidatos, ningún reordenamiento lo va a inventar. Por eso se recupera *ancho y barato* primero.
+
+</Box>
+
+<Avoid label="⛔ Cuándo NO usar esto">
+
+- Si el RAG básico del Módulo 11 ya acierta (`precision@k` alto), no añadas re-ranking: sumas cientos de ms y un modelo más por una ganancia que aquí fue nula. Mídelo antes de meterlo.
+- No montes búsqueda híbrida si tus dos buscadores fallan igual: fusionar dos señales que se equivocan igual no arregla nada. El híbrido paga cuando combinas señales *independientes* (léxica + semántica).
+- No afines el ranking a ciegas: sin un banco de preguntas con su chunk correcto para medir `precision@k`, cualquier "mejora" es una corazonada.
+
+</Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+**Predice antes de ejecutar.** Cambia la pregunta a `"¿Puedo pagar en cuotas un proyecto grande?"` y escribe en un papel qué chunk crees que ganará en cada uno de los 4 rankings. Solo entonces córrelo. El aprendizaje ocurre en la distancia entre tu predicción y el resultado.
+
+El ejercicio completo, con sus 4 partes y pistas progresivas, está en `ejercicios/ejercicio_12_rerank.md` — y su solución *se ejecuta*: `uv run python ejercicios/soluciones/solucion_12_rerank.py`. Es 100% offline.
+
+<Solution summary="Ver el resultado (spoiler)">
+
+Los **tres** buscadores coinciden… en el chunk equivocado (el 5, "Entregables de un proyecto"), porque ese chunk contiene la palabra `proyecto` dos veces. El chunk correcto (el 6, "Formas de pago") dice `proyectoS` en plural, y para un tokenizador de palabras exactas `proyecto ≠ proyectos`.
+
+¿Quién lo salva? El re-ranker, por un accidente instructivo: puntúa con `palabra in texto`, es decir por **subcadena**, y "proyecto" sí está dentro de "proyectos". En producción esa casualidad no te salvará: eso se resuelve con *stemming* o lematización antes de indexar.
+
+```python title="▸ lo que imprime"
+BM25       : [5, 6, 1]     <- chunk 5, equivocado
+Vectorial  : [5, 6, 1]     <- el mismo error
+RRF        : [5, 6, 1]     <- fusionar dos errores iguales da el mismo error
+Re-rankeado: [6, 5, 4]     <- el 6 (Formas de pago). Correcto.
+```
+
+</Solution>
+
+</Box>
+
+¿Por qué este módulo implementa BM25 y el re-ranker a mano en vez de instalar `rank_bm25` y un cross-encoder? La decisión está razonada, con sus alternativas y sus consecuencias, en un ADR real del repo: `docs/adr/0002-re-ranker.md` (Módulo 17).
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar por qué se recupera ancho y barato y se reordena poco y caro (recuperar es rápido y tonto; re-rankear, lento y listo).
+- Decir qué combina la búsqueda híbrida (BM25 léxico + denso semántico) y por qué solo ayuda con señales independientes.
+- Explicar qué premia de verdad `RRF`: estar presente en ambas listas, no el "equilibrio".
+- Reconocer `precision@k` como la métrica que convierte "creo que mejoró" en un número.
+
+</Checkpoint>
+
+<Recap level={3} label="↺ En una frase">
+
+Recupera mucho y barato, reordena poco y caro: híbrido (BM25 + denso) → fusión RRF → re-ranker. Y si no mides `precision@k`, estás adivinando.<Arch>archivo: `12_rag_hibrido_rerank.py` (offline)</Arch>
+
+</Recap>

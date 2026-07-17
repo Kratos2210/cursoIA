@@ -1,0 +1,126 @@
+export const meta = {
+  "id": "m28",
+  "slug": "28-desafios-y-alucinaciones",
+  "title": "Desafíos: alucinaciones y por qué fallan los LLM",
+  "kind": "module",
+  "level": 5,
+  "levelName": "AI Engineer",
+  "order": 35,
+  "badge": "28",
+  "pyFile": "28_alucinaciones.py",
+  "fileref": "📋 El ejemplo: curso_ejemplos/28_alucinaciones.py — taxonomía y detectores, 100% offline✓ cubierto por tests",
+  "tested": true,
+  "goals": "🎯 Al terminar sabrás: de dónde vienen las alucinaciones, cómo detectarlas midiendo la divergencia entre muestras y cómo cada desafío se mitiga con lo que el curso YA te enseñó.",
+  "prereqs": "✅ Necesitas: el m11 (RAG), el m16 (evals), el m26b (self-consistency) y el m27 (por qué el modelo predice, no consulta).",
+  "minutes": "⏱️ ~35 min"
+};
+
+Un LLM puede afirmar con total aplomo algo **falso**: eso es una **alucinación**. No es un bug que se "arregla" de una vez —es consecuencia de cómo funciona (el [m27](/modulos/27-fundamentos-del-llm) lo explicó: predice el siguiente token, no consulta la verdad)—. Lo que SÍ puedes es entender de dónde vienen y montar defensas. Este es un módulo **integrador**: cada desafío se conecta con la mitigación que ya practicaste, y añade dos detectores nuevos y medibles.
+
+<Box kind="def" label="◈ El paraguas · los cuatro grandes desafíos de un LLM">
+
+La teoría los agrupa en cuatro familias; este módulo abre la que más muerde en producción, la **técnica**: la alucinación.
+
+<DefList>
+  <Term>De datos</Term>
+  <Def>Sesgo, conocimiento desactualizado, dependencia de la calidad del corpus.</Def>
+  <Term>Éticos y sociales</Term>
+  <Def>Amplificación de sesgos, copyright, privacidad del usuario.</Def>
+  <Term>Técnicos</Term>
+  <Def>**Alucinación**, interpretabilidad, evaluación, contexto largo. ← aquí entramos.</Def>
+  <Term>De despliegue</Term>
+  <Def>Escalabilidad, latencia, coste, seguridad, cumplimiento.</Def>
+</DefList>
+
+</Box>
+
+<Box kind="analogy" label="◆ El estudiante que nunca dice ”no sé”">
+
+Un LLM es como un alumno brillante al que **penalizan por quedarse callado**: siempre contesta algo, aunque no lo sepa, y lo hace con la misma seguridad que cuando sí lo sabe. El truco para pillarlo: **pregúntale lo mismo varias veces**. Si lo sabe, repite la misma respuesta; si lo está inventando, cada vez dice algo distinto. Esa *dispersión* es la señal de alarma —y es exactamente lo que mide el detector de este módulo.
+
+</Box>
+
+### La taxonomía · de la causa a la mitigación que ya conoces
+
+El corazón del módulo es un **mapa consultable** (no un párrafo que se desactualiza): cada causa de alucinación apunta a su señal, su mitigación y el módulo donde la practicaste.
+
+```python title="28_alucinaciones.py · TAXONOMIA (estructura de datos consultable)"
+TAXONOMIA = [
+    {"causa": "Falta de grounding", "categoria": "datos",
+     "mitigacion": "Grounding con RAG y pedir que cite la fuente.", "modulo": "m11"},
+    {"causa": "Sobregeneralización de patrones", "categoria": "tecnica",
+     "mitigacion": "Self-consistency (votar la moda) y verificación.", "modulo": "m26b"},
+    {"causa": "Sin verificación de la salida", "categoria": "tecnica",
+     "mitigacion": "Evaluar con un dataset y una métrica.", "modulo": "m16"},
+    # …datos desactualizados (m11), contexto insuficiente (m26b), entrada envenenada (m23)
+]
+```
+
+Léelo al revés y es un resumen de todo el curso avanzado: contra la alucinación tienes **RAG** ([m11](/modulos/11-rag-profesional)), **evals** ([m16](/modulos/16-observabilidad-y-costo)), **self-consistency** ([m26b](/modulos/26b-prompt-engineering)) y **guardarraíles** ([m23](/modulos/23-seguridad-red-teaming)).
+
+### Detectar la inconsistencia · el reverso del self-consistency
+
+En el [m26b](/modulos/26b-prompt-engineering), ante varias muestras de la misma pregunta, **votabas la moda** para acertar más. Aquí usamos las mismas muestras al revés: **medimos cuánto discrepan**. Poca dispersión = el modelo sabe; mucha = probablemente inventa. Es la idea de **SelfCheckGPT** reducida a aritmética testeable.
+
+```python title="28_alucinaciones.py · detectar_inconsistencia (función pura)"
+from collections import Counter
+
+def detectar_inconsistencia(respuestas):
+    # respuestas cortas ya extraídas ("París", "1812"), como el voto del m26b.
+    if not respuestas:
+        return 0.0
+    normalizadas = [_normalizar(r) for r in respuestas]   # sin puntuación ni caja
+    mas_comun = Counter(normalizadas).most_common(1)[0][1]
+    return 1 - mas_comun / len(normalizadas)   # 0 = todas iguales; →1 = todas distintas
+```
+
+```text title="▸ deberías ver al correr uv run python 28_alucinaciones.py (recortado)"
+[2] DETECTAR INCONSISTENCIA (estilo SelfCheckGPT):
+    modelo que SABE     ['París', 'parís', 'París.']
+       → divergencia 0.00  · ¿sospechosa? False
+    modelo que INVENTA  ['1812', '1798', '1820', '1805']
+       → divergencia 0.75  · ¿sospechosa? True
+```
+
+El acompañante es `medir_fragilidad()`: si cambiar una coma o un sinónimo en el prompt cambia la respuesta, el resultado dependía de la **forma**, no del conocimiento —una alerta distinta pero pariente.
+
+<Box kind="def" label="◈ Defensas de entrada · el filtro de perplejidad y SmoothLLM">
+
+Dos ideas de investigación que cierran el círculo con módulos anteriores. El **filtro de perplejidad** reusa el `calcular_perplejidad()` del [m27](/modulos/27-fundamentos-del-llm): un prompt adversarial suele ser texto "raro" con tokens improbables → perplejidad alta → se marca antes de llegar al modelo. Y **SmoothLLM** hace varias copias del prompt con perturbaciones mínimas y compara las salidas: si un carácter de más tumba el ataque, es que era frágil y malicioso. Ambas son baratas y se apilan sobre los guardarraíles del [m23](/modulos/23-seguridad-red-teaming).
+
+</Box>
+
+<Box kind="warn" label="▲ Un detector no es una garantía">
+
+La divergencia baja significa "el modelo es **consistente**", no "el modelo tiene **razón**": puede equivocarse igual de firme las tres veces (un sesgo del entrenamiento no se disipa muestreando). El detector sube una *bandera de sospecha* cuando hay dispersión; la verdad se establece con **grounding** (RAG) y **evaluación** (un dataset con respuestas de referencia), no con estadística sobre las propias muestras del modelo.
+
+</Box>
+
+<Avoid label="⛔ Cuándo NO aplicar esto">
+
+- No corras el detector en tareas **creativas** (redactar, parafrasear): ahí la variedad entre muestras es deseable, no una alucinación.
+- No pagues **N muestras** para cada consulta trivial: el muestreo múltiple multiplica el coste; resérvalo para respuestas factuales de alto riesgo.
+- No confundas **consistente** con **correcto**: sin una fuente o un dataset, un modelo puede estar seguro y equivocado a la vez.
+
+</Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Toma una pregunta factual y otra creativa, arma para cada una una lista de "muestras" simuladas y pásalas por `detectar_inconsistencia()`: verás por qué el umbral que sirve para hechos no sirve para creatividad. Luego mapea un fallo real que hayas visto a una fila de la `TAXONOMIA` y comprueba que la mitigación es un módulo que ya hiciste.
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar por qué un LLM alucina en términos del m27 (predice tokens, no consulta la verdad).
+- Nombrar cuatro causas de alucinación y la mitigación que el curso enseñó para cada una.
+- Implementar un detector de inconsistencia y decir por qué es el reverso del self-consistency.
+- Distinguir "consistente" de "correcto" y saber qué añade el grounding y los evals.
+
+</Checkpoint>
+
+<Recap level={5} label="↺ En una frase">
+
+La alucinación no se "apaga": se **entiende** (el modelo predice, no consulta), se **detecta** midiendo la divergencia entre muestras (reverso del self-consistency) y la fragilidad ante variaciones, y se **mitiga** con lo que ya sabes —RAG, evals, self-consistency y guardarraíles—.<Arch>archivos: `curso_ejemplos/28_alucinaciones.py`</Arch>
+
+</Recap>

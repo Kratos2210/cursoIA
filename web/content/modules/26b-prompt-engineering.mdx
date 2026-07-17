@@ -1,0 +1,138 @@
+export const meta = {
+  "id": "m26b",
+  "slug": "26b-prompt-engineering",
+  "title": "Prompt engineering como disciplina: few-shot, CoT, self-consistency y descomposición",
+  "kind": "module",
+  "level": 5,
+  "levelName": "AI Engineer",
+  "order": 33,
+  "badge": "26b",
+  "pyFile": "26b_prompt_engineering.py",
+  "fileref": "📋 El ejemplo: curso_ejemplos/26b_prompt_engineering.py — 100% offline en su lógica medible✓ cubierto por tests",
+  "tested": true,
+  "goals": "🎯 Al terminar sabrás: aplicar cuatro técnicas con evidencia —few-shot, chain-of-thought, self-consistency y descomposición— y, sobre todo, medir si mejoran el resultado en vez de creerlo.",
+  "prereqs": "✅ Necesitas: el m05 (salida estructurada), el m11 (RAG) y el m16 (evaluación): sin una métrica, \"mejorar un prompt\" es opinión.",
+  "minutes": "⏱️ ~30 min"
+};
+
+"Prompt engineering" suena a superstición: dile que es un experto, ponle POR FAVOR en mayúsculas, prométele propina. Nada de eso es disciplina. La disciplina es un puñado de técnicas **con nombre, con motivo y con forma de medirse**. Aquí van cuatro que se sostienen con evidencia —y los prompts del propio curso (el del m05, el del agente del proyecto) son el caso de estudio: no se ajustan a ojo, se ajustan y se **miden**.
+
+<Box kind="def" label="◈ Definición · las cuatro técnicas, una frase cada una">
+
+<DefList>
+  <Term>Few-shot (demostración)</Term>
+  <Def>En vez de *describir* la tarea, la **muestras** con k ejemplos resueltos antes de la pregunta real; el modelo imita el patrón.</Def>
+  <Term>Chain-of-thought (CoT)</Term>
+  <Def>Le pides que **razone paso a paso** antes de responder; para tareas con pasos intermedios, pensar en voz alta evita el salto directo a una conclusión equivocada.</Def>
+  <Term>Self-consistency</Term>
+  <Def>Muestreas **varias** respuestas con temperatura>0 y te quedas con la de **mayoría** (la moda); el ruido aleatorio de las pasadas malas se cancela.</Def>
+  <Term>Descomposición</Term>
+  <Def>Partes una tarea grande en **sub-preguntas** simples y resuelves cada una; divide y vencerás, aplicado al prompt.</Def>
+</DefList>
+
+</Box>
+
+<Box kind="analogy" label="◆ El examen: chuleta, borrador y segunda opinión">
+
+**Few-shot** es ver tres ejercicios *ya resueltos* antes de hacer el tuyo: copias el método. **CoT** es que te obliguen a mostrar el *procedimiento*, no solo el resultado: al escribir los pasos, cazas tu propio error. **Self-consistency** es resolver el problema *tres veces* por caminos distintos y quedarte con la respuesta que más se repite. **Descomposición** es partir un problemón en apartados a) b) c). Ninguna te enseña algo que no sepas —si ignoras el dato, ningún truco lo inventa—, pero todas te hacen fallar menos por descuido.
+
+</Box>
+
+### Few-shot · enseñar con ejemplos, no con instrucciones
+
+```python title="curso_ejemplos/26b_prompt_engineering.py · construir_prompt_fewshot (función pura)"
+def construir_prompt_fewshot(ejemplos, pregunta):
+    # k demostraciones (P→R) y LUEGO la pregunta real, aún sin responder.
+    # El ORDEN importa: el modelo continúa el texto, así que lo último que
+    # ve es la pregunta abierta y su trabajo es cerrarla imitando el patrón.
+    bloques = [f"P: {p}\nR: {r}" for p, r in ejemplos]
+    bloques.append(f"P: {pregunta}\nR:")   # la pregunta real, SIN respuesta
+    return "\n\n".join(bloques)
+```
+
+### Self-consistency · votar la respuesta de mayoría
+
+Con temperatura>0 cada muestra puede tomar un camino distinto y alguna se equivoca por azar. Muestrear N veces y quedarte con la **moda** es como promediar varias mediciones ruidosas de un termómetro: el error aleatorio se cancela.
+
+```python title="curso_ejemplos/26b_prompt_engineering.py · self_consistency (votación por mayoría)"
+from collections import Counter
+
+def self_consistency(respuestas):
+    if not respuestas:
+        return None
+    conteo = Counter(respuestas)
+    tope = max(conteo.values())
+    # Empate → la que apareció PRIMERO (Counter conserva el orden de inserción).
+    for respuesta in respuestas:
+        if conteo[respuesta] == tope:
+            return respuesta
+```
+
+```text title="▸ deberías ver al correr uv run python 26b_prompt_engineering.py"
+[4] SELF-CONSISTENCY · 5 muestras ['42', '42', '17', '42', '17']
+    → mayoría (moda): 42
+
+[5] MEDIR LA MEJORA · exactitud sobre el mini-dataset (exact-match):
+    Prompt POBRE  (salto directo)     : 0%
+    Prompt MEJOR  (CoT/descomposición): 100%
+    → estructurar la tarea sube el acierto. En el TEMA 16 esto se
+      mide 'en serio' con un dataset y la tríada RAG, no a ojo.
+```
+
+Ese último bloque es el corazón del módulo: un mini-dataset fijo y una métrica **determinista** (exact-match) que demuestran, sin gastar un token, que estructurar la tarea sube el acierto. Es el eco offline de lo que en el [m16](/modulos/16-observabilidad-y-costo) se mide "en serio" con la tríada RAG.
+
+<Box kind="warn" label="▲ Más ejemplos ≠ siempre mejor; CoT no inventa datos">
+
+Cada demostración few-shot **gasta contexto y tokens**: veinte ejemplos "por si acaso" encarecen cada llamada y pueden empujar fuera de la ventana lo que de verdad importa. Y **CoT no arregla un modelo que no sabe el dato**: razonar paso a paso ordena lo que el modelo *ya* sabe; si le falta el hecho, lo que necesitas es RAG ([m11](/modulos/11-rag-profesional)), no más "pensemos paso a paso".
+
+</Box>
+
+<Avoid label="⛔ Cuándo NO usar estas técnicas">
+
+- No uses **self-consistency** en tareas deterministas (formatear, extraer un campo): si a temperatura 0 ya sale igual siempre, muestrear N veces solo multiplica el coste sin ganar nada.
+- No pagues N muestras cuando **el coste no compensa**: self-consistency multiplica llamadas: resérvalo para lo que de verdad se beneficia de la votación (razonamiento difícil), no para todo.
+- No metas **20 ejemplos few-shot** "por si acaso": prueba con 2–3, mide, y sube solo si el número lo justifica. Contexto malgastado es dinero y latencia.
+
+</Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Toma un prompt real del proyecto (el del sistema del agente, o el del m05) y crea una **segunda variante** con CoT o con 2–3 ejemplos few-shot. Mídelas con un mini-dataset como el de este módulo —exact-match o coincidencia de palabra clave— y quédate con la que gane *de verdad*. Cuando quieras hacerlo con evals serios, es el [m16](/modulos/16-observabilidad-y-costo); y si te suena a artesanía repetitiva, mira **DSPy**: trata el prompt como parámetros a **optimizar** contra una métrica y un set de ejemplos —prompt engineering hecho búsqueda sistemática (solo lectura, no se instala aquí).
+
+</Box>
+
+<Box kind="def" label="◈ El mapa completo de técnicas de prompting · lo que hay más allá de estas cuatro">
+
+Few-shot, CoT, self-consistency y descomposición son el pan de cada día. Hay una segunda liga de técnicas para razonamiento difícil; igual que en retrieval, no las necesitas todas, pero conviene reconocer el nombre y su para-qué:
+
+<DefList>
+  <Term>Tree-of-Thoughts (ToT)</Term>
+  <Def>CoT es un camino recto; ToT **explora varias ramas** de razonamiento, evalúa cuál promete y puede **retroceder** si una no lleva a nada. Sirve para problemas con búsqueda (planificación, puzzles) donde el primer camino suele ser el equivocado.</Def>
+  <Term>Graph-of-Thought (GoT)</Term>
+  <Def>Generaliza el árbol a un **grafo**: ideas que se combinan y se refuerzan entre sí, no solo se ramifican. Sirve cuando los sub-razonamientos deben fusionarse, no elegirse.</Def>
+  <Term>Chain-of-Verification (CoVe)</Term>
+  <Def>El modelo responde, luego **se genera preguntas de verificación** sobre su propia respuesta, las contesta y corrige. Reduce alucinaciones — es el mismo espíritu del detector del [m28](/modulos/28-desafios-y-alucinaciones), pero dentro del propio prompt.</Def>
+  <Term>APE (Automatic Prompt Engineer)</Term>
+  <Def>Le pides al **LLM que redacte y optimice sus propios prompts** contra una métrica, en vez de escribirlos tú a mano. Es la idea de DSPy llevada al prompt: prompt engineering como búsqueda automática.</Def>
+  <Term>Active Prompting</Term>
+  <Def>Elegir con criterio **qué ejemplos etiquetar** para el few-shot: se marcan los casos donde el modelo duda más, porque son los que más enseñan. Sirve cuando etiquetar cuesta y quieres el máximo por ejemplo.</Def>
+</DefList>
+
+Regla práctica: **CoT + self-consistency (este módulo) cubren la mayoría de casos reales**. ToT, GoT y compañía pagan solo cuando el problema es genuinamente de búsqueda o razonamiento multi-paso — y siempre se justifican *midiendo* (m16), nunca por moda.
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar cuándo few-shot gana a describir la tarea, y por qué el orden (demostraciones → pregunta) importa.
+- Decir para qué sirve CoT y qué **no** arregla (un dato que el modelo no tiene).
+- Implementar self-consistency como votación por mayoría y justificar por qué reduce el error aleatorio de una sola pasada.
+- Comparar dos prompts con una métrica determinista y quedarte con el que mide mejor, no con el que "suena" mejor.
+
+</Checkpoint>
+
+<Recap level={5} label="↺ En una frase">
+
+Prompt engineering en serio son cuatro técnicas medibles: **few-shot** (muestra, no describas), **CoT** (razona paso a paso), **self-consistency** (vota la moda de N muestras) y **descomposición** (parte la tarea) —y ninguna vale hasta que la **mides** con un dataset y una métrica, como en el m16; DSPy lleva ese ajuste a la optimización automática.<Arch>archivos: `curso_ejemplos/26b_prompt_engineering.py`</Arch>
+
+</Recap>

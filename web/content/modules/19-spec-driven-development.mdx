@@ -1,0 +1,120 @@
+export const meta = {
+  "id": "m19",
+  "slug": "19-spec-driven-development",
+  "title": "Spec-Driven Development con spec-kit",
+  "kind": "module",
+  "level": 5,
+  "levelName": "Proyecto",
+  "order": 24,
+  "badge": "19",
+  "pyFile": null,
+  "fileref": "📋 Ejemplo trabajado real: los artefactos SDD en specs/001-verificador-curso/ y su implementación curso_ejemplos/verificar_curso.py.✓ cubierto por tests",
+  "tested": true,
+  "goals": "🎯 Al terminar sabrás: describir un cambio como spec → plan → tasks → implementación y por qué ese orden produce mejor código, sobre todo cuando quien teclea es un agente de IA.",
+  "prereqs": "✅ Necesitas: el Módulo 17b (tests y CI).",
+  "minutes": "⏱️ ~30 min"
+};
+
+<LevelBanner level={5} title="Método · Cómo se construye esto">
+
+Acabas de recorrer el curso entero. Última pregunta: ¿cómo se construye una pieza de software — como el propio verificador que mantiene todo este material coherente — sin llenarla de bugs y de decisiones que nadie recuerda? Escribiendo la especificación ANTES que el código.
+
+</LevelBanner>
+
+Todo el curso te enseñó a *escribir* IA. Este módulo cierra con la pregunta que casi nadie se hace hasta que duele: ¿cómo decides **qué** vas a construir, antes de escribir la primera línea? La costumbre es abrir el editor y teclear; la especificación, si aparece, se escribe *después* — cuando ya nadie recuerda por qué el código quedó así. **Spec-Driven Development invierte ese orden.** Y no es teoría: el verificador que protege la coherencia de este mismo material nació exactamente así, y sus artefactos están en el repo para que los leas.
+
+<Box kind="def" label="◈ Definición · Spec-Driven Development (SDD)">
+
+SDD invierte el orden habitual del desarrollo: primero se escribe **QUÉ** debe hacer el sistema y **POR QUÉ** — la *especificación* — y el código pasa a ser la *consecuencia*, no el punto de partida. La regla que lo cambia todo: **el spec es la fuente de verdad**. Si el código y el spec discrepan, no se parchea el spec para que encaje con lo que ya tecleaste; gana el spec y se corrige el código.
+
+<DefList>
+  <Term>especificación (spec)</Term>
+  <Def>El documento del QUÉ y el POR QUÉ: qué comportamiento se espera, con escenarios de aceptación. No dice *cómo* se implementa. Es el contrato.</Def>
+  <Term>plan</Term>
+  <Def>El CÓMO: las decisiones técnicas que el spec deja abiertas (qué librería, qué estructura, qué se descarta y por qué). Aquí viven los *research*, el modelo de datos y los contratos.</Def>
+  <Term>tasks</Term>
+  <Def>El plan descompuesto en tareas pequeñas y ordenadas por dependencia (T001, T002…), cada una lo bastante chica para hacerse y testearse sola.</Def>
+  <Term>constitución</Term>
+  <Def>Los principios no negociables del proyecto que condicionan *cualquier* spec (aquí: español didáctico, `uv`, tests offline, cero dependencias por comodidad). Es la ley por encima de cada feature.</Def>
+</DefList>
+
+</Box>
+
+<Box kind="analogy" label="◆ El plano antes del edificio">
+
+Nadie levanta un edificio y *luego* dibuja el plano. El plano existe para descubrir los problemas en papel — barato — antes de verterlos en hormigón — caro. En software siempre fue tentador saltarse ese paso porque "el código es blando, se cambia". Con **agentes de IA** que producen código rápido y convincente, saltarse el plano es aún **más** caro: el agente avanza muchísimo… en la dirección equivocada, y ahora tienes cien líneas plausibles que hay que entender para descubrir que sobran.
+
+</Box>
+
+### Los cinco pasos de spec-kit
+
+spec-kit es la herramienta que pone rieles a este método: cinco comandos, en orden, cada uno produce un artefacto que alimenta al siguiente.
+
+De los principios (izquierda) al código (derecha)
+
+<Flow>
+  <Step n="①" title="constitution">Principios del proyecto: español didáctico, `uv`, tests offline.</Step>
+  <Step n="②" title="/specify">spec.md: QUÉ verifica y por qué, con escenarios. Sin decir cómo.</Step>
+  <Step n="③" title="/plan">plan.md + research/data-model/contracts: las decisiones técnicas.</Step>
+  <Step n="④" title="/tasks">tasks.md: T001–T015, ordenadas por dependencia.</Step>
+  <Step n="⑤" title="/implement">`verificar_curso.py` + sus tests. El código, por fin.</Step>
+</Flow>
+
+### El ejemplo trabajado: cómo nació este verificador
+
+No es un ejemplo inventado. El script `verificar_curso.py` — el que comprueba que la web, el README y `util.py` se cuentan la misma historia — recorrió los cinco pasos, y sus artefactos están commiteados en `specs/001-verificador-curso/`. Sigue la cadena:
+
+- La **constitución** fijó un principio incómodo: *el curso no añade dependencias por comodidad* (la stdlib alcanza).
+- Por eso el **spec** pidió el QUÉ — "detectar enlaces internos rotos, tablas desincronizadas, modelos que no cuadran" — resuelto *con la biblioteca estándar*, sin decir aún cómo.
+- El **plan** tomó la decisión técnica que el spec dejó abierta: usar `html.parser` de la stdlib en vez de traer BeautifulSoup, y escribir cada chequeo como **función pura y testeable** (recibe texto, devuelve un resultado; leer ficheros e imprimir vive aparte, en `main()`).
+- Las **tasks** partieron el trabajo: una tarea por chequeo (T006 anclas, T008 carcasa sin duplicar, T011 modelos, T012 tablas), con sus tests primero.
+- La **implementación** son las cuatro comprobaciones que hoy defienden la coherencia HTML/README/util — las mismas que corriste al final de este curso.
+
+<Box kind="warn" label="▲ La lección honesta: cuando el test destapó un bug de verdad">
+
+Durante la implementación, un test reveló un fallo real: el extractor de tablas Markdown contaba la *fila de cabecera* como si fuera una fila de datos, y comparaba de más. Aquí el SDD se ganó su sueldo. Como el material del curso es de **solo lectura** (principio V de la constitución), el arreglo no fue relajar la comprobación para que se callara — eso habría sido volver cómplice al guardián — sino corregir el **verificador**, guiado por lo que el spec decía que debía pasar. El spec dijo quién tenía razón.
+
+</Box>
+
+<Box kind="warn" label="▲ SDD no es cascada ni papeleo">
+
+El spec no es un documento que firmas y congelas. **Vive**: cuando cambia el requisito, cambias el spec y *regeneras* el plan y las tasks — no lo dejas mintiendo mientras el código se aleja. Y no es para todo: un README de una línea no necesita un spec, y montarle uno sería la burocracia que SDD justamente evita. SDD es para lo que **vale la pena razonar antes de teclear** — donde una decisión olvidada cuesta cara.
+
+</Box>
+
+### Por qué esto importa aún más con agentes de IA
+
+Este es un curso de IA, así que cerremos donde más muerde. Un agente con un **spec claro** produce código *alineado*: sabe qué comportamiento se espera y contra qué se le va a medir. Un agente **sin spec** produce código *plausible pero desalineado* — compila, se ve razonable, y sin embargo resuelve un problema ligeramente distinto al que tenías. Y revisar código plausible-pero-equivocado cuesta más que escribirlo desde cero, porque primero tienes que *descubrir* en qué se desvió. El spec es el **contrato que hace revisable** el trabajo del agente: sin él no estás revisando, estás adivinando. Es la misma disciplina de [testear lo que no es el modelo](/modulos/18-capstone-final) que viste en el capstone, subida un nivel: aquí fijas la intención antes de que el modelo — o el agente — escriba nada.
+
+<Box kind="practice" label="✎ Para practicar">
+
+1. Abre `specs/001-verificador-curso/spec.md` y `tasks.md` y **traza una task de punta a punta**: toma T006 (`verificar_anclas`) y sigue el hilo desde el escenario del spec → la task → la función en `verificar_curso.py` → su test en `tests/test_verificar_curso.py`. ¿Se cumple lo que el spec prometía?
+2. Propón un **quinto chequeo**: que cada `LLM_PROVIDER` mencionado en el README exista de verdad en `util.crear_llm()`. Escribe su **spec en 3 líneas** (QUÉ y POR QUÉ) *antes* de pensar una sola línea de código.
+3. De ese quinto chequeo, esboza las **tasks** mínimas en las que lo partirías (test primero, luego implementación). No lo implementes: solo ordénalas por dependencia.
+
+<Solution summary="Ver soluciones razonadas">
+
+**1.** El spec (Historia 1) promete: "cada `href="#X"` tiene su `id="X"`; si falta, se reporta ese enlace y el proceso falla". La task T006 pide implementar `verificar_anclas(html)` comparando el conjunto de `href` contra el de `id`. La función hace justo eso con un `HTMLParser` (no una regex, para no confundirse con los `id=` que aparecen dentro de ejemplos de código). Su test le pasa un HTML con un ancla rota y comprueba `ok=False`. La cadena cierra: escenario → task → función → test dicen lo mismo.
+
+**2.** Un spec de 3 líneas: *«QUÉ: por cada `LLM_PROVIDER=…` que aparezca en el README, verificar que ese proveedor esté soportado por `util.crear_llm()`. POR QUÉ: si el README anuncia un proveedor que el código no sabe construir, el estudiante copia el `.env` y obtiene un error; el material mentiría. FALLA SI: el README nombra un proveedor ausente en `util`.»* Fíjate que ni una palabra dice *cómo* extraer los proveedores: eso es trabajo del plan.
+
+**3.** Tres tasks, en orden: (T-a) test del caso sano — un README cuyos proveedores existen todos → `ok=True` — y del caso roto — un proveedor inventado → `ok=False`; (T-b) implementar `verificar_proveedores(readme, util)` como función pura; (T-c) engancharla en `ejecutar_chequeos()` y en el informe. El test va primero porque es la definición ejecutable de "listo".
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Distinguir spec, plan y tasks: el QUÉ/POR QUÉ, el CÓMO y la descomposición ordenada.
+- Explicar por qué el spec gana sobre el código cuando discrepan (y por qué se arregla el código, no el spec).
+- Nombrar los cinco pasos de spec-kit en orden: constitution → /specify → /plan → /tasks → /implement.
+- Justificar por qué SDD ayuda *especialmente* cuando quien escribe el código es un agente de IA.
+
+</Checkpoint>
+
+<Recap level={5} label="↺ En una frase">
+
+SDD = escribir **QUÉ** y **POR QUÉ** antes del **CÓMO**; con spec-kit son cinco pasos y el **spec es la fuente de verdad** — si el código discrepa, se corrige el código.<Arch>archivos: `specs/001-verificador-curso/` · `verificar_curso.py`</Arch>
+
+</Recap>

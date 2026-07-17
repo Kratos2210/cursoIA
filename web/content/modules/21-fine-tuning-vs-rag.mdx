@@ -1,0 +1,146 @@
+export const meta = {
+  "id": "m21",
+  "slug": "21-fine-tuning-vs-rag",
+  "title": "Fine-tuning vs RAG: ¿enseñar conocimiento o comportamiento?",
+  "kind": "module",
+  "level": 5,
+  "levelName": "AI Engineer",
+  "order": 26,
+  "badge": "21",
+  "pyFile": "21_fine_tuning.py",
+  "fileref": "📋 Copia y ejecuta: curso_ejemplos/21_fine_tuning.py — 100% offline, no gasta cuota✓ cubierto por tests",
+  "tested": true,
+  "goals": "🎯 Al terminar sabrás: decidir entre RAG, fine-tuning, ambos o solo prompt, y armar un dataset de fine-tuning por chat.",
+  "prereqs": "✅ Necesitas: el Módulo 11 (RAG) y el 05 (salida estructurada).",
+  "minutes": "⏱️ ~35 min"
+};
+
+La pregunta que casi todo el mundo se hace mal: *"¿hago fine-tuning para que el modelo sepa lo de mi empresa?"*. Casi siempre la respuesta es **no** — eso es RAG. Fine-tuning y RAG resuelven problemas distintos, y confundirlos cuesta dinero y meses. Este módulo te da el modelo mental y una utilidad de **decisión**.
+
+<Box kind="def" label="◈ Definición · Conocimiento vs comportamiento">
+
+**RAG** le da al modelo una **biblioteca**: conocimiento fresco, que cambia y se puede citar, que *lee* en el momento de responder. **Fine-tuning** lo manda a la **escuela**: le enseña un **comportamiento** — un formato de salida fijo, un tono, un estilo, una forma de razonar. El fine-tuning *no* mete conocimiento nuevo ni actualizable: para eso está la biblioteca.
+
+<DefList>
+  <Term>fine-tuning</Term>
+  <Def>Reentrenar (ligeramente) el modelo con tus ejemplos para fijar *cómo* responde. Cambia el comportamiento, no lo que sabe del mundo.</Def>
+  <Term>dataset de chat</Term>
+  <Def>El formato en que se entrega: una lista de conversaciones `system → user → assistant`, donde el `assistant` es la respuesta modelo a imitar. Su calidad ES la calidad del modelo afinado.</Def>
+  <Term>JSONL</Term>
+  <Def>JSON Lines: un objeto JSON por línea, sin comas ni corchete envolvente. El formato que piden las plataformas de fine-tuning.</Def>
+  <Term>few-shot</Term>
+  <Def>Meter 2–3 ejemplos *en el prompt*. Es el "fine-tuning del pobre": sin entrenar nada, muchas veces alcanza para fijar un formato — y es el primer intento razonable.</Def>
+</DefList>
+
+</Box>
+
+<Box kind="analogy" label="◆ La biblioteca y la escuela">
+
+A un empleado nuevo le das dos cosas distintas. Le das **acceso a la biblioteca** (los manuales, que se actualizan solos) para que *consulte* datos frescos — eso es RAG. Y lo mandas a un **curso de inducción** para que aprenda *cómo* se hacen las cosas aquí: el tono con el cliente, el formato del informe — eso es fine-tuning. Mandarlo a la escuela a memorizar los precios de esta semana sería absurdo: mañana cambian. Los precios van en la biblioteca.
+
+</Box>
+
+### La decisión, como reglas
+
+La utilidad recibe unas **señales** del proyecto y devuelve el enfoque. Lo interesante es lo que *no* es fine-tuning: casi todo lo que huele a "datos" cae en RAG.
+
+```python title="21_fine_tuning.py · la regla de decisión"
+def recomendar_enfoque(senales):
+    conocimiento     = senales.get("conocimiento_cambia_seguido")     # ¿datos frescos?
+    formato          = senales.get("necesita_formato_o_estilo_fijo")  # ¿comportamiento?
+    ejemplos         = senales.get("hay_ejemplos_etiquetados")        # ¿dataset?
+    presupuesto_bajo = senales.get("presupuesto_bajo")
+
+    # Solo es viable AFINAR si quieres un comportamiento fijo Y tienes el dataset.
+    puede_afinar = formato and ejemplos and not presupuesto_bajo
+
+    if conocimiento and puede_afinar: return "ambos"    # biblioteca + escuela
+    if conocimiento:                  return "RAG"      # datos que cambian = biblioteca
+    if puede_afinar:                  return "fine-tuning"
+    if formato:                       return "prompt"   # sin dataset: few-shot
+    return "prompt"                                     # ante la duda, un buen prompt
+```
+
+### Armar el dataset (y serializarlo a JSONL)
+
+Cada ejemplo de entrenamiento es una **conversación completa** de tres turnos. El `system` fija la instrucción, el `user` pregunta y el `assistant` es la respuesta que quieres que el modelo aprenda a imitar.
+
+```python title="21_fine_tuning.py · pares (usuario, respuesta) → formato de chat → JSONL"
+def preparar_dataset_chat(pares, sistema):
+    return [
+        {"messages": [
+            {"role": "system",    "content": sistema},
+            {"role": "user",      "content": usuario},
+            {"role": "assistant", "content": respuesta},   # el ejemplo A IMITAR
+        ]}
+        for usuario, respuesta in pares
+    ]
+
+def a_jsonl(registros):
+    # un objeto JSON por línea; ensure_ascii=False conserva tildes y ñ legibles
+    return "\n".join(json.dumps(r, ensure_ascii=False) for r in registros)
+```
+
+<Box kind="warn" label="▲ Fine-tuning NO actualiza conocimiento">
+
+El error caro: afinar un modelo con los precios, el inventario o la FAQ de hoy. Mañana cambian y tu modelo miente con total seguridad — y "reeducarlo" cuesta otro entrenamiento. Los datos que cambian viven en la **biblioteca** (RAG), donde se actualizan sin tocar el modelo. El fine-tuning es para lo que *no* cambia: la forma.
+
+</Box>
+
+<Box kind="def" label="◈ El espectro completo de adaptación · del prompt al pre-entrenamiento">
+
+"RAG vs fine-tuning" es una foto en blanco y negro de un menú con seis colores. Ordenados de **menos a más** esfuerzo, datos y coste, así se adapta un LLM a tu caso — y la regla de oro es **bajar por la lista solo cuando el escalón anterior se queda corto**:
+
+1. **Prompt (zero-shot)** — solo instrucciones. Cero datos, cambio en segundos. Tu primer intento SIEMPRE.
+2. **Few-shot** — metes 2–3 ejemplos en el prompt (m26b). Sigue sin entrenar nada; fija un formato "gratis".
+3. **RAG** — le das conocimiento fresco y citable en el momento (m11). El escalón que resuelve el 90% de los "que sepa lo mío".
+4. **PEFT / LoRA** — entrenas un **1–2% de los pesos** (unos adaptadores pequeños), no el modelo entero: cabe en una sola GPU, es barato y NO borra lo que el modelo ya sabía (menos "olvido catastrófico"). El fine-tuning que de verdad se usa hoy.
+5. **Full fine-tuning** — reentrenas todos los pesos. Máximo control del comportamiento, pero caro, lento y con riesgo de olvido; casi nunca se justifica frente a LoRA.
+6. **Pre-entrenamiento de dominio** — entrenar (casi) desde cero con un corpus enorme del sector, como **BloombergGPT** (finanzas). Coste de millones; solo para quien tiene datos y bolsillo de esa escala.
+
+| Enfoque | Qué cambias | Datos que necesitas | Coste |
+| --- | --- | --- | --- |
+| Prompt / few-shot | El texto de entrada | 0–3 ejemplos | Casi nulo |
+| RAG | El contexto recuperado | Tus documentos | Bajo (infra de búsqueda) |
+| PEFT / LoRA | ~1–2% de los pesos | Cientos–miles de ejemplos | Medio (1 GPU) |
+| Full fine-tuning | Todos los pesos | Miles de ejemplos de calidad | Alto |
+| Pre-entrenamiento | El modelo desde cero | Corpus masivo del dominio | Millones |
+
+Dos matices que cierran el mapa. El **instruction tuning** es el fine-tuning que convierte un modelo "autocompletar" en uno que *obedece órdenes*: es lo que ya trae de fábrica el modelo que usas. Y el *cómo* se enseña ese comportamiento —**RLHF y su alternativa DPO**— lo abrimos en el [m27](/modulos/27-fundamentos-del-llm): aquí basta saber que ambos son formas de afinar la *conducta*, no de meter conocimiento.
+
+</Box>
+
+<Avoid label="⛔ Cuándo NO usar esto">
+
+- No hagas fine-tuning para meter **datos que cambian** (precios, stock, políticas): eso es RAG. Afinar los congela y los vuelve mentira en cuanto se actualicen.
+- No afines **sin un dataset de calidad y suficiente**: un puñado de ejemplos ruidosos empeora el modelo. Sin dataset, empieza por few-shot en el prompt.
+- No afines lo que un **buen prompt** ya resuelve: es más lento de iterar y más caro de servir. El fine-tuning se gana cuando el prompt se queda corto y tienes con qué enseñar.
+
+</Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Para cada caso, decide el enfoque y justifícalo en una línea: **(a)** un bot que responde SIEMPRE en JSON estricto, con 800 ejemplos etiquetados; **(b)** un asistente sobre una wiki interna que se edita a diario; **(c)** imitar el tono de tu marca, pero aún no tienes ejemplos escritos.
+
+<Solution summary="Ver soluciones razonadas">
+
+**(a)** `fine-tuning`: es comportamiento (formato fijo) y hay dataset. **(b)** `RAG`: conocimiento que cambia a diario — biblioteca, no escuela. **(c)** `prompt`: quieres fijar un estilo (comportamiento) pero sin dataset todavía; arranca con few-shot y, cuando acumules buenos ejemplos, evalúa afinar.
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar en una frase la diferencia RAG (conocimiento) vs fine-tuning (comportamiento).
+- Justificar por qué los datos que cambian NUNCA van en un fine-tuning.
+- Armar un dataset de chat `system/user/assistant` y serializarlo a JSONL.
+- Decidir entre RAG, fine-tuning, ambos o prompt a partir de las señales de un proyecto.
+
+</Checkpoint>
+
+<Recap level={5} label="↺ En una frase">
+
+RAG = biblioteca (conocimiento fresco y citable); fine-tuning = escuela (formato, tono, estilo). Si el dato cambia o hay que citarlo, es RAG; si quieres fijar la forma y tienes dataset, es fine-tuning; ante la duda, un buen prompt.<Arch>archivo: `21_fine_tuning.py` (offline)</Arch>
+
+</Recap>

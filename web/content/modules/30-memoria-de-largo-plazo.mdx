@@ -1,0 +1,140 @@
+export const meta = {
+  "id": "m30",
+  "slug": "30-memoria-de-largo-plazo",
+  "title": "Memoria de largo plazo: recordar ENTRE conversaciones",
+  "kind": "module",
+  "level": 5,
+  "levelName": "AI Engineer",
+  "order": 37,
+  "badge": "30",
+  "pyFile": "30_memoria_largo_plazo.py",
+  "fileref": "📋 Copia y ejecuta: curso_ejemplos/30_memoria_largo_plazo.py — 100% offline, no gasta cuota✓ cubierto por tests",
+  "tested": true,
+  "goals": "🎯 Al terminar sabrás: dar al agente memoria que persiste entre conversaciones con el store de LangGraph, y por qué es una pieza distinta del checkpointer.",
+  "prereqs": "✅ Necesitas: el m10 (checkpointer) y el m13 (StateGraph).",
+  "minutes": "⏱️ ~35 min"
+};
+
+<LevelBanner level={5} title="AI Engineer · La memoria que sobrevive a la conversación">
+
+Tu agente ya recuerda lo dicho en un hilo (el checkpointer del m10/m13). Pero abre otra conversación y no sabe quién eres. Esto es lo que le falta para recordarte mañana.
+
+</LevelBanner>
+
+El [checkpointer](/modulos/10-agentes-prebuilt) te dio memoria **conversacional**: dentro de un mismo `thread_id`, el agente recuerda lo que se dijo tres turnos atrás. Pero esa memoria está **atada al hilo**. Cierra la conversación, abre otra mañana (otro `thread_id`) y el agente vuelve a preguntarte cómo te llamas. Para un asistente que atiende al mismo usuario muchas veces, eso es inaceptable: necesita **memoria de largo plazo**, hechos sobre el usuario que sobreviven a la conversación.
+
+<Box kind="def" label="◈ Definición · checkpointer vs store">
+
+LangGraph separa dos memorias porque resuelven problemas distintos:
+
+<DefList>
+  <Term>checkpointer (memoria de trabajo)</Term>
+  <Def>Guarda el **estado de una conversación**, indexado por `thread_id`. Es lo que hace que el agente siga el hilo. Se olvida al cambiar de hilo — y así debe ser.</Def>
+  <Term>store (memoria de largo plazo)</Term>
+  <Def>Guarda **datos indexados por *namespace* + clave**, independientes del hilo. Es donde viven los hechos del usuario ("se llama Ana", "es alérgica al maní") para recuperarlos en cualquier conversación futura.</Def>
+  <Term>namespace</Term>
+  <Def>Una **tupla** que agrupa memorias como carpetas: usamos `("memorias", user_id)` para que las de un usuario nunca se mezclen con las de otro.</Def>
+</DefList>
+
+</Box>
+
+<Box kind="analogy" label="◆ La pizarra y la ficha del cliente">
+
+El **checkpointer** es la **pizarra** de una sala de reuniones: apuntas ahí lo que importa *durante* la reunión, y al terminar se borra para la siguiente. El **store** es la **ficha del cliente en el CRM**: cuando el cliente vuelve —otra reunión, otro día, otra pizarra— abres su ficha y ahí sigue todo lo que aprendiste de él. Un buen asistente usa las dos: la pizarra para seguir *esta* charla, la ficha para reconocerte en la *próxima*.
+
+</Box>
+
+### El CRUD mínimo sobre el store
+
+El store es un almacén clave→valor por namespace. Tres operaciones bastan (firmas verificadas contra el paquete instalado, no de memoria):
+
+```python title="30_memoria_largo_plazo.py · guardar y recuperar (100% offline)"
+from langgraph.store.memory import InMemoryStore
+
+def namespace_de(user_id):                 # el "cajón" de UN usuario
+    return ("memorias", user_id)           # tupla: agrupa como carpetas
+
+def guardar_hecho(store, user_id, clave, valor):
+    # value va como dict (el store guarda JSON, no strings sueltos): deja sitio
+    # para enriquecerlo luego (fecha, fuente) sin cambiar cómo se lee.
+    store.put(namespace_de(user_id), clave, {"dato": valor})
+
+def recuperar_hechos(store, user_id):
+    # search sobre el namespace del usuario trae TODOS sus items.
+    items = store.search(namespace_de(user_id))
+    return {item.key: item.value["dato"] for item in items}
+```
+
+### Decidir qué vale la pena recordar
+
+La regla de oro: **no guardes la conversación entera, guarda el hecho destilado**. Aquí la extracción es determinista (regex, testeable byte a byte); en producción suele hacerla el propio LLM con [salida estructurada (m05)](/modulos/05-salida-estructurada), pero la idea es la misma.
+
+```python title="de una frase del usuario a un hecho memorable (o a nada)"
+extraer_preferencia("hola, me llamo Ana")         # -> ("nombre", "Ana")
+extraer_preferencia("soy alérgica al maní")       # -> ("alergia", "maní")
+extraer_preferencia("prefiero respuestas cortas") # -> ("estilo", "cortas")
+extraer_preferencia("¿qué tal el clima?")         # -> None  (nada que recordar)
+```
+
+### El agente que consulta su memoria
+
+Al agente se le pasa el `store` igual que el checkpointer. Una tool lo alcanza con `get_store()` —LangGraph se lo inyecta en tiempo de ejecución— y así el modelo puede decir "según recuerdo, te llamas Ana" en una conversación **nueva**.
+
+```python title="create_react_agent con las DOS memorias"
+from langgraph.config import get_store
+
+@tool
+def recordar_sobre_el_usuario() -> str:
+    """Devuelve lo que se sabe del usuario (nombre, alergias, preferencias)."""
+    hechos = recuperar_hechos(get_store(), user_id)   # el MISMO store del agente
+    return "; ".join(f"{k}: {v}" for k, v in hechos.items()) or "No recuerdo nada aún."
+
+agente = create_react_agent(
+    llm, tools=[recordar_sobre_el_usuario],
+    store=store,                 # memoria de LARGO PLAZO (entre conversaciones)
+    checkpointer=MemorySaver(),  # memoria de TRABAJO (dentro de la conversación)
+)
+```
+
+<Box kind="warn" label="▲ El store necesita un backend real para persistir de verdad">
+
+`InMemoryStore` vive en RAM: perfecto para aprender y testear, pero se borra al reiniciar el proceso. Para que la memoria sobreviva a un despliegue usa un backend persistente —`PostgresStore` (el mismo Postgres del checkpointer) o Redis—. La *interfaz* (`put`/`get`/`search`) es idéntica: cambias dónde vive, no cómo lo usas.
+
+</Box>
+
+<Box kind="def" label="⛔ Cuándo NO usar memoria de largo plazo">
+
+- **No metas TODO en la ficha.** Guardar cada mensaje ensucia la memoria, sube el coste (más contexto en cada prompt) y esconde lo importante. Guarda hechos destilados y estables, no el historial.
+- **Datos que cambian rápido** (el saldo de una cuenta, el stock) NO son memoria: se consultan a la fuente en cada turno, como en el [m29](/modulos/29-caso-real-2-retail). La memoria es para lo que *define* al usuario, no para hechos volátiles.
+- **PII sin consentimiento.** Recordar "es alérgica al maní" es dato de salud: aplica el [m23](/modulos/23-seguridad-red-teaming) (consentimiento, minimización, borrado a pedido). Una memoria que no se puede borrar es un problema legal, no una feature.
+
+</Box>
+
+<Box kind="practice" label="✎ Para practicar">
+
+1. Corre `30_memoria_largo_plazo.py`: verás que lo aprendido en el hilo `dia-1` se recupera en `dia-2`. Cambia las frases de la conversación 1 y comprueba qué se recuerda.
+2. Añade un patrón nuevo a `extraer_preferencia` (p. ej. "trabajo en …" → `ocupacion`) y un test que lo cubra.
+3. Escribe una función `olvidar(store, user_id, clave)` que borre un hecho (pista: `store.delete(namespace, key)`). Es el "borrado a pedido" que exige la privacidad.
+
+<Solution summary="Ver pista de la 3">
+
+`store.delete(namespace_de(user_id), clave)` elimina esa clave del namespace del usuario; luego `recuperar_hechos` ya no la trae. Con eso, un usuario que pide "olvida mi dirección" queda atendido sin tocar el resto de su ficha.
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar en una frase la diferencia entre checkpointer (por hilo) y store (por namespace).
+- Guardar y recuperar hechos de un usuario con `put`/`search`, aislados por `user_id`.
+- Pasarle el `store` a un agente y leerlo desde una tool con `get_store()`.
+- Decir qué NO debe ir a la memoria (datos volátiles, ruido, PII sin consentimiento).
+
+</Checkpoint>
+
+<Recap level={5} label="↺ En una frase">
+
+El checkpointer recuerda **la conversación** (por `thread_id`); el store recuerda **al usuario** (por `namespace`) y sobrevive a la conversación — dale las dos y tu agente te reconoce mañana.<Arch>archivo: `30_memoria_largo_plazo.py`</Arch>
+
+</Recap>

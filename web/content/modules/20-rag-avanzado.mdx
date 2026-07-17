@@ -1,0 +1,164 @@
+export const meta = {
+  "id": "m20",
+  "slug": "20-rag-avanzado",
+  "title": "RAG avanzado: transformar la pregunta ANTES de buscar",
+  "kind": "module",
+  "level": 5,
+  "levelName": "AI Engineer",
+  "order": 25,
+  "badge": "20",
+  "pyFile": "20_rag_avanzado.py",
+  "fileref": "📋 Copia y ejecuta: curso_ejemplos/20_rag_avanzado.py — 100% offline, no gasta cuota✓ cubierto por tests",
+  "tested": true,
+  "goals": "🎯 Al terminar sabrás: mejorar el recall del RAG con multi-query y RAG-Fusion, tocando la pregunta y no el índice.",
+  "prereqs": "✅ Necesitas: el Módulo 12 (híbrido + RRF).",
+  "minutes": "⏱️ ~40 min"
+};
+
+<LevelBanner level={5} title="Empieza el track AI Engineer">
+
+Ya sabes construir y desplegar. Estos tres módulos son las técnicas que separan a quien "usa un LLM" de quien diseña un sistema de IA: recuperar mejor la pregunta, decidir entre RAG y fine-tuning, y darle ojos al modelo.
+
+</LevelBanner>
+
+En el [Módulo 12](/modulos/12-recuperar-re-rankear) mejoraste el RAG por el lado del **índice**: buscar mejor (híbrido) y reordenar mejor (re-ranking) *después* de recuperar. Aquí atacamos el otro extremo, el que casi nadie toca: la **pregunta**. Una sola formulación es una sola apuesta — y si el usuario escribe "devolución" mientras el documento dice "reembolso", esa apuesta pierde y el chunk correcto queda invisible. La cura es preguntar de **varias maneras** y fusionar lo que traiga cada una.
+
+<Box kind="def" label="◈ Definición · Multi-query y RAG-Fusion">
+
+**Multi-query** es reformular la pregunta en 3–4 variantes (sinónimos, sin muletillas, solo palabras clave) y buscar con todas. **RAG-Fusion** es el paso que sigue: recuperar con cada variante y **fusionar los rankings con RRF** (la misma fórmula del Módulo 12). Un chunk que aparece en varias búsquedas sube; el ruido que solo una trajo se diluye.
+
+<DefList>
+  <Term>recall</Term>
+  <Def>De los fragmentos *relevantes* que existen, cuántos llegaste a recuperar. Multi-query ataca justo esto: más formulaciones, menos relevantes que se te escapan.</Def>
+  <Term>reformulación</Term>
+  <Def>Otra manera de decir lo mismo. En producción la escribe el LLM ("dame 3 formas de preguntar esto"); aquí, plantillas deterministas para que el test sea reproducible y gratis.</Def>
+  <Term>RRF sobre variantes</Term>
+  <Def>El mismo Reciprocal Rank Fusion del Módulo 12, pero fusionando los rankings de *distintas preguntas* en vez de *distintos buscadores*. La idea es idéntica: premiar al que aparece en varias listas.</Def>
+  <Term>umbral de relevancia</Term>
+  <Def>Descartar los candidatos de puntaje 0. Es lo que evita que una reformulación que no casó con nada ensucie la fusión con un orden arbitrario.</Def>
+</DefList>
+
+</Box>
+
+<Box kind="analogy" label="◆ Preguntarle a varios bibliotecarios">
+
+Buscar con una sola formulación es preguntarle a **un** bibliotecario que quizá no conoce tu palabra. Multi-query es preguntarle **al equipo entero**, cada uno con su vocabulario: uno entiende "devolución", otro "reembolso", otro "reintegro". Luego te quedas con el libro que *más* de ellos te señalaron. Esa votación es RRF.
+
+</Box>
+
+### Paso 1 · Expandir la consulta
+
+La pregunta cruda produce varias reformulaciones deterministas. La clave está en el **mapa de sinónimos del dominio**: es lo que tapa el hueco "lo que dice el usuario ↔ lo que dice el documento".
+
+```python title="20_rag_avanzado.py · multi-query a mano"
+def expandir_consulta(pregunta):
+    base = pregunta.strip()
+    tokens = tokenizar(base)
+    variantes = [base]
+    # 2) solo palabras clave: fuera muletillas (de, la, mi...)
+    clave = [t for t in tokens if t not in STOPWORDS]
+    if clave:
+        variantes.append(" ".join(clave))
+    # 3) sustituir cada palabra por su sinónimo del dominio (devolución -> reembolso)
+    variantes.append(" ".join(SINONIMOS.get(t, t) for t in tokens))
+    # 4) la original MÁS los sinónimos añadidos (suma señales, no reemplaza)
+    extra = [SINONIMOS[t] for t in tokens if t in SINONIMOS]
+    if extra:
+        variantes.append(base + " " + " ".join(dict.fromkeys(extra)))
+    return list(dict.fromkeys(variantes))   # dedup conservando el orden
+```
+
+### Paso 2 · Recuperar con umbral, y fusionar con RRF
+
+Cada variante trae sus candidatos, pero con una regla nueva respecto al Módulo 12: si una reformulación no casa con **nada**, devuelve una lista **vacía** en vez de un orden arbitrario. Es la diferencia entre "no encontré nada" y "aquí van resultados al azar" — y es lo que hace que la fusión no se envenene.
+
+```python title="20_rag_avanzado.py · el umbral que protege la fusión"
+def recuperar(pregunta, chunks, k=3):
+    puntajes = puntuar(pregunta, chunks)          # coseno sobre términos de contenido
+    orden = sorted(range(len(chunks)), key=lambda i: puntajes[i], reverse=True)
+    # PORQUÉ el filtro puntajes[i] > 0: una variante que no encontró nada NO debe
+    # aportar un ranking basura a RRF. "Nada" es una respuesta válida.
+    return [i for i in orden if puntajes[i] > 0][:k]
+
+def rag_fusion(pregunta, chunks, k=3, ancho=3):
+    variantes = expandir_consulta(pregunta)
+    rankings = [recuperar(v, chunks, k=ancho) for v in variantes]
+    return fusion_rrf(rankings)[:k]               # el mismo RRF del Módulo 12
+```
+
+```text title="▸ deberías ver al correr 20_rag_avanzado.py (recortado)"
+Pregunta: ¿Cómo pido la devolución de mi dinero?
+
+=== Ranking A · UNA sola búsqueda (pregunta cruda) ===
+  (nada superó el umbral: la pregunta cruda no casó con ningún chunk)
+
+=== Ranking B · RAG-FUSION (multi-query + RRF) ===
+  1º · chunk 3: Política de reembolsos: Ofrecemos reembolso completo dentro de…
+```
+
+<Box kind="warn" label="▲ El coste es real: N búsquedas + N llamadas al LLM">
+
+Multi-query no es gratis. Cada reformulación es una búsqueda más, y en producción cada una **además** nace de una llamada al LLM que la redacta. Cuatro variantes ≈ 4× latencia de recuperación + una generación extra. Vale la pena cuando el recall es tu cuello de botella; es puro desperdicio cuando ya recuperabas bien.
+
+</Box>
+
+<Avoid label="⛔ Cuándo NO usar esto">
+
+- Si la pregunta ya es **literal** y el RAG básico acierta (códigos, SKUs, nombres propios): reformular solo añade ruido y coste. Mídelo con `precision@k` antes de meterlo.
+- Si tu latencia ya está al límite: N búsquedas + N generaciones de reformulación pueden doblar el tiempo de respuesta. Multi-query paga en *calidad*, no en *velocidad*.
+- Si tus reformulaciones son casi idénticas a la original: fusionar cuatro veces la misma búsqueda no descubre nada nuevo. La ganancia viene de variantes que exploran *otro vocabulario*.
+
+</Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+**Predice antes de ejecutar.** Añade al mapa `SINONIMOS` el par `"cancelar" → "reembolso"` y cambia la pregunta a `"¿Puedo cancelar y recuperar mi dinero?"`. ¿Qué variantes genera `expandir_consulta`? ¿Sube el chunk de reembolsos? Escríbelo en un papel y solo entonces córrelo.
+
+Segundo reto: haz que `comprimir_contexto` devuelva también *de qué chunk* salió cada frase, para poder citar la fuente en la respuesta.
+
+</Box>
+
+<Box kind="def" label="◈ Más allá · el catálogo del retrieval de siguiente nivel">
+
+Multi-query y RAG-Fusion atacan la *pregunta*. Hay un cajón de técnicas más para cuando ni así llega el recall; no necesitas todas, pero conviene saber que existen y qué problema resuelve cada una:
+
+<DefList>
+  <Term>HyDE (Hypothetical Document Embeddings)</Term>
+  <Def>En vez de buscar con la *pregunta*, pides al LLM una **respuesta hipotética** y buscas con ESA. ¿Por qué funciona? Una respuesta inventada se parece más —en vocabulario y forma— al documento real que la pregunta seca. Sirve cuando la pregunta y el documento "hablan distinto".</Def>
+  <Term>Sentence-window</Term>
+  <Def>Indexas frases sueltas (precisión al buscar) pero al recuperar devuelves la frase **más su vecindario** (la ventana): encuentras fino y entregas con contexto. Sirve cuando el chunk exacto se queda corto de contexto para responder.</Def>
+  <Term>Auto-merging</Term>
+  <Def>Chunks pequeños que "conocen" a su chunk padre: si recuperas varios hijos del mismo padre, el sistema los **fusiona** y te da el bloque grande. Sirve para respuestas que necesitan una sección entera, no fragmentos sueltos.</Def>
+  <Term>Query routing</Term>
+  <Def>Un clasificador decide **a qué índice o herramienta** mandar la pregunta (la normativa a un store, las cifras a una DB SQL, lo genérico al LLM directo). Sirve cuando tienes varias fuentes y no todas responden lo mismo.</Def>
+</DefList>
+
+Regla práctica: **multi-query y RAG-Fusion (este módulo) cubren el 80% de los casos**. Estas cuatro son el 20% restante — se añaden de a una, midiendo con la tríada del [m16](/modulos/16-observabilidad-y-costo), cuando el recall sigue siendo tu cuello de botella y ya no por falta de reformular.
+
+</Box>
+
+<Box kind="def" label="◈ Cuando las relaciones importan: GraphRAG">
+
+Todo lo anterior mejora el RAG *vectorial*: recuperas los fragmentos más **parecidos** a la pregunta. Pero hay preguntas que ningún fragmento suelto contesta —"¿qué conecta a este proveedor con aquel incidente?", "¿cuáles son los tres temas que atraviesan todo el corpus?"—. Ahí entra **GraphRAG**: en vez de (o además de) indexar texto, un LLM extrae **entidades y relaciones** y arma un **grafo de conocimiento**; la recuperación entonces *navega* ese grafo (vecindarios, caminos, comunidades) en lugar de solo medir similitud.
+
+- **Gana** en preguntas *multi-salto* (cruzar varios documentos para unir hechos) y de *agregación global* (resumir o "temar" todo el corpus), donde el top-k vectorial se queda corto porque la respuesta no vive en ningún fragmento único.
+- **Cuesta** construir el grafo (muchas llamadas al LLM para extraer entidades) y mantenerlo al día. Para QA factual simple —"¿cuál es la política de devoluciones?"— el RAG vectorial del [m11](/modulos/11-rag-profesional)/[m12](/modulos/12-recuperar-re-rankear) es más barato y basta.
+
+Regla práctica: empieza vectorial; sube a GraphRAG solo cuando veas que las preguntas de tus usuarios *cruzan* documentos y el top-k nunca trae todo lo necesario.
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar la diferencia entre mejorar el RAG por el índice (Módulo 12) y por la pregunta (multi-query).
+- Decir por qué una reformulación sin resultados debe devolver *vacío* y no un orden arbitrario.
+- Reconocer que RAG-Fusion sube el recall a cambio de N búsquedas y N llamadas al LLM.
+- Nombrar el caso donde multi-query estorba: preguntas literales que el RAG básico ya acierta.
+
+</Checkpoint>
+
+<Recap level={5} label="↺ En una frase">
+
+Si una sola formulación deja huecos, pregunta de varias maneras y fusiona con RRF: **multi-query + RAG-Fusion** suben el recall a costa de N búsquedas — y la reformulación que no encuentra nada no debe ensuciar la fusión.<Arch>archivo: `20_rag_avanzado.py` (offline)</Arch>
+
+</Recap>

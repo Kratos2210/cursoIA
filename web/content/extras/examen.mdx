@@ -1,0 +1,240 @@
+export const meta = {
+  "id": "examen",
+  "slug": "examen",
+  "title": "Examen final: ¿ya lo tienes?",
+  "kind": "extra",
+  "level": 5,
+  "levelName": "AI Engineer",
+  "order": 38,
+  "badge": "📝",
+  "pyFile": null,
+  "fileref": null,
+  "tested": false,
+  "goals": null,
+  "prereqs": null,
+  "minutes": null
+};
+
+Hazlo cuando hayas terminado los cuatro niveles. Son **24 preguntas nuevas** —no las de los quizzes, sino los mismos conceptos vistos desde otro ángulo— repartidas en seis bloques: uno por nivel y un sexto sobre el **caso real de retail** (m29). Cada bloque te da su nota al completarlo; cuando termines los seis, verás abajo tu **nota total sobre 24** con el desglose.
+
+<Box kind="analogy" label="◆ Cómo leer tu nota">
+
+**Aprobado: 17/24** (70%). Pero mira también el desglose: un bloque por debajo de **2 de 4** es la señal de que ese nivel pide un repaso antes de construir en producción — no un "suspenso", una pista de dónde volver. Cada respuesta se bloquea al primer clic, igual que en los quizzes: piénsala antes de tocar.
+
+</Box>
+
+<Quiz title="Bloque 1 · Nivel Básico (módulos 01–04)">
+
+<Question>
+  <Prompt>1 · Pones `temperature=0`. ¿Qué consigues?</Prompt>
+  <Option>Respuestas más rápidas</Option>
+  <Option ok>La salida más determinista y repetible posible</Option>
+  <Option>Respuestas más cortas para gastar menos</Option>
+  <Feedback>0 = repetible; subirla añade variedad. No tiene que ver con velocidad ni con coste (Módulo 01).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · En `prompt | llm | StrOutputParser()`, ¿qué hace el último eslabón?</Prompt>
+  <Option>Envía la petición a Google</Option>
+  <Option ok>Extrae el texto plano del mensaje que devuelve el modelo</Option>
+  <Option>Valida la respuesta contra un molde Pydantic</Option>
+  <Feedback>Sin él te queda un `AIMessage`, no un `str`. El parser saca el `.content` (Módulo 02).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Tienes 200 preguntas independientes que resolver ya. ¿Qué método usas?</Prompt>
+  <Option>`stream`, para verlas token a token</Option>
+  <Option ok>`batch`, que manda el lote y lo paraleliza</Option>
+  <Option>Un `for` con `invoke`, una por una</Option>
+  <Feedback>batch es para lotes; stream es para mostrar una sola respuesta según se genera (Módulo 03).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · ¿Dónde vive la memoria de una conversación?</Prompt>
+  <Option>Dentro del modelo, que recuerda entre llamadas</Option>
+  <Option ok>En tu código: reenvías el historial en cada turno</Option>
+  <Option>En un archivo que Gemini guarda por ti</Option>
+  <Feedback>El modelo no guarda nada; el `MessagesPlaceholder` es el hueco donde reinyectas ese historial (Módulo 04).</Feedback>
+</Question>
+
+</Quiz>
+
+<Quiz title="Bloque 2 · Nivel Intermedio (módulos 05–09)">
+
+<Question>
+  <Prompt>1 · ¿Por qué usar salida estructurada en vez de pedir "devuélveme un JSON" en el prompt?</Prompt>
+  <Option>Porque gasta menos tokens</Option>
+  <Option ok>Porque el resultado llega validado contra el molde: si no encaja, falla claro</Option>
+  <Option>Porque permite temperaturas más altas</Option>
+  <Feedback>Recibes un objeto tipado, no un texto que hay que parsear y rezar para que venga bien (Módulo 05).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Para qué sirve `RunnablePassthrough`?</Prompt>
+  <Option>Para reintentar un paso que falló</Option>
+  <Option ok>Para dejar pasar la entrada intacta mientras otras ramas la transforman</Option>
+  <Option>Para convertir la salida final en texto</Option>
+  <Feedback>Típico en RAG: la pregunta pasa intacta por una rama y el contexto recuperado por otra (Módulo 06).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Ejecutaste la tool, pero el modelo aún no da la respuesta final. ¿Qué falta?</Prompt>
+  <Option>Volver a llamar a `bind_tools`</Option>
+  <Option ok>Devolver un `ToolMessage` y volver a invocar al modelo (paso D)</Option>
+  <Option>Subir la `temperature`</Option>
+  <Feedback>Sin el `ToolMessage` + la reinvocación, el modelo nunca ve el resultado. El error clásico (Módulo 08).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Tu prompt está mal y el modelo responde mal. ¿Lo arregla un `with_retry`?</Prompt>
+  <Option>Sí: reintentar siempre mejora la respuesta</Option>
+  <Option ok>No: retry repite lo mismo; sirve para fallos temporales (429), no para un prompt malo</Option>
+  <Option>Sí, si subes `stop_after_attempt`</Option>
+  <Feedback>Retry reintenta lo idéntico; para un prompt malo no hay reintento que valga. El fallback va a otro modelo, no a otro prompt (Módulo 09).</Feedback>
+</Question>
+
+</Quiz>
+
+<Quiz title="Bloque 3 · Nivel Avanzado (módulos 10–13)">
+
+<Question>
+  <Prompt>1 · ¿Qué te ahorra `create_react_agent` frente a cablear el ciclo a mano?</Prompt>
+  <Option>Elegir el proveedor del modelo</Option>
+  <Option ok>El ciclo pensar→actuar→observar completo: repite las vueltas de tools por ti</Option>
+  <Option>Escribir los docstrings de las tools</Option>
+  <Feedback>Automatiza el bucle A→D repetido hasta terminar; tú pones modelo, tools y checkpointer (Módulo 10).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Qué evita que un RAG invente respuestas fuera de tus documentos?</Prompt>
+  <Option>Bajar `k` a 1</Option>
+  <Option ok>La instrucción en el prompt de responder solo con el contexto recuperado</Option>
+  <Option>Usar embeddings más grandes</Option>
+  <Feedback>Sin esa regla el modelo rellena huecos con su conocimiento general; con ella admite "no está en el contexto" (Módulo 11).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · La búsqueda híbrida fusiona un ranking denso y uno BM25 con RRF. ¿Qué usa RRF?</Prompt>
+  <Option>El promedio de los puntajes de cada motor</Option>
+  <Option ok>El puesto de cada documento en cada ranking, no sus puntajes</Option>
+  <Option>Solo el ranking que dio mayor puntaje</Option>
+  <Feedback>Usar la posición evita comparar puntajes de escalas distintas (denso vs BM25) (Módulo 12).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · En un `StateGraph`, ¿qué decide si el flujo vuelve a un nodo o termina?</Prompt>
+  <Option>El orden en que declaraste los nodos</Option>
+  <Option ok>Una arista condicional que lee el estado y enruta a un nodo o a `END`</Option>
+  <Option>El checkpointer</Option>
+  <Feedback>Sin una condición que salga a `END`, el grafo cicla para siempre: es el mismo bucle infinito del supervisor (Módulo 13).</Feedback>
+</Question>
+
+</Quiz>
+
+<Quiz title="Bloque 4 · Nivel Producción (módulos 14–17b)">
+
+<Question>
+  <Prompt>1 · Además de estandarizar, ¿qué aporta MCP a un servidor de herramientas?</Prompt>
+  <Option>Hace que las tools respondan más rápido</Option>
+  <Option ok>Un borde controlado: expone solo lo que decides, con permisos claros</Option>
+  <Option>Traduce las tools a varios idiomas</Option>
+  <Feedback>El servidor publica tools/resources/prompts de forma acotada; el agente descubre solo lo autorizado (Módulo 14).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · En el diagrama de microservicios, ¿dónde está la línea entre lo que recuerda y lo que no?</Prompt>
+  <Option>Cada servicio guarda su propia copia del estado</Option>
+  <Option ok>Arriba los servicios no recuerdan nada; abajo el estado vive en vector store, checkpointer y log</Option>
+  <Option>El balanceador guarda el estado de cada usuario</Option>
+  <Feedback>Stateless arriba, estado compartido afuera: así matas y recreas cualquier copia sin perder la conversación (Módulo 15b).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · ¿Por qué el curso insiste en medir tokens y traducirlos a dólares?</Prompt>
+  <Option>Porque Google lo exige en el plan gratuito</Option>
+  <Option ok>Porque el coste escala con los tokens y una degradación en cascada puede dispararlo sin que lo notes</Option>
+  <Option>Porque menos tokens siempre significan mejor respuesta</Option>
+  <Feedback>Un agente que reintenta o arrastra contexto largo se vuelve caro en silencio si no observas tokens→coste (Módulo 16).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · ¿Por qué en un repo productivo "nada se ejecuta al importar" un módulo?</Prompt>
+  <Option>Para que el archivo pese menos</Option>
+  <Option ok>Para poder importarlo y testearlo sin disparar llamadas caras a la API ni efectos secundarios</Option>
+  <Option>Porque Python lo prohíbe</Option>
+  <Feedback>Si construir el retriever corriera al importar, cada test pagaría esa llamada; por eso la lógica cara va en funciones (Módulo 17 · 17b).</Feedback>
+</Question>
+
+</Quiz>
+
+<Quiz title="Bloque 5 · Nivel AI Engineer (módulos 20–26b)">
+
+<Question>
+  <Prompt>1 · RAG-Fusion lanza la pregunta en 4 variantes y cada una devuelve su ranking. ¿Cómo los combina?</Prompt>
+  <Option>Promedia los puntajes de similitud de cada variante</Option>
+  <Option ok>Con RRF: suma según el *puesto* de cada chunk en cada ranking, no sus puntajes</Option>
+  <Option>Se queda con el ranking de la variante que dio el puntaje más alto</Option>
+  <Feedback>Es el mismo RRF del Módulo 12, pero fusionando rankings de distintas *preguntas*: premia al chunk que aparece en varias listas, sin comparar puntajes de escalas distintas (Módulo 20).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · Tu empresa cambia sus políticas cada mes y quieres que el asistente responda con la última. ¿RAG o fine-tuning?</Prompt>
+  <Option>Fine-tuning: así el modelo "aprende" tus políticas</Option>
+  <Option ok>RAG: el conocimiento que cambia va al índice; el fine-tuning es para el estilo/formato, no para los datos</Option>
+  <Option>Fine-tuning mensual, reentrenando con cada versión</Option>
+  <Feedback>Datos que cambian → RAG (actualizas el índice, no reentrenas). Fine-tuning enseña *comportamiento*: tono, formato, un estilo de respuesta (Módulo 21).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · En una tarea de razonamiento, muestreas 5 respuestas con temperatura>0 y te quedas con la moda. ¿Qué ganas y qué NO?</Prompt>
+  <Option>Ganas conocimiento nuevo que el modelo no tenía</Option>
+  <Option ok>Reduces el error *aleatorio* de una sola pasada votando la mayoría; pero si el dato no lo sabe, ningún truco lo inventa</Option>
+  <Option>Aceleras la respuesta porque una de las 5 termina antes</Option>
+  <Feedback>Self-consistency cancela el ruido de las pasadas malas (como promediar mediciones), pero ni ella ni CoT añaden hechos que el modelo no tiene: para eso, RAG (Módulo 26b).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Haces A/B de dos prompts. ¿Por qué asignas la variante con `sha256(thread_id) % n` y no con un sorteo por request?</Prompt>
+  <Option>Porque el sorteo aleatorio gasta más CPU</Option>
+  <Option ok>Para que sea *pegajoso*: el mismo hilo cae siempre en la misma variante y su voto se puede atribuir</Option>
+  <Option>Porque el hash cifra el `thread_id` por privacidad</Option>
+  <Feedback>Si alternara por request, el usuario vería A y B en la misma charla y su 👍/👎 no se podría atribuir. El hash es reproducible y sin estado: cualquier worker calcula lo mismo (Módulo 24b).</Feedback>
+</Question>
+
+</Quiz>
+
+<Quiz title="Bloque 6 · Caso real de retail (módulo 29)">
+
+<Question>
+  <Prompt>1 · El `products.json` real dice `product_type: "Joyería"` hasta en la mochila. ¿Qué haces?</Prompt>
+  <Option>Confías en `product_type`: para eso lo trae la API</Option>
+  <Option ok>Derivas la categoría del título y los tags, porque el campo miente</Option>
+  <Option>Descartas la mochila por no ser joyería</Option>
+  <Feedback>El dato real llega sucio: 249 de 250 productos dicen "Joyería". La categoría de verdad se DERIVA en el ETL, no se confía (Módulo 29).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · "Aretes por menos de S/25" y hay unos preciosos de S/39.90. ¿Qué hace la búsqueda?</Prompt>
+  <Option>Los muestra más abajo: son "menos relevantes"</Option>
+  <Option ok>Los EXCLUYE: el presupuesto es un filtro duro (WHERE), no una señal de ranking</Option>
+  <Option>Los muestra y avisa que se pasan del tope</Option>
+  <Feedback>Un producto que se pasa del tope no es "menos relevante": es inválido. Filtro duro primero, ranking solo entre los válidos (Módulo 29 · m24).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · La primera versión respondía "Para «…hasta S/80» te recomiendo…" y el guardrail saltó. ¿Por qué, y cuál es la cura?</Prompt>
+  <Option>Falló el modelo; se sube la temperatura para variar la respuesta</Option>
+  <Option ok>El S/80 es del usuario, no del catálogo: la cura es no re-inyectar su texto en la salida</Option>
+  <Option>El guardrail está mal calibrado; se baja el umbral</Option>
+  <Feedback>El guardrail verifica que cada S/xx.xx citado exista en el catálogo. Ecoar la cifra del usuario la mete donde no debe: la misma higiene del m23 contra la inyección (Módulo 29).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · El catálogo cambia a diario (promos, stock). ¿RAG o fine-tuning para los precios?</Prompt>
+  <Option>Fine-tuning mensual con los precios del mes</Option>
+  <Option ok>RAG: el precio se recupera del catálogo en cada consulta; el modelo solo redacta</Option>
+  <Option>Fine-tuning una vez y luego parches con prompt</Option>
+  <Feedback>Afinar con los precios de julio es fabricar un mentiroso para agosto. Dato que cambia → RAG. Y el LLM nunca pone el precio: eso es del catálogo (Módulo 29 · m21).</Feedback>
+</Question>
+
+</Quiz>

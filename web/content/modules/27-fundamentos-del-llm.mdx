@@ -1,0 +1,184 @@
+export const meta = {
+  "id": "m27",
+  "slug": "27-fundamentos-del-llm",
+  "title": "Fundamentos: qué hay DENTRO de la caja (tokens, logits, softmax y atención)",
+  "kind": "module",
+  "level": 5,
+  "levelName": "AI Engineer",
+  "order": 34,
+  "badge": "27",
+  "pyFile": "27_fundamentos_llm.py",
+  "fileref": "📋 El ejemplo: curso_ejemplos/27_fundamentos_llm.py — 100% offline, no toca la red✓ cubierto por tests",
+  "tested": true,
+  "goals": "🎯 Al terminar sabrás: qué es un token y por qué se cobra por él, qué hace de verdad temperature=0, cómo se saca una palabra con top_k/top_p, qué mide la perplejidad y qué es la atención.",
+  "prereqs": "✅ Necesitas: haber usado el modelo en los módulos anteriores (aquí lo abrimos); ayuda recordar el coseno del m12.",
+  "minutes": "⏱️ ~35 min"
+};
+
+Durante 26 módulos usaste el modelo como una **caja negra**: texto entra, texto sale. Este módulo la abre. No para que entrenes uno —eso son millones de dólares en GPUs— sino para que entiendas las piezas que explican *todo* lo que ya viste: por qué `temperature=0` es determinista, por qué se paga por token, por qué el modelo a veces "alucina" con seguridad. Y como en el resto del curso, cada pieza es una **función pura** que puedes testear byte a byte.
+
+<Box kind="def" label="◈ El árbol al que pertenece un LLM">
+
+Cada término es un subconjunto del anterior: **IA** (máquinas que imitan conducta inteligente) ⊃ **Machine Learning** (aprenden patrones de los datos, no de reglas escritas a mano) ⊃ **Deep Learning** (redes neuronales de muchas capas) ⊃ **IA Generativa** (crean contenido nuevo, no solo clasifican) ⊃ **LLM** (generativa especializada en texto). Cuando alguien dice "la IA", casi siempre habla de la última rama de este árbol.
+
+</Box>
+
+<Box kind="def" label="◈ Definición · las cinco piezas, una frase cada una">
+
+<DefList>
+  <Term>Token</Term>
+  <Def>El modelo no lee letras ni palabras, sino **trozos de palabra** (tokens). "proyectos" se parte en más tokens que "proyecto": por eso el plural cuesta un poco más.</Def>
+  <Term>Logits + softmax</Term>
+  <Def>Para cada token posible el modelo emite un **logit** (puntaje crudo); **softmax** los vuelve probabilidades que suman 1.</Def>
+  <Term>Temperatura</Term>
+  <Def>Modula esa distribución antes de elegir: **t→0** la concentra (determinista, "greedy"); **t alta** la aplana (más azar).</Def>
+  <Term>Muestreo (top_k / top_p)</Term>
+  <Def>Cómo se saca **una** palabra sin caer siempre en la más probable ni en cualquier disparate: recortando la distribución a los mejores candidatos.</Def>
+  <Term>Perplejidad</Term>
+  <Def>"Qué tan **sorprendido**" quedó el modelo por un texto. Baja = lo esperaba (fluido); alta = tuvo que apostar por tokens improbables.</Def>
+</DefList>
+
+</Box>
+
+<Box kind="analogy" label="◆ El modelo como un autocompletar con dado cargado">
+
+Imagina el teclado del móvil que sugiere la siguiente palabra, pero a lo bestia. En cada paso arma una lista de candidatos con un peso cada uno (los **logits**). La **temperatura** decide si tiras un dado muy cargado hacia el favorito (t baja, siempre lo mismo) o un dado casi justo (t alta, sorpresas). **top_k/top_p** es tapar del dado las caras absurdas antes de tirarlo. Y la **perplejidad** es cuánto te chocó la palabra que de verdad salió.
+
+</Box>
+
+### Tokenización · por qué el plural cuesta un token más
+
+BPE (*Byte-Pair Encoding*) parte de caracteres sueltos y, repetidamente, **fusiona el par adyacente más frecuente** en un token nuevo. Así los trozos que aparecen mucho ("proyect", "to") se vuelven una pieza y los raros quedan partidos. Es —simplificado— lo que hacen GPT, Gemini o Claude por dentro.
+
+```python title="curso_ejemplos/27_fundamentos_llm.py · tokenizar_bpe (aplica las fusiones aprendidas)"
+def tokenizar_bpe(palabra, merges):
+    secuencia = list(palabra)           # empieza en caracteres sueltos
+    for a, b in merges:                 # aplica cada fusión EN ORDEN
+        secuencia = _aplicar_merge(secuencia, a, b)
+    return secuencia
+```
+
+Una palabra nueva reutiliza los trozos que quepan; lo que no encaje se queda en piezas pequeñas. Por eso `"proyectos"` = `['p','r','o','y','ecto','s']` cuesta un token **más** que `"proyecto"` = `['p','r','o','y','ecto']`: la `s` del plural no estaba en el vocabulario y viaja suelta. Multiplica eso por millones de palabras y entiendes por qué la factura del [m16](/modulos/16-observabilidad-y-costo) se cuenta en tokens, no en caracteres.
+
+### Softmax con temperatura · qué hace de verdad `temperature=0`
+
+```python title="curso_ejemplos/27_fundamentos_llm.py · softmax_con_temperatura (función pura)"
+def softmax_con_temperatura(logits, t):
+    if t <= 0:                          # límite t→0: toda la masa en el mayor
+        i = max(range(len(logits)), key=lambda i: logits[i])
+        return [1.0 if j == i else 0.0 for j in range(len(logits))]
+    escalados = [x / t for x in logits] # t baja agranda las diferencias
+    tope = max(escalados)               # restar el máximo evita desbordar exp()
+    exp = [math.exp(x - tope) for x in escalados]
+    suma = sum(exp)
+    return [e / suma for e in exp]
+```
+
+Aquí está el mito desmontado: el modelo **no "elige" una palabra**. Produce un logit por token y softmax los vuelve probabilidades. `temperature=0` del [m01](/modulos/01-tu-primer-modelo) no "apaga la creatividad": pone toda la probabilidad en el token de mayor logit (*greedy*), por eso sale siempre lo mismo. Subir la temperatura aplana la distribución y da paso al azar —y al riesgo de disparate.
+
+### Muestreo · sacar una palabra sin caer siempre en la más probable
+
+Elegir siempre el favorito hace el texto plano; muestrear de toda la distribución deja pasar tonterías improbables. Los dos recortes de siempre: **top_k** (los k mejores) y **top_p** (el menor grupo que suma probabilidad p, el "núcleo"). Se muestrea con un `random.Random(semilla)` **inyectado**: misma semilla, misma salida, así el azar se puede testear.
+
+```text title="▸ deberías ver al correr uv run python 27_fundamentos_llm.py"
+[1] TOKENIZACIÓN (BPE) · el modelo lee trozos, no palabras:
+    'proyecto'  → ['p', 'r', 'o', 'y', 'ecto']  (5 tokens)
+    'proyectos' → ['p', 'r', 'o', 'y', 'ecto', 's']  (6 tokens)
+
+[2] SOFTMAX CON TEMPERATURA · sobre logits [2.0, 1.0, 0.2, -1.0]
+    t=0.5 (fría)    : [0.858, 0.116, 0.023, 0.002]  ← se concentra
+    t=2.0 (caliente): [0.447, 0.271, 0.182, 0.1]    ← se aplana
+
+[4] PERPLEJIDAD · exp(-media de log-prob):
+    texto fluido  → 1.15   (baja = no sorprende)
+    texto basura  → 18.80  (alta = sospechoso, ver m28)
+```
+
+### Perplejidad · "qué tan sorprendido está el modelo"
+
+Es `exp(-media de log-probabilidades)` de los tokens que *realmente* aparecieron. Si a un texto fluido el modelo le asignó probabilidades altas, la perplejidad es baja ("esto lo esperaba"); si tuvo que apostar por tokens que creía improbables, se dispara. Es la métrica clásica de fluidez —y en el módulo siguiente (**m28**) reaparece como **defensa**: un prompt adversarial o basura tiene tokens improbables → perplejidad alta → un filtro puede marcarlo como sospechoso antes de que llegue al modelo.
+
+### Atención · a qué palabras mira cada palabra
+
+La idea que hizo posible el transformer, sin frameworks: cada palabra pregunta "¿con cuáles de las demás me relaciono?". La afinidad es el **producto punto** entre su vector-consulta y el vector-clave de cada palabra (el mismo producto punto del coseno del [m12](/modulos/12-recuperar-re-rankear)); softmax lo vuelve un reparto de atención que suma 1. Así "el banco de la plaza" y "el banco me cobró" desambiguan: "banco" mira a palabras distintas en cada frase.
+
+<Box kind="def" label="◈ De dónde vino todo esto (y el cross-encoder que ya usaste)">
+
+La historia en cuatro saltos: **Markov** (1906, estadística de "qué palabra sigue"), **RNN/LSTM** (procesan la frase palabra a palabra pero *olvidan* lo lejano), **atención** (2017, "Attention is all you need": mira toda la frase a la vez y *paraleliza*) y el **transformer**, que es hoy el estándar. De ahí salen tres familias:
+
+<DefList>
+  <Term>Encoder (p. ej. BERT)</Term>
+  <Def>Lee toda la frase para **entenderla** (clasificar, comparar). El **cross-encoder** que usaste para re-rankear en el [m12](/modulos/12-recuperar-re-rankear) es exactamente esto: lee pregunta + fragmento juntos y puntúa su relación.</Def>
+  <Term>Decoder (p. ej. GPT)</Term>
+  <Def>Genera texto **token a token**, cada uno mirando solo lo ya escrito. Es la familia de los modelos de chat que usas en todo el curso.</Def>
+  <Term>Encoder-decoder (p. ej. T5)</Term>
+  <Def>Lee una entrada completa y genera una salida: encaja en traducción o resumen.</Def>
+</DefList>
+
+</Box>
+
+<Box kind="def" label="◈ Por qué el modelo ”obedece”: RLHF y su alternativa DPO">
+
+Un modelo recién preentrenado solo sabe *continuar texto*; no sabe seguir instrucciones ni ser útil y educado. Eso se le enseña después con **preferencias humanas**: personas comparan respuestas ("esta es mejor que esta") y el modelo se ajusta hacia lo preferido. Dos formas de hacerlo:
+
+|  | RLHF | DPO |
+| --- | --- | --- |
+| Cómo | Entrena un "modelo de recompensa" y luego optimiza contra él con RL (PPO) | Optimiza directo sobre las preferencias, sin modelo de recompensa aparte |
+| Complejidad | Tres fases, más piezas móviles | Una sola fase, más simple y rápido |
+| Cuándo | Alineación fina, presupuesto para anotar mucho | Iteración rápida con preferencias binarias |
+
+Es la misma idea de "medir y ajustar" del [m16](/modulos/16-observabilidad-y-costo), pero a escala de entrenamiento. Tú no lo harás (necesita GPUs y datos enormes), pero saber que existe explica por qué dos modelos con el mismo tamaño se "portan" distinto.
+
+</Box>
+
+<Box kind="def" label="◈ Por qué la inferencia es lenta y cara (y cómo se abarata)">
+
+Un decoder genera **un token cada vez**, y cada token necesita todos los anteriores: es intrínsecamente secuencial. Por eso responder es más lento que un cálculo normal, y por eso existe el **streaming** que viste en el [m25](/modulos/25-frontend-chat-sse) —te va mostrando tokens conforme salen en vez de hacerte esperar al final. Para no recalcular lo ya hecho, el modelo guarda un **KV cache** (la "memoria de trabajo" de la atención sobre los tokens previos): acelera mucho a cambio de ocupar memoria. Y la **cuantización** —guardar los pesos con menos bits— es lo que hace que `qwen3:8b` quepa y corra en tu laptop con Ollama, con una pérdida de calidad casi imperceptible.
+
+</Box>
+
+<Box kind="analogy" label="◆ Qué viene después del transformer (panorama)">
+
+El transformer no es el final de la historia. Vale conocer tres direcciones que aparecen en entrevistas:
+
+- **Mixture of Experts (MoE)** — en vez de una red gigante, muchos "expertos" y un *router* que activa solo unos pocos por token: más parámetros totales sin pagar más cómputo por token. Es la arquitectura de modelos como Mixtral.
+- **Mamba / RWKV** — alternativas que escalan *lineal* con la longitud (la atención clásica escala al cuadrado), pensadas para secuencias larguísimas.
+- **Small Language Models (SLM)** — modelos pequeños y afinados que corren en el borde (tu máquina, el móvil): más baratos y privados cuando no necesitas un gigante.
+
+</Box>
+
+<Box kind="warn" label="▲ Saber esto NO reemplaza medir">
+
+Entender los internos es cultura útil, pero cuidado con dos trampas. Una: **subir la temperatura no arregla un prompt malo** —solo añade azar. Dos: **bajar `top_p` no arregla una alucinación** —si el modelo no tiene el dato, muestrear con más cuidado no lo inventa; lo que necesitas es grounding con RAG ([m11](/modulos/11-rag-profesional)). Los parámetros de muestreo se tocan al final, cuando el prompt y el contexto ya están bien.
+
+</Box>
+
+<Avoid label="⛔ Cuándo NO te sirve abrir la caja">
+
+- No te pongas a **optimizar `top_k`/`top_p`** antes de arreglar el prompt y el contexto: es pulir la última milla cuando el problema está tres pasos atrás.
+- No confundas **determinismo con verdad**: `temperature=0` da la MISMA respuesta siempre, no la CORRECTA. Un modelo puede equivocarse igual de fijo.
+- No persigas la **arquitectura de moda** (MoE, Mamba) para un problema de aplicación: casi siempre lo que decide el resultado es el prompt, el RAG y los datos, no el motor.
+
+</Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Corre `uv run python 27_fundamentos_llm.py` y juega con los logits: cambia `[2.0, 1.0, 0.2, -1.0]` por valores más parecidos entre sí y mira cómo softmax reparte casi por igual (el modelo "duda"). Luego calcula la perplejidad de una lista de probabilidades altas y otra de bajas y comprueba el salto. Cuando llegues al **m28**, ese mismo `calcular_perplejidad()` será la base de un filtro que detecta prompts sospechosos.
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar qué es un token y por qué "proyectos" cuesta más que "proyecto".
+- Decir qué hace *de verdad* `temperature=0` y en qué se diferencia de top_k/top_p.
+- Interpretar una perplejidad alta como "el modelo no esperaba este texto".
+- Distinguir un encoder (BERT, el cross-encoder del m12) de un decoder (GPT, el chat que usas).
+- Explicar en una frase qué es MoE y por qué la inferencia es secuencial.
+
+</Checkpoint>
+
+<Recap level={5} label="↺ En una frase">
+
+Bajo `crear_llm()` hay cuatro piezas: el texto se parte en **tokens**, el modelo emite un **logit** por token, **softmax + temperatura** los vuelve probabilidades (t=0 = greedy) y **top_k/top_p** saca una palabra; la **perplejidad** mide cuánto le sorprendió el resultado y la **atención** es cómo cada palabra decide a cuáles mirar.<Arch>archivos: `curso_ejemplos/27_fundamentos_llm.py`</Arch>
+
+</Recap>

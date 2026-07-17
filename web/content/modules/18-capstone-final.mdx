@@ -1,0 +1,194 @@
+export const meta = {
+  "id": "m18",
+  "slug": "18-capstone-final",
+  "title": "Sistema de Gobierno de Datos (financiera), listo para producción",
+  "kind": "module",
+  "level": 5,
+  "levelName": "Proyecto",
+  "order": 21,
+  "badge": "18",
+  "pyFile": null,
+  "fileref": "📋 Proyecto ejecutable: curso_ejemplos/proyecto_final/main.py — corre solo con tu llave. Abajo se explican las piezas.✓ 44 tests, sin API",
+  "tested": true,
+  "goals": "🎯 Al terminar sabrás: integrar casi todo el curso en un sistema real, modular y testeable.",
+  "prereqs": "✅ Necesitas: todos los módulos anteriores.",
+  "minutes": "⏱️ ~90 min"
+};
+
+<LevelBanner level={5} title="Proyecto final · Capstone">
+
+Todo junto en un caso real: un asistente de gobierno de datos para una entidad financiera.
+
+</LevelBanner>
+
+<Box kind="analogy" label="◆ El proyecto final es el Módulo 17 hecho realidad">
+
+Empezó siendo un `app.py` de 158 líneas que llamaba a la API con solo importarlo — imposible de testear. Hoy está partido exactamente como prescribe el módulo anterior: `config.py`, `rag.py`, `audit.py`, `tools.py`, `state.py`, `persistence.py`, `graph_builder.py` y `main.py`. (`app.py` sigue ahí como atajo de compatibilidad.)
+
+⭐ La regla que lo hizo testeable cabe en una línea: `construir_agente()` recibe modelo, evaluador y retriever **por parámetro**. Por eso sus 44 tests pueden pasarle un modelo falso que recita un guion, y ejercitar el grafo completo **sin llamar a la API ni una vez**. Eso es lo que significa "modular": no que haya más archivos, sino que puedes sustituir las piezas caras.
+
+</Box>
+
+<Box kind="warn" label="▲ El proyecto vive en el repositorio, no en esta página">
+
+Lo que sigue **explica** el capstone pieza por pieza, pero el código completo y ejecutable está en la carpeta `curso_ejemplos/proyecto_final/` del [repositorio](https://github.com/Kratos2210/cursoIA/tree/main/curso_ejemplos). Si solo tienes esta página puedes leer y entender el diseño igual; para *correrlo* (y correr sus 44 tests) necesitas el repo.
+
+</Box>
+
+Trabajas en Gobierno de Datos y Cumplimiento de una organización financiera. Construyes un asistente que **responde dudas sobre normativa**, **evalúa reglas de calidad de datos** y **registra hallazgos** — con aprobación humana antes de marcar un incumplimiento.
+
+<Box kind="def" label="◈ Definición · Capstone (proyecto integrador)">
+
+Un **capstone** o **proyecto integrador** es el trabajo final que **junta en un solo sistema** todo lo que aprendiste por partes. No introduce conceptos nuevos: demuestra que sabes *combinarlos* bajo las restricciones de un caso real (aquí, una financiera regulada). Si algo del curso no encajaba, aquí encaja.
+
+<DefList>
+  <Term>audit trail (rastro de auditoría)</Term>
+  <Def>El registro escrito, en orden y **append-only** (solo se añade, nunca se borra), de cada decisión que toma el sistema y cada herramienta que ejecuta. En banca y salud no es opcional: el regulador puede exigir demostrar *qué* se decidió, *cuándo* y *con qué base*. Este proyecto lo escribe en `hallazgos_auditoria.log`.</Def>
+</DefList>
+
+</Box>
+
+### Arquitectura
+
+<Flow>
+  <Step n="1" title="Retrieval">PDFs → Chroma persistente.</Step>
+  <Step n="2" title="Ranking">Cross-encoder reordena.</Step>
+  <Step n="3" title="Agente">StateGraph + memoria + tools + MCP.</Step>
+  <Step n="4" title="Humano">Aprueba incumplimientos.</Step>
+  <Step n="5" title="Observar">LangSmith + Arize.</Step>
+</Flow>
+
+### Los módulos y quién depende de quién
+
+Esa arquitectura, traducida a archivos. Léelo de izquierda a derecha: **cada módulo solo conoce a los de su izquierda**. Ninguna flecha va hacia atrás, y por eso puedes testear cualquier pieza sin arrastrar las demás.
+
+Las hojas · **no importan a nadie más**
+
+<Flow>
+  <Step n="base" title="config.py">Rutas, modelos, constantes. Nada se ejecuta al importarlo.</Step>
+  <Step n="base" title="state.py">`EstadoAgente`. Un tipo, tres líneas.</Step>
+  <Step n="base" title="audit.py">Pydantic + funciones puras. Testeable sin nada más.</Step>
+  <Step n="base" title="persistence.py">El checkpointer, aislado para poder cambiarlo.</Step>
+</Flow>
+
+Encima · **ensamblan lo de abajo**
+
+<Flow>
+  <Step n="1" title="rag.py">La única pieza que llama a la API para indexar.</Step>
+  <Step n="2" title="tools.py">Fábrica: recibe llm, evaluador y retriever.</Step>
+  <Step n="3" title="graph_builder.py">Todo por parámetro. Aquí vive la testeabilidad.</Step>
+  <Step n="4" title="main.py">Lo único que decide usar el modelo *real*.</Step>
+</Flow>
+
+<Box kind="analogy" label="◆ Dónde está el truco">
+
+Las cajas caras (el modelo, el retriever) entran en `graph_builder` **por la puerta**, como parámetros. `main.py` le pasa las de verdad; `tests/` le pasa un modelo falso que recita un guion. El grafo no nota la diferencia — y por eso 44 tests ejercitan el capstone completo sin gastar un solo token.
+
+</Box>
+
+### Pieza 1 · RAG como herramienta
+
+```python title="capstone · buscar_normativa"
+from langchain_core.tools import tool
+
+@tool
+def buscar_normativa(pregunta: str) -> str:
+    """Busca en la normativa y reportes regulatorios indexados.
+    Úsala para responder dudas sobre reglas de calidad de datos."""
+    docs = retriever_pro.invoke(pregunta)   # retriever con re-ranking (Módulo 12)
+    return "\n\n".join(d.page_content for d in docs)
+```
+
+### Pieza 2 · Evaluación con salida estructurada
+
+```python title="capstone · HallazgoCalidad"
+from pydantic import BaseModel, Field
+
+class HallazgoCalidad(BaseModel):
+    """Resultado de evaluar una regla de calidad de datos."""
+    regla: str
+    cumple: bool
+    severidad: str = Field(description="alta | media | baja")
+    justificacion: str = Field(description="por qué cumple o no")
+
+evaluador = llm.with_structured_output(HallazgoCalidad)
+```
+
+### Pieza 3 · Ensamblar el agente (robusto)
+
+```python title="capstone · agente con fallbacks + memoria"
+herramientas = [buscar_normativa, registrar_hallazgo]
+
+# resiliencia: si el modelo principal falla, salta al respaldo (Módulo 09)
+modelo = llm.bind_tools(herramientas).with_fallbacks(
+    [respaldo.bind_tools(herramientas)]
+)
+
+# se monta sobre el StateGraph del Módulo 13 (con nodo de aprobación humana)
+app = grafo.compile(checkpointer=MemorySaver())
+config = {"configurable": {"thread_id": "analista_ale"}}
+
+r = app.invoke({"messages": [("user",
+    "¿La regla de completitud del RUC se cumple en el reporte de junio?")]}, config)
+print(r["messages"][-1].content)
+```
+
+```text title="▸ deberías ver al correr proyecto_final/main.py (la demo de 2 turnos, recortada)"
+🔎 Indexando la normativa… listo (Chroma persistente).
+
+── Turno 1 ─────────────────────────────────
+🙋 ¿La regla de completitud del RUC se cumple en el reporte de junio?
+🤖 La completitud exige que no falten valores obligatorios. En el
+   reporte de junio faltan 12 RUC → NO cumple (severidad: alta).
+
+── Turno 2 ─────────────────────────────────
+🙋 Regístralo como hallazgo.
+⏸  Requiere aprobación humana antes de marcar el incumplimiento… [sí]
+✅ Hallazgo registrado en hallazgos_auditoria.log
+```
+
+<Box kind="analogy" label="◆ Qué conceptos integra">
+
+LLM + LCEL + salida estructurada + herramientas + routing + agente LangGraph (`StateGraph`) + memoria + RAG con re-ranking + fallbacks + async batch + human-in-the-loop + MCP + observabilidad + **auditoría**. **Casi todo el curso en un solo sistema.**
+
+</Box>
+
+### Checklist por fases
+
+1. **Fase 1 — Ingesta**: carga PDFs, trocéalos con `RecursiveCharacterTextSplitter` e indéxalos en Chroma persistente.
+2. **Fase 2 — Recuperación de calidad**: añade re-ranking (cross-encoder) y, si hay códigos exactos, búsqueda híbrida.
+3. **Fase 3 — Herramientas**: envuelve el RAG como `buscar_normativa`, crea `evaluar_regla_calidad` (Pydantic) y `registrar_hallazgo`.
+4. **Fase 4 — Orquestación**: monta un `StateGraph` con memoria por analista y un nodo `interrupt` para aprobar incumplimientos.
+5. **Fase 5 — Escala y resiliencia**: `with_fallbacks` entre modelos y `abatch` para evaluar muchas reglas en paralelo.
+6. **Fase 6 — Producción**: separa servicios (Módulo 15b), registra un **audit trail** de cada decisión, corre tests de evaluación, activa LangSmith + Arize y escribe los ADR (Módulo 17).
+
+### Mini-ADR de ejemplo
+
+| Decisión | Por qué |
+| --- | --- |
+| Chroma persistente (no en memoria) | Volumen bajo/medio; evita re-indexar y no añade costo de servicio externo. |
+| Re-ranker cross-encoder | La normativa tiene fragmentos muy parecidos; la precisión del contexto es crítica para no dar respuestas erróneas de cumplimiento. |
+| Human-in-the-loop antes de marcar incumplimiento | Una marca errónea tiene consecuencias regulatorias; exige validación humana. |
+| StateGraph en vez de prebuilt | Necesitamos el nodo de aprobación y ramas propias, no cabe en `create_react_agent`. |
+| Audit trail de cada decisión | En una financiera, toda evaluación debe ser trazable y auditable ante el regulador. |
+
+<Box kind="warn" label="▲ Errores comunes">
+
+**429 RESOURCE_EXHAUSTED**: cupo agotado → fallbacks/reintentos o modelo de pago. **Respuestas inventadas**: falta la regla "responde solo con el contexto" en el prompt del RAG. **Tool equivocada**: mejora los docstrings.
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Reconocer, en el capstone, cada concepto del curso (RAG, tools, Pydantic, agente, memoria, auditoría).
+- Explicar por qué `construir_agente()` recibe sus piezas por parámetro y qué habilita eso.
+- Recorrer las 6 fases del proyecto y decir qué módulo del curso sostiene cada una.
+- Justificar en un mini-ADR por qué se usó human-in-the-loop antes de marcar un incumplimiento.
+
+</Checkpoint>
+
+<Recap level={5} label="↺ En una frase">
+
+El capstone junta RAG + herramientas + Pydantic + agente con memoria + auditoría. Y es testeable por una sola razón: `construir_agente()` recibe sus piezas caras **por parámetro**.<Arch>archivo: `proyecto_final/main.py`</Arch>
+
+</Recap>

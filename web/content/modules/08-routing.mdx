@@ -1,0 +1,136 @@
+export const meta = {
+  "id": "m8",
+  "slug": "08-routing",
+  "title": "Routing: el ciclo completo de un agente",
+  "kind": "module",
+  "level": 2,
+  "levelName": "Intermedio",
+  "order": 9,
+  "badge": "08",
+  "pyFile": "08_routing.py",
+  "fileref": "📋 Copia y ejecuta: curso_ejemplos/08_routing.py✓ cubierto por tests",
+  "tested": true,
+  "goals": "🎯 Al terminar sabrás: cerrar el ciclo completo de tool calling (A→D) a mano.",
+  "prereqs": "✅ Necesitas: Módulo 07.",
+  "minutes": "⏱️ ~35 min"
+};
+
+Con `llm.bind_tools()` le entregas el "cinturón". El modelo **decide** si responder directo o pedir una herramienta (eso es *routing*). Pero pedirla es solo la mitad: el ciclo real tiene **cuatro pasos**.
+
+<Box kind="def" label="◈ Definición · Routing y tool calling">
+
+**Routing** es dejar que el *modelo* decida el camino que toma la ejecución, en vez de decidirlo tú con un `if`. Le presentas las opciones (las herramientas) y él elige: responder directo, o pedir una.
+
+**Tool calling** es el mecanismo concreto con el que expresa esa elección, y es un **ciclo de cuatro pasos**, no una llamada. Casi todos los errores de principiante consisten en olvidar el paso D.
+
+<DefList>
+  <Term>A · bind_tools</Term>
+  <Def>Le "atas" las herramientas al modelo: sus nombres y descripciones viajan en cada llamada.</Def>
+  <Term>B · el modelo pide</Term>
+  <Def>Devuelve un `AIMessage` con `tool_calls` en vez de texto. Todavía no pasó nada en el mundo real.</Def>
+  <Term>C · tú ejecutas</Term>
+  <Def>Tu código llama a la función de Python con los argumentos que pidió. Aquí es donde validas, autorizas o rechazas.</Def>
+  <Term>D · le devuelves el resultado</Term>
+  <Def>Un `ToolMessage` con la respuesta, **y vuelves a invocar al modelo**. Sin este paso el modelo nunca ve el resultado y no puede redactar la respuesta final.</Def>
+</DefList>
+
+</Box>
+
+<Flow>
+  <Step n="A" title="Pregunta">El humano escribe.</Step>
+  <Step n="B" title="Decide">El modelo pide una tool.</Step>
+  <Step n="C" title="Ejecuta">TÚ corres la tool y devuelves el resultado.</Step>
+  <Step n="D" title="Redacta">El modelo responde con el dato real.</Step>
+</Flow>
+
+<Box kind="analogy" label="◆ Analogía">
+
+El ciclo A→D es como un **mesero** que lleva tu pedido a la cocina y te trae el plato. El cliente (el modelo) *pide*, pero no entra a la cocina: quien cocina —quien ejecuta la herramienta— eres **tú**. El mesero solo transmite el pedido y luego trae el resultado a la mesa. Por eso el modelo nunca toca tu código: solo pide, y espera que le devuelvas el plato.
+
+</Box>
+
+```python title="routing_v3_streaming.py · el ciclo A→D"
+from langchain_core.messages import HumanMessage, ToolMessage
+
+herramientas = [calculadora_descuentos]
+mapa = {t.name: t for t in herramientas}      # nombre -> función
+llm_tools = llm.bind_tools(herramientas)      # le damos el cinturón
+
+mensajes = [HumanMessage(content="¿Cuánto pago por 3500 soles con 18% de descuento?")]
+
+ai = llm_tools.invoke(mensajes)               # (B) decide
+mensajes.append(ai)
+
+for llamada in ai.tool_calls:                 # (C) ejecutamos lo que pidió
+    resultado = mapa[llamada["name"]].invoke(llamada["args"])
+    mensajes.append(ToolMessage(content=str(resultado), tool_call_id=llamada["id"]))
+
+print(llm_tools.invoke(mensajes).content)     # (D) respuesta final con el dato real
+```
+
+```text title="▸ deberías ver (algo así)"
+Con el 18% de descuento, pagarías 2870 soles por el producto de 3500.
+```
+
+### El ciclo, línea por línea
+
+Ese bloque es corto pero cada línea hace algo concreto. Vale la pena leerlo despacio, porque este mismo ciclo es el que LangGraph automatiza en el Módulo 10:
+
+- `mapa = {t.name: t for t in herramientas}` — es una **dict comprehension** (no la vimos en el Módulo 0b): construye un diccionario *nombre → herramienta* en una sola línea. Equivale a un `for` con asignaciones: recorrer la lista y por cada herramienta `t` guardar `mapa[t.name] = t`. Lo necesitas porque el modelo pide la tool *por su nombre* (un texto), y con este diccionario pasas de ese texto a la función real.
+- `llm_tools = llm.bind_tools(herramientas)` — **(A)** le "ata" las herramientas al modelo: a partir de aquí, cada llamada lleva los nombres y docstrings de las tools.
+- `ai = llm_tools.invoke(mensajes)` — **(B)** el modelo decide. Devuelve un `AIMessage`; si quiere una tool, viene con `ai.tool_calls` lleno en vez de texto.
+- `for llamada in ai.tool_calls:` — recorremos cada petición que hizo el modelo (puede pedir más de una).
+- `mapa[llamada["name"]].invoke(llamada["args"])` — **(C)** el corazón del paso: `llamada["name"]` es el texto con el nombre pedido; `mapa[...]` lo traduce a la función real; y le pasamos `llamada["args"]` (el diccionario de argumentos que el modelo eligió). Aquí, y solo aquí, se ejecuta tu código.
+- `mensajes.append(ToolMessage(content=str(resultado), tool_call_id=llamada["id"]))` — **(D, parte 1)** guardamos el resultado atado al `id` de la petición: ese `tool_call_id` es el hilo que une "lo que pidió" con "lo que respondió".
+- `llm_tools.invoke(mensajes)` (la última línea) — **(D, parte 2)** volvemos a invocar al modelo, ahora con el resultado ya en la conversación. Recién con esto puede redactar la respuesta final.
+
+<Box kind="warn" label="▲ El error típico">
+
+Muchos se quedan en el paso B e imprimen el `tool_calls` crudo. Sin C y D no tienes un agente: tienes media función. El `ToolMessage` con su `tool_call_id` es el hilo que une pedido y resultado.
+
+</Box>
+
+<Avoid label="⛔ Cuándo NO usar esto">
+
+- Si un solo prompt directo ya resuelve la pregunta (no necesita datos externos): un `.invoke()` normal es más barato y rápido que atar herramientas.
+- Si el camino se decide con una regla fija (una palabra clave, un tipo de dato): resuélvelo con un `if` en tu código, no con un LLM — un `if` es gratis, determinista y no alucina.
+- Si solo tienes una herramienta y siempre se usa: llama la función tú mismo; el ciclo de decisión sobra.
+
+</Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Añade una segunda herramienta y haz una pregunta que necesite **las dos**. Como iteramos sobre `ai.tool_calls`, el código ya lo soporta.
+
+<Solution summary="Ver una solución">
+
+```python title="solución"
+herramientas = [calculadora_descuentos, convertir_moneda]   # la del Módulo 07
+mapa = {t.name: t for t in herramientas}
+llm_tools = llm.bind_tools(herramientas)
+
+mensajes = [HumanMessage(content=
+    "¿Cuánto pago por 3500 soles con 18% de descuento, y cuánto es eso en dólares?")]
+# el resto del ciclo A→D no cambia: el for sobre ai.tool_calls ejecuta AMBAS
+```
+
+Observa en `ai.tool_calls` que el modelo pide las dos herramientas (a veces en dos vueltas: por eso los agentes del Módulo 10 iteran).
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar por qué el modelo **no ejecuta** herramientas: solo las pide, y tu código decide.
+- Nombrar los cuatro pasos del ciclo (A: atar · B: pedir · C: ejecutar · D: devolver y volver a invocar).
+- Decir qué pasa si te saltas el paso D (el modelo nunca ve el resultado y no puede redactar).
+- Reconocer para qué sirve el `tool_call_id` del `ToolMessage`.
+
+</Checkpoint>
+
+<Recap level={2} label="↺ En una frase">
+
+El ciclo A→D: el modelo *pide* la tool, **tú** la ejecutas, le devuelves un `ToolMessage`, y recién entonces redacta. El modelo nunca toca tu código.<Arch>archivo: `08_routing.py`</Arch>
+
+</Recap>

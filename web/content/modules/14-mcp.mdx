@@ -1,0 +1,248 @@
+export const meta = {
+  "id": "m14",
+  "slug": "14-mcp",
+  "title": "MCP: conectar herramientas de forma estándar y segura",
+  "kind": "module",
+  "level": 4,
+  "levelName": "Producción",
+  "order": 15,
+  "badge": "14",
+  "pyFile": "14_mcp_servidor_cliente.py",
+  "fileref": "📋 Copia y ejecuta: curso_ejemplos/14_mcp_servidor_cliente.py — servidor + cliente MCP reales, offline y sin cuota✓ cubierto por tests",
+  "tested": true,
+  "goals": "🎯 Al terminar sabrás: conectar herramientas de forma estándar y segura con un servidor y un cliente MCP.",
+  "prereqs": "✅ Necesitas: Módulos 07–10.",
+  "minutes": "⏱️ ~45 min"
+};
+
+<LevelBanner level={4} title="Empieza el Nivel Producción / Arquitectura">
+
+Pasamos del script que funciona en tu máquina a un sistema seguro, escalable y observable, listo para una empresa.
+
+</LevelBanner>
+
+**MCP (Model Context Protocol)** es un estándar abierto para que los agentes hablen con herramientas y fuentes de datos externas mediante "servidores MCP". En lugar de programar cada integración a mano, tu agente se conecta a servidores que exponen capacidades de forma **uniforme y controlada**.
+
+<Box kind="def" label="◈ El ecosistema LangChain hoy (2026)">
+
+Antes de entrar a producción, ubícate. LangChain ya no se presenta como "un framework de LLMs" sino como una caja de herramientas para **agent engineering**, organizada alrededor del **ciclo de vida del agente**: Build → Test → Deploy → Monitor. Este nivel del curso recorre justo ese ciclo. Hay **tres frameworks open source**, y elegir bien es la mitad del trabajo:
+
+<DefList>
+  <Term>LangChain</Term>
+  <Def>El punto de partida: montar agentes rápido con *cualquier* proveedor de modelos. Es lo que usaste hasta aquí.</Def>
+  <Term>LangGraph</Term>
+  <Def>Cuando necesitas **control de bajo nivel** para agentes fiables: ciclos, ramas, pausas, estado (Módulo 13). Elígelo cuando el agente "de fábrica" ya no te alcanza.</Def>
+  <Term>Deep Agents</Term>
+  <Def>Para agentes **de larga duración** que resuelven tareas complejas (planifican, investigan por horas). La escala más ambiciosa.</Def>
+</DefList>
+
+Y por encima de los tres, **LangSmith** es la plataforma que cubre el resto del ciclo: *Observability*, *Evaluation* y *Deployment* (Módulos 16–17). Regla simple: empieza en LangChain, baja a LangGraph cuando necesites control, sube a Deep Agents para tareas largas — y en los tres casos observa y evalúa con LangSmith.
+
+</Box>
+
+<Box kind="def" label="◈ Definición · MCP">
+
+**MCP** (*Model Context Protocol*, Protocolo de Contexto del Modelo) es un **protocolo**, no una librería: un acuerdo sobre cómo un agente pregunta "¿qué sabes hacer?" y cómo pide que se haga. Cualquiera puede implementarlo en cualquier lenguaje.
+
+El problema que resuelve es de multiplicación: sin un estándar, conectar *M* agentes con *N* herramientas cuesta M×N integraciones a medida. Con MCP cuesta M+N — cada agente habla el protocolo una vez, cada herramienta lo expone una vez.
+
+<DefList>
+  <Term>servidor MCP</Term>
+  <Def>Envuelve una capacidad (tu base de datos, GitHub, un sistema interno) y la publica según el protocolo. Puede ser un proceso local o remoto.</Def>
+  <Term>cliente MCP</Term>
+  <Def>Vive del lado del agente. Descubre qué ofrece el servidor y traduce esas capacidades a herramientas que el LLM puede pedir.</Def>
+  <Term>tools · resources · prompts</Term>
+  <Def>Las tres cosas que un servidor puede exponer: *acciones* que se ejecutan, *datos* de solo lectura y *plantillas* reutilizables. Ver abajo.</Def>
+  <Term>transporte</Term>
+  <Def>Cómo viajan los mensajes: `stdio` (el servidor es un subproceso tuyo) o HTTP (está en otra máquina). El protocolo es el mismo; cambia el riesgo.</Def>
+</DefList>
+
+</Box>
+
+<Grid3>
+
+<Card num="" title="Estándar">
+
+Una sola forma de conectar cualquier herramienta o dato, sin adaptadores a medida.
+
+</Card>
+
+<Card num="" title="Seguro">
+
+Intercambio controlado de contexto y comandos: evita ejecuciones inseguras y exfiltración de datos.
+
+</Card>
+
+<Card num="" title="Escalable">
+
+Sumas capacidades agregando servidores, sin tocar el código del agente.
+
+</Card>
+
+</Grid3>
+
+<Box kind="analogy" label="◆ Analogía">
+
+MCP es el **puerto USB-C** de los agentes: antes cada herramienta tenía su cable propio; ahora todas usan el mismo conector estándar, y tú controlas qué se enchufa y con qué permisos.
+
+</Box>
+
+### Qué expone un servidor MCP
+
+Un servidor MCP puede ofrecer tres tipos de capacidades. Cuando evalúes un servidor ajeno (o diseñes el tuyo), pregúntate cuáles de las tres necesita realmente:
+
+<Grid3>
+
+<Card num="" title="Tools">
+
+Acciones que el agente puede ejecutar: buscar, calcular, escribir en un sistema. Las más comunes — y las más delicadas.
+
+</Card>
+
+<Card num="" title="Resources">
+
+Datos de solo lectura que el agente puede consultar: archivos, tablas, documentación.
+
+</Card>
+
+<Card num="" title="Prompts">
+
+Plantillas reutilizables que el servidor ofrece listas para usar ("analiza este log con este formato").
+
+</Card>
+
+</Grid3>
+
+### Anatomía de un servidor MCP mínimo (tu primer adaptador)
+
+Crear un servidor propio es sorprendentemente corto con el SDK oficial de Python. Este "adaptador" expone una capacidad de tu dominio — leerlo de arriba a abajo: se crea el servidor, se le registra una tool, se enciende:
+
+```python title="servidor_mcp.py · un adaptador MCP completo"
+from mcp.server.fastmcp import FastMCP
+
+mcp = FastMCP("gobierno_datos")        # el nombre con el que se presenta
+
+@mcp.tool()
+def buscar_regla(nombre: str) -> str:
+    """Devuelve la definición de una regla de calidad de datos."""
+    reglas = {"completitud": "no deben faltar valores obligatorios",
+              "unicidad":    "no debe haber registros duplicados"}
+    return reglas.get(nombre.lower(), "regla no encontrada")
+
+if __name__ == "__main__":
+    mcp.run(transport="stdio")         # habla por entrada/salida estándar
+```
+
+Nota lo familiar: `@mcp.tool()` funciona igual que el `@tool` del Módulo 07 — el docstring y los tipos son el contrato que lee el modelo. La diferencia es que ahora la herramienta vive en un **proceso aparte**, con su propio control de acceso, y *cualquier* agente compatible con MCP puede usarla. `transport="stdio"` significa que cliente y servidor conversan por la entrada/salida estándar del proceso (local); para servidores remotos se usa HTTP.
+
+### Conectar el servidor a tu agente
+
+```python title="langchain-mcp-adapters · servidores MCP como tools"
+from langchain_mcp_adapters.client import MultiServerMCPClient
+from langgraph.prebuilt import create_react_agent
+
+client = MultiServerMCPClient({
+    "gobierno_datos": {
+        "command": "python",
+        "args": ["servidor_mcp.py"],   # tu servidor MCP local
+        "transport": "stdio",
+    },
+})
+
+herramientas_mcp = await client.get_tools()   # se vuelven tools del agente
+agente = create_react_agent(llm, tools=herramientas_mcp)
+```
+
+<Box kind="warn" label="▲ Ese await no va suelto">
+
+Como en el Módulo 03, ese `await client.get_tools()` **no puede ir a nivel de módulo** en un script. En el archivo real vive dentro de una función `async def main()` que se arranca con `asyncio.run(main())` — así es como `14_mcp_servidor_cliente.py` lo ejecuta de verdad.
+
+</Box>
+
+Este es el diálogo completo entre cliente y servidor: el cliente **pregunta qué hay**, el servidor **responde**, el cliente **invoca** una tool y recibe el **resultado** — todo bajo el protocolo, sin integraciones a medida:
+
+Un intercambio MCP · **descubrir → invocar**
+
+<Flow>
+  <Step n="1" title="Cliente pide">"¿qué tools tienes?" (`get_tools`).</Step>
+  <Step n="2" title="Servidor responde">La lista de tools con su nombre y docstring.</Step>
+  <Step n="3" title="Cliente invoca">Llama una tool con sus argumentos.</Step>
+  <Step n="4" title="Servidor devuelve">El resultado. El cliente lo pasa al agente.</Step>
+</Flow>
+
+```text title="▸ deberías ver al correr 14_mcp_servidor_cliente.py"
+=== Tools descubiertas en el servidor MCP ===
+  · buscar_regla: Devuelve la definición de una regla de calidad de datos.
+  · evaluar_severidad: Clasifica la severidad de un hallazgo según su %…
+
+=== Invocando las tools (tú haces de agente) ===
+  buscar_regla('completitud')  -> no deben faltar valores obligatorios
+  evaluar_severidad(12.0)      -> alta
+```
+
+### Seguridad: el intercambio es controlado, no automático
+
+Darle herramientas a un agente es darle poder — y MCP existe justamente para que ese poder tenga **bordes claros**. Los riesgos y sus controles:
+
+| Riesgo | Control que lo previene |
+| --- | --- |
+| Ejecución insegura | El servidor valida y acota lo que hace (lista blanca de operaciones); nunca ejecuta texto arbitrario del modelo. Lo delicado corre en sandbox. |
+| Exfiltración de datos | El servidor decide qué contexto sale: expone *resources* de solo lectura, filtra campos sensibles y no devuelve más de lo pedido. |
+| Servidor malicioso | Instala solo servidores de fuentes confiables — un servidor MCP es código que corre en tu máquina con tus permisos. |
+| Acción irreversible | Las tools que escriben/borran exigen aprobación humana antes de ejecutarse (el `interrupt` del Módulo 13 encaja aquí). |
+| Permisos excesivos | Principio de mínimo privilegio: cada servidor recibe credenciales propias y acotadas, nunca "la llave maestra" del sistema. |
+
+<Box kind="warn" label="▲ La regla de oro">
+
+Trata cada tool MCP como tratarías a un practicante nuevo: acceso de **lectura** desde el día uno, acceso de **escritura** solo con supervisión (aprobación humana), y **nunca** las credenciales del administrador.
+
+</Box>
+
+<Avoid label="⛔ Cuándo NO usar esto">
+
+- No expongas por MCP lo que es una función local que solo tú vas a llamar: el `@tool` del Módulo 07 basta. MCP añade un proceso aparte, un protocolo y un transporte que ahí no necesitas.
+- No montes un servidor para un único cliente y una única tool: MCP paga cuando varios agentes comparten varias herramientas (M+N en vez de M×N), no en un 1×1.
+- No instales servidores MCP de fuentes que no controlas "solo para probar": un servidor MCP es código que corre en tu máquina con tus permisos.
+
+</Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Copia el `servidor_mcp.py` de arriba (instala el SDK con `uv add "mcp[cli]"`) y conéctalo con el cliente. Lista las tools con `await client.get_tools()` antes de dárselas al agente — inspeccionar qué expone un servidor *antes* de enchufarlo es el hábito de seguridad número uno.
+
+<Solution summary="Ver una solución">
+
+Todo el ciclo (servidor + cliente + descubrimiento + invocación) ya está armado y corriendo en `curso_ejemplos/14_mcp_servidor_cliente.py` — su salida es la que viste más arriba, en "Un intercambio MCP".
+
+Reto extra: añádele una tercera tool `@mcp.tool()` (por ejemplo `listar_reglas()`) y verifica que el cliente la descubre *sin tocar el código del cliente*.
+
+</Solution>
+
+</Box>
+
+<Box kind="def" label="◈ Cuando no hay API: computer use (el agente opera la pantalla)">
+
+MCP y las tools del [m07](/modulos/07-herramientas) asumen que existe una **API** o un protocolo al que llamar. ¿Y cuándo no lo hay —una web sin API pública, un ERP legacy, un panel interno hecho a mano—? Ahí entra **computer use** (o *browser use*): en vez de llamar a una función, el modelo **ve una captura de pantalla** y emite **acciones de humano** (mover el ratón, hacer clic, teclear, hacer scroll). Claude, OpenAI y otros exponen esta capacidad; frameworks como `browser-use` la envuelven para la web.
+
+<Box kind="warn" label="▲ Es el último recurso, no el primero">
+
+Operar una GUI es **lento** (cada paso es una captura + una decisión del modelo), **frágil** (si la interfaz cambia de sitio un botón, se rompe) y **peligroso** (un agente que puede hacer clic en cualquier cosa puede borrar, comprar o enviar lo que no debía). Reglas: córrelo en un **sandbox** aislado, con **aprobación humana** para acciones irreversibles (el [HITL del m13](/modulos/13-langgraph-a-fondo)) y límites de alcance. Si existe una API o un servidor MCP, **siempre** es preferible: computer use es el puente para lo que no tiene puerta de entrada programática.
+
+</Box>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar qué problema resuelve MCP: pasar de M×N integraciones a medida a M+N.
+- Distinguir el servidor MCP (expone capacidades) del cliente MCP (las descubre y las vuelve tools del agente).
+- Nombrar las tres cosas que un servidor puede exponer (`tools`, `resources`, `prompts`) y los dos transportes (`stdio` / HTTP).
+- Decir por qué el intercambio es controlado: el permiso lo das tú (lectura sí, escritura con aprobación), no el modelo.
+
+</Checkpoint>
+
+<Recap level={4} label="↺ En una frase">
+
+MCP es el puerto estándar de las herramientas: un servidor las expone, cualquier agente las consume. El intercambio es **controlado** — el permiso lo das tú, no el modelo.<Arch>archivo: `14_mcp_servidor_cliente.py` (offline)</Arch>
+
+</Recap>

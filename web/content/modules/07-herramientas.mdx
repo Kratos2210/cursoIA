@@ -1,0 +1,124 @@
+export const meta = {
+  "id": "m7",
+  "slug": "07-herramientas",
+  "title": "Herramientas: darle manos al modelo",
+  "kind": "module",
+  "level": 2,
+  "levelName": "Intermedio",
+  "order": 8,
+  "badge": "07",
+  "pyFile": "07_herramientas.py",
+  "fileref": "📋 Copia y ejecuta: curso_ejemplos/07_herramientas.py✓ cubierto por tests",
+  "tested": true,
+  "goals": "🎯 Al terminar sabrás: crear herramientas con @tool que el modelo puede pedir.",
+  "prereqs": "✅ Necesitas: Módulos 01–02.",
+  "minutes": "⏱️ ~25 min"
+};
+
+Una **herramienta** es una función de Python que le "prestas" al modelo. El decorador `@tool` la convierte en algo que la IA puede invocar sola.
+
+<Box kind="def" label="◈ Definición · Herramienta (tool)">
+
+Una **herramienta** es una función de Python descrita de forma que el modelo pueda decidir *cuándo* usarla y *con qué argumentos*. Nada más. El modelo no ejecuta código: **pide** que se ejecute, y tu programa obedece o no.
+
+Ese matiz es la clave de seguridad de todo el curso. Cuando lees "el agente consultó la base de datos", lo que ocurrió es que el modelo devolvió un mensaje diciendo *"me gustaría llamar a `consultar_bd` con estos argumentos"*, y fue tu código —no el modelo— quien decidió llamarla.
+
+<DefList>
+  <Term>@tool</Term>
+  <Def>El decorador que convierte la función en herramienta. Lee el nombre, los tipos de los argumentos y el **docstring** para armar la descripción.</Def>
+  <Term>el docstring es el prompt</Term>
+  <Def>La descripción no es documentación para ti: es **lo único** que el modelo lee para elegir. Un docstring vago produce un agente que elige mal. Escríbelo pensando en quién lo va a leer.</Def>
+  <Term>tool_call</Term>
+  <Def>La petición que emite el modelo: nombre de la herramienta + argumentos en JSON. Viaja dentro de un `AIMessage`, en el campo `tool_calls`.</Def>
+</DefList>
+
+</Box>
+
+<Box kind="analogy" label="◆ Analogía">
+
+Darle herramientas al modelo es como darle a un empleado nuevo **acceso al sistema de la empresa**. Él conoce las opciones disponibles y decide *cuál* pedir para resolver tu encargo — pero quien finalmente **aprieta el botón** eres tú (tu código). El empleado no ejecuta nada por su cuenta: solicita, y tú autorizas o rechazas.
+
+</Box>
+
+```python title="functioncall.ipynb · una herramienta"
+from langchain_core.tools import tool
+
+@tool
+def calculadora_descuentos(precio: float, porcentaje: float) -> float:
+    """Calcula el precio final tras aplicar un descuento.
+    Úsala cuando el usuario pida calcular precios con descuento."""
+    return precio - (precio * porcentaje / 100)
+```
+
+<Box kind="warn" label="▲ Lección de oro">
+
+El **docstring no es documentación: es programación**. El modelo decide *cuándo* usar la herramienta leyendo esa descripción, y usa los nombres/tipos de los parámetros (`precio: float`) para rellenar los datos. Docstring vago → agente que se equivoca.
+
+</Box>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Crea `convertir_moneda(soles: float) -> float` con un tipo de cambio fijo. Escribe dos docstrings (uno vago, uno claro); en el Módulo 08 verás cuál elige mejor el modelo.
+
+<Solution summary="Ver una solución">
+
+```python title="solución · el mismo código, dos contratos"
+@tool
+def convertir_moneda(soles: float) -> float:
+    """Convierte."""                       # ❌ VAGO: ¿convierte qué? ¿a qué?
+    return soles / 3.75
+
+@tool
+def convertir_moneda(soles: float) -> float:
+    """Convierte un monto en soles peruanos (PEN) a dólares (USD),
+    con tipo de cambio fijo de 3.75. Úsala cuando el usuario
+    pida pasar un precio de soles a dólares."""   # ✅ CLARO: cuándo y para qué
+    return soles / 3.75
+```
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar qué hace `@tool` (usa nombre, tipos y docstring para describir la función).
+- Decir por qué "el docstring es el prompt": es lo único que el modelo lee para elegir la herramienta.
+- Explicar que el modelo **pide** una herramienta (emite un `tool_call`) pero no la ejecuta: tu código decide.
+- Reconocer dónde viajan los `tool_calls` (dentro de un `AIMessage`).
+
+</Checkpoint>
+
+<Recap level={2} label="↺ En una frase">
+
+El decorador `@tool` no ejecuta nada: **describe** una función para que el modelo pueda pedirla. El docstring y los tipos son la documentación que el modelo lee.<Arch>archivo: `07_herramientas.py` (offline)</Arch>
+
+</Recap>
+
+<Quiz title="✅ Check rápido · módulos 05–07">
+
+<Question>
+  <Prompt>1 · ¿Qué garantiza `with_structured_output(MiMolde)`?</Prompt>
+  <Option>Que el modelo nunca se equivoca en los valores</Option>
+  <Option ok>Que la respuesta llega como un objeto que respeta el molde Pydantic</Option>
+  <Option>Que la respuesta ocupa menos tokens</Option>
+  <Feedback>Fuerza la *forma* (campos y tipos), no la verdad del contenido: recibes un objeto tipado en vez de texto que hay que parsear (Módulo 05).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Para qué sirve `RunnableParallel`?</Prompt>
+  <Option>Para reintentar la misma llamada si falla</Option>
+  <Option>Para acelerar el modelo usando varias GPUs</Option>
+  <Option ok>Para ejecutar varias ramas sobre la misma entrada y juntar sus resultados</Option>
+  <Feedback>Corre varios runnables a la vez sobre el mismo input y devuelve un diccionario con cada resultado. Ideal para armar el contexto de un prompt (Módulo 06).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · El modelo devuelve un `tool_calls`. ¿Ya se ejecutó la herramienta?</Prompt>
+  <Option>Sí: el modelo la corre y te devuelve el resultado</Option>
+  <Option ok>No: es solo una petición; tu código decide si la ejecuta</Option>
+  <Option>Solo si el docstring lo autoriza</Option>
+  <Feedback>El modelo *pide* (nombre + argumentos); ejecutar es cosa de tu código. Ese matiz es la clave de seguridad de todo el curso (Módulo 07).</Feedback>
+</Question>
+
+</Quiz>

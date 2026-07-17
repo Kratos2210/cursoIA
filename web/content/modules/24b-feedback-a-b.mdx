@@ -1,0 +1,108 @@
+export const meta = {
+  "id": "m24b",
+  "slug": "24b-feedback-a-b",
+  "title": "Feedback 👍/👎 y A/B de prompts: mejorar con datos, no con opiniones",
+  "kind": "module",
+  "level": 5,
+  "levelName": "AI Engineer",
+  "order": 30,
+  "badge": "24b",
+  "pyFile": null,
+  "fileref": "📋 Es una feature del servicio, no un script: proyecto_llmops/prompts/experimentos.py + proyecto_llmops/observability/feedback.py — 100% offline✓ cubierto por tests",
+  "tested": true,
+  "goals": "🎯 Al terminar sabrás: repartir usuarios entre dos prompts de forma pegajosa (A/B) y recoger su feedback 👍/👎 agregado por variante — el lazo que convierte \"creo que este prompt es mejor\" en \"mídelo\".",
+  "prereqs": "✅ Necesitas: el Módulo 17 (servir por HTTP) y el proyecto LLMOps.",
+  "minutes": "⏱️ ~30 min"
+};
+
+Tienes dos redacciones del prompt del sistema: una larga (`agente_gobdata`) y una concisa (`agente_gobdata_conciso`). ¿Cuál responde mejor? Eso no lo decide quien escribió el prompt: lo decide el usuario. Para medirlo hacen falta dos piezas que encajan — **repartir** el tráfico entre las dos variantes y **recoger** el 👍/👎 agregado por variante. Sin las dos, no hay experimento.
+
+<Box kind="def" label="◈ Definición · Bucketing pegajoso y feedback por variante">
+
+<DefList>
+  <Term>A/B pegajoso (sticky)</Term>
+  <Def>El mismo `thread_id` cae **siempre** en la misma variante. La variante es una **función** del identificador, no un sorteo por request. Si alternara, el usuario vería A y B en la misma conversación y su voto no se podría atribuir a nada.</Def>
+  <Term>Bucketing por hash</Term>
+  <Def>`sha256(thread_id) % nº_variantes`. Es **reproducible** (cualquier worker calcula lo mismo sin coordinarse), **sin estado** (no guardas a quién le tocó qué) y **uniforme** (el hash reparte parejo).</Def>
+  <Term>Feedback 👍/👎</Term>
+  <Def>Un pulgar se pulsa; una nota de 1 a 5 se piensa. Se agrega por variante en una `tasa_aprobacion` (👍/total). Comparar esa tasa entre A y B es el resultado del experimento.</Def>
+</DefList>
+
+</Box>
+
+<Box kind="analogy" label="◆ La cola del súper que no cambia de fila">
+
+Imagina que al entrar te asignan una caja por tu número de socio, no al azar en cada compra. Vuelves mañana y te toca la misma caja: puedes comparar de verdad "¿la caja A atiende mejor que la B?" porque cada cliente vive una sola experiencia. Si te reasignaran caja a cada artículo, nadie sabría a qué caja agradecer o culpar. El **hash del `thread_id`** es ese "número de socio": pegajoso y sin que la caja tenga que recordarte.
+
+</Box>
+
+### Paso 1 · Bucketing determinista y pegajoso por hash
+
+```python title="proyecto_llmops/prompts/experimentos.py · asignar_variante (stdlib hashlib)"
+def asignar_variante(clave, variantes):
+    # sha256(clave) es un entero de 256 bits repartido uniforme; su módulo
+    # reparte parejo entre variantes. La MISMA clave -> SIEMPRE la misma variante.
+    # ⭐ No se usa hash() de Python: está aleatorizado por proceso
+    #    (PYTHONHASHSEED), así dos workers asignarían distinto al mismo usuario.
+    digest = hashlib.sha256(clave.encode("utf-8")).hexdigest()
+    return variantes[int(digest, 16) % len(variantes)]
+```
+
+### Paso 2 · El voto, agregado por variante
+
+El feedback vive en **su propio endpoint**, no en `/metrics`: coste/latencia y satisfacción son ejes distintos, y así el `resumen()` de métricas no gana claves que sus tests no esperan.
+
+```python title="proyecto_llmops/observability/feedback.py · resumen() agrega por variante"
+def resumen(self):
+    agregado = {}
+    for voto in self.votos:
+        casilla = agregado.setdefault(voto.variante,
+            {"util": 0, "no_util": 0, "total": 0, "tasa_aprobacion": 0.0})
+        casilla["util" if voto.util else "no_util"] += 1
+        casilla["total"] += 1
+    for casilla in agregado.values():             # 👍 / total: ordena A frente a B
+        casilla["tasa_aprobacion"] = round(casilla["util"] / casilla["total"], 3)
+    return agregado
+```
+
+```text title="▸ deberías ver al pedir GET /feedback (tras unos votos)"
+{
+  "agente_gobdata":         {"util": 8, "no_util": 4, "total": 12, "tasa_aprobacion": 0.667},
+  "agente_gobdata_conciso": {"util": 9, "no_util": 2, "total": 11, "tasa_aprobacion": 0.818}
+}
+```
+
+<Box kind="warn" label="▲ El evento fin anuncia la variante — sin romper nada">
+
+El cambio es **aditivo**: el evento SSE `fin` de `/chat` gana una clave `"variante"` junto a `cache_hit` y `similitud`, que **siguen ahí**. Así el cliente sabe qué variante vio y puede devolverla en su voto. Los smoke tests existentes (`test_smoke_api.py`) no se tocaron y siguen en verde.
+
+</Box>
+
+<Avoid label="⛔ Cuándo NO fiarte del resultado">
+
+- No declares ganadora una variante con **tres votos**: 3-0 puede ser azar. El ganador se decide con **significancia estadística**, no comparando dos fracciones pequeñas.
+- No guardes el feedback solo **en memoria** en producción: se pierde al reiniciar y cada worker cuenta lo suyo. Va a una tabla o a Langfuse.
+- No sortees la variante **por request**: sin pegajosidad, el experimento no mide nada.
+
+</Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Manda varios `POST /chat` con distintos `thread_id` y comprueba en el evento `fin` que cada hilo cae siempre en la misma variante. Luego vota con `POST /feedback` y mira cómo `GET /feedback` mueve la `tasa_aprobacion`. Y el lazo ya está **cerrado de punta a punta** (ver `ADR-0006`): la variante no solo atribuye el voto, también **elige el agente** — cada uno con el prompt de su YAML (`construir_agentes_por_variante`), así que la `tasa_aprobacion` mide el efecto real del prompt.
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar por qué el A/B debe ser pegajoso y por qué el hash lo consigue sin coordinar workers.
+- Argumentar por qué `hashlib.sha256` y no `hash()` de Python.
+- Agregar el feedback por variante en una `tasa_aprobacion` y decir por qué tres votos no bastan.
+- Añadir una clave a un evento SSE sin romper los tests que dependen de las anteriores.
+
+</Checkpoint>
+
+<Recap level={5} label="↺ En una frase">
+
+Para mejorar un prompt con datos: reparte el tráfico de forma **pegajosa** (`hash(thread_id) % n`) y recoge el **feedback** 👍/👎 **por variante** — luego compara la `tasa_aprobacion`, con votos suficientes para que signifique algo.<Arch>archivos: `proyecto_llmops/prompts/experimentos.py` · `observability/feedback.py`</Arch>
+
+</Recap>

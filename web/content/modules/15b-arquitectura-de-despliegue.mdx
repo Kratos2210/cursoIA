@@ -1,0 +1,190 @@
+export const meta = {
+  "id": "m15b",
+  "slug": "15b-arquitectura-de-despliegue",
+  "title": "Arquitectura de despliegue: microservicios, K8s y serverless",
+  "kind": "module",
+  "level": 4,
+  "levelName": "Producción",
+  "order": 17,
+  "badge": "15b",
+  "pyFile": null,
+  "fileref": null,
+  "tested": false,
+  "goals": "🎯 Al terminar sabrás: repartir el sistema en servicios stateless y decidir entre Kubernetes y serverless por componente.",
+  "prereqs": "✅ Necesitas: Módulo 15.",
+  "minutes": "⏱️ ~40 min"
+};
+
+El patrón supervisor repartió el *razonamiento* entre especialistas. La misma idea —**divide y acota**— sube una escala y reparte el *sistema*: un script único que lo hace todo no escala ni se mantiene, y la cura es partirlo en componentes independientes, cada uno desplegable y escalable por separado.
+
+### Microservicios: cada pieza, un servicio
+
+El camino de una petición · **los servicios no guardan nada**
+
+<Flow>
+  <Step n="entra" title="Balanceador">Reparte entre las copias vivas. Ninguna es "la buena".</Step>
+  <Step n="svc 1" title="Retrieval">Carga, chunking e índice vectorial.</Step>
+  <Step n="svc 2" title="Ranking">Re-ranker / búsqueda híbrida.</Step>
+  <Step n="svc 3" title="Orquestación">Agente LangGraph + estado.</Step>
+  <Step n="svc 4" title="Inferencia">Gateway al LLM.</Step>
+</Flow>
+
+Detrás de todos ellos · **el estado compartido**
+
+<Flow>
+  <Step n="estado" title="Vector store">Chroma / pgvector. Lo consulta svc 1.</Step>
+  <Step n="estado" title="Checkpointer">Postgres. La memoria de las conversaciones de svc 3.</Step>
+  <Step n="estado" title="Log de auditoría">Append-only. Sobrevive a cualquier reinicio.</Step>
+</Flow>
+
+Fíjate en dónde está la línea: **arriba nada recuerda, abajo todo recuerda**. Esa separación es lo que permite matar y recrear cualquier caja de la fila de arriba sin perder una conversación. Si el `MemorySaver` del Módulo 13 viviera dentro de svc 3, el balanceador tendría que mandar siempre al mismo usuario a la misma copia — y ya no podrías escalar.
+
+| Tema | Qué resuelve en tu sistema de IA |
+| --- | --- |
+| Escalado horizontal | El servicio de ranking (pesado) escala solo, sin duplicar todo el sistema. |
+| Resiliencia | Si cae inferencia, retrieval sigue vivo; se reintenta sin tumbar la app. |
+| Serverless | Funciones que escalan a cero cuando no hay tráfico: pagas por uso, ideal para cargas variables. |
+| Kubernetes | Orquesta contenedores, balancea carga y reinicia servicios caídos automáticamente. |
+| Gestión de estado | El estado del agente vive en un checkpointer externo (Postgres/Redis), no en la memoria de un proceso. |
+
+<Box kind="analogy" label="◆ Analogía">
+
+Es pasar de un **todo-en-uno** (una sola caja que hace todo y si falla, falla completa) a una **cocina con estaciones**: parrilla, ensaladas, postres. Cada una trabaja a su ritmo, se refuerza sola cuando hay demanda y una avería no cierra el restaurante.
+
+</Box>
+
+### Cómo se hablan los servicios
+
+Servicios separados necesitan comunicarse, y hay dos patrones según la urgencia de la respuesta:
+
+<Grid3>
+
+<Card num="" title="Síncrono (REST/HTTP)">
+
+"Pregunto y espero la respuesta". Para el camino de consulta: el usuario está esperando. Orquestación llama a ranking, ranking responde.
+
+</Card>
+
+<Card num="" title="Asíncrono (colas)">
+
+"Dejo el encargo y sigo". Para ingesta: subes 200 PDFs a una cola y los workers los indexan a su ritmo. Nadie espera en línea.
+
+</Card>
+
+<Card num="" title="Balanceador de carga">
+
+El recepcionista: recibe todas las llamadas y las reparte entre las copias vivas del servicio. Si una copia cae, deja de enviarle tráfico.
+
+</Card>
+
+</Grid3>
+
+### La regla del estado: servicios sin memoria propia
+
+Para que un servicio pueda escalar (tener 3, 10, 50 copias) debe ser **stateless**: ninguna copia guarda nada importante en su propia memoria. ¿Por qué? Si la copia 2 recuerda tu conversación y la siguiente petición cae en la copia 3, la conversación "desaparece". La solución: **todo el estado vive afuera** — el historial del agente en un checkpointer Postgres/Redis (Módulo 13), los vectores en el vector store, los archivos en un almacén de objetos. Las copias son intercambiables y desechables.
+
+<Box kind="analogy" label="◆ Analogía">
+
+Los meseros no llevan libreta propia: **toda comanda va al sistema de la cocina**. Así cualquier mesero puede atender cualquier mesa, contratar más meseros un sábado es trivial, y si uno se enferma no se pierde ningún pedido.
+
+</Box>
+
+### Kubernetes: le declaras lo que quieres, él lo mantiene
+
+Kubernetes (K8s) orquesta contenedores. Su idea central es **declarativa**: tú describes en un archivo el estado deseado ("quiero 3 copias del servicio de ranking, con esta memoria") y K8s lo hace realidad *y lo defiende*: si una copia muere, levanta otra; si un servidor falla, mueve las copias a otro. Leamos un manifiesto real, línea por línea:
+
+```python title="deploy/k8s/ranking.yaml · un servicio declarado"
+apiVersion: apps/v1
+kind: Deployment            # "quiero este servicio corriendo SIEMPRE"
+metadata:
+  name: ranking
+spec:
+  replicas: 3               # 3 copias: si una cae, quedan dos atendiendo
+  selector:
+    matchLabels: {app: ranking}
+  template:
+    metadata:
+      labels: {app: ranking}
+    spec:
+      containers:
+        - name: ranking
+          image: miempresa/ranking:1.2    # el contenedor con tu código, versionado
+          resources:
+            limits: {memory: "2Gi"}       # el re-ranker es pesado: memoria acotada
+---
+apiVersion: v1
+kind: Service               # el "recepcionista": una puerta única de entrada
+metadata:
+  name: ranking
+spec:
+  selector: {app: ranking}  # balancea el tráfico entre las 3 copias de arriba
+  ports: [{port: 80, targetPort: 8000}]
+```
+
+Dos objetos, dos papeles: el `Deployment` mantiene vivas las copias; el `Service` les pone una dirección única y balancea la carga. Con un tercer objeto (`HorizontalPodAutoscaler`) K8s además **escala solo**: "si el CPU pasa de 70%, sube de 3 a 10 copias".
+
+### Serverless: escalar a cero y pagar por uso
+
+En serverless no administras servidores ni copias: subes una función y la plataforma la ejecuta *cuando llega una petición*, escalando de 0 a mil instancias sola. El modelo de costos cambia por completo: con K8s pagas por los servidores encendidos (haya o no tráfico); con serverless pagas **por ejecución** — si nadie pregunta, pagas cero. El precio oculto es el **cold start**: la primera petición tras un rato de silencio tarda más, porque hay que "despertar" la función.
+
+| Criterio | Kubernetes | Serverless |
+| --- | --- | --- |
+| Tráfico ideal | Constante o alto | Esporádico o con picos |
+| Pagas por | Servidores encendidos | Cada ejecución |
+| Primera respuesta | Siempre caliente | Cold start ocasional |
+| Límite práctico | Procesos largos y pesados OK | Tiempo máximo por ejecución |
+| En tu pipeline | Ranking e inferencia (pesados, constantes) | Ingesta ocasional, webhooks, tareas nocturnas |
+
+<Box kind="warn" label="▲ No es either/or">
+
+Los sistemas reales **mezclan**: el camino de consulta (latencia crítica, tráfico constante) en K8s; la ingesta de documentos (esporádica, tolerante a demoras) en funciones serverless. Decide por componente, no por sistema. Y en LangGraph existe un atajo gestionado: **LangGraph Platform** despliega el grafo con su `langgraph.json` sin que administres nada de esto.
+
+</Box>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Toma tu RAG y dibuja qué partes serían cada servicio. ¿Cuál escala más bajo carga? (Pista: ranking e inferencia.) Luego decide para cada uno: ¿K8s o serverless? Justifica con la tabla — ese razonamiento escrito ya es tu primer ADR (Módulo 17).
+
+<Solution summary="Ver una solución">
+
+Una respuesta razonable para el RAG del curso:
+
+**Ingesta** (cargar/trocear/indexar) → *serverless*: corre solo cuando llegan documentos nuevos, escala a cero el resto del día. **Retrieval** → K8s con 2 réplicas: liviano pero de latencia crítica. **Ranking** → K8s con autoscaler: el cross-encoder es pesado y es el primero que se satura. **Orquestación/agente** → K8s, stateless, con el checkpointer en Postgres. **Inferencia** → es la API de Gemini (ya es "serverless de Google"); tu gateway solo añade fallbacks y límites.
+
+</Solution>
+
+</Box>
+
+<Box kind="def" label="◈ Del manifiesto que arranca al deploy que aguanta producción">
+
+El `Deployment` + `Service` de arriba *levanta* tu agente, pero un despliegue de verdad necesita cuatro piezas más —la diferencia entre "corre en mi clúster" y "aguanta usuarios reales":
+
+<DefList>
+  <Term>probes (readiness / liveness)</Term>
+  <Def>Kubernetes no manda tráfico a un pod hasta que su *readiness probe* dice "listo", y **reinicia** el pod si su *liveness probe* deja de responder. Sin ellas, mandas peticiones a un pod que aún carga el modelo, o dejas vivo uno colgado.</Def>
+  <Term>autoescalado (HPA)</Term>
+  <Def>El `HorizontalPodAutoscaler` sube y baja réplicas según CPU o latencia. Es lo que convierte el "2 réplicas fijas" en "2 cuando hay calma, 20 en el pico".</Def>
+  <Term>secrets (no en el YAML)</Term>
+  <Def>La `API key` jamás va en el manifiesto: va en un `Secret` (o un gestor externo tipo Vault) y se inyecta como variable de entorno. El [m23](/modulos/23-seguridad-red-teaming) ya te avisó: una llave en texto plano es una fuga esperando pasar.</Def>
+  <Term>ingress + límites de recursos</Term>
+  <Def>El `Ingress` expone el `Service` al mundo con TLS y enrutado por ruta/host; los *requests/limits* de CPU y memoria dejan que el scheduler ubique bien los pods y evitan que uno se coma el nodo (o que lo maten por OOM).</Def>
+</DefList>
+
+No hace falta que lo escribas hoy —tu proveedor gestionado ([m18b](/modulos/18b-elegir-modelo-y-proveedor)) o un Helm chart traen buenos defaults—, pero sí reconocer qué falta: sin probes, secrets, HPA e ingress, el YAML de ejemplo es una demo, no un servicio.
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Dibujar tu RAG como servicios independientes y señalar la línea entre lo que recuerda y lo que no.
+- Explicar por qué un microservicio debe ser *stateless* para poder escalar.
+- Leer un manifiesto de Kubernetes y distinguir el papel del `Deployment` del `Service`.
+- Decidir, por componente, entre Kubernetes y serverless justificándolo.
+
+</Checkpoint>
+
+<Recap level={4} label="↺ En una frase">
+
+Reparte el sistema en servicios **stateless**: arriba nada recuerda, abajo el estado vive en Postgres/Chroma/log. Así puedes matar y recrear cualquier copia sin perder una conversación.<Arch>K8s para lo constante y pesado · serverless para lo esporádico</Arch>
+
+</Recap>

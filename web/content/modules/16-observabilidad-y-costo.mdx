@@ -1,0 +1,268 @@
+export const meta = {
+  "id": "m16",
+  "slug": "16-observabilidad-y-costo",
+  "title": "Observabilidad y evaluación",
+  "kind": "module",
+  "level": 4,
+  "levelName": "Producción",
+  "order": 18,
+  "badge": "16",
+  "pyFile": "16_evaluacion.py",
+  "fileref": "📋 Copia y ejecuta: curso_ejemplos/16_evaluacion.py — evalúa un mini-RAG con dataset (corre sin llave)✓ cubierto por tests",
+  "tested": true,
+  "goals": "🎯 Al terminar sabrás: observar (trazas, tokens, coste) y evaluar la calidad, y detectar regresiones.",
+  "prereqs": "✅ Necesitas: Módulos 10–12.",
+  "minutes": "⏱️ ~50 min"
+};
+
+"Funciona en mi máquina" no basta. En producción necesitas **ver** qué hace el sistema: cuánto tarda, cuánto cuesta y si está alucinando. Sin instrumentación, vuelas a ciegas — y te enteras de los problemas por los usuarios, que es la peor forma.
+
+<Box kind="def" label="◈ Definición · Observabilidad y evaluación">
+
+**Observabilidad** es poder responder *qué está pasando ahí dentro* sin añadir código nuevo: qué prompt salió, qué herramienta se llamó, cuántos tokens costó, dónde se fue el tiempo. Es sobre el sistema **en vivo**.
+
+**Evaluación** es distinto: es medir *si las respuestas son buenas*, contra un conjunto de casos con respuesta esperada. Es sobre el sistema **antes de desplegarlo**. Una te dice que el sistema está lento; la otra, que se ha vuelto tonto.
+
+<DefList>
+  <Term>traza (trace)</Term>
+  <Def>El árbol completo de una ejecución: cada nodo, cada llamada al LLM, con su entrada, su salida y su duración. En LangSmith se activa con dos variables de entorno.</Def>
+  <Term>dataset de evaluación</Term>
+  <Def>Pares pregunta → respuesta esperada. Es tu red de seguridad: sin él, "mejoró" es una opinión.</Def>
+  <Term>LLM-as-judge</Term>
+  <Def>Usar un modelo para puntuar las respuestas de otro cuando no hay una respuesta exacta que comparar. Barato y útil, pero es un juez con sesgos: valídalo contra casos que ya sabes juzgar.</Def>
+  <Term>regresión</Term>
+  <Def>Que algo que antes funcionaba deje de funcionar. En IA aparece sin tocar tu código: cambia el modelo, cambian tus resultados. Por eso se re-evalúa periódicamente, no solo al programar.</Def>
+</DefList>
+
+</Box>
+
+El circuito completo es un lazo que se retroalimenta: el agente produce trazas, las trazas dan métricas, las métricas y la evaluación revelan qué mejorar, y esa mejora vuelve al agente. Nunca "terminas" de observar:
+
+El lazo de la observabilidad · **medir para mejorar**
+
+<Flow>
+  <Step n="1" title="Agente">Corre en vivo y atiende consultas.</Step>
+  <Step n="2" title="Traza">LangSmith registra cada paso, entrada y salida.</Step>
+  <Step n="3" title="Métricas">Tokens, latencia y coste por consulta.</Step>
+  <Step n="4" title="Evaluación">Dataset + juez: ¿la calidad subió o bajó?</Step>
+  <Step n="5" title="Mejora">Ajustas prompt/modelo y vuelve al agente.</Step>
+</Flow>
+
+### Paso 1 — Las cuatro métricas, en lenguaje llano
+
+<Grid3>
+
+<Card num="" title="Latencia">
+
+Cuánto tarda UNA respuesta, de pregunta a texto final. La siente cada usuario, en cada consulta.
+
+</Card>
+
+<Card num="" title="Throughput">
+
+Cuántas consultas por minuto aguanta el sistema sin degradarse. La capacidad total del restaurante, no de una mesa.
+
+</Card>
+
+<Card num="" title="Tasa de alucinación">
+
+De cada 100 respuestas, cuántas inventan algo que no estaba en el contexto. La métrica de confianza.
+
+</Card>
+
+</Grid3>
+
+Y la cuarta: **costo por consulta** — cada token de entrada y salida se cobra; un contexto sucio de 20 chunks (Módulo 12) no solo confunde al modelo: lo pagas en cada pregunta.
+
+### Paso 2 — Instrumentación: dos variables y ya estás viendo
+
+```python title=".env · activar trazas de LangSmith"
+# Con estas variables, cada invoke/stream queda registrado solo.
+# No cambias tu código: LangChain envía las trazas automáticamente.
+LANGSMITH_TRACING=true
+LANGSMITH_API_KEY=ls__tu_llave
+LANGSMITH_PROJECT=gobierno-datos
+```
+
+Cada ejecución queda registrada como una **traza**: el recorrido completo de una consulta — qué prompt se armó, qué tool se llamó, qué contexto se recuperó, cuántos tokens y cuánto costó cada paso. Cuando algo falle, la traza te dice *en qué eslabón*.
+
+| Métrica | Por qué la vigilas | Herramienta |
+| --- | --- | --- |
+| Latencia / throughput | Que las respuestas no tarden demasiado bajo carga. | LangSmith · Arize |
+| Tasa de alucinaciones | Detectar cuándo el modelo inventa fuera del contexto. | Arize |
+| Costos / tokens | Controlar el gasto por consulta y por usuario. | LangSmith |
+| Trazas paso a paso | Ver qué tool usó y qué contexto recuperó cuando algo falla. | LangSmith |
+| Drift / regresiones | Notar si la calidad baja tras un cambio de modelo o prompt. | Arize |
+
+<Box kind="analogy" label="◆ Roles">
+
+**LangSmith** es el "microscopio" para depurar cada ejecución (trazas, tokens, costos) durante el desarrollo. **Arize** es el "tablero de vuelo" en producción: monitoreo continuo, evaluación de calidad y alertas cuando algo se degrada. (Su versión open-source, **Arize Phoenix**, corre gratis en tu propia máquina.)
+
+</Box>
+
+Conviene no quedarse con "LangSmith = trazas". En 2026 es una **plataforma completa** que cubre tres patas del ciclo de vida del agente: **Observability** (las trazas y métricas que ves aquí), **Evaluation** (datasets, LLM-as-judge, regresiones — lo que verás abajo) y **Deployment** (publicar y operar el agente, en la línea del Módulo 17). El *tracing* es solo la puerta de entrada; la misma herramienta te acompaña hasta producción.
+
+### Paso 3 — La otra pregunta: ¿cuánto me está costando?
+
+📋 Copia y ejecuta: **curso_ejemplos/16b_observabilidad_langsmith.py** — trazas + tokens + coste; corre sin ninguna llave✓ cubierto por tests
+
+La traza responde *"¿por qué salió mal?"*. Los tokens responden *"¿cuánto nos cuesta?"* — la segunda pregunta que te hará tu jefe. Cada respuesta del modelo trae un `usage_metadata` con los tokens que consumió, y de ahí al dólar solo hay una multiplicación:
+
+```python title="16b_observabilidad_langsmith.py · de tokens a dólares"
+# Los tokens de ENTRADA (prompt + contexto del RAG) son baratos.
+# Los de SALIDA cuestan varias veces más: gemini-3.1-flash-lite cobra
+# $0.25 por millón de entrada… y $1.50 por millón de salida.
+PRECIOS = {"gemini-3.1-flash-lite": {"entrada": 0.25, "salida": 1.50}}
+
+def extraer_tokens(mensaje) -> dict[str, int]:
+    """Función PURA: se testea sin llave y sin red."""
+    uso = getattr(mensaje, "usage_metadata", None) or {}
+    return {"entrada": uso.get("input_tokens", 0),
+            "salida":  uso.get("output_tokens", 0)}
+```
+
+Contraintuición útil: **lo caro no es el contexto gigante, es la respuesta larga**. Un RAG que mete 20 chunks sucios (Módulo 12) paga 4× menos por ese ruido que por cada párrafo de más que escribe el modelo. Si necesitas recortar la factura, empieza por la salida.
+
+```text title="▸ deberías ver al correr 16b (recortado)"
+🙋 ¿Cuál es el horario de atención?
+🤖 Horario de atención: Nuestro horario de atención al cliente es de lunes a…
+   tokens: 73 entrada + 38 salida   ·   coste: $0.000023
+
+============================================================
+TOTAL · 225 tokens de entrada, 122 de salida
+COSTE · $0.000071 por 3 consultas
+        ≈ $0.000024 por consulta
+        ≈ $0.02 cada 1000 consultas
+============================================================
+```
+
+<Box kind="analogy" label="◆ El truco del archivo: degradación en cascada">
+
+El ejemplo mira qué llaves tienes y se adapta: con `LANGSMITH_API_KEY` manda trazas reales; con `GOOGLE_API_KEY` llama a Gemini de verdad; sin ninguna, simula la respuesta. **El código de medición es idéntico en los tres casos** — por eso puedes estudiarlo hoy sin gastar un centavo, y el mismo archivo sirve en producción. Activar LangSmith no toca tu código: son dos variables de entorno.
+
+</Box>
+
+<Box kind="warn" label="▲ Los precios son una foto, no una verdad eterna">
+
+La tabla `PRECIOS` del archivo caduca: Google los cambia. Antes de presupuestar nada, contrástalos con la página oficial de precios y trata el número como un *orden de magnitud*, no como una factura.
+
+</Box>
+
+### Paso 4 — Evaluación automatizada: datasets + tests
+
+Observar no basta: quieres **medir la calidad de forma repetible** y que un cambio de prompt o modelo no la rompa sin avisar. La receta tiene tres ingredientes: un *dataset* (preguntas con respuesta esperada — tu `proyectorag/preguntas.txt` ya es el borrador de uno), un *evaluador* que puntúa cada respuesta, y *tests* que corren en cada cambio.
+
+```python title="run_eval.py · evaluar contra un dataset (LangSmith)"
+from langsmith import Client
+from langsmith.evaluation import evaluate
+
+client = Client()
+
+# 1) Dataset: preguntas con su respuesta esperada
+dataset = client.create_dataset("preguntas_normativa")
+client.create_examples(
+    dataset_id=dataset.id,
+    inputs=[{"q": "¿Qué es la completitud de datos?"}],
+    outputs=[{"esperado": "que no falten valores obligatorios"}],
+)
+
+# 2) Corre tu app contra TODO el dataset y puntúa la calidad
+def mi_app(inputs):
+    return {"respuesta": rag.invoke(inputs["q"])}
+
+evaluate(mi_app, data="preguntas_normativa", evaluators=[evaluador_correccion])
+```
+
+¿Y quién es `evaluador_correccion`? Comparar texto libre con "la respuesta esperada" no se puede con un `==`. La solución estándar es **LLM-as-judge**: otro modelo actúa de juez y califica si la respuesta contesta bien — con temperatura 0, porque un juez debe ser consistente:
+
+```python title="el juez · LLM-as-judge con openevals (patrón de la comisión de EricBz)"
+from openevals.llm import create_llm_as_judge
+from openevals.prompts import CORRECTNESS_PROMPT
+
+evaluador_correccion = create_llm_as_judge(
+    prompt=CORRECTNESS_PROMPT,     # prompt de juez ya probado, no lo inventas tú
+    judge_model=ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", temperature=0),
+)
+```
+
+Y los tests: además de tus asserts de siempre, el marcador de LangSmith hace que **cada corrida del test quede trazada** — la evaluación y la observabilidad se encuentran:
+
+```python title="test_app.py · tests que también se observan (pytest)"
+import pytest
+from langsmith import unit
+
+@pytest.mark.langsmith          # esta corrida queda registrada en LangSmith
+@unit
+def test_no_inventa_cuando_no_sabe():
+    r = rag.invoke("¿Cuál es la capital de Marte?")
+    assert "no" in r.lower()   # debe admitir que no está en el contexto
+```
+
+```text title="▸ deberías ver al correr 16_evaluacion.py (recortado)"
+=== Evaluando 5 preguntas ===
+
+· ¿Cuál es el horario de atención?
+  respuesta: Horario de atención: Nuestro horario de atención al cliente…
+  contenido esperado: 100%
+...
+==============================================
+PUNTAJE GLOBAL: 100%  (5.0 de 5 puntos)
+Guarda este número. Si tras cambiar el prompt/modelo baja: REGRESIÓN.
+```
+
+### Paso 5 — Detección de regresiones: el ritual que salva sistemas
+
+Una **regresión** es cuando algo que funcionaba deja de funcionar tras un cambio. El ritual: corre la evaluación completa *antes* del cambio (tu línea base: digamos 87%), haz el cambio, corre la *misma* evaluación. ¿92%? Adelante. ¿74%? El cambio no pasa, y las trazas te muestran exactamente qué preguntas se rompieron. En un equipo, esto corre automático en el CI: nadie integra un cambio que baje el puntaje. `16_evaluacion.py` te deja vivir este ciclo completo en pequeño y sin costo.
+
+<Box kind="practice" label="▸ Para practicar">
+
+Corre `16_evaluacion.py` y anota el puntaje. Rompe algo a propósito (por ejemplo, haz que `responder()` devuelva siempre el primer chunk) y corre de nuevo: acabas de *ver* una regresión. Después activa LangSmith con tu llave, corre el agente del Módulo 10 y sigue una traza completa: prompt, tool, tokens, costo.
+
+<Solution summary="Ver una solución">
+
+```python title="solución · provocar la regresión"
+# En 16_evaluacion.py, dentro de responder(), reemplaza la línea del max():
+    mejor = chunks[0]        # ← "bug": siempre devuelve el primer chunk
+
+# Corre de nuevo:
+#   PUNTAJE GLOBAL: 24%   (antes: 100%)  ← ESO es una regresión, detectada
+# Restaura la línea original y el puntaje vuelve a 100%.
+```
+
+</Solution>
+
+</Box>
+
+<Box kind="def" label="◈ La tríada de métricas RAG · qué mide un juez, exactamente">
+
+"¿La respuesta es buena?" es demasiado vago para un LLM-as-judge. La industria (marcos como **RAGAS**) parte esa pregunta en **tres** preguntas concretas, cada una un juez con su propio prompt — y las tres juntas separan los dos sitios donde un RAG puede fallar: *recuperar* mal o *redactar* mal.
+
+<DefList>
+  <Term>Faithfulness (fidelidad)</Term>
+  <Def>¿La respuesta se sostiene **solo** en el contexto recuperado, sin inventar? Es tu medidor directo de alucinación: si el juez encuentra una afirmación que no está en los chunks, baja.</Def>
+  <Term>Answer relevance (relevancia)</Term>
+  <Def>¿La respuesta **contesta la pregunta** que se hizo, sin irse por las ramas? Una respuesta fiel al contexto pero que no responde lo pedido puntúa bajo aquí.</Def>
+  <Term>Context precision / recall</Term>
+  <Def>La calidad del *retriever*, no del generador: **precision** = de lo que recuperaste, cuánto era relevante (¿metiste basura?); **recall** = de lo relevante que existía, cuánto llegaste a recuperar (¿te dejaste lo bueno fuera?).</Def>
+</DefList>
+
+El diagnóstico es lo valioso: fidelidad baja → el problema está en el *generador* (prompt, modelo); recall bajo → está en el *retriever* (chunking, búsqueda del [m12](/modulos/12-recuperar-re-rankear), o la pregunta del [m20](/modulos/20-rag-avanzado)). Cada una se implementa como un LLM-as-judge, exactamente el patrón que armaste arriba.
+
+Dos encuadres que ordenan todo lo anterior. **Model evals vs product evals:** un *model eval* pregunta "¿este modelo es bueno en general?" (benchmarks); un *product eval* pregunta "¿MI app resuelve el caso de MIS usuarios?" — y ese, con tu dataset y tu tríada, es el único que decide si despliegas. **Evaluar un agente** añade una capa: no basta con juzgar el resultado final, hay que mirar la **trayectoria** — ¿eligió las herramientas correctas?, ¿en el orden razonable?, ¿sin pasos inútiles? Un agente que acierta la respuesta por suerte tras tres llamadas equivocadas está roto aunque el resultado pase.
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Distinguir **observabilidad** (el sistema en vivo) de **evaluación** (la calidad antes de desplegar).
+- Activar trazas de LangSmith con dos variables de entorno, sin tocar tu código.
+- Calcular el coste de una consulta a partir de los tokens de entrada y salida.
+- Explicar qué es una regresión y cómo la caza el ritual de re-evaluar antes/después.
+
+</Checkpoint>
+
+<Recap level={4} label="↺ En una frase">
+
+Si no mides latencia, coste, calidad y errores, no *operas* un sistema: lo esperas. Y ojo al recibo: los tokens de salida cuestan varias veces más que los de entrada.<Arch>archivos: `16_evaluacion.py` · `16b_observabilidad_langsmith.py`</Arch>
+
+</Recap>

@@ -1,0 +1,296 @@
+export const meta = {
+  "id": "m13",
+  "slug": "13-langgraph-a-fondo",
+  "title": "LangGraph a fondo: agentes cíclicos",
+  "kind": "module",
+  "level": 3,
+  "levelName": "Avanzado",
+  "order": 14,
+  "badge": "13",
+  "pyFile": "13_langgraph_stategraph.py",
+  "fileref": "📋 Copia y ejecuta: curso_ejemplos/13_langgraph_stategraph.py✓ cubierto por tests",
+  "tested": true,
+  "goals": "🎯 Al terminar sabrás: construir agentes cíclicos con StateGraph y pausa humana (interrupt).",
+  "prereqs": "✅ Necesitas: Módulos 10–11.",
+  "minutes": "⏱️ ~60 min"
+};
+
+`create_react_agent` es una caja negra cómoda. Cuando necesitas **control total** (pasos personalizados, ramas, aprobación humana), abres el capó con `StateGraph`: defines un *estado*, unos *nodos* (funciones) y unas *aristas* (el flujo, que puede ser cíclico).
+
+<Box kind="def" label="◈ Definición · LangGraph y StateGraph">
+
+**LangGraph** es la librería para escribir flujos de IA como un **grafo** en vez de como una línea. La diferencia con LCEL no es de estilo: una cadena LCEL no puede volver hacia atrás, y un grafo sí. Ciclos, ramas condicionales, pausas y reanudaciones solo existen aquí.
+
+Un `StateGraph` es ese grafo con una regla añadida: hay un **estado compartido** que todos los nodos leen y actualizan. Un nodo no recibe la salida del anterior — recibe el estado completo y devuelve el trozo que quiere cambiar.
+
+<DefList>
+  <Term>estado</Term>
+  <Def>El diccionario que viaja por el grafo (típicamente con una lista `messages`). Cada nodo devuelve un fragmento y LangGraph lo mezcla con lo que ya había.</Def>
+  <Term>nodo (add_node)</Term>
+  <Def>Una función de Python: recibe el estado, devuelve una actualización. Un nodo puede llamar al LLM, ejecutar tools o no hacer nada con IA.</Def>
+  <Term>arista (add_edge)</Term>
+  <Def>Una flecha fija: "de aquí siempre se va allá". `START` y `END` son los extremos que pone LangGraph.</Def>
+  <Term>arista condicional</Term>
+  <Def>Una flecha que **decide**: una función mira el estado y devuelve el nombre del siguiente nodo. Es lo que crea el ciclo del agente (¿hay `tool_calls`? → tools; si no → END).</Def>
+  <Term>checkpointer</Term>
+  <Def>Guarda el estado después de *cada* nodo. Es lo que permite reanudar tras un reinicio, inspeccionar con `app.get_state()` y hacer human-in-the-loop.</Def>
+</DefList>
+
+</Box>
+
+Este es el grafo que vas a escribir abajo, dibujado. Cada caja es un `add_node` y cada flecha, un `add_edge`:
+
+<Flow>
+  <Step n="START" title="Entrada">La constante de LangGraph, no un nodo tuyo.</Step>
+  <Step n="nodo" title="modelo">Invoca al LLM con las tools atadas.</Step>
+  <Step n="¿?" title="decidir()">Arista *condicional*: ¿el último mensaje trae `tool_calls`?</Step>
+  <Step n="sí" title="tools">Ejecuta lo que el modelo pidió.</Step>
+  <Step n="no" title="END">Se acabó: el modelo ya respondió con texto.</Step>
+</Flow>
+
+El `↺` es la arista `add_edge("tools", "modelo")`: después de ejecutar una herramienta, el grafo **no avanza, retrocede**. Ese bucle es la diferencia entre una cadena y un agente.
+
+```python title="StateGraph · el motor del agente por dentro"
+from langgraph.graph import StateGraph, START, END, MessagesState
+from langgraph.checkpoint.memory import MemorySaver
+
+def nodo_modelo(state: MessagesState):
+    return {"messages": [llm_tools.invoke(state["messages"])]}
+
+def decidir(state: MessagesState):
+    ultimo = state["messages"][-1]
+    return "tools" if ultimo.tool_calls else END   # arista CONDICIONAL
+
+grafo = StateGraph(MessagesState)
+grafo.add_node("modelo", nodo_modelo)
+grafo.add_node("tools", nodo_herramientas)      # ejecuta las tools pedidas
+grafo.add_edge(START, "modelo")
+grafo.add_conditional_edges("modelo", decidir)  # ¿usar tool o terminar?
+grafo.add_edge("tools", "modelo")               # CICLO: vuelve a pensar
+
+app = grafo.compile(checkpointer=MemorySaver())
+```
+
+La `add_conditional_edges` es lo que hace al agente **cíclico e iterativo**: tras usar una tool vuelve al modelo, que decide si necesita otra o si ya puede responder.
+
+<Box kind="analogy" label="◆ Las tres piezas, sin código">
+
+El **estado** es una carpeta compartida que viaja por la oficina (lleva la pregunta, los documentos encontrados, los intentos). Cada **nodo** es un empleado que recibe la carpeta, hace su trabajo y la actualiza. Las **aristas** son los pasillos por donde circula la carpeta — y una arista *condicional* es el supervisor que decide a qué escritorio va después, mirando lo que hay dentro.
+
+</Box>
+
+### Paso 1 — Reintentos con escalada: el ciclo que decide solo
+
+El poder real de un grafo cíclico se ve en este patrón de producción: si la búsqueda no encontró contexto, el agente **reintenta**; si falla varias veces, no se cae ni inventa — **escala a un humano**. Un nodo evaluador devuelve el nombre de la ruta a seguir:
+
+```python title="patrón real · reintentar y escalar (adaptado de la comisión de EricBz)"
+def evaluar(state):
+    if state["retrieved_docs"]:
+        return "finish"                    # hay contexto: pasar a redactar
+    state["attempts"] += 1
+    if state["attempts"] >= 3:
+        return "human"                     # 3 intentos fallidos: escala a un humano
+    return "retry"                         # aún no: vuelve a buscar (CICLO)
+
+grafo.add_conditional_edges("evaluate", evaluar, {
+    "finish": "generate",     # ruta feliz
+    "retry":  "retrieve",     # el ciclo: evaluate -> retrieve -> evaluate...
+    "human":  "escalar",      # la salida de emergencia
+})
+```
+
+Fíjate en el detalle: el contador `attempts` vive *en el estado*, no en una variable suelta. Todo lo que el agente necesita recordar entre vueltas del ciclo viaja en la carpeta.
+
+### Paso 2 — Human-in-the-loop: pausar y pedir permiso
+
+📋 Copia y ejecuta: **curso_ejemplos/13b_human_in_the_loop.py** — el ciclo pausa→humano→reanudar completo, offline✓ cubierto por tests
+
+Hay decisiones que un agente no debe tomar solo (marcar un incumplimiento regulatorio, enviar dinero, borrar datos). `interrupt` **congela el grafo** en ese punto y no continúa hasta que una persona responda — pueden pasar minutos o días:
+
+<Box kind="def" label="◈ Definición · Human-in-the-loop">
+
+**Human-in-the-loop** (humano en el bucle) es insertar una **aprobación humana obligatoria** dentro de la ejecución del agente, en el punto exacto donde una acción se vuelve irreversible.
+
+Lo que lo hace distinto de un simple `input()` es que el proceso **no se queda esperando**. El grafo guarda su estado en el checkpointer y muere; el servidor atiende a otros usuarios; cuando la persona responde —una hora después, desde otra máquina— el grafo se reconstruye y sigue en la línea siguiente.
+
+<DefList>
+  <Term>interrupt(payload)</Term>
+  <Def>Detiene el grafo dentro de un nodo y devuelve al exterior lo que la persona necesita ver para decidir.</Def>
+  <Term>Command(resume=valor)</Term>
+  <Def>La respuesta humana. Reanuda la ejecución, y `valor` es *lo que devuelve* la llamada a `interrupt()` que estaba congelada.</Def>
+  <Term>por qué exige checkpointer</Term>
+  <Def>Sin un lugar donde persistir el estado no hay nada que reanudar. Por eso HITL y persistencia son el mismo tema, no dos.</Def>
+</DefList>
+
+</Box>
+
+<Flow>
+  <Step n="1" title="Detectar">El agente propone marcar un incumplimiento.</Step>
+  <Step n="2 ⏸" title="interrupt()">El grafo se congela. El estado queda en el checkpointer.</Step>
+  <Step n="3" title="Humano">Aprueba o rechaza. Puede tardar días; nadie está esperando.</Step>
+  <Step n="4 ▶" title="Command(resume=…)">Reanuda *exactamente* donde se quedó.</Step>
+  <Step n="5" title="Registrar">La decisión y quién la tomó, al log de auditoría.</Step>
+</Flow>
+
+Lo contraintuitivo: entre el paso 2 y el 4 **tu proceso puede morirse**. El grafo no vive en memoria esperando — vive en el checkpointer. Por eso los pasos 2 y 4 pueden ocurrir en procesos, máquinas y días distintos.
+
+```python title="interrupt · aprobación humana"
+from langgraph.types import interrupt
+
+def nodo_aprobacion(state):
+    decision = interrupt({           # PAUSA el grafo y espera a un humano
+        "accion": "marcar incumplimiento",
+        "regla": state["regla"],
+    })
+    return {"aprobado": decision == "si"}
+```
+
+```text title="▸ deberías ver (la pausa y luego la reanudación)"
+# 1) Corres el grafo: se detiene en el interrupt y te devuelve el payload
+⏸  Grafo pausado. Requiere aprobación humana:
+    {'accion': 'marcar incumplimiento', 'regla': 'cifrado AES-256'}
+
+# 2) El humano decide; reanudas con Command(resume="si")
+▶  Reanudando con la respuesta del humano: "si"
+✅ aprobado = True
+```
+
+<Box kind="analogy" label="🌐 Patrón del mundo real: agentes ambientales">
+
+Este mismo `interrupt()` es el corazón de uno de los patrones estrella de LangChain: los **agentes ambientales** (*ambient agents*). Son agentes que corren **en segundo plano**, disparados por eventos (un correo que llega, un ticket nuevo) en vez de por un humano que escribe. Trabajan solos… hasta que van a hacer algo irreversible —enviar una respuesta, borrar algo— y ahí **se detienen y piden tu aprobación**. El caso canónico de LangChain es un **asistente de correo**: lee tu bandeja, redacta borradores y pausa antes de enviar. Es exactamente el ciclo pausa → humano → reanudar de este módulo, aplicado a un caso real.
+
+</Box>
+
+### Paso 3 — Persistencia + auditoría: que nada se pierda ni quede sin registrar
+
+Dos hábitos separan un experimento de un sistema serio. Primero, **checkpoint**: guardar el estado tras cada paso, para que un reinicio no borre la conversación (ni la pausa de aprobación). Segundo, **auditoría**: dejar constancia escrita de cada transición del grafo — en banca y salud no es opcional, es requisito del regulador.
+
+```python title="persistence.py + audit.py · el estado sobrevive y todo queda registrado"
+import json
+from datetime import datetime
+
+def save_state(state):
+    """Checkpoint: si el proceso muere aquí, al reiniciar se retoma donde iba."""
+    with open("storage/checkpoint.json", "w", encoding="utf-8") as f:
+        json.dump(state, f, ensure_ascii=False, indent=2)
+
+def log_transition(nodo):
+    """Auditoría: una línea por cada nodo que se ejecuta, con su hora exacta."""
+    with open("storage/audit.log", "a", encoding="utf-8") as f:
+        f.write(f"{datetime.now().isoformat()} -> {nodo}\n")
+```
+
+<Box kind="warn" label="▲ Persistencia en producción">
+
+`MemorySaver` guarda el estado en RAM (se pierde al reiniciar). Para producción usa un checkpointer persistente como `SqliteSaver` o `PostgresSaver`: así una conversación (o una pausa human-in-the-loop) sobrevive a reinicios y caídas. El JSON de arriba muestra la mecánica; los checkpointers oficiales hacen eso mismo, con transacciones y por `thread_id`.
+
+</Box>
+
+### Paso 4 — De un archivo gigante a un agente modular
+
+Cuando el grafo crece, un solo archivo se vuelve inmanejable. El patrón productivo separa **una responsabilidad por archivo** — así cada pieza se entiende, se prueba y se reemplaza por separado:
+
+| Archivo | Su única responsabilidad |
+| --- | --- |
+| `state.py` | Define la "carpeta": qué campos viajan por el grafo (pregunta, docs, intentos…). |
+| `graph_builder.py` | Arma el grafo: declara nodos y aristas. El mapa del sistema en un solo lugar. |
+| `rag.py` | La búsqueda de documentos (el nodo retrieve la llama, no la implementa). |
+| `persistence.py` | Guardar/recuperar checkpoints del estado. |
+| `audit.py` | El log de auditoría de cada transición y cada tool ejecutada. |
+| `config.py` · `main.py` | Configuración (modelos, rutas) y el punto de entrada que lo enciende todo. |
+
+<Avoid label="⛔ Cuándo NO usar esto">
+
+- Si una cadena LCEL lineal ya resuelve el flujo (sin ciclos, ramas ni pausas), no montes un `StateGraph`: es sobreingeniería, con estado y aristas que mantener a cambio de nada.
+- Si el agente "de fábrica" (`create_react_agent`) ya te alcanza, no lo reescribas a mano: solo abres el capó cuando necesitas control que el prebuilt no da (pasos propios, ramas, aprobación humana).
+- No metas `interrupt()` si no hay una decisión humana real que tomar: una pausa que nadie atiende solo deja el grafo congelado.
+
+</Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Dibuja en papel el grafo con la escalada: `START → retrieve → evaluate → (¿docs?) → generate | retry | human`. Luego abre `13_langgraph_stategraph.py` y añádele el contador `attempts` con límite de 3. Extra: escribe el `log_transition()` y mira tu `audit.log` crecer.
+
+<Solution summary="Ver una solución">
+
+Los tres cambios en `13_langgraph_stategraph.py`:
+
+```python title="solución (fragmentos)"
+# 1) El contador viaja EN el estado, no en una variable suelta
+class Estado(TypedDict):
+    attempts: int
+    # ...los campos que ya tenías
+
+# 2) El evaluador decide la ruta (el código completo está arriba en este módulo)
+#    "finish" | "retry" | "human" según docs y attempts
+
+# 3) Cada nodo registra su paso
+def log_transition(nodo):
+    with open("audit.log", "a") as f:
+        f.write(f"{datetime.now().isoformat()} -> {nodo}\n")
+```
+
+Y el ciclo pausa→humano→reanudar completo, listo para correr: `13b_human_in_the_loop.py`.
+
+</Solution>
+
+</Box>
+
+<Quiz title="✅ Autoevaluación · Nivel Avanzado (módulos 10–13)">
+
+<Question>
+  <Prompt>1 · ¿Qué aporta un re-ranker al RAG?</Prompt>
+  <Option>Hace la búsqueda vectorial más rápida</Option>
+  <Option ok>Un segundo filtro más preciso que reordena los candidatos</Option>
+  <Option>Aumenta la cantidad de chunks recuperados</Option>
+  <Feedback>Recupera barato y ancho (20 candidatos), refina caro y angosto (quedan 3) — Módulo 12.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · La búsqueda híbrida combina…</Prompt>
+  <Option>Dos modelos LLM distintos</Option>
+  <Option>Dos vector stores en paralelo</Option>
+  <Option ok>BM25 (palabras exactas) + búsqueda vectorial (significado)</Option>
+  <Feedback>BM25 rescata códigos exactos ("ISO-27001"); lo vectorial entiende sinónimos. Se cubren mutuamente (Módulo 12).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · ¿Qué hace *cíclico* a un StateGraph?</Prompt>
+  <Option ok>Una arista condicional que puede volver a un nodo anterior</Option>
+  <Option>El MemorySaver</Option>
+  <Option>Usar temperature=0</Option>
+  <Feedback>Tras usar una tool, el flujo VUELVE al modelo, que decide si necesita otra vuelta (Módulo 13).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · ¿Para qué sirve `interrupt()`?</Prompt>
+  <Option>Para detener el programa cuando hay un error</Option>
+  <Option ok>Para pausar el grafo hasta que un humano responda</Option>
+  <Option>Para acelerar la generación</Option>
+  <Feedback>El grafo se congela (minutos o días) y reanuda con `Command(resume=…)` — pruébalo en 13b (Módulo 13).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>5 · ¿Dónde debe vivir el contador de reintentos de un agente?</Prompt>
+  <Option>En una variable global del archivo</Option>
+  <Option>En el prompt del sistema</Option>
+  <Option ok>En el estado del grafo</Option>
+  <Feedback>Todo lo que el agente necesita recordar entre vueltas viaja en la "carpeta" (el estado) — Módulo 13.</Feedback>
+</Question>
+
+</Quiz>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Dibujar un `StateGraph` con sus nodos, aristas y una arista **condicional**.
+- Explicar qué hace cíclico a un agente (la arista que devuelve el flujo al modelo).
+- Decir por qué el contador de reintentos debe vivir *en el estado*, no en una variable suelta.
+- Explicar qué hace `interrupt()` y por qué exige un checkpointer para reanudar.
+
+</Checkpoint>
+
+<Recap level={3} label="↺ En una frase">
+
+Un `StateGraph` es estado + nodos + aristas. La **arista condicional** que devuelve el flujo al modelo es lo que hace cíclico al agente; `interrupt()` es lo que lo hace pausable.<Arch>archivos: `13_langgraph_stategraph.py` · `13b_human_in_the_loop.py`</Arch>
+
+</Recap>

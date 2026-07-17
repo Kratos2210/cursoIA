@@ -1,0 +1,174 @@
+export const meta = {
+  "id": "mapa",
+  "slug": "mapa",
+  "title": "Mapa de tus archivos + Glosario",
+  "kind": "extra",
+  "level": 5,
+  "levelName": "AI Engineer",
+  "order": 43,
+  "badge": "★",
+  "pyFile": null,
+  "fileref": null,
+  "tested": false,
+  "goals": null,
+  "prereqs": null,
+  "minutes": null
+};
+
+Cada concepto tiene un archivo donde practicarlo, un ejercicio que te obliga a
+ escribirlo y — la columna que de verdad importa — **un test que lo defiende**.
+ Esa última columna es lo que convierte esto en material de estudio y no en un montón de
+ scripts: si rompes un concepto, algo se pone rojo y te dice dónde (Módulo 17b).
+
+| Concepto | Ejemplo | Ejercicio | Test que lo protege |
+| --- | --- | --- | --- |
+| Mensajes e `invoke` | `01` · `02` · `03` | — | `test_imports.py` |
+| Memoria de conversación | `04` | [04](/ejercicios) | `test_agente.py::test_el_agente_recuerda_el_turno_anterior` |
+| Salida estructurada | `05` | [05](/ejercicios) | `test_offline.py::TestTema05SalidaEstructurada` |
+| Runnables / LCEL | `06` | — | `test_offline.py::TestTema06Runnables` |
+| Herramientas (`@tool`) | `07` · `08` | [07](/ejercicios) | `test_offline.py::TestTema07Herramientas` |
+| Resiliencia (429, retry) | `09` | — | `test_util.py::TestEsErrorCuota` |
+| Agente ReAct | `10` | — | `test_agente.py::TestAgenteCompleto` |
+| RAG: trocear y unir | `11` | [11](/ejercicios) | `test_offline.py::TestTema11Rag` |
+| BM25 · coseno · RRF · re-rank | `12` | [12](/ejercicios) | `test_offline.py::TestTema12*` (25 tests) |
+| `StateGraph` (nodos y aristas) | `13` | — | `test_offline.py::TestTema13bHumanInTheLoop` |
+| Human-in-the-loop | `13b` | [13](/ejercicios) | `test_offline.py::TestTema13bHumanInTheLoop` |
+| MCP (servidor + cliente) | `14` | [14](/ejercicios) | `test_offline.py::TestTema14Mcp` |
+| Patrón supervisor | `15` | [15](/ejercicios) | `test_offline.py::TestTema15Supervisor` |
+| Evaluación con dataset | `16` | [16](/ejercicios) | *el propio ejemplo es la métrica* |
+| Tokens, coste y tracing | `16b` | [16b](/ejercicios) | `test_offline.py::TestTema16bObservabilidad` |
+| Servir por HTTP | `17` | [17](/ejercicios) | `test_imports.py` |
+| Elegir modelo y proveedor | `util.py` | [18b](/modulos/18b-elegir-modelo-y-proveedor) | `test_util.py::TestProveedoresNuevos` |
+| Auditoría / trazabilidad | `proyecto_final/audit.py` | [🏆](/ejercicios) | `proyecto_final/tests/test_audit.py` |
+| Inyección de dependencias | `proyecto_final/graph_builder.py` | [🏆](/ejercicios) | `proyecto_final/tests/test_agente.py` |
+| Spec-Driven Development (verificador) | `verificar_curso.py` | [19](/modulos/19-spec-driven-development) | `tests/test_verificar_curso.py` |
+| Multi-query y RAG-Fusion | `20` | [20](/modulos/20-rag-avanzado) | `test_offline.py::TestTema20*` |
+| Fine-tuning vs RAG | `21` | [21](/modulos/21-fine-tuning-vs-rag) | `test_offline.py::TestTema21*` |
+| Multimodal (texto + imagen) | `22` | [22](/modulos/22-multimodal) | `test_offline.py::TestTema22*` |
+| Voz: audio de entrada y síntesis (TTS) | `22b` | [22](/modulos/22-multimodal) | `test_offline.py::TestTema22bVoz*` |
+| Seguridad y red-teaming (OWASP LLM) | `23` | [23](/modulos/23-seguridad-red-teaming) | `test_redteam.py` |
+| Vector DBs en producción (dedup · IVFFlat) | `24` | [24](/modulos/24-vector-dbs-en-produccion) | `test_offline.py::TestTema24*` |
+| Prompt engineering (few-shot · CoT · self-consistency) | `26b` | [26b](/modulos/26b-prompt-engineering) | `test_offline.py::TestTema26b*` |
+| Fundamentos del LLM (tokenización · softmax · muestreo · perplejidad) | `27` | [27](/modulos/27-fundamentos-del-llm) | `test_offline.py::TestTema27*` |
+| Desafíos: alucinaciones y detección (SelfCheckGPT) | `28` | [28](/modulos/28-desafios-y-alucinaciones) | `test_offline.py::TestTema28*` |
+| Caso real 2: asistente de compras retail (ETL · grounding · eval) | `29` | [29](/modulos/29-caso-real-2-retail) | `test_offline.py::TestTema29*` |
+| Caso retail en producción (proyecto LLMOps) | `proyecto_retail/` | [29](/modulos/29-caso-real-2-retail#m29-proyecto) | `proyecto_retail/tests` |
+| Memoria de largo plazo (recordar entre conversaciones) | `30` | [30](/modulos/30-memoria-de-largo-plazo) | `test_offline.py::TestTema30*` |
+
+<Box kind="analogy" label="◆ ¿Y tus experimentos previos?">
+
+Los notebooks y scripts con los que empezaste (`lcel.ipynb`, `interfazunificada.ipynb`, `routing_v3_streaming.py`, `proyectorag/app_rag.py`…) siguen en la raíz del repo: son el borrador del que nació este curso. Pero **los archivos de `curso_ejemplos/` son la versión canónica**: comentados, testeados y verificados por la CI. Cuando dudes, gana la tabla de arriba.
+
+</Box>
+
+### Glosario rápido
+
+| Término | En una frase |
+| --- | --- |
+| LLM | El modelo de lenguaje (Gemini, Qwen): conversa y razona. |
+| Chat model | La envoltura de LangChain sobre un LLM: recibe mensajes con rol, devuelve un mensaje. |
+| Token | El "trocito" de texto (≈¾ de palabra) que el modelo procesa y cobra. |
+| Ventana de contexto | Máximo de tokens visibles en una llamada: prompt + historial + documentos + respuesta. |
+| Temperature | Cuánta aleatoriedad se permite al generar: 0 = repetible; 0.9 = variado. |
+| LCEL | Lenguaje declarativo de LangChain: conectar pasos con `\|` para formar una cadena. |
+| Prompt template | Molde de instrucciones con huecos `{variables}`, reutilizable. |
+| Output parser | Convierte la respuesta cruda del modelo en algo usable (texto, JSON, objeto). |
+| Interfaz unificada | Todas las piezas entienden `invoke` / `batch` / `stream` (y sus gemelos async). |
+| Salida estructurada | Forzar al modelo a devolver datos con un molde Pydantic. |
+| Runnable | Cualquier pieza de una cadena LCEL (prompt, modelo, función…). |
+| Memoria | El historial que *tú* reenvías en cada turno; el modelo no guarda nada. |
+| MessagesPlaceholder | El hueco del prompt donde se inyecta ese historial. |
+| Thread_id | La etiqueta que separa la conversación de un usuario de la de otro. |
+| Tool | Función de Python que el modelo puede invocar solo. |
+| Tool call | La *petición* del modelo (nombre + argumentos). Ejecutarla la decide tu código. |
+| ToolMessage | El resultado que le devuelves al modelo; sin él, nunca ve qué pasó. |
+| Routing | Dejar que el modelo elija el camino (responder o pedir una tool), en vez de un `if`. |
+| ReAct | El ciclo del agente: razonar → actuar → observar → repetir. |
+| Agente | Un LLM que repite pensar→actuar→observar hasta cumplir el objetivo. |
+| Fallback | Modelo de respaldo si el principal falla (`with_fallbacks`). |
+| Retry | Reintentar *lo mismo* ante fallos temporales (`with_retry`); inútil si el prompt está mal. |
+| 429 | Error de cuota del proveedor. No es un bug de tu código. |
+| Async / await | No acelera la llamada: libera el programa mientras espera a la API. |
+| RAG | Buscar tus documentos y pegarlos como contexto antes de preguntar. Examen a libro abierto. |
+| Retriever | La pieza que recibe la pregunta y devuelve los `k` chunks más relevantes. |
+| Embedding | Huella numérica de un texto; parecidos → números parecidos. |
+| Vector store | Base de datos que guarda embeddings y busca por parecido. |
+| fastembed | Librería que ejecuta modelos de embeddings *en tu máquina*, sin API ni cuota. Usa ONNX Runtime en vez de PyTorch: ~70 MB en lugar de ~800 MB. |
+| ONNX | *Open Neural Network Exchange*: formato estándar para guardar un modelo ya entrenado, independiente de la librería que lo entrenó. El "PDF de los modelos". |
+| Inferencia | Usar un modelo ya entrenado para producir una salida. Lo contrario de *entrenamiento* (ajustar sus pesos). Casi todo lo que escribirás hace inferencia. |
+| Open weights | Modelo cuyos pesos se descargan y puedes ejecutar tú (Llama, Qwen, DeepSeek). No es lo mismo que "open source": suele publicarse el modelo entrenado, no los datos ni el código de entrenamiento. Ver [Módulo 18b](/modulos/18b-elegir-modelo-y-proveedor). |
+| Licencia de modelo | El contrato que dice qué puedes hacer con esos pesos. *Apache 2.0* (Qwen, DeepSeek) permite uso comercial libre; la *Llama Community License* pone restricciones. Revísala antes de construir un producto encima. |
+| AWS Bedrock | Servicio que da acceso a modelos de varios proveedores *desde dentro de tu cuenta de AWS*: IAM y factura unificadas, y los datos no salen de tu VPC. Equivalentes: Vertex (GCP), Azure AI Foundry. Ver [Módulo 18b](/modulos/18b-elegir-modelo-y-proveedor). |
+| vLLM | Servidor de inferencia para **producción** on-premise: con *continuous batching* exprime el throughput de una GPU para servir a muchos usuarios a la vez. Para desarrollo local, la herramienta cómoda es Ollama. |
+| On-premise | Correr los pesos en *tu* hardware (portátil, servidor o datacenter): nada sale de tu red. Gana en privacidad y control; el coste no desaparece, se transforma en GPUs y operación. |
+| OpenRouter | Agregador: UNA llave y un único endpoint hacia cientos de modelos de muchos proveedores, con variantes `:free` para prototipar. Habla el dialecto de OpenAI, así que en el curso es una `base_url` distinta. |
+| Text splitter | Trocea documentos respetando frases/párrafos. |
+| MMR | Recupera resultados relevantes y variados (evita duplicados). |
+| Re-ranker | Segundo filtro que reordena y deja arriba lo más relevante. |
+| Cross-encoder | Modelo que puntúa qué tan bien un fragmento responde a la pregunta. |
+| Búsqueda híbrida | Combinar búsqueda por significado (denso) + por palabras (BM25). |
+| BM25 | Algoritmo clásico de búsqueda por palabras exactas (premia las raras). |
+| RRF | Fusionar dos rankings usando el puesto, no los puntajes. |
+| Precision@k | De los k fragmentos recuperados, qué fracción era realmente útil. |
+| Chunk | Cada fragmento en que se trocea un documento para indexarlo. |
+| StateGraph | Grafo de estado de LangGraph: nodos + aristas (puede ser cíclico). |
+| Arista condicional | Bifurcación del flujo según el estado (¿usar tool o terminar?). |
+| Human-in-the-loop | Pausar el agente para que un humano apruebe (`interrupt`). |
+| Checkpointer | La memoria del agente (RAM, SQLite o Postgres) por `thread_id`. |
+| Supervisor | Nodo que no hace el trabajo: decide qué especialista lo hace. |
+| Multiagente | Varios agentes especializados coordinados, en vez de uno que lo sabe todo. |
+| Modelo falso | Modelo de mentira que recita un guion, para testear un agente sin API. |
+| Log de auditoría | Registro escrito de cada transición y tool ejecutada (trazabilidad legal). |
+| MCP | Estándar para conectar agentes con herramientas/datos externos. Convierte M×N integraciones en M+N. |
+| Servidor MCP | Proceso que expone tools, resources y prompts de forma controlada. |
+| Cliente MCP | El lado del agente: descubre lo que ofrece el servidor y lo traduce a tools. |
+| Inyección de dependencias | Pasar modelo y retriever *por parámetro*; es lo que hace testeable el proyecto final. |
+| Doble de prueba | Objeto que sustituye al modelo en los tests (ver *Modelo falso*). |
+| Observabilidad | Ver qué hace el sistema en vivo (prompts, tools, tokens, tiempos) sin añadir código. |
+| Microservicio | Componente independiente y desplegable por separado. |
+| Contenedor | Paquete con tu código + sus dependencias, que corre igual en cualquier máquina. |
+| Kubernetes | Orquestador declarativo: mantiene vivas N copias de cada servicio. |
+| Balanceador de carga | Reparte el tráfico entre las copias vivas de un servicio. |
+| Stateless | Servicio que no guarda estado propio: sus copias son intercambiables. |
+| Serverless | Ejecutar funciones que escalan a cero; pagas por uso. |
+| FastAPI | Librería de Python para exponer tu agente por HTTP, validando con Pydantic. |
+| Endpoint | Una URL concreta de tu servidor (`POST /chat`) con su contrato de entrada y salida. |
+| ASGI | El estándar que corre apps async de Python; `uvicorn` es quien lo implementa. |
+| Cold start | La demora extra de la primera petición cuando una función serverless "despierta". |
+| Latencia | Cuánto tarda una respuesta, de pregunta a texto final. |
+| Throughput | Cuántas consultas por minuto aguanta el sistema sin degradarse. |
+| Traza | El recorrido completo de una consulta: prompts, tools, tokens, costo. |
+| LangSmith | Trazas, tokens y costos para depurar cada ejecución. |
+| Arize | Monitoreo y evaluación de calidad en producción (Phoenix: su versión open-source). |
+| LLM-as-judge | Usar otro modelo (temperatura 0) para calificar respuestas de texto libre. |
+| Dataset de evaluación | Preguntas con respuesta esperada: la vara para medir calidad repetible. |
+| Regresión | Algo que funcionaba se rompe tras un cambio; la evaluación la detecta. |
+| ADR | Nota que documenta una decisión de arquitectura y su porqué. |
+| Runbook | Manual de operación: cómo arrancar, qué vigilar, qué hacer si falla. |
+| CI | Integración continua: tests + evaluación corren solos en cada cambio. |
+| Agent engineering | El encuadre actual de LangChain: construir agentes como disciplina de ingeniería (con su ciclo de vida), no como demos sueltas. |
+| Ciclo de vida del agente | Las cuatro etapas por las que pasa un agente en producción: Build → Test → Deploy → Monitor. |
+| Deep Agents | Framework open source de LangChain para agentes de larga duración que resuelven tareas complejas (planifican e investigan por horas). |
+| Agente ambiental | Agente que corre en segundo plano, disparado por eventos, y pide aprobación humana (`interrupt`) antes de una acción irreversible. Caso estrella: el asistente de correo. |
+| Spec-Driven Development (SDD) | Escribir la especificación (QUÉ y POR QUÉ) antes del código; el spec es la fuente de verdad. Ver [Módulo 19](/modulos/19-spec-driven-development). |
+| spec-kit | La herramienta que estructura el SDD en cinco pasos: constitution → /specify → /plan → /tasks → /implement. |
+| Constitución (del proyecto) | Los principios no negociables del proyecto (aquí: español didáctico, `uv`, tests offline) que condicionan cada spec. |
+
+### Documentación oficial
+
+- [LangChain (Python)](https://docs.langchain.com/oss/python/langchain/overview) · [LangGraph](https://docs.langchain.com/oss/python/langgraph/overview)
+- [Model Context Protocol (MCP)](https://modelcontextprotocol.io) · [langchain-mcp-adapters](https://github.com/langchain-ai/langchain-mcp-adapters)
+- [LangSmith](https://docs.smith.langchain.com) · [Arize](https://docs.arize.com) · [LangGraph Platform](https://langchain-ai.github.io/langgraph/cloud/)
+- [API de Gemini](https://ai.google.dev/gemini-api/docs)
+
+### Repos de referencia
+
+- [Comisión AI Engineering (EricBz)](https://github.com/EricBz/AiEngineering_Comision102110) — RAG con Chroma (Clase 1), agentes LangGraph modulares con auditoría y persistencia (Clase 3), y LangSmith + evaluación/tests + LangGraph Platform (Clase 6). Buen complemento práctico a este curso.
+
+### 🎓 Para seguir aprendiendo
+
+Cuando termines este curso, la fuente oficial y **gratuita** para profundizar es **LangChain Academy**. Este curso te dio la base con Gemini y un capstone real; la Academy amplía cada pieza con la voz del propio equipo de LangChain y proyectos más grandes:
+
+- [Academy · colección Foundation](https://academy.langchain.com/collections/foundation) — los fundamentos, curso por curso: Intro to LangChain, Intro to LangGraph, Building Reliable Agents, Intro to Agent Observability & Evaluations, Monitoring Production Agents e Intro to LangSmith Deployment. Es el mismo recorrido de este curso (Módulos 10–17), contado por sus autores.
+- [Academy · colección Project](https://academy.langchain.com/collections/project) — proyectos completos que van más allá del capstone: *Ambient Agents with LangGraph* (un asistente de correo con human-in-the-loop — el Módulo 13 a escala real) y *Deep Research with LangGraph* (multiagente que planifica, busca en paralelo y sintetiza — el patrón del Módulo 15).
+- [docs.langchain.com](https://docs.langchain.com) — la documentación oficial siempre al día: la referencia a la que volver cuando una API cambie o necesites el detalle exacto.

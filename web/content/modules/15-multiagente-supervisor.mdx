@@ -1,0 +1,162 @@
+export const meta = {
+  "id": "m15",
+  "slug": "15-multiagente-supervisor",
+  "title": "Multiagente: el patrón supervisor",
+  "kind": "module",
+  "level": 4,
+  "levelName": "Producción",
+  "order": 16,
+  "badge": "15",
+  "pyFile": "15_supervisor_multiagente.py",
+  "fileref": "📋 Copia y ejecuta: curso_ejemplos/15_supervisor_multiagente.py — 100% offline, no gasta cuota✓ cubierto por tests",
+  "tested": true,
+  "goals": "🎯 Al terminar sabrás: repartir el trabajo entre agentes especialistas coordinados por un supervisor.",
+  "prereqs": "✅ Necesitas: Módulo 13.",
+  "minutes": "⏱️ ~35 min"
+};
+
+Un agente con demasiadas herramientas se vuelve tonto, y la cura es **repartir el trabajo entre especialistas** coordinados por un supervisor. Es el principio de *divide y acota* aplicado al razonamiento del sistema. La misma idea, una escala más arriba —repartir el *sistema* en servicios independientes— es el [Módulo 15b](/modulos/15b-arquitectura-de-despliegue).
+
+### El problema: el agente que sabe demasiado
+
+Le das 3 herramientas a un agente y elige bien. Le das 12 y empieza a fallar: su prompt del sistema crece hasta ocupar miles de tokens, las descripciones de las tools compiten entre sí, y el modelo confunde `buscar_normativa` con `buscar_reporte`. No es que el modelo sea malo: es que le pediste que fuera experto en todo a la vez.
+
+<Box kind="analogy" label="◆ Analogía">
+
+Es la diferencia entre un **médico general** con doce especialidades falsas y un **hospital**: recepción escucha tu problema y te manda a cardiología o a traumatología. El recepcionista no sabe de corazones — sabe *a quién preguntarle*. Y cada especialista tiene su propio consultorio, sus propios instrumentos y su propia forma de equivocarse, acotada.
+
+</Box>
+
+### El patrón supervisor
+
+Un **supervisor** es un nodo que no hace el trabajo: decide quién lo hace. Los especialistas responden y le devuelven el control. El bucle se repite hasta que ya no queda trabajo pendiente.
+
+<Box kind="def" label="◈ Definición · Sistema multiagente y patrón supervisor">
+
+Un **sistema multiagente** es varios agentes especializados, cada uno con su propio prompt y su propio puñado de herramientas, coordinados para resolver algo que uno solo haría mal. No se reparte el trabajo por moda: se reparte porque **la calidad de decisión de un LLM cae cuando le das demasiadas opciones**.
+
+El **patrón supervisor** es la forma más simple de coordinarlos: un nodo central enruta hacia el especialista adecuado, recibe su respuesta y vuelve a decidir. El supervisor no sabe hacer nada — sabe *a quién preguntarle*.
+
+<DefList>
+  <Term>supervisor</Term>
+  <Def>El nodo enrutador. Su única salida útil es un nombre: a qué especialista le toca ahora, o `END` si ya terminó.</Def>
+  <Term>especialista (worker)</Term>
+  <Def>Un agente acotado: pocas herramientas, un dominio, un prompt corto. Se equivoca, pero se equivoca dentro de un terreno pequeño.</Def>
+  <Term>por qué no una arista fija</Term>
+  <Def>Porque no sabes de antemano cuántas veces hará falta cada especialista. El supervisor es una **arista condicional** (Módulo 13) con más de dos destinos.</Def>
+  <Term>el coste real</Term>
+  <Def>Cada salto al supervisor es una llamada al LLM más. Un multiagente es más preciso y más caro: úsalo cuando un agente único ya falle, no antes.</Def>
+</DefList>
+
+</Box>
+
+<Flow>
+  <Step n="entra" title="Pregunta">"Evalúa esta regla de cifrado".</Step>
+  <Step n="decide" title="Supervisor">No sabe de nada; sabe a quién preguntarle.</Step>
+  <Step n="esp. 1" title="Consultor">Solo normativa (RAG).</Step>
+  <Step n="esp. 2" title="Evaluador">Solo calidad (Pydantic + auditoría).</Step>
+  <Step n="vuelve" title="Supervisor">¿Queda trabajo? No → END.</Step>
+</Flow>
+
+Se arma con lo que ya sabes del Módulo 13: un `StateGraph`, nodos, y una **arista condicional** que enruta según el estado.
+
+```python title="15_supervisor_multiagente.py · el cerebro del supervisor"
+Destino = Literal["consultor", "evaluador", "FIN"]
+
+def decidir(pregunta: str, ya_respondido: bool) -> Destino:
+    """La política de enrutamiento. Función PURA: se testea sin LLM."""
+    # Regla 1: si un especialista YA respondió, se acabó -> FIN.
+    #          Sin esta regla el grafo entra en BUCLE INFINITO.
+    if ya_respondido:
+        return "FIN"
+    # Regla 2: ¿piden evaluar/verificar algo? -> el evaluador.
+    if any(p in pregunta.lower() for p in ("evalúa", "verifica", "cumple")):
+        return "evaluador"
+    # Regla 3: cualquier otra cosa es una duda -> el consultor.
+    return "consultor"
+```
+
+```python title="15_supervisor_multiagente.py · el bucle, con la arista condicional"
+grafo.add_edge(START, "supervisor")
+
+# La arista condicional: hacia_donde() devuelve una ETIQUETA,
+# y el diccionario la traduce a un nodo (o a END).
+grafo.add_conditional_edges(
+    "supervisor",
+    hacia_donde,                      # lee state["siguiente"]
+    {"consultor": "consultor", "evaluador": "evaluador", "FIN": END},
+)
+
+# Cada especialista DEVUELVE EL CONTROL al supervisor.
+# Eso cierra el bucle: con más trabajo pendiente, delegaría otra vez.
+grafo.add_edge("consultor", "supervisor")
+grafo.add_edge("evaluador", "supervisor")
+```
+
+```text title="▸ deberías ver"
+🙋 ¿Cuántos años se conservan los registros transaccionales?
+  [supervisor] -> consultor
+  [consultor]  consultando la normativa…
+  [supervisor] -> FIN
+🤖 [consultor] La Regla 2 fija la retención: … un mínimo de 10 años.
+
+🙋 Evalúa esta regla: los datos personales se cifran con AES-256.
+  [supervisor] -> evaluador
+  [evaluador]  puntuando la regla…
+  [supervisor] -> FIN
+🤖 [evaluador] cumple=True · severidad=alta · respaldada por la Regla 1.
+```
+
+<Box kind="warn" label="▲ El error que todos cometen: el bucle infinito">
+
+El especialista devuelve el control al supervisor, que vuelve a delegar, que vuelve a responder… para siempre. La `Regla 1` (*"si ya hay respuesta, FIN"*) es lo único que lo corta. En un supervisor con LLM, **esa regla no se delega jamás** al modelo: es código. Cuando LangGraph te lance un `GraphRecursionError`, este es el primer sitio donde mirar.
+
+</Box>
+
+<Box kind="analogy" label="◆ Por qué el supervisor decide con reglas… y en producción con un LLM">
+
+El ejemplo enruta con `if`, para que corra offline y puedas testearlo. En producción el supervisor *es* un LLM con **salida estructurada sobre un `Literal`** — exactamente el molde del Módulo 05. Así el modelo solo puede devolver un destino válido: si escribe `"evaluadorr"`, Pydantic lo rechaza antes de que el grafo intente enrutar a un nodo que no existe. Míralo en `decidir_con_llm()`, en el mismo archivo.
+
+</Box>
+
+<Avoid label="⛔ Cuándo NO usar esto">
+
+- Si un solo agente con unas pocas herramientas ya elige bien, no lo partas en especialistas: cada salto al supervisor es una llamada más al LLM (más coste, más latencia, más puntos de fallo). Reparte solo cuando el agente único empiece a confundir tools.
+- Si en realidad es un flujo lineal de pasos fijos, no necesitas enrutamiento dinámico: eso es una cadena LCEL o un `StateGraph` simple, no un supervisor.
+- No delegues al LLM la regla que corta el bucle ("si ya respondió, FIN"): eso es código. Delegarla invita al bucle infinito.
+
+</Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Añade un tercer especialista, `redactor`, que convierta un hallazgo en un correo formal. Fíjate en lo que **no** tienes que tocar: los prompts del consultor ni del evaluador. Ese es todo el argumento del patrón.
+
+<Solution summary="La garantía que te regala">
+
+Con un agente único y 3 tools, no puedes *demostrar* que una consulta inocente nunca escribirá en el log de auditoría: depende de que el modelo elija bien. Con el patrón supervisor, sí puedes — porque el `consultor`, **literalmente, no tiene esa herramienta**.
+
+Eso deja de ser una esperanza y pasa a ser un test. En una financiera, esa diferencia es la que te deja dormir.
+
+</Solution>
+
+</Box>
+
+<Box kind="analogy" label="🌐 El otro patrón multiagente canónico: deep research">
+
+El supervisor es *uno* de los patrones estrella; el otro es **deep research** (investigación profunda). Aquí un agente **investigador** recibe una pregunta compleja, la **planifica** en sub-preguntas, **ramifica varias búsquedas en paralelo** (cada rama explora una pista) y al final **sintetiza** todo en un informe con fuentes. Es la misma idea de "divide y acota", pero repartiendo la *investigación* en vez de repartir por *especialidad*. LangChain lo ofrece como plantilla (*Deep Research with LangGraph*): un buen siguiente proyecto cuando domines el supervisor.
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar por qué un agente con demasiadas herramientas elige peor, y cómo lo cura el patrón supervisor.
+- Decir por qué la regla "si ya respondió, FIN" no se delega nunca al modelo (el bucle infinito).
+- Justificar cuándo vale la pena un multiagente pese a que cada salto al supervisor es una llamada más al LLM.
+
+</Checkpoint>
+
+<Recap level={4} label="↺ En una frase">
+
+Un **supervisor** no hace el trabajo: decide qué especialista lo hace — y la regla que corta el bucle es código, jamás el modelo.<Arch>archivo: `15_supervisor_multiagente.py` (offline)</Arch>
+
+</Recap>

@@ -1,0 +1,171 @@
+export const meta = {
+  "id": "m0b",
+  "slug": "0b-python-minimo",
+  "title": "Python mínimo para seguir el curso",
+  "kind": "module",
+  "level": 1,
+  "levelName": "Básico",
+  "order": 1,
+  "badge": "0b",
+  "pyFile": null,
+  "fileref": null,
+  "tested": false,
+  "goals": "🎯 Al terminar sabrás: leer Python sin miedo (las 7 ideas que usa todo el curso).",
+  "prereqs": "✅ Necesitas: Módulo 00.",
+  "minutes": "⏱️ ~40 min"
+};
+
+No necesitas ser programador para hacer este curso — pero sí **leer** Python sin miedo. Estas son las únicas 7 ideas que aparecen una y otra vez en los ejemplos. Si ya programas, salta directo al Módulo 01.
+
+### 1 · Variables: cajas con etiqueta
+
+Una variable guarda un valor y le pone nombre. El `=` no es "igual": es "guarda esto aquí".
+
+```python title="variables y tipos"
+nombre = "Alberto"        # texto (string): siempre entre comillas
+edad = 38                 # número entero (int)
+precio = 49.90            # número con decimales (float)
+activo = True             # verdadero/falso (bool): True o False, con mayúscula
+
+print(nombre)             # print() muestra el valor en pantalla
+```
+
+```text title="▸ deberías ver"
+Alberto
+```
+
+### 2 · f-strings: rellenar textos con valores
+
+Una `f"..."` es un texto con huecos: lo que va entre llaves `{ }` se reemplaza por su valor. Los prompts del curso funcionan con esta misma idea.
+
+```python title="f-strings"
+producto = "camilla"
+precio = 350
+print(f"La {producto} cuesta {precio} soles")
+```
+
+```text title="▸ deberías ver"
+La camilla cuesta 350 soles
+```
+
+### 3 · Listas y diccionarios: colecciones
+
+Una **lista** `[ ]` es una fila ordenada de cosas. Un **diccionario** `{ }` guarda pares *clave: valor*, como una ficha con campos. El curso los usa sin parar: una conversación es una *lista* de mensajes; una entrada al modelo es un *diccionario*.
+
+```python title="listas y diccionarios"
+frutas = ["manzana", "pera", "uva"]      # lista
+print(frutas[0])                         # el primero se cuenta desde CERO
+
+cliente = {"nombre": "Ana", "deuda": 120}   # diccionario
+print(cliente["nombre"])                    # se accede por su clave
+```
+
+```text title="▸ deberías ver"
+manzana
+Ana
+```
+
+### 4 · Funciones: recetas con nombre
+
+`def` define una receta: recibe ingredientes (parámetros), hace algo y `return` devuelve el resultado. Las "herramientas" del Módulo 07 son exactamente esto.
+
+```python title="funciones"
+def aplicar_descuento(precio, porcentaje):
+    """Calcula el precio final tras el descuento."""   # el docstring: qué hace
+    return precio - (precio * porcentaje / 100)
+
+print(aplicar_descuento(3500, 18))
+```
+
+```text title="▸ deberías ver"
+2870.0
+```
+
+### 5 · La indentación ES sintaxis
+
+<Box kind="warn" label="▲ La regla que más rompe código">
+
+En Python, los espacios al inicio de línea no son estética: **definen qué está dentro de qué**. Todo lo que pertenece a una función (o a un `if`, o a un `for`) va desplazado 4 espacios a la derecha. Si copias código y se desalinea, Python protesta con `IndentationError`. Por eso el botón **copiar** de este curso copia el bloque exacto.
+
+</Box>
+
+### 6 · import: traer piezas de otros
+
+Casi ningún programa se escribe desde cero: `import` trae piezas ya hechas (librerías). Las dos formas que verás:
+
+```python title="imports"
+import os                                   # trae TODA la librería os
+from dotenv import load_dotenv              # trae SOLO la pieza load_dotenv
+
+print(os.path.exists(".env"))               # se usa con su apellido: os.algo
+```
+
+### 7 · Leer un traceback (el mensaje de error)
+
+Cuando algo falla, Python imprime un **traceback**. Asusta, pero se lee fácil si sabes el truco: **ve directo a la última línea** (el qué), y la penúltima te dice el dónde.
+
+```python title="un error real, anotado"
+Traceback (most recent call last):          # "esto es un error", ignora esta línea
+  File "01_primer_modelo.py", line 12       # <- DÓNDE: archivo y número de línea
+    print(respuesta.contenido)
+AttributeError: 'AIMessage' object has      # <- QUÉ: el tipo de error y su causa
+no attribute 'contenido'                    #    (era .content, no .contenido)
+```
+
+<Box kind="analogy" label="◆ El hábito">
+
+Error → última línea → si no la entiendes, cópiala completa en un buscador o pégasela a una IA. El 90% de los errores del curso están en la sección [FAQ · errores comunes](/faq).
+
+</Box>
+
+### La prueba final: ¿puedes leer esto?
+
+Este bloque junta las 7 ideas. Si puedes explicar qué hace línea por línea, estás listo para **todo** el curso:
+
+```python title="todo junto"
+from statistics import mean                    # 6: traer una pieza (promedio)
+
+def resumen(cliente):                          # 4: una función
+    notas = cliente["notas"]                   # 3: leer un diccionario
+    return f"{cliente['nombre']}: {mean(notas):.1f}"   # 2: f-string con formato
+
+clientes = [                                   # 3: una lista...
+    {"nombre": "Ana", "notas": [18, 17, 20]},  #    ...de diccionarios
+    {"nombre": "Luis", "notas": [11, 14, 13]},
+]
+
+for c in clientes:                             # recorrer la lista, uno por uno
+    print(resumen(c))                          # 1: mostrar el resultado
+```
+
+```text title="▸ deberías ver"
+Ana: 18.3
+Luis: 12.7
+```
+
+<Box kind="practice" label="▸ Para practicar">
+
+Escribe una función `saludar(nombre, hora)` que devuelva "Buenos días, Ana" si la hora es menor a 12 y "Buenas tardes, Ana" si no. Pruébala con un `for` sobre una lista de dos personas.
+
+<Solution summary="Ver una solución">
+
+```python title="solución"
+def saludar(nombre, hora):
+    if hora < 12:
+        return f"Buenos días, {nombre}"
+    return f"Buenas tardes, {nombre}"
+
+personas = [{"nombre": "Ana", "hora": 9}, {"nombre": "Luis", "hora": 16}]
+for p in personas:
+    print(saludar(p["nombre"], p["hora"]))
+```
+
+</Solution>
+
+</Box>
+
+<Recap level={1} label="↺ En una frase">
+
+Con siete piezas de Python —variables, f-strings, listas y diccionarios, funciones, indentación, `import` y leer un traceback— tienes todo lo que este curso te va a pedir.<Arch>Sin archivo: practícalo en el intérprete, `uv run python`</Arch>
+
+</Recap>

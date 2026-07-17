@@ -1,0 +1,140 @@
+export const meta = {
+  "id": "m24",
+  "slug": "24-vector-dbs-en-produccion",
+  "title": "Del vector store en memoria a una DB vectorial de verdad",
+  "kind": "module",
+  "level": 5,
+  "levelName": "AI Engineer",
+  "order": 29,
+  "badge": "24",
+  "pyFile": "24_vector_db.py",
+  "fileref": "📋 Copia y ejecuta: curso_ejemplos/24_vector_db.py — dedup e índice IVFFlat a mano, 100% offline✓ cubierto por tests",
+  "tested": true,
+  "goals": "🎯 Al terminar sabrás: por qué un vector store en memoria no escala y qué hacen las DBs vectoriales: dedup antes de indexar e índices ANN.",
+  "prereqs": "✅ Necesitas: el Módulo 12 (vectores y coseno).",
+  "minutes": "⏱️ ~40 min"
+};
+
+Cierra el arco de RAG (Módulos 11/12/20). Hasta ahora el "vector store" era una **lista en memoria** y la búsqueda comparaba la consulta con **TODOS** los vectores. Con 7 chunks funciona; con 7 millones, no. Dos ideas te separan del prototipo: no indexar basura repetida (**dedup**) y no comparar contra todo (**índice ANN**).
+
+<Box kind="def" label="◈ Definición · Dedup por hash e índice IVFFlat">
+
+<DefList>
+  <Term>Dedup por hash</Term>
+  <Def>Antes de indexar, una **huella** (sha256 del texto normalizado) descarta duplicados exactos y *casi-exactos*. Repetir un chunk infla el coste y **sesga el ranking**: tres copias se reparten los primeros puestos.</Def>
+  <Term>ANN (Approximate Nearest Neighbor)</Term>
+  <Def>Buscar el vecino "casi" más cercano **muchísimo más rápido** que la fuerza bruta, aceptando perder algún resultado (menos *recall*).</Def>
+  <Term>IVFFlat</Term>
+  <Def>Agrupa los vectores en **listas** alrededor de **centroides**. Al buscar, solo sondeas las listas cercanas a la consulta (`n_sondas`). Hay que **entrenar** el índice y elegir `nlist`.</Def>
+  <Term>HNSW</Term>
+  <Def>Un **grafo navegable de mundo pequeño**: saltas de nodo a nodo acercándote al vecino. Muy rápido, pero **más memoria**.</Def>
+</DefList>
+
+</Box>
+
+<Box kind="analogy" label="◆ La biblioteca por secciones">
+
+El escaneo exacto es **leer todos los lomos** de la biblioteca para hallar un libro. IVFFlat es tenerla **por secciones** (centroides): vas a las 1–2 secciones más afines a tu tema y buscas solo ahí. Rapidísimo, salvo que el libro estuviera mal clasificado en otra sección — ahí pierdes *recall*. Subir `n_sondas` es visitar más secciones: más lento, más seguro.
+
+</Box>
+
+### Paso 1 · Dedup por hash antes de indexar
+
+```python title="24_vector_db.py · huella normalizada (stdlib hashlib)"
+def hash_normalizado(texto):
+    # Normaliza (minúsculas, sin puntuación, espacios colapsados) y luego sha256.
+    # Dos textos que solo difieren en caja o espacios -> MISMO hash (casi-duplicados).
+    normalizado = " ".join(tokenizar(texto))
+    return hashlib.sha256(normalizado.encode("utf-8")).hexdigest()
+
+def deduplicar(chunks):
+    vistos, unicos = set(), []
+    for chunk in chunks:                       # conserva la PRIMERA aparición
+        huella = hash_normalizado(chunk)
+        if huella not in vistos:
+            vistos.add(huella); unicos.append(chunk)
+    return unicos
+```
+
+### Paso 2 · Índice IVFFlat y la perilla del trade-off
+
+Subir `n_sondas` **nunca empeora** el recall (miras un superconjunto de listas), solo cuesta más. Con todas las sondas, igualas al escaneo exacto — y pierdes la ventaja. Ese es el corazón de un índice ANN.
+
+```python title="24_vector_db.py · búsqueda aproximada"
+def buscar_ivf(consulta, indice, k=3, n_sondas=1):
+    # 1) rankea los centroides por parecido a la consulta
+    orden = sorted(range(len(indice.centroides)),
+                   key=lambda c: coseno(consulta, indice.centroides[c]), reverse=True)
+    # 2) recoge candidatos SOLO de las n_sondas listas más cercanas
+    candidatos = [i for c in orden[:n_sondas] for i in indice.listas[c]]
+    # 3) puntúa esos candidatos y devuelve el top-k
+    candidatos.sort(key=lambda i: coseno(consulta, indice.vectores[i]), reverse=True)
+    return candidatos[:k]
+```
+
+```text title="▸ deberías ver al correr 24_vector_db.py (recortado)"
+Tras deduplicar por hash: 7 (se cayó el casi-duplicado).
+Índice IVFFlat con 3 listas; tamaños: [1, 3, 3]
+  Escaneo EXACTO (techo de recall): top-3 = [2, 5, 4]
+  IVF n_sondas=1: recall vs exacto = 0.33
+  IVF n_sondas=2: recall vs exacto = 1.00
+  IVF n_sondas=3: recall vs exacto = 1.00
+```
+
+<Box kind="def" label="◈ IVFFlat vs HNSW · cuándo cada uno">
+
+| Criterio | IVFFlat | HNSW |
+| --- | --- | --- |
+| Idea | listas por centroide; sondeas las cercanas | grafo navegable; saltas hacia el vecino |
+| Velocidad de consulta | rápida (depende de `n_sondas`) | muy rápida |
+| Memoria | menor | mayor (guarda el grafo) |
+| Puesta a punto | entrenar + elegir `nlist`/`nprobe` | casi sin entrenar; `M`/`ef` |
+| Perilla recall↔velocidad | `nprobe` (sondas) | `ef_search` |
+
+</Box>
+
+<Box kind="warn" label="▲ Estos vectores son didácticos">
+
+Vectorizamos por **frecuencia de palabras** (como el Módulo 12), no con embeddings reales — para que la mecánica del índice se vea sin depender de un modelo. La *mecánica* de agrupar y sondar es idéntica con embeddings de verdad; lo que cambia es la calidad del vector. En producción NO escribes esto a mano: lo dan `pgvector` (Postgres), **Qdrant** o **Milvus**, que ofrecen IVFFlat y HNSW como tipos de índice.
+
+</Box>
+
+<Avoid label="⛔ Cuándo NO complicarte">
+
+- No montes un índice ANN con **cientos** de vectores: el escaneo exacto es más simple y ya es instantáneo. ANN paga cuando hay millones.
+- No olvides el **dedup**: reindexar el mismo documento en cada carga sesga el ranking y multiplica el coste.
+- No trates `nprobe`/`ef` como magia: mídelos contra el escaneo exacto (el techo de recall) sobre TUS datos.
+
+</Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Cambia `n_listas` en `construir_ivf` y observa cómo cambian los tamaños de las listas y el recall con `n_sondas=1`. Luego busca una consulta cuyo vecino correcto caiga en otra lista: verás el recall subir de 0 a 1 al aumentar las sondas. Es el trade-off en vivo.
+
+</Box>
+
+<Box kind="def" label="◈ En producción, el índice por defecto suele ser HNSW (no IVFFlat)">
+
+Este módulo implementó **IVFFlat** para *tocar* el trade-off recall↔velocidad con las manos. Pero cuando saltas a una DB vectorial real (`pgvector`, Qdrant, Milvus), el índice por defecto casi siempre es **HNSW** (un grafo navegable jerárquico):
+
+- **HNSW**: mejor recall a alta velocidad *sin* entrenar centroides, y tolera bien un índice que crece. A cambio, ocupa **más memoria** y se construye más lento. Es el que elegirías por defecto para servir búsquedas.
+- **IVFFlat**: más ligero en memoria y de construcción rápida, pero exige entrenar los centroides sobre datos representativos y afinar `n_sondas`. Rinde peor si el conjunto cambia mucho después de entrenarlo.
+
+La decisión no cambia tu código de búsqueda: en `pgvector` es una línea al crear el índice (`USING hnsw` vs `USING ivfflat`). Elige HNSW salvo que la memoria sea tu cuello de botella.
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar por qué deduplicar antes de indexar ahorra coste y mejora el ranking.
+- Describir IVFFlat (listas + centroides) y el papel de `n_sondas`.
+- Argumentar el trade-off recall↔velocidad y que el escaneo exacto es el techo de recall.
+- Elegir entre IVFFlat y HNSW según memoria y puesta a punto.
+
+</Checkpoint>
+
+<Recap level={5} label="↺ En una frase">
+
+Una DB vectorial de verdad hace dos cosas que tu lista en memoria no: **deduplica** antes de indexar e **indexa con ANN** (IVFFlat/HNSW) para no comparar contra todo — cambiando algo de recall por mucha velocidad.<Arch>archivo: `24_vector_db.py`</Arch>
+
+</Recap>

@@ -1,0 +1,179 @@
+export const meta = {
+  "id": "m17b",
+  "slug": "17b-tests-y-ci",
+  "title": "Tests y CI: la red que te deja cambiar cosas sin miedo",
+  "kind": "module",
+  "level": 4,
+  "levelName": "Producción",
+  "order": 20,
+  "badge": "17b",
+  "pyFile": null,
+  "fileref": "📋 Existe de verdad: curso_ejemplos/tests/ · proyecto_final/tests/ · proyecto_llmops/tests/ · proyecto_retail/tests/ · .github/workflows/ci.yml — 642 tests, ninguno gasta cuota",
+  "tested": false,
+  "goals": "🎯 Al terminar sabrás: testear IA sin gastar cuota (modelo falso, marcador offline) y montar CI.",
+  "prereqs": "✅ Necesitas: Módulo 17.",
+  "minutes": "⏱️ ~45 min"
+};
+
+Todo el nivel de producción se apoya en una idea silenciosa: **puedes cambiar el código porque algo te avisa si lo rompes**. Sin eso, cada refactor es una apuesta y cada actualización de librería, una noche larga. Este módulo enseña cómo está tejida esa red — la del propio curso, que puedes correr ahora mismo.
+
+<Box kind="def" label="◈ Definición · Test, doble de prueba y CI">
+
+Un **test** es código que ejecuta tu código y falla si el resultado no es el esperado. En IA hay una condición extra: un test **no debe llamar al LLM**. Si lo hace, es lento, cuesta dinero, y falla por un 429 que no tiene nada que ver contigo — no mide tu código, mide la cuota de Google.
+
+La salida es sustituir el modelo por un **doble de prueba**: un objeto que se comporta como el modelo pero devuelve respuestas fijas. Así puedes ejercitar el grafo completo, las herramientas y la auditoría *sin una sola llamada a la API*.
+
+<DefList>
+  <Term>doble / modelo falso</Term>
+  <Def>El `ModeloFalso` del proyecto final: recita un guion de respuestas preparadas. Lo que se testea no es el LLM (no es tuyo), es **tu lógica alrededor del LLM**.</Def>
+  <Term>marcador (`-m offline`)</Term>
+  <Def>Una etiqueta en cada test que permite correr solo los que no gastan cuota. Con `--strict-markers`, escribir mal el nombre del marcador es un error, no un test silenciosamente ignorado.</Def>
+  <Term>CI (integración continua)</Term>
+  <Def>Un servidor que corre los tests en cada `push`, sin que nadie se acuerde de hacerlo. La CI de este curso **no tiene la llave de la API** — a propósito: si un test empezara a llamar al modelo, fallaría de inmediato.</Def>
+</DefList>
+
+</Box>
+
+### El problema específico de testear IA
+
+Un test normal es determinista: `sumar(2,2)` siempre da 4. Pero un LLM devuelve texto distinto cada vez, tarda segundos, cuesta dinero y **puede fallar por un 429 que no tiene nada que ver con tu código**. Si tus tests llaman a la API, no son tests: son un termómetro de la cuota de Google.
+
+<Box kind="analogy" label="◆ La regla que resuelve casi todo">
+
+Separa **lo que decide el modelo** de **lo que decide tu código**, y testea lo segundo. La fusión RRF, el troceado, la política de enrutamiento del supervisor, el validador de severidad, el cálculo de coste: nada de eso necesita un LLM. Es tu lógica, es determinista, y es *donde de verdad viven tus bugs*.
+
+</Box>
+
+| Archivo | Qué protege |
+| --- | --- |
+| `tests/test_imports.py` | Importa *todos* los ejemplos. Si una librería cambia su API, este test lo grita — sin gastar un token. |
+| `tests/test_offline.py` | La lógica no-LLM de cada tema: BM25 y RRF, el ciclo HITL, el descubrimiento de tools MCP, el supervisor, los costes. |
+| `tests/test_util.py` | Lo compartido: detección del 429, troceado de párrafos. |
+| `proyecto_final/tests/` | 44 tests que ejercitan el **grafo completo** del capstone… sin llamar a la API ni una vez. |
+
+### El truco del capstone: un modelo que recita un guion
+
+¿Cómo se testea un agente entero sin LLM? Se le pasa uno falso. Recuerda la regla del Módulo 18: `construir_agente()` recibe el modelo **por parámetro**. Entonces en los tests le entregas un `ModeloFalso` que, en vez de pensar, va devolviendo respuestas de una lista preparada:
+
+```python title="proyecto_final/tests/conftest.py · el modelo falso"
+class ModeloFalso(BaseChatModel):
+    """Devuelve, en orden, las respuestas del guion.
+
+    Implementa lo MÍNIMO que LangGraph le exige a un modelo:
+      - _generate(): producir la siguiente respuesta del guion.
+      - bind_tools(): aceptar tools. El guion ya trae los tool_calls
+        decididos de antemano, así que devuelve el mismo modelo.
+    """
+    respuestas: list[AIMessage]   # el guion
+    llamadas: int = 0             # por dónde va
+```
+
+Con eso puedes escribir un test que dice: *"si el modelo decide llamar a `evaluar_regla_calidad`, entonces debe quedar una línea nueva en el log de auditoría"*. Fíjate en lo que afirma ese test: no que el modelo sea listo — **que tu grafo hace lo que promete cuando el modelo decide X**. Eso sí es tuyo, y eso sí se puede garantizar.
+
+<Box kind="warn" label="▲ Lo que un test con modelo falso NO te dice">
+
+No te dice si el agente elige bien la herramienta, ni si la respuesta es buena. Eso **no es un test: es una evaluación**, y vive en el Módulo 16 (dataset + LLM-as-judge + puntaje). Los dos hacen falta y miden cosas distintas: los tests protegen tu *lógica*; la evaluación protege tu *calidad*. Confundirlos es la razón por la que tanta gente tiene una suite verde y un agente que alucina.
+
+</Box>
+
+### El marcador que mantiene la promesa
+
+La frontera "esto no llama a la API" no puede ser un pacto de caballeros: se declara con un marcador de pytest y se hace cumplir con una bandera.
+
+```python title="pyproject.toml · declarar el marcador"
+markers = [
+    "offline: tests que NO usan GOOGLE_API_KEY (los que corre la CI)",
+]
+```
+
+```text title="▸ deberías ver"
+$ uv run pytest -m offline
+=================== 141 passed in 13.58s ===================
+```
+
+### La CI: el mismo comando, pero sin que te acuerdes de correrlo
+
+Un test que solo corre cuando te acuerdas no protege nada. GitHub Actions lo corre **en cada push**, en dos versiones de Python, para que un fallo aparezca antes de llegar a clase — no durante:
+
+El camino de cada cambio · **automático, en cada push**
+
+<Flow>
+  <Step n="1" title="Commit + push">Subes tu cambio al repositorio.</Step>
+  <Step n="2" title="GitHub Actions">Arranca solo, sin que nadie se lo pida.</Step>
+  <Step n="3" title="pytest -m offline">Los 642 tests, sin llave ni cuota.</Step>
+  <Step n="✅ / ❌" title="Verde o rojo">Verde → se mergea. Rojo → se corrige antes de integrar.</Step>
+</Flow>
+
+```python title=".github/workflows/ci.yml · el corazón del workflow"
+strategy:
+  fail-fast: false                 # si 3.11 falla, quiero ver igual 3.12
+  matrix:
+    python-version: ["3.11", "3.12"]
+
+steps:
+  - run: uv sync --extra dev --python ${{ matrix.python-version }}
+
+  - name: Correr los tests offline
+    # -m offline       : omite cualquier test que llame a la API.
+    # --strict-markers : un typo ('ofline') FALLA, en vez de
+    #                    omitir el test en silencio. Clave.
+    run: uv run pytest tests/ -m offline -v --strict-markers
+
+  - name: Que ningún ejemplo tenga errores de sintaxis
+    run: uv run python -m compileall -q . && echo "✅ Todos los .py compilan"
+```
+
+<Box kind="analogy" label="◆ Por qué la CI del curso no tiene la llave de Gemini">
+
+No es un olvido: es el diseño. No hay `GOOGLE_API_KEY` en los secrets del repo, así que aunque alguien escribiera un test que llama a la API, **no podría pasar desapercibido**. La CI no puede gastar tu cuota ni ponerse roja por un 429 ajeno a tu código. Cuando un test necesita el modelo de verdad, ese test es tu responsabilidad, en tu máquina.
+
+</Box>
+
+<Box kind="warn" label="▲ --strict-markers: el detalle que parece pedante y no lo es">
+
+Sin esa bandera, un marcador mal escrito (`@pytest.mark.ofline`) no falla: pytest simplemente *no selecciona* ese test con `-m offline`. Tu suite sigue verde, con un test menos, y nadie se entera nunca. Es la peor clase de bug: el silencioso.
+
+</Box>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Rompe algo a propósito y mira cómo te avisa la red. Abre `util.py`, invierte la condición de `es_error_cuota()` (pon `not`) y corre `uv run pytest -m offline`. Después escribe tú un test nuevo: que `formatear_linea()` de `audit.py` incluya la severidad. Márcalo con `@pytest.mark.offline`.
+
+<Solution summary="Ver una solución">
+
+```python title="solución · un test offline nuevo"
+import pytest
+from datetime import datetime
+from proyecto_final.audit import HallazgoCalidad, formatear_linea
+
+@pytest.mark.offline          # sin este marcador, la CI no lo corre
+def test_la_linea_lleva_la_severidad():
+    h = HallazgoCalidad(regla="cifrado AES-256", cumple=True,
+                        severidad="alta", justificacion="Regla 1")
+    # ⭐ El 'momento' entra POR PARÁMETRO, igual que el modelo en el capstone:
+    #    así el test fija la fecha y compara la línea exacta. Una función que
+    #    llama a datetime.now() por dentro es una función que no puedes testear.
+    linea = formatear_linea(h, datetime(2026, 7, 9, 12, 0))
+    assert "alta" in linea       # función PURA: sin API, sin red, sin cuota
+```
+
+Y al invertir `es_error_cuota()` deberías ver fallar `tests/test_util.py` en rojo, nombrando la aserción exacta. Eso — que el fallo te diga *dónde* — es todo lo que le pides a una red de seguridad.
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar por qué un test de IA no debe llamar al LLM (lento, cuesta y falla por un 429 ajeno a tu código).
+- Distinguir un test (protege tu *lógica*) de una evaluación (protege tu *calidad*, Módulo 16).
+- Decir cómo se testea un agente entero sin API: un doble (`ModeloFalso`) que recita un guion, inyectado por parámetro.
+- Reconocer para qué sirven el marcador `-m offline` con `--strict-markers` y una CI que no tiene la llave.
+
+</Checkpoint>
+
+<Recap level={4} label="↺ En una frase">
+
+Testear IA consiste en fijar todo lo que *no* es el modelo y sustituir el modelo por un guion. Por eso la CI puede correr los 642 tests sin tener tu llave.<Arch>archivos: `tests/` · `.github/workflows/ci.yml`</Arch>
+
+</Recap>
