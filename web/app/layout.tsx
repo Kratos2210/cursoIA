@@ -30,7 +30,11 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es-PE" className={`${manrope.variable} ${jetbrains.variable}`}>
+    <html
+      lang="es-PE"
+      className={`${manrope.variable} ${jetbrains.variable}`}
+      suppressHydrationWarning
+    >
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
