@@ -15,7 +15,7 @@ export const meta = {
   "minutes": "⏱️ ~60 min"
 };
 
-El primer caso del curso (el capstone del [m18](/modulos/18-capstone-final)) fue gobierno de datos en una financiera: documentos, normativa, auditoría. Este segundo caso es el mundo opuesto y es **real y verificable**: **Sifrah**, cadena peruana de bisutería y accesorios de moda para mujer, con más de **90 tiendas** a nivel nacional (Lima, Arequipa, Trujillo, Cusco, Piura…) y e-commerce sobre Shopify. Y aquí el regalo para quien aprende: su catálogo es **público** — como toda tienda Shopify, `sifrah.com/products.json` devuelve los productos con título, tags, precio, precio de oferta y disponibilidad. Datos reales, de una empresa real, sin pedir permiso ni llave. *(Caso de estudio pedagógico sobre datos públicos; el curso no está afiliado a la marca.)*
+El primer caso del curso (el capstone del [m18](/modulo/18-capstone-final)) fue gobierno de datos en una financiera: documentos, normativa, auditoría. Este segundo caso es el mundo opuesto y es **real y verificable**: **Sifrah**, cadena peruana de bisutería y accesorios de moda para mujer, con más de **90 tiendas** a nivel nacional (Lima, Arequipa, Trujillo, Cusco, Piura…) y e-commerce sobre Shopify. Y aquí el regalo para quien aprende: su catálogo es **público** — como toda tienda Shopify, `sifrah.com/products.json` devuelve los productos con título, tags, precio, precio de oferta y disponibilidad. Datos reales, de una empresa real, sin pedir permiso ni llave. *(Caso de estudio pedagógico sobre datos públicos; el curso no está afiliado a la marca.)*
 
 <Box kind="def" label="◈ Cinco soluciones sobre la mesa (y por qué ganó la primera)">
 
@@ -61,12 +61,12 @@ El end-to-end del caso · **siete pasos, todos ya vistos**
   <Step n="4" title="Búsqueda">Filtros DUROS + ranking (m11/m24).</Step>
   <Step n="5" title="Grounding">Responder SOLO con lo recuperado (m23/m28).</Step>
   <Step n="6" title="Eval">¿Respeta presupuesto y precios? (m16).</Step>
-  <Step n="7" title="Producción">El stack LLMOps, en [proyecto_retail/](/modulos/29-caso-real-2-retail#m29-proyecto).</Step>
+  <Step n="7" title="Producción">El stack LLMOps, en [proyecto_retail/](/modulo/29-caso-real-2-retail#m29-proyecto).</Step>
 </Flow>
 
 ### La arquitectura: cómo fluye una petición
 
-El pipeline de siete pasos de arriba es la *narrativa*. Vista como **arquitectura**, se lee en tres capas: el camino de una petición en tiempo real, la capa de datos que le da los hechos, y las capas de producción que la hacen servible y medible. Las tres son el [proyecto_retail/](/modulos/29-caso-real-2-retail#m29-proyecto) —el build organizado del caso, al estilo del [proyecto_llmops](/llmops)—.
+El pipeline de siete pasos de arriba es la *narrativa*. Vista como **arquitectura**, se lee en tres capas: el camino de una petición en tiempo real, la capa de datos que le da los hechos, y las capas de producción que la hacen servible y medible. Las tres son el [proyecto_retail/](/modulo/29-caso-real-2-retail#m29-proyecto) —el build organizado del caso, al estilo del [proyecto_llmops](/recurso/llmops)—.
 
 Capa runtime · **el camino de una petición**
 
@@ -101,13 +101,13 @@ Cada pieza del asistente tiene su módulo de origen y su archivo en el proyecto.
 
 | Pieza | En la maqueta (m29) | En producción (proyecto_retail/) | Módulo |
 | --- | --- | --- | --- |
-| ETL del dato sucio | reglas de categoría en el `.py` | `app/etl.py` | [29](/modulos/29-caso-real-2-retail) |
-| Entender la petición | regex determinista | `app/intent.py` · `with_structured_output` | [05](/modulos/05-salida-estructurada) |
-| Buscar (filtros duros + ranking) | `buscar_productos` | `app/search.py` | [24](/modulos/24-vector-dbs-en-produccion) · [11](/modulos/11-rag-profesional) |
-| Redactar con tono de marca | plantilla fija | `app/agent.py` + `prompts/vendedora.yaml` | [02](/modulos/02-prompts-lcel) |
-| Grounding de precios | `respuesta_es_fiel` | `guardrails/price_guard.py` | [23](/modulos/23-seguridad-red-teaming) · [28](/modulos/28-desafios-y-alucinaciones) |
-| Evaluar (misma métrica) | `evaluar_asistente` | `evals/` + CI gate | [16](/modulos/16-observabilidad-y-costo) |
-| Servir + observar | — | `app/main.py` · `cache/` · `observability/` | [17](/modulos/17-repo-productivo) · [24b](/modulos/24b-feedback-a-b) |
+| ETL del dato sucio | reglas de categoría en el `.py` | `app/etl.py` | [29](/modulo/29-caso-real-2-retail) |
+| Entender la petición | regex determinista | `app/intent.py` · `with_structured_output` | [05](/modulo/05-salida-estructurada) |
+| Buscar (filtros duros + ranking) | `buscar_productos` | `app/search.py` | [24](/modulo/24-vector-dbs-en-produccion) · [11](/modulo/11-rag-profesional) |
+| Redactar con tono de marca | plantilla fija | `app/agent.py` + `prompts/vendedora.yaml` | [02](/modulo/02-prompts-lcel) |
+| Grounding de precios | `respuesta_es_fiel` | `guardrails/price_guard.py` | [23](/modulo/23-seguridad-red-teaming) · [28](/modulo/28-desafios-y-alucinaciones) |
+| Evaluar (misma métrica) | `evaluar_asistente` | `evals/` + CI gate | [16](/modulo/16-observabilidad-y-costo) |
+| Servir + observar | — | `app/main.py` · `cache/` · `observability/` | [17](/modulo/17-repo-productivo) · [24b](/modulo/24b-feedback-a-b) |
 
 ### Paso 2 · ETL: la categoría no se confía, se deriva
 
@@ -132,7 +132,7 @@ def normalizar_producto(crudo):
 
 ### Paso 3 · Entender la petición: de la frase a filtros tipados
 
-"Quiero aretes dorados por menos de 25 soles" son **tres filtros** disfrazados de frase: categoría, color, presupuesto. En el ejemplo se extraen con reglas (deterministas → testeables byte a byte); en producción este paso ES el [m05](/modulos/05-salida-estructurada): `llm.with_structured_output(FiltrosCompra)` con un molde Pydantic, que entiende "algo lindo pa' mi flaca, unos 30 lucas" mucho mejor que un regex. La **interfaz no cambia** (petición → filtros tipados): por eso puedes subir de nivel sin tocar el resto del pipeline.
+"Quiero aretes dorados por menos de 25 soles" son **tres filtros** disfrazados de frase: categoría, color, presupuesto. En el ejemplo se extraen con reglas (deterministas → testeables byte a byte); en producción este paso ES el [m05](/modulo/05-salida-estructurada): `llm.with_structured_output(FiltrosCompra)` con un molde Pydantic, que entiende "algo lindo pa' mi flaca, unos 30 lucas" mucho mejor que un regex. La **interfaz no cambia** (petición → filtros tipados): por eso puedes subir de nivel sin tocar el resto del pipeline.
 
 ### Paso 4 · Buscar: el presupuesto es un WHERE, no una preferencia
 
@@ -167,7 +167,7 @@ def respuesta_es_fiel(texto, productos):
     return all(round(precio, 2) in permitidos for precio in precios_citados(texto))
 ```
 
-Anécdota de guerra (real, de este mismo módulo): la primera versión de la respuesta **ecoaba la petición** — "Para «…hasta S/80» te recomiendo…" — y el guardrail saltó: ese S/80 del usuario no es un precio del catálogo. La cura fue no re-inyectar el texto del usuario en la salida, la misma higiene que el [m23](/modulos/23-seguridad-red-teaming) pide contra la inyección. Un guardrail que te muerde a ti antes que al cliente está haciendo su trabajo.
+Anécdota de guerra (real, de este mismo módulo): la primera versión de la respuesta **ecoaba la petición** — "Para «…hasta S/80» te recomiendo…" — y el guardrail saltó: ese S/80 del usuario no es un precio del catálogo. La cura fue no re-inyectar el texto del usuario en la salida, la misma higiene que el [m23](/modulo/23-seguridad-red-teaming) pide contra la inyección. Un guardrail que te muerde a ti antes que al cliente está haciendo su trabajo.
 
 ### Paso 6 · Evaluar: la misma métrica para el honesto y el descuidado
 
@@ -189,7 +189,7 @@ Anécdota de guerra (real, de este mismo módulo): la primera versión de la res
 
 ### Paso 7 · De la maqueta a producción (ya lo tienes construido)
 
-Este pipeline se monta tal cual sobre el stack del [proyecto_llmops](/llmops): servirlo por SSE con FastAPI ([m17](/modulos/17-repo-productivo)/[m25](/modulos/25-frontend-chat-sse)), guardrails de entrada y salida ([m23](/modulos/23-seguridad-red-teaming)), caché semántico para las preguntas repetidas, A/B del prompt de la vendedora ([m24b](/modulos/24b-feedback-a-b)) y trazas con coste por consulta ([m16](/modulos/16-observabilidad-y-costo)). Lo que añadirías con presupuesto: embeddings + re-ranking reales ([m12](/modulos/12-recuperar-re-rankear)) en vez del solape de términos, multi-query ([m20](/modulos/20-rag-avanzado)) para el vocabulario de la calle ("aros"/"aretes" — ya lo probaste en miniatura con los sinónimos), "busca por foto" con visión ([m22](/modulos/22-multimodal)), y la integración con el inventario por tienda — que es donde el caso 3 del menú se encuentra con este.
+Este pipeline se monta tal cual sobre el stack del [proyecto_llmops](/recurso/llmops): servirlo por SSE con FastAPI ([m17](/modulo/17-repo-productivo)/[m25](/modulo/25-frontend-chat-sse)), guardrails de entrada y salida ([m23](/modulo/23-seguridad-red-teaming)), caché semántico para las preguntas repetidas, A/B del prompt de la vendedora ([m24b](/modulo/24b-feedback-a-b)) y trazas con coste por consulta ([m16](/modulo/16-observabilidad-y-costo)). Lo que añadirías con presupuesto: embeddings + re-ranking reales ([m12](/modulo/12-recuperar-re-rankear)) en vez del solape de términos, multi-query ([m20](/modulo/20-rag-avanzado)) para el vocabulario de la calle ("aros"/"aretes" — ya lo probaste en miniatura con los sinónimos), "busca por foto" con visión ([m22](/modulo/22-multimodal)), y la integración con el inventario por tienda — que es donde el caso 3 del menú se encuentra con este.
 
 <span id="m29-proyecto" />
 
@@ -197,7 +197,7 @@ Este pipeline se monta tal cual sobre el stack del [proyecto_llmops](/llmops): s
 
 📁 El proyecto entero: **curso_ejemplos/proyecto_retail/** — corre 100% offline; su README trae el diagrama y el mapa "quiero X → miro Y"✓ 61 tests
 
-Todo lo anterior vive, además, como un **proyecto con estructura de producción** —la misma relación que el [proyecto_llmops](/llmops) tiene con los módulos sueltos—. Ahí el LLM está cableado de verdad: la intención ya no es un regex sino `llm.with_structured_output(FiltrosCompra)` (el [m05](/modulos/05-salida-estructurada)), y la respuesta la redacta el modelo con tono de vendedora. Lo que **no** cambia es la interfaz: *petición → filtros → productos → texto*. Por eso subir el eslabón no reescribe el pipeline —y el guardrail de precios sigue vigilando igual, con el mismo `respuesta_es_fiel`—.
+Todo lo anterior vive, además, como un **proyecto con estructura de producción** —la misma relación que el [proyecto_llmops](/recurso/llmops) tiene con los módulos sueltos—. Ahí el LLM está cableado de verdad: la intención ya no es un regex sino `llm.with_structured_output(FiltrosCompra)` (el [m05](/modulo/05-salida-estructurada)), y la respuesta la redacta el modelo con tono de vendedora. Lo que **no** cambia es la interfaz: *petición → filtros → productos → texto*. Por eso subir el eslabón no reescribe el pipeline —y el guardrail de precios sigue vigilando igual, con el mismo `respuesta_es_fiel`—.
 
 El lazo que cierra el caso está en `app/agent.py`: el LLM redacta, el guardrail verifica, y si cita un precio que no existe se **reintenta una vez** con la lista de precios permitidos; si vuelve a fallar, gana el **fallback determinista** (fiel por construcción). Una respuesta con un precio inventado **no puede salir**. Alrededor, las capas del estándar LLMOps: guardrails de entrada/salida, caché semántico, A/B de prompts con feedback por variante, trazas con coste, y un **CI gate** con cero tolerancia al precio inventado. El *por qué* de cada decisión está en `proyecto_retail/docs/adr/`.
 
@@ -220,7 +220,7 @@ El lazo que cierra el caso está en `app/agent.py`: el LLM redacta, el guardrail
 
 <Box kind="warn" label="▲ Precio y stock JAMÁS salen del modelo">
 
-El catálogo real cambia **a diario** (colecciones por temporada, promos que entran y salen). Por eso este caso es **RAG y no fine-tuning** —la biblioteca, no la escuela ([m21](/modulos/21-fine-tuning-vs-rag))—: afinar un modelo con los precios de julio es fabricar un mentiroso para agosto. Y el LLM solo **redacta** sobre lo recuperado: un precio inventado en retail no es una anécdota, es un reclamo — y en Perú, un problema con Indecopi.
+El catálogo real cambia **a diario** (colecciones por temporada, promos que entran y salen). Por eso este caso es **RAG y no fine-tuning** —la biblioteca, no la escuela ([m21](/modulo/21-fine-tuning-vs-rag))—: afinar un modelo con los precios de julio es fabricar un mentiroso para agosto. Y el LLM solo **redacta** sobre lo recuperado: un precio inventado en retail no es una anécdota, es un reclamo — y en Perú, un problema con Indecopi.
 
 </Box>
 

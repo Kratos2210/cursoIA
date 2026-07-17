@@ -160,13 +160,13 @@ OPENAI_API_KEY=sk-...      # openai      (default gpt-5.4-mini)
 
 <Box kind="analogy" label="◆ El respaldo puede ser de otra empresa">
 
-Recuerda el [Módulo 09](/modulos/09-resiliencia-async): `with_fallbacks` deja poner un modelo principal de pago y un **respaldo barato de otro proveedor**. La estrategia recomendada para arrancar: empieza con una **API de pago** (cero fricción, sales rápido), **mide el coste real** con lo del [Módulo 16b](/modulos/16-observabilidad-y-costo) (tokens → dólares), y **abarata después** — a Gemini Flash, a DeepSeek o a un open weights — sin tocar el código, solo el `.env`.
+Recuerda el [Módulo 09](/modulo/09-resiliencia-async): `with_fallbacks` deja poner un modelo principal de pago y un **respaldo barato de otro proveedor**. La estrategia recomendada para arrancar: empieza con una **API de pago** (cero fricción, sales rápido), **mide el coste real** con lo del [Módulo 16b](/modulo/16-observabilidad-y-costo) (tokens → dólares), y **abarata después** — a Gemini Flash, a DeepSeek o a un open weights — sin tocar el código, solo el `.env`.
 
 </Box>
 
 <Box kind="analogy" label="◆ No es un matrimonio">
 
-Elegir modelo se siente como una decisión enorme e irreversible. No lo es. Gracias a la **interfaz unificada** de LangChain ([Módulo 03](/modulos/03-interfaz-unificada)), el modelo es una **variable de entorno**: pruebas cuatro, mides, te quedas con el que mejor equilibra capacidad y coste, y lo cambias el mes que viene cuando salga uno mejor o más barato.
+Elegir modelo se siente como una decisión enorme e irreversible. No lo es. Gracias a la **interfaz unificada** de LangChain ([Módulo 03](/modulo/03-interfaz-unificada)), el modelo es una **variable de entorno**: pruebas cuatro, mides, te quedas con el que mejor equilibra capacidad y coste, y lo cambias el mes que viene cuando salga uno mejor o más barato.
 
 </Box>
 
@@ -199,10 +199,10 @@ El precio por token de arriba asume que pagas *cada* token *cada* vez. Dos mecan
   <Term>caché de prompt (prompt caching)</Term>
   <Def>Si tu prompt repite un prefijo largo en cada llamada —el *system prompt*, los ejemplos few-shot, el documento de contexto—, el proveedor **cachea** ese prefijo y te cobra esos tokens con un **descuento fuerte** (hasta del orden de 10× más baratos, según el proveedor) en las llamadas siguientes. La ganancia crece cuanto más largo y estable sea el prefijo: un agente con 2K tokens de instrucciones que atiende miles de consultas paga esas instrucciones casi gratis a partir de la segunda.</Def>
   <Term>Batch API (procesamiento por lotes)</Term>
-  <Def>Para trabajo que **no** es interactivo —evaluar un dataset ([m16](/modulos/16-observabilidad-y-costo)), enriquecer un catálogo, clasificar miles de reclamos— mandas todo junto y aceptas la respuesta en minutos/horas en vez de segundos. A cambio, típicamente ~**50% de descuento**. La regla: si nadie espera la respuesta en pantalla, va por batch.</Def>
+  <Def>Para trabajo que **no** es interactivo —evaluar un dataset ([m16](/modulo/16-observabilidad-y-costo)), enriquecer un catálogo, clasificar miles de reclamos— mandas todo junto y aceptas la respuesta en minutos/horas en vez de segundos. A cambio, típicamente ~**50% de descuento**. La regla: si nadie espera la respuesta en pantalla, va por batch.</Def>
 </DefList>
 
-Ambas se combinan con la disciplina del [m16b](/modulos/16-observabilidad-y-costo): mide primero el coste real en tokens, y luego decide dónde aplicar caché (prefijos repetidos) y batch (trabajo diferible).
+Ambas se combinan con la disciplina del [m16b](/modulo/16-observabilidad-y-costo): mide primero el coste real en tokens, y luego decide dónde aplicar caché (prefijos repetidos) y batch (trabajo diferible).
 
 </Box>
 

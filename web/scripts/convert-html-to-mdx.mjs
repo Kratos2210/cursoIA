@@ -37,16 +37,11 @@ const EXTRA_SLUGS = {
   mapa: "mapa",
   llmops: "llmops",
 };
-// Extra routes (for internal-link rewriting).
-const EXTRA_ROUTE = {
-  examen: "/examen",
-  entrevista: "/entrevista",
-  ejercicios: "/ejercicios",
-  faq: "/faq",
-  cheat: "/cheat-sheet",
-  mapa: "/mapa",
-  llmops: "/llmops",
-};
+// Extra routes (for internal-link rewriting). All extras live under /recurso/<slug>
+// (the v2 route); the slug is the same value used for the output filename.
+const EXTRA_ROUTE = Object.fromEntries(
+  Object.entries(EXTRA_SLUGS).map(([id, slug]) => [id, `/recurso/${slug}`])
+);
 
 const html = readFileSync(HTML_PATH, "utf8");
 const $ = load(html);
@@ -102,7 +97,7 @@ function sectionSlug(id) {
 }
 function sectionRoute(id) {
   if (isExtra(id)) return EXTRA_ROUTE[id];
-  return `/modulos/${sectionSlug(id)}`;
+  return `/modulo/${sectionSlug(id)}`;
 }
 
 // Map every element id in the document to the id of its enclosing <section>,

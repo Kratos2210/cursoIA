@@ -79,11 +79,11 @@ def self_consistency(respuestas):
       mide 'en serio' con un dataset y la tríada RAG, no a ojo.
 ```
 
-Ese último bloque es el corazón del módulo: un mini-dataset fijo y una métrica **determinista** (exact-match) que demuestran, sin gastar un token, que estructurar la tarea sube el acierto. Es el eco offline de lo que en el [m16](/modulos/16-observabilidad-y-costo) se mide "en serio" con la tríada RAG.
+Ese último bloque es el corazón del módulo: un mini-dataset fijo y una métrica **determinista** (exact-match) que demuestran, sin gastar un token, que estructurar la tarea sube el acierto. Es el eco offline de lo que en el [m16](/modulo/16-observabilidad-y-costo) se mide "en serio" con la tríada RAG.
 
 <Box kind="warn" label="▲ Más ejemplos ≠ siempre mejor; CoT no inventa datos">
 
-Cada demostración few-shot **gasta contexto y tokens**: veinte ejemplos "por si acaso" encarecen cada llamada y pueden empujar fuera de la ventana lo que de verdad importa. Y **CoT no arregla un modelo que no sabe el dato**: razonar paso a paso ordena lo que el modelo *ya* sabe; si le falta el hecho, lo que necesitas es RAG ([m11](/modulos/11-rag-profesional)), no más "pensemos paso a paso".
+Cada demostración few-shot **gasta contexto y tokens**: veinte ejemplos "por si acaso" encarecen cada llamada y pueden empujar fuera de la ventana lo que de verdad importa. Y **CoT no arregla un modelo que no sabe el dato**: razonar paso a paso ordena lo que el modelo *ya* sabe; si le falta el hecho, lo que necesitas es RAG ([m11](/modulo/11-rag-profesional)), no más "pensemos paso a paso".
 
 </Box>
 
@@ -97,7 +97,7 @@ Cada demostración few-shot **gasta contexto y tokens**: veinte ejemplos "por si
 
 <Box kind="practice" label="▸ Para practicar">
 
-Toma un prompt real del proyecto (el del sistema del agente, o el del m05) y crea una **segunda variante** con CoT o con 2–3 ejemplos few-shot. Mídelas con un mini-dataset como el de este módulo —exact-match o coincidencia de palabra clave— y quédate con la que gane *de verdad*. Cuando quieras hacerlo con evals serios, es el [m16](/modulos/16-observabilidad-y-costo); y si te suena a artesanía repetitiva, mira **DSPy**: trata el prompt como parámetros a **optimizar** contra una métrica y un set de ejemplos —prompt engineering hecho búsqueda sistemática (solo lectura, no se instala aquí).
+Toma un prompt real del proyecto (el del sistema del agente, o el del m05) y crea una **segunda variante** con CoT o con 2–3 ejemplos few-shot. Mídelas con un mini-dataset como el de este módulo —exact-match o coincidencia de palabra clave— y quédate con la que gane *de verdad*. Cuando quieras hacerlo con evals serios, es el [m16](/modulo/16-observabilidad-y-costo); y si te suena a artesanía repetitiva, mira **DSPy**: trata el prompt como parámetros a **optimizar** contra una métrica y un set de ejemplos —prompt engineering hecho búsqueda sistemática (solo lectura, no se instala aquí).
 
 </Box>
 
@@ -111,7 +111,7 @@ Few-shot, CoT, self-consistency y descomposición son el pan de cada día. Hay u
   <Term>Graph-of-Thought (GoT)</Term>
   <Def>Generaliza el árbol a un **grafo**: ideas que se combinan y se refuerzan entre sí, no solo se ramifican. Sirve cuando los sub-razonamientos deben fusionarse, no elegirse.</Def>
   <Term>Chain-of-Verification (CoVe)</Term>
-  <Def>El modelo responde, luego **se genera preguntas de verificación** sobre su propia respuesta, las contesta y corrige. Reduce alucinaciones — es el mismo espíritu del detector del [m28](/modulos/28-desafios-y-alucinaciones), pero dentro del propio prompt.</Def>
+  <Def>El modelo responde, luego **se genera preguntas de verificación** sobre su propia respuesta, las contesta y corrige. Reduce alucinaciones — es el mismo espíritu del detector del [m28](/modulo/28-desafios-y-alucinaciones), pero dentro del propio prompt.</Def>
   <Term>APE (Automatic Prompt Engineer)</Term>
   <Def>Le pides al **LLM que redacte y optimice sus propios prompts** contra una métrica, en vez de escribirlos tú a mano. Es la idea de DSPy llevada al prompt: prompt engineering como búsqueda automática.</Def>
   <Term>Active Prompting</Term>

@@ -40,7 +40,7 @@ Los enunciados completos, con sus pistas progresivas y sus soluciones, están en
 
 ### Cuando se te agote la cuota de Gemini (y se te va a agotar)
 
-El plan gratuito de Gemini da para muy poco, y cada ejercicio llama al modelo varias veces. La salida está en el [Módulo 00](/modulos/00-preparar-el-terreno): consigue una llave gratis en [console.groq.com/keys](https://console.groq.com/keys) y cambia dos líneas del `.env`.
+El plan gratuito de Gemini da para muy poco, y cada ejercicio llama al modelo varias veces. La salida está en el [Módulo 00](/modulo/00-preparar-el-terreno): consigue una llave gratis en [console.groq.com/keys](https://console.groq.com/keys) y cambia dos líneas del `.env`.
 
 ```python title="curso_ejemplos/.env"
 LLM_PROVIDER=groq
@@ -51,7 +51,7 @@ Ya está. Los ejercicios —y **todos** los ejemplos del curso— pasan a usar *
 
 <Box kind="warn" label="▲ El único que Groq no salva del todo: el ejercicio 11">
 
-El ejercicio 11 hace RAG, y el RAG necesita **embeddings**. Groq no los ofrece, así que el chat irá por Groq pero vectorizar seguiría gastando `GOOGLE_API_KEY`. La salida sin cuota es calcularlos en tu máquina: `uv sync --extra emb` y `EMBEDDINGS_PROVIDER=fastembed` en el `.env`. Está explicado en el [Módulo 00](/modulos/00-preparar-el-terreno).
+El ejercicio 11 hace RAG, y el RAG necesita **embeddings**. Groq no los ofrece, así que el chat irá por Groq pero vectorizar seguiría gastando `GOOGLE_API_KEY`. La salida sin cuota es calcularlos en tu máquina: `uv sync --extra emb` y `EMBEDDINGS_PROVIDER=fastembed` en el `.env`. Está explicado en el [Módulo 00](/modulo/00-preparar-el-terreno).
 
 </Box>
 
@@ -78,7 +78,7 @@ Las pistas están plegadas a propósito, de una en una. La tentación de abrirla
 
 ### Cómo sabes que lo hiciste bien
 
-Cada ejercicio trae un **criterio de aceptación**: una condición verificable, no una opinión. Varios se comprueban con un test que escribes tú mismo ([Módulo 17b](/modulos/17b-tests-y-ci)). Esa es la red de seguridad que vas construyendo sobre la marcha, en tu propia carpeta:
+Cada ejercicio trae un **criterio de aceptación**: una condición verificable, no una opinión. Varios se comprueban con un test que escribes tú mismo ([Módulo 17b](/modulo/17b-tests-y-ci)). Esa es la red de seguridad que vas construyendo sobre la marcha, en tu propia carpeta:
 
 ```bash title="tu red de seguridad, en dos comandos"
 cd mi-curso-ia

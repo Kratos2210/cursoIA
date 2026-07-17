@@ -15,7 +15,7 @@ export const meta = {
   "minutes": "⏱️ ~35 min"
 };
 
-Un LLM puede afirmar con total aplomo algo **falso**: eso es una **alucinación**. No es un bug que se "arregla" de una vez —es consecuencia de cómo funciona (el [m27](/modulos/27-fundamentos-del-llm) lo explicó: predice el siguiente token, no consulta la verdad)—. Lo que SÍ puedes es entender de dónde vienen y montar defensas. Este es un módulo **integrador**: cada desafío se conecta con la mitigación que ya practicaste, y añade dos detectores nuevos y medibles.
+Un LLM puede afirmar con total aplomo algo **falso**: eso es una **alucinación**. No es un bug que se "arregla" de una vez —es consecuencia de cómo funciona (el [m27](/modulo/27-fundamentos-del-llm) lo explicó: predice el siguiente token, no consulta la verdad)—. Lo que SÍ puedes es entender de dónde vienen y montar defensas. Este es un módulo **integrador**: cada desafío se conecta con la mitigación que ya practicaste, y añade dos detectores nuevos y medibles.
 
 <Box kind="def" label="◈ El paraguas · los cuatro grandes desafíos de un LLM">
 
@@ -56,11 +56,11 @@ TAXONOMIA = [
 ]
 ```
 
-Léelo al revés y es un resumen de todo el curso avanzado: contra la alucinación tienes **RAG** ([m11](/modulos/11-rag-profesional)), **evals** ([m16](/modulos/16-observabilidad-y-costo)), **self-consistency** ([m26b](/modulos/26b-prompt-engineering)) y **guardarraíles** ([m23](/modulos/23-seguridad-red-teaming)).
+Léelo al revés y es un resumen de todo el curso avanzado: contra la alucinación tienes **RAG** ([m11](/modulo/11-rag-profesional)), **evals** ([m16](/modulo/16-observabilidad-y-costo)), **self-consistency** ([m26b](/modulo/26b-prompt-engineering)) y **guardarraíles** ([m23](/modulo/23-seguridad-red-teaming)).
 
 ### Detectar la inconsistencia · el reverso del self-consistency
 
-En el [m26b](/modulos/26b-prompt-engineering), ante varias muestras de la misma pregunta, **votabas la moda** para acertar más. Aquí usamos las mismas muestras al revés: **medimos cuánto discrepan**. Poca dispersión = el modelo sabe; mucha = probablemente inventa. Es la idea de **SelfCheckGPT** reducida a aritmética testeable.
+En el [m26b](/modulo/26b-prompt-engineering), ante varias muestras de la misma pregunta, **votabas la moda** para acertar más. Aquí usamos las mismas muestras al revés: **medimos cuánto discrepan**. Poca dispersión = el modelo sabe; mucha = probablemente inventa. Es la idea de **SelfCheckGPT** reducida a aritmética testeable.
 
 ```python title="28_alucinaciones.py · detectar_inconsistencia (función pura)"
 from collections import Counter
@@ -86,7 +86,7 @@ El acompañante es `medir_fragilidad()`: si cambiar una coma o un sinónimo en e
 
 <Box kind="def" label="◈ Defensas de entrada · el filtro de perplejidad y SmoothLLM">
 
-Dos ideas de investigación que cierran el círculo con módulos anteriores. El **filtro de perplejidad** reusa el `calcular_perplejidad()` del [m27](/modulos/27-fundamentos-del-llm): un prompt adversarial suele ser texto "raro" con tokens improbables → perplejidad alta → se marca antes de llegar al modelo. Y **SmoothLLM** hace varias copias del prompt con perturbaciones mínimas y compara las salidas: si un carácter de más tumba el ataque, es que era frágil y malicioso. Ambas son baratas y se apilan sobre los guardarraíles del [m23](/modulos/23-seguridad-red-teaming).
+Dos ideas de investigación que cierran el círculo con módulos anteriores. El **filtro de perplejidad** reusa el `calcular_perplejidad()` del [m27](/modulo/27-fundamentos-del-llm): un prompt adversarial suele ser texto "raro" con tokens improbables → perplejidad alta → se marca antes de llegar al modelo. Y **SmoothLLM** hace varias copias del prompt con perturbaciones mínimas y compara las salidas: si un carácter de más tumba el ataque, es que era frágil y malicioso. Ambas son baratas y se apilan sobre los guardarraíles del [m23](/modulo/23-seguridad-red-teaming).
 
 </Box>
 

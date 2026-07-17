@@ -246,7 +246,7 @@ Corre `16_evaluacion.py` y anota el puntaje. Rompe algo a propósito (por ejempl
   <Def>La calidad del *retriever*, no del generador: **precision** = de lo que recuperaste, cuánto era relevante (¿metiste basura?); **recall** = de lo relevante que existía, cuánto llegaste a recuperar (¿te dejaste lo bueno fuera?).</Def>
 </DefList>
 
-El diagnóstico es lo valioso: fidelidad baja → el problema está en el *generador* (prompt, modelo); recall bajo → está en el *retriever* (chunking, búsqueda del [m12](/modulos/12-recuperar-re-rankear), o la pregunta del [m20](/modulos/20-rag-avanzado)). Cada una se implementa como un LLM-as-judge, exactamente el patrón que armaste arriba.
+El diagnóstico es lo valioso: fidelidad baja → el problema está en el *generador* (prompt, modelo); recall bajo → está en el *retriever* (chunking, búsqueda del [m12](/modulo/12-recuperar-re-rankear), o la pregunta del [m20](/modulo/20-rag-avanzado)). Cada una se implementa como un LLM-as-judge, exactamente el patrón que armaste arriba.
 
 Dos encuadres que ordenan todo lo anterior. **Model evals vs product evals:** un *model eval* pregunta "¿este modelo es bueno en general?" (benchmarks); un *product eval* pregunta "¿MI app resuelve el caso de MIS usuarios?" — y ese, con tu dataset y tu tríada, es el único que decide si despliegas. **Evaluar un agente** añade una capa: no basta con juzgar el resultado final, hay que mirar la **trayectoria** — ¿eligió las herramientas correctas?, ¿en el orden razonable?, ¿sin pasos inútiles? Un agente que acierta la respuesta por suerte tras tres llamadas equivocadas está roto aunque el resultado pase.
 

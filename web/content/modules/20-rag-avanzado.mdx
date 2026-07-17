@@ -21,7 +21,7 @@ Ya sabes construir y desplegar. Estos tres módulos son las técnicas que separa
 
 </LevelBanner>
 
-En el [Módulo 12](/modulos/12-recuperar-re-rankear) mejoraste el RAG por el lado del **índice**: buscar mejor (híbrido) y reordenar mejor (re-ranking) *después* de recuperar. Aquí atacamos el otro extremo, el que casi nadie toca: la **pregunta**. Una sola formulación es una sola apuesta — y si el usuario escribe "devolución" mientras el documento dice "reembolso", esa apuesta pierde y el chunk correcto queda invisible. La cura es preguntar de **varias maneras** y fusionar lo que traiga cada una.
+En el [Módulo 12](/modulo/12-recuperar-re-rankear) mejoraste el RAG por el lado del **índice**: buscar mejor (híbrido) y reordenar mejor (re-ranking) *después* de recuperar. Aquí atacamos el otro extremo, el que casi nadie toca: la **pregunta**. Una sola formulación es una sola apuesta — y si el usuario escribe "devolución" mientras el documento dice "reembolso", esa apuesta pierde y el chunk correcto queda invisible. La cura es preguntar de **varias maneras** y fusionar lo que traiga cada una.
 
 <Box kind="def" label="◈ Definición · Multi-query y RAG-Fusion">
 
@@ -133,7 +133,7 @@ Multi-query y RAG-Fusion atacan la *pregunta*. Hay un cajón de técnicas más p
   <Def>Un clasificador decide **a qué índice o herramienta** mandar la pregunta (la normativa a un store, las cifras a una DB SQL, lo genérico al LLM directo). Sirve cuando tienes varias fuentes y no todas responden lo mismo.</Def>
 </DefList>
 
-Regla práctica: **multi-query y RAG-Fusion (este módulo) cubren el 80% de los casos**. Estas cuatro son el 20% restante — se añaden de a una, midiendo con la tríada del [m16](/modulos/16-observabilidad-y-costo), cuando el recall sigue siendo tu cuello de botella y ya no por falta de reformular.
+Regla práctica: **multi-query y RAG-Fusion (este módulo) cubren el 80% de los casos**. Estas cuatro son el 20% restante — se añaden de a una, midiendo con la tríada del [m16](/modulo/16-observabilidad-y-costo), cuando el recall sigue siendo tu cuello de botella y ya no por falta de reformular.
 
 </Box>
 
@@ -142,7 +142,7 @@ Regla práctica: **multi-query y RAG-Fusion (este módulo) cubren el 80% de los 
 Todo lo anterior mejora el RAG *vectorial*: recuperas los fragmentos más **parecidos** a la pregunta. Pero hay preguntas que ningún fragmento suelto contesta —"¿qué conecta a este proveedor con aquel incidente?", "¿cuáles son los tres temas que atraviesan todo el corpus?"—. Ahí entra **GraphRAG**: en vez de (o además de) indexar texto, un LLM extrae **entidades y relaciones** y arma un **grafo de conocimiento**; la recuperación entonces *navega* ese grafo (vecindarios, caminos, comunidades) en lugar de solo medir similitud.
 
 - **Gana** en preguntas *multi-salto* (cruzar varios documentos para unir hechos) y de *agregación global* (resumir o "temar" todo el corpus), donde el top-k vectorial se queda corto porque la respuesta no vive en ningún fragmento único.
-- **Cuesta** construir el grafo (muchas llamadas al LLM para extraer entidades) y mantenerlo al día. Para QA factual simple —"¿cuál es la política de devoluciones?"— el RAG vectorial del [m11](/modulos/11-rag-profesional)/[m12](/modulos/12-recuperar-re-rankear) es más barato y basta.
+- **Cuesta** construir el grafo (muchas llamadas al LLM para extraer entidades) y mantenerlo al día. Para QA factual simple —"¿cuál es la política de devoluciones?"— el RAG vectorial del [m11](/modulo/11-rag-profesional)/[m12](/modulo/12-recuperar-re-rankear) es más barato y basta.
 
 Regla práctica: empieza vectorial; sube a GraphRAG solo cuando veas que las preguntas de tus usuarios *cruzan* documentos y el top-k nunca trae todo lo necesario.
 

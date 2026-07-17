@@ -74,7 +74,7 @@ llm = ChatOpenAI(model="qwen/qwen3-32b",
                  api_key=os.getenv("GROQ_API_KEY"))
 ```
 
-El conmutador de `util.crear_llm()` entiende estos `LLM_PROVIDER`; si no pones `LLM_MODELO`, usa el modelo por defecto de cada uno. Cuál elegir para una solución real (pago vs. open weights, precios, dónde corre) está en el [Módulo 18b](/modulos/18b-elegir-modelo-y-proveedor).
+El conmutador de `util.crear_llm()` entiende estos `LLM_PROVIDER`; si no pones `LLM_MODELO`, usa el modelo por defecto de cada uno. Cuál elegir para una solución real (pago vs. open weights, precios, dónde corre) está en el [Módulo 18b](/modulo/18b-elegir-modelo-y-proveedor).
 
 | `LLM_PROVIDER` | Modelo por defecto | Llave (`.env`) |
 | --- | --- | --- |

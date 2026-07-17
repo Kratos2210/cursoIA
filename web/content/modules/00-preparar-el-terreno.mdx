@@ -49,9 +49,9 @@ El orquestador: agentes que piensan en ciclo (pensar → actuar → observar), r
 
 ### Cómo estudiar este curso (plan sugerido)
 
-El curso está pensado para **13 sesiones de ~90 minutos** + el proyecto final. La regla de oro: cada módulo se estudia *corriendo su ejemplo*, no solo leyéndolo — y no avances de nivel sin pasar su **quiz de autoevaluación**. Marca cada módulo completado (el checkbox al final de cada uno): tu avance se guarda en este navegador.
+El curso está pensado para **13 sesiones de ~90 minutos** + el proyecto final. La regla de oro: cada módulo se estudia *corriendo su ejemplo*, no solo leyéndolo — y no avances de nivel sin pasar su **quiz de autoevaluación**. Marca cada módulo completado (el botón al final de cada uno): tu avance se guarda en este navegador.
 
-Y cuando termines un nivel, haz sus [ejercicios](/ejercicios): leer código no enseña a escribirlo. Cada uno trae pistas progresivas y un criterio de aceptación que puedes verificar tú mismo.
+Y cuando termines un nivel, haz sus [ejercicios](/recurso/ejercicios): leer código no enseña a escribirlo. Cada uno trae pistas progresivas y un criterio de aceptación que puedes verificar tú mismo.
 
 | Sesión | Módulos | Qué logras |
 | --- | --- | --- |
@@ -68,7 +68,7 @@ Y cuando termines un nivel, haz sus [ejercicios](/ejercicios): leer código no e
 | 10 | 18b · 19 · 20 | Elegir modelo/proveedor con criterio, Spec-Driven Development + verificador, y RAG avanzado (multi-query + RAG-Fusion). |
 | 11 | 21 · 22 · 23 | Fine-tuning vs RAG, entrada multimodal (texto + imagen) y blindar el prompt (guardrails / red-teaming OWASP). |
 | 12 | 24 · 24b · 25 · 26 · 26b | Vector DBs en producción, feedback + A/B de prompts, chat por SSE, el mapa del ecosistema y prompt engineering medible. |
-| 13 | 27 · 28 · 29 + entrevista | Abres la caja del LLM (tokens, atención, RLHF/DPO, inferencia), entiendes por qué alucina, cierras con el [caso real de retail](/modulos/29-caso-real-2-retail) (asistente de compras sobre un catálogo vivo) y practicas el [banco de preguntas y los casos de system design](/entrevista) de AI Engineer. |
+| 13 | 27 · 28 · 29 + entrevista | Abres la caja del LLM (tokens, atención, RLHF/DPO, inferencia), entiendes por qué alucina, cierras con el [caso real de retail](/modulo/29-caso-real-2-retail) (asistente de compras sobre un catálogo vivo) y practicas el [banco de preguntas y los casos de system design](/recurso/entrevista) de AI Engineer. |
 
 ### Antes de empezar: prepara tu computadora
 
@@ -215,7 +215,7 @@ La cuota gratuita de Gemini se agota en una tarde de práctica: verás un `429 R
 
 </Box>
 
-Para empezar, con Gemini o Groq te basta. Pero el conmutador entiende **más proveedores** — `openai`, `anthropic` (Claude), `openrouter` y `deepseek`, además de `ollama` en tu máquina — todos con la misma línea del `.env`. Cuándo y por qué elegir cada uno (pago vs. open weights, precios reales, dónde corre) lo ves en el [Módulo 18b · Elegir modelo y proveedor](/modulos/18b-elegir-modelo-y-proveedor).
+Para empezar, con Gemini o Groq te basta. Pero el conmutador entiende **más proveedores** — `openai`, `anthropic` (Claude), `openrouter` y `deepseek`, además de `ollama` en tu máquina — todos con la misma línea del `.env`. Cuándo y por qué elegir cada uno (pago vs. open weights, precios reales, dónde corre) lo ves en el [Módulo 18b · Elegir modelo y proveedor](/modulo/18b-elegir-modelo-y-proveedor).
 
 #### Opción A · Gemini
 
@@ -278,7 +278,7 @@ No es que LangChain tenga un adaptador por proveedor: es que **el mercado conver
 
 **1. El bloque `<think>`.** `qwen/qwen3-32b` es un **modelo de razonamiento**: antes de responder escribe su cadena de pensamiento, y Groq la devuelve *dentro* del contenido, envuelta en `<think>…</think>`. Sin tratarlo, todas las salidas del curso saldrían con ese ruido delante. `crear_llm()` envía `reasoning_format: "hidden"` y Groq lo descarta.
 
-**2. La salida estructurada.** Por defecto, `with_structured_output()` pide `response_format: json_schema`. OpenAI lo soporta; **Groq solo en algunos modelos**, y `qwen3-32b` no está entre ellos: devolvía un `400` y el [Módulo 05](/modulos/05-salida-estructurada) se caía en seco. `crear_llm()` usa `method="function_calling"`, que consigue lo mismo declarando una herramienta con la forma del esquema.
+**2. La salida estructurada.** Por defecto, `with_structured_output()` pide `response_format: json_schema`. OpenAI lo soporta; **Groq solo en algunos modelos**, y `qwen3-32b` no está entre ellos: devolvía un `400` y el [Módulo 05](/modulo/05-salida-estructurada) se caía en seco. `crear_llm()` usa `method="function_calling"`, que consigue lo mismo declarando una herramienta con la forma del esquema.
 
 Los dos parches son **específicos de Groq** y condicionales: `reasoning_format` solo se manda a modelos de razonamiento, porque a `llama-3.3-70b` le provoca un `400`. Esto es exactamente el trabajo invisible que ahorra una fábrica de modelos: si cada ejemplo instanciara el suyo, tendrías que recordar los dos parches diecinueve veces.
 
@@ -286,7 +286,7 @@ Los dos parches son **específicos de Groq** y condicionales: `reasoning_format`
 
 #### El RAG no se salva: los embeddings y `fastembed`
 
-Esto no lo vas a entender del todo hasta el [Módulo 11](/modulos/11-rag-profesional), y no pasa nada: **déjalo puesto en el `.env` y sigue**. Allí se explica qué es `fastembed` y por qué existe. Lo mínimo que necesitas saber ahora:
+Esto no lo vas a entender del todo hasta el [Módulo 11](/modulo/11-rag-profesional), y no pasa nada: **déjalo puesto en el `.env` y sigue**. Allí se explica qué es `fastembed` y por qué existe. Lo mínimo que necesitas saber ahora:
 
 Además del modelo que *conversa*, el RAG usa un segundo modelo que convierte texto en números (**embeddings**) para poder buscar por significado. Ese segundo modelo **no** se cambia con `LLM_PROVIDER`, por dos razones:
 
@@ -317,7 +317,7 @@ Con esas cuatro líneas, `11_rag.py` vectoriza los fragmentos en tu máquina y s
 
 <Box kind="warn" label="▲ Si ya habías indexado con otro modelo, reindexa">
 
-En el curso no muerde: los ejemplos reconstruyen el índice en cada arranque, así que cambiar `EMBEDDINGS_PROVIDER` es inofensivo. En producción, donde el índice vive en una base de datos, cambiarlo **sin reindexar** deja un vector store que responde con basura convincente. Así lo resuelve [`proyecto_llmops/`](/llmops): los embeddings son locales *desde el principio*, precisamente para que ningún proveedor pueda obligarte a reindexar.
+En el curso no muerde: los ejemplos reconstruyen el índice en cada arranque, así que cambiar `EMBEDDINGS_PROVIDER` es inofensivo. En producción, donde el índice vive en una base de datos, cambiarlo **sin reindexar** deja un vector store que responde con basura convincente. Así lo resuelve [`proyecto_llmops/`](/recurso/llmops): los embeddings son locales *desde el principio*, precisamente para que ningún proveedor pueda obligarte a reindexar.
 
 </Box>
 
@@ -358,7 +358,7 @@ Cada módulo trae su código completo en la propia guía, y además existe una v
 
 <Box kind="warn" label="▲ Todo el curso se hace en mi-curso-ia/">
 
-No tienes que clonar nada ni cambiar de carpeta. **Desde aquí hasta el último módulo trabajas en la carpeta que creaste en el paso anterior**, escribiendo tú cada archivo. Los ejemplos del repositorio son para *leerlos* cuando te atasques o para comparar tu solución con la de referencia — nunca para reemplazar el rato que pasas escribiendo el código.
+No tienes que clonar nada ni cambiar de carpeta. **Desde aquí hasta el último módulo trabajas en la carpeta que creaste en el paso anterior**, escribiendo tú cada archivo. Cada módulo enlaza su ejemplo ejecutable para que lo *leas* cuando te atasques o compares tu solución con la de referencia — nunca para reemplazar el rato que pasas escribiendo el código.
 
 Tu único comando de trabajo, siempre el mismo — cambia el nombre del archivo según el módulo:
 

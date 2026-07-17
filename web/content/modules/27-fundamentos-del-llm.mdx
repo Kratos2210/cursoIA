@@ -58,7 +58,7 @@ def tokenizar_bpe(palabra, merges):
     return secuencia
 ```
 
-Una palabra nueva reutiliza los trozos que quepan; lo que no encaje se queda en piezas pequeñas. Por eso `"proyectos"` = `['p','r','o','y','ecto','s']` cuesta un token **más** que `"proyecto"` = `['p','r','o','y','ecto']`: la `s` del plural no estaba en el vocabulario y viaja suelta. Multiplica eso por millones de palabras y entiendes por qué la factura del [m16](/modulos/16-observabilidad-y-costo) se cuenta en tokens, no en caracteres.
+Una palabra nueva reutiliza los trozos que quepan; lo que no encaje se queda en piezas pequeñas. Por eso `"proyectos"` = `['p','r','o','y','ecto','s']` cuesta un token **más** que `"proyecto"` = `['p','r','o','y','ecto']`: la `s` del plural no estaba en el vocabulario y viaja suelta. Multiplica eso por millones de palabras y entiendes por qué la factura del [m16](/modulo/16-observabilidad-y-costo) se cuenta en tokens, no en caracteres.
 
 ### Softmax con temperatura · qué hace de verdad `temperature=0`
 
@@ -74,7 +74,7 @@ def softmax_con_temperatura(logits, t):
     return [e / suma for e in exp]
 ```
 
-Aquí está el mito desmontado: el modelo **no "elige" una palabra**. Produce un logit por token y softmax los vuelve probabilidades. `temperature=0` del [m01](/modulos/01-tu-primer-modelo) no "apaga la creatividad": pone toda la probabilidad en el token de mayor logit (*greedy*), por eso sale siempre lo mismo. Subir la temperatura aplana la distribución y da paso al azar —y al riesgo de disparate.
+Aquí está el mito desmontado: el modelo **no "elige" una palabra**. Produce un logit por token y softmax los vuelve probabilidades. `temperature=0` del [m01](/modulo/01-tu-primer-modelo) no "apaga la creatividad": pone toda la probabilidad en el token de mayor logit (*greedy*), por eso sale siempre lo mismo. Subir la temperatura aplana la distribución y da paso al azar —y al riesgo de disparate.
 
 ### Muestreo · sacar una palabra sin caer siempre en la más probable
 
@@ -100,7 +100,7 @@ Es `exp(-media de log-probabilidades)` de los tokens que *realmente* aparecieron
 
 ### Atención · a qué palabras mira cada palabra
 
-La idea que hizo posible el transformer, sin frameworks: cada palabra pregunta "¿con cuáles de las demás me relaciono?". La afinidad es el **producto punto** entre su vector-consulta y el vector-clave de cada palabra (el mismo producto punto del coseno del [m12](/modulos/12-recuperar-re-rankear)); softmax lo vuelve un reparto de atención que suma 1. Así "el banco de la plaza" y "el banco me cobró" desambiguan: "banco" mira a palabras distintas en cada frase.
+La idea que hizo posible el transformer, sin frameworks: cada palabra pregunta "¿con cuáles de las demás me relaciono?". La afinidad es el **producto punto** entre su vector-consulta y el vector-clave de cada palabra (el mismo producto punto del coseno del [m12](/modulo/12-recuperar-re-rankear)); softmax lo vuelve un reparto de atención que suma 1. Así "el banco de la plaza" y "el banco me cobró" desambiguan: "banco" mira a palabras distintas en cada frase.
 
 <Box kind="def" label="◈ De dónde vino todo esto (y el cross-encoder que ya usaste)">
 
@@ -108,7 +108,7 @@ La historia en cuatro saltos: **Markov** (1906, estadística de "qué palabra si
 
 <DefList>
   <Term>Encoder (p. ej. BERT)</Term>
-  <Def>Lee toda la frase para **entenderla** (clasificar, comparar). El **cross-encoder** que usaste para re-rankear en el [m12](/modulos/12-recuperar-re-rankear) es exactamente esto: lee pregunta + fragmento juntos y puntúa su relación.</Def>
+  <Def>Lee toda la frase para **entenderla** (clasificar, comparar). El **cross-encoder** que usaste para re-rankear en el [m12](/modulo/12-recuperar-re-rankear) es exactamente esto: lee pregunta + fragmento juntos y puntúa su relación.</Def>
   <Term>Decoder (p. ej. GPT)</Term>
   <Def>Genera texto **token a token**, cada uno mirando solo lo ya escrito. Es la familia de los modelos de chat que usas en todo el curso.</Def>
   <Term>Encoder-decoder (p. ej. T5)</Term>
@@ -127,13 +127,13 @@ Un modelo recién preentrenado solo sabe *continuar texto*; no sabe seguir instr
 | Complejidad | Tres fases, más piezas móviles | Una sola fase, más simple y rápido |
 | Cuándo | Alineación fina, presupuesto para anotar mucho | Iteración rápida con preferencias binarias |
 
-Es la misma idea de "medir y ajustar" del [m16](/modulos/16-observabilidad-y-costo), pero a escala de entrenamiento. Tú no lo harás (necesita GPUs y datos enormes), pero saber que existe explica por qué dos modelos con el mismo tamaño se "portan" distinto.
+Es la misma idea de "medir y ajustar" del [m16](/modulo/16-observabilidad-y-costo), pero a escala de entrenamiento. Tú no lo harás (necesita GPUs y datos enormes), pero saber que existe explica por qué dos modelos con el mismo tamaño se "portan" distinto.
 
 </Box>
 
 <Box kind="def" label="◈ Por qué la inferencia es lenta y cara (y cómo se abarata)">
 
-Un decoder genera **un token cada vez**, y cada token necesita todos los anteriores: es intrínsecamente secuencial. Por eso responder es más lento que un cálculo normal, y por eso existe el **streaming** que viste en el [m25](/modulos/25-frontend-chat-sse) —te va mostrando tokens conforme salen en vez de hacerte esperar al final. Para no recalcular lo ya hecho, el modelo guarda un **KV cache** (la "memoria de trabajo" de la atención sobre los tokens previos): acelera mucho a cambio de ocupar memoria. Y la **cuantización** —guardar los pesos con menos bits— es lo que hace que `qwen3:8b` quepa y corra en tu laptop con Ollama, con una pérdida de calidad casi imperceptible.
+Un decoder genera **un token cada vez**, y cada token necesita todos los anteriores: es intrínsecamente secuencial. Por eso responder es más lento que un cálculo normal, y por eso existe el **streaming** que viste en el [m25](/modulo/25-frontend-chat-sse) —te va mostrando tokens conforme salen en vez de hacerte esperar al final. Para no recalcular lo ya hecho, el modelo guarda un **KV cache** (la "memoria de trabajo" de la atención sobre los tokens previos): acelera mucho a cambio de ocupar memoria. Y la **cuantización** —guardar los pesos con menos bits— es lo que hace que `qwen3:8b` quepa y corra en tu laptop con Ollama, con una pérdida de calidad casi imperceptible.
 
 </Box>
 
@@ -149,7 +149,7 @@ El transformer no es el final de la historia. Vale conocer tres direcciones que 
 
 <Box kind="warn" label="▲ Saber esto NO reemplaza medir">
 
-Entender los internos es cultura útil, pero cuidado con dos trampas. Una: **subir la temperatura no arregla un prompt malo** —solo añade azar. Dos: **bajar `top_p` no arregla una alucinación** —si el modelo no tiene el dato, muestrear con más cuidado no lo inventa; lo que necesitas es grounding con RAG ([m11](/modulos/11-rag-profesional)). Los parámetros de muestreo se tocan al final, cuando el prompt y el contexto ya están bien.
+Entender los internos es cultura útil, pero cuidado con dos trampas. Una: **subir la temperatura no arregla un prompt malo** —solo añade azar. Dos: **bajar `top_p` no arregla una alucinación** —si el modelo no tiene el dato, muestrear con más cuidado no lo inventa; lo que necesitas es grounding con RAG ([m11](/modulo/11-rag-profesional)). Los parámetros de muestreo se tocan al final, cuando el prompt y el contexto ya están bien.
 
 </Box>
 

@@ -222,11 +222,11 @@ Reto extra: añádele una tercera tool `@mcp.tool()` (por ejemplo `listar_reglas
 
 <Box kind="def" label="◈ Cuando no hay API: computer use (el agente opera la pantalla)">
 
-MCP y las tools del [m07](/modulos/07-herramientas) asumen que existe una **API** o un protocolo al que llamar. ¿Y cuándo no lo hay —una web sin API pública, un ERP legacy, un panel interno hecho a mano—? Ahí entra **computer use** (o *browser use*): en vez de llamar a una función, el modelo **ve una captura de pantalla** y emite **acciones de humano** (mover el ratón, hacer clic, teclear, hacer scroll). Claude, OpenAI y otros exponen esta capacidad; frameworks como `browser-use` la envuelven para la web.
+MCP y las tools del [m07](/modulo/07-herramientas) asumen que existe una **API** o un protocolo al que llamar. ¿Y cuándo no lo hay —una web sin API pública, un ERP legacy, un panel interno hecho a mano—? Ahí entra **computer use** (o *browser use*): en vez de llamar a una función, el modelo **ve una captura de pantalla** y emite **acciones de humano** (mover el ratón, hacer clic, teclear, hacer scroll). Claude, OpenAI y otros exponen esta capacidad; frameworks como `browser-use` la envuelven para la web.
 
 <Box kind="warn" label="▲ Es el último recurso, no el primero">
 
-Operar una GUI es **lento** (cada paso es una captura + una decisión del modelo), **frágil** (si la interfaz cambia de sitio un botón, se rompe) y **peligroso** (un agente que puede hacer clic en cualquier cosa puede borrar, comprar o enviar lo que no debía). Reglas: córrelo en un **sandbox** aislado, con **aprobación humana** para acciones irreversibles (el [HITL del m13](/modulos/13-langgraph-a-fondo)) y límites de alcance. Si existe una API o un servidor MCP, **siempre** es preferible: computer use es el puente para lo que no tiene puerta de entrada programática.
+Operar una GUI es **lento** (cada paso es una captura + una decisión del modelo), **frágil** (si la interfaz cambia de sitio un botón, se rompe) y **peligroso** (un agente que puede hacer clic en cualquier cosa puede borrar, comprar o enviar lo que no debía). Reglas: córrelo en un **sandbox** aislado, con **aprobación humana** para acciones irreversibles (el [HITL del m13](/modulo/13-langgraph-a-fondo)) y límites de alcance. Si existe una API o un servidor MCP, **siempre** es preferible: computer use es el puente para lo que no tiene puerta de entrada programática.
 
 </Box>
 
