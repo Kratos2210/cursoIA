@@ -1,18 +1,48 @@
 import type { Metadata } from "next";
+import { Manrope, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { AppProvider } from "@/components/app/AppProvider";
+import { Sidebar } from "@/components/app/Sidebar";
+
+const manrope = Manrope({
+  variable: "--font-manrope",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+});
+const jetbrains = JetBrains_Mono({
+  variable: "--font-jetbrains",
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+});
 
 export const metadata: Metadata = {
-  title: "Curso: LangChain, RAG y LangGraph desde cero",
+  title: "AI Engineer · Ruta de cero a pro",
   description:
-    "Curso práctico de LangChain, RAG y LangGraph — de tu primer modelo a un AI Engineer, con ejemplos ejecutables y autoevaluaciones.",
+    "Roadmap de cero a AI Engineer: seis niveles, de instalar Python a sistemas de IA en producción, con un proyecto integrador por nivel.",
 };
+
+// Sets data-theme before paint from the stored preference (or the OS default),
+// avoiding a flash of the wrong theme.
+const themeScript = `(function(){try{var s=JSON.parse(localStorage.getItem('curso_ia_v3')||'{}');var t=s.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','light');}})();`;
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es-PE">
-      <body>{children}</body>
+    <html lang="es-PE" className={`${manrope.variable} ${jetbrains.variable}`}>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+      </head>
+      <body>
+        <AppProvider>
+          <div className="app">
+            <Sidebar />
+            <main className="main" data-main>
+              <div className="main-inner">{children}</div>
+            </main>
+          </div>
+        </AppProvider>
+      </body>
     </html>
   );
 }
