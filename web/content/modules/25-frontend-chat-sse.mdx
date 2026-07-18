@@ -1,20 +1,3 @@
-export const meta = {
-  "id": "m25",
-  "slug": "25-frontend-chat-sse",
-  "title": "Frontend de chat SSE: la cara visible del servicio, en HTML vainilla",
-  "kind": "module",
-  "level": 5,
-  "levelName": "AI Engineer",
-  "order": 31,
-  "badge": "25",
-  "pyFile": null,
-  "fileref": "📋 Es una feature del servicio, no un script: proyecto_llmops/app/frontend.py + proyecto_llmops/app/static/chat.html — 100% offline✓ cubierto por tests",
-  "tested": true,
-  "goals": "🎯 Al terminar sabrás: servir una SPA vainilla desde el propio FastAPI y consumir el streaming SSE de POST /chat con fetch + ReadableStream, cerrando el lazo del A/B con los votos 👍/👎.",
-  "prereqs": "✅ Necesitas: el Módulo 17 (servir por HTTP) y el m24b (el A/B y el evento fin con variante).",
-  "minutes": "⏱️ ~30 min"
-};
-
 El servicio ya hace mucho por dentro —guardrails, caché semántico, tracing, A/B— pero nadie lo ve. Le falta cara. Se la damos con una **sola página** de HTML+CSS+JS, sin build, sin framework, sin CDN, sin una sola dependencia: abre en un navegador aunque no haya internet. El reto no es pintar burbujas: es **consumir el streaming SSE** que emite `/chat`, y ahí la API cómoda del navegador (`EventSource`) no nos sirve.
 
 <Box kind="def" label="◈ Definición · SSE por fetch, y una página que se sirve a sí misma">

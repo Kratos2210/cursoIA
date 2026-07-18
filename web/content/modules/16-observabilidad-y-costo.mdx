@@ -1,20 +1,3 @@
-export const meta = {
-  "id": "m16",
-  "slug": "16-observabilidad-y-costo",
-  "title": "Observabilidad y costo",
-  "kind": "module",
-  "level": 4,
-  "levelName": "Producción",
-  "order": 18,
-  "badge": "16",
-  "pyFile": "16b_observabilidad_langsmith.py",
-  "fileref": "📋 Copia y ejecuta: curso_ejemplos/16b_observabilidad_langsmith.py — trazas + tokens + coste; corre sin ninguna llave✓ cubierto por tests",
-  "tested": true,
-  "goals": "🎯 Al terminar sabrás: observar el sistema en vivo (trazas, tokens, coste) y traducir tokens a dólares. La evaluación de calidad va en el m16c.",
-  "prereqs": "✅ Necesitas: Módulos 10–12.",
-  "minutes": "⏱️ ~35 min"
-};
-
 "Funciona en mi máquina" no basta. En producción necesitas **ver** qué hace el sistema: cuánto tarda, cuánto cuesta y si está alucinando. Sin instrumentación, vuelas a ciegas — y te enteras de los problemas por los usuarios, que es la peor forma.
 
 <Box kind="def" label="◈ Definición · Observabilidad (y su gemela, la evaluación)">
@@ -170,7 +153,7 @@ Cachear reduce **coste y latencia**, no mejora la **calidad**: si la respuesta g
 
 <Box kind="analogy" label="🌐 Prompt caching: la palanca de coste que regalan los proveedores">
 
-Hay una tercera caché que no montas tú: la que ofrecen los propios proveedores. Anthropic y OpenAI **cachean el prefijo del prompt** — el system prompt, los documentos que precargaste, las definiciones de tus herramientas — y cuando la siguiente llamada empieza con ese mismo prefijo exacto, cobran esos tokens de entrada a **una fracción del precio** y los procesan con **menos latencia**. No es magia: reusan el cómputo interno (el *KV cache*) que ya hicieron para ese prefijo.
+Hay una tercera caché que no montas tú: la que ofrecen los propios proveedores. Ambos **cachean el prefijo del prompt** — el system prompt, los documentos que precargaste, las definiciones de tus herramientas — pero se activan distinto: **OpenAI lo hace automático** (cachea el prefijo de los prompts largos sin que toques el código), mientras que en **Anthropic es opt-in**: tú marcas con `cache_control` hasta qué punto del prompt cachear (sin esa marca no cachea nada). En los dos, cuando la siguiente llamada empieza con ese mismo prefijo exacto, cobran esos tokens de entrada a **una fracción del precio** y los procesan con **menos latencia**. No es magia: reusan el cómputo interno (el *KV cache*) que ya hicieron para ese prefijo.
 
 La consecuencia práctica cambia cómo ordenas el prompt: pon **lo estable primero** (instrucciones, contexto fijo, corpus precargado) y **lo variable al final** (la pregunta del usuario del turno). Así el prefijo se repite llamada tras llamada y maximizas los aciertos de caché; si intercalas lo que cambia con lo que no, rompes el prefijo y pagas todo a precio completo. Es la palanca que hace viable el **CAG** del [m11](/modulo/11-rag-profesional): precargar un corpus entero solo sale a cuenta si no lo pagas íntegro en cada pregunta.
 
@@ -189,6 +172,14 @@ Ojo con la distinción, porque son cosas distintas con el mismo nombre: este cac
 <Box kind="practice" label="▸ Para practicar">
 
 Corre `16b_observabilidad_langsmith.py` y mira el desglose de tokens → dólares. Después activa LangSmith con tu llave, corre el agente del Módulo 10 y sigue una traza completa: prompt, tool, tokens, costo. Cuando lo tengas, sigue con el [m16c](/modulo/16c-evaluacion) para *medir la calidad* de esas respuestas, no solo su coste.
+
+<Solution summary="Qué deberías observar">
+
+Al correr `16b` verás el desglose de más arriba: **225 tokens de entrada y 122 de salida** en 3 consultas, ≈ $0.000024 por consulta. La lección no es el número exacto (los precios caducan), sino la **proporción**: cada token de salida se cobra varias veces más caro que uno de entrada, así que la respuesta *larga* pesa más en la factura que el contexto *grande*. Si mañana tu factura sube, mira primero cuánto **escribe** el modelo, no cuánto contexto le metes.
+
+En la traza de LangSmith (con tu llave) deberías poder señalar, para UNA consulta: el prompt exacto que se armó, qué herramienta se llamó (si el agente del m10 usó alguna) y el `usage_metadata` con los tokens de ese paso. Cuando algo falle, la traza te dice *en qué eslabón* — ese es el punto de instrumentar.
+
+</Solution>
 
 </Box>
 

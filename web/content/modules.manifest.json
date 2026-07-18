@@ -30,7 +30,7 @@
       "pyFile": null,
       "fileref": null,
       "tested": false,
-      "goals": "🎯 Al terminar sabrás: leer Python sin miedo (las 7 ideas que usa todo el curso).",
+      "goals": "🎯 Al terminar sabrás: leer Python sin miedo (las 8 ideas que usa todo el curso).",
       "prereqs": "✅ Necesitas: Módulo 00.",
       "minutes": "⏱️ ~40 min"
     },
@@ -175,7 +175,7 @@
       "fileref": "📋 El ejemplo: curso_ejemplos/26b_prompt_engineering.py — 100% offline en su lógica medible✓ cubierto por tests",
       "tested": true,
       "goals": "🎯 Al terminar sabrás: aplicar cuatro técnicas con evidencia —few-shot, chain-of-thought, self-consistency y descomposición— y, sobre todo, medir si mejoran el resultado en vez de creerlo.",
-      "prereqs": "✅ Necesitas: el m05 (salida estructurada), el m11 (RAG) y el m16 (evaluación): sin una métrica, \"mejorar un prompt\" es opinión.",
+      "prereqs": "✅ Necesitas: el m05 (salida estructurada). Se apoya además en RAG (m11) y evaluación (m16c), de otras rutas: sin una métrica, «mejorar un prompt» es opinión.",
       "minutes": "⏱️ ~30 min"
     },
     {
@@ -367,7 +367,7 @@
       "fileref": "📋 Anexo. Vuelve ejecutables los snippets ilustrativos del m26: frameworks/rag_llamaindex.py + crew_crewai.py — fuera del gate offline (ADR-0006): extras opcionales, necesitan cuota de LLM, no se testean.",
       "tested": false,
       "goals": "🎯 Al terminar sabrás: ejecutar el mismo RAG del curso en LlamaIndex y una colaboración por roles en CrewAI, y sentir en vivo el tradeoff 'más alto nivel = menos control'.",
-      "prereqs": "✅ Necesitas: el m11/m12 (RAG), el m15 (supervisor) y el m26 (mapa del ecosistema). Para ejecutarlo: una API de LLM con cuota. Es lectura si no la tienes.",
+      "prereqs": "✅ Necesitas: el m11/m12 (RAG) y el m15 (supervisor). Para ejecutarlo: una API de LLM con cuota. Es lectura si no la tienes.",
       "minutes": "⏱️ ~20 min de lectura (+ ejecución si tienes cuota)"
     },
     {
@@ -384,7 +384,7 @@
       "tested": true,
       "goals": "🎯 Al terminar sabrás: qué es un token y por qué se cobra por él, qué hace de verdad temperature=0, cómo se saca una palabra con top_k/top_p, qué mide la perplejidad y qué es la atención.",
       "prereqs": "✅ Necesitas: haber usado el modelo en los módulos anteriores (aquí lo abrimos); ayuda recordar el coseno del m12.",
-      "minutes": "⏱️ ~30 min"
+      "minutes": "⏱️ ~35 min"
     },
     {
       "id": "m27b",
@@ -415,7 +415,7 @@
       "fileref": "📋 El ejemplo: curso_ejemplos/28_alucinaciones.py — taxonomía y detectores, 100% offline✓ cubierto por tests",
       "tested": true,
       "goals": "🎯 Al terminar sabrás: de dónde vienen las alucinaciones, cómo detectarlas midiendo la divergencia entre muestras y cómo cada desafío se mitiga con lo que el curso YA te enseñó.",
-      "prereqs": "✅ Necesitas: el m11 (RAG), el m16 (evals), el m26b (self-consistency) y el m27 (por qué el modelo predice, no consulta).",
+      "prereqs": "✅ Necesitas: el m11 (RAG), el m26b (self-consistency) y el m27 (por qué el modelo predice, no consulta). La defensa por evals la formaliza el m16c (ruta de Producción).",
       "minutes": "⏱️ ~35 min"
     },
     {
@@ -495,7 +495,7 @@
       "fileref": "📋 Anexo. voz/agente_voz_realtime.py: Deepgram STT streaming → LLM → TTS por frase, reutilizando el pipeline del m22b — fuera del gate offline (ADR-0007): necesita micrófono + APIs, no se testea.",
       "tested": false,
       "goals": "🎯 Al terminar sabrás: montar un agente de voz real (escucha y responde hablando) reutilizando el pipeline testeable del m22b, cambiando las 'mentiras' por Deepgram + LLM reales sin cambiar la forma del flujo.",
-      "prereqs": "✅ Necesitas: el m22b (voz: el pipeline en streaming) y el m03 (streaming). Para ejecutarlo: micrófono + API de Deepgram + de LLM. Es lectura si no los tienes.",
+      "prereqs": "✅ Necesitas: el m22 (multimodal, donde vive el pipeline de voz en streaming) y el m03 (streaming). Para ejecutarlo: micrófono + API de Deepgram + de LLM. Es lectura si no los tienes.",
       "minutes": "⏱️ ~20 min de lectura (+ ejecución si tienes micrófono)"
     },
     {
@@ -703,7 +703,7 @@
       "fileref": "📋 Copia y ejecuta: curso_ejemplos/29_caso_retail.py — 100% offline, no gasta cuota✓ cubierto por tests",
       "tested": true,
       "goals": "🎯 Al terminar sabrás: diseñar un caso de IA end-to-end para un negocio real —del dato crudo al eval— y aplicar la regla de oro del retail: precio y stock jamás salen del modelo.",
-      "prereqs": "✅ Necesitas: el m05 (salida estructurada), el m11 (RAG), el m16 (evals) y el m23 (guardrails).",
+      "prereqs": "✅ Necesitas: el m05 (salida estructurada), el m11 (RAG), el m16c (evals) y el m23 (guardrails).",
       "minutes": "⏱️ ~60 min"
     },
     {

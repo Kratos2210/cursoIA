@@ -1,20 +1,3 @@
-export const meta = {
-  "id": "m7",
-  "slug": "07-herramientas",
-  "title": "Herramientas: darle manos al modelo",
-  "kind": "module",
-  "level": 2,
-  "levelName": "Intermedio",
-  "order": 8,
-  "badge": "07",
-  "pyFile": "07_herramientas.py",
-  "fileref": "📋 Copia y ejecuta: curso_ejemplos/07_herramientas.py✓ cubierto por tests",
-  "tested": true,
-  "goals": "🎯 Al terminar sabrás: crear herramientas con @tool que el modelo puede pedir.",
-  "prereqs": "✅ Necesitas: Módulos 01–02.",
-  "minutes": "⏱️ ~25 min"
-};
-
 Una **herramienta** es una función de Python que le "prestas" al modelo. El decorador `@tool` la convierte en algo que la IA puede invocar sola.
 
 <Box kind="def" label="◈ Definición · Herramienta (tool)">
@@ -54,6 +37,24 @@ def calculadora_descuentos(precio: float, porcentaje: float) -> float:
     """Calcula el precio final tras aplicar un descuento.
     Úsala cuando el usuario pida calcular precios con descuento."""
     return precio - (precio * porcentaje / 100)
+```
+
+```python title="07_herramientas.py · probarla e inspeccionar lo que ve el modelo"
+# Pruébala como función normal, antes de dársela al modelo:
+print("Precio final:", calculadora_descuentos.invoke({"precio": 3500, "porcentaje": 18}))
+
+# Y mira lo que el modelo LEE para decidir cuándo y cómo usarla:
+print("nombre      :", calculadora_descuentos.name)
+print("descripción :", calculadora_descuentos.description)
+print("parámetros  :", calculadora_descuentos.args)
+```
+
+```text title="▸ deberías ver"
+Precio final: 2870.0
+nombre      : calculadora_descuentos
+descripción : Calcula el precio final tras aplicar un descuento.
+    Úsala cuando el usuario pida calcular precios con descuento.
+parámetros  : {'precio': {'title': 'Precio', 'type': 'number'}, 'porcentaje': {'title': 'Porcentaje', 'type': 'number'}}
 ```
 
 <Box kind="warn" label="▲ Lección de oro">

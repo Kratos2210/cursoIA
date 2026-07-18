@@ -1,20 +1,3 @@
-export const meta = {
-  "id": "m23",
-  "slug": "23-seguridad-red-teaming",
-  "title": "Seguridad: rompe tu propio agente antes que otro",
-  "kind": "module",
-  "level": 5,
-  "levelName": "AI Engineer",
-  "order": 28,
-  "badge": "23",
-  "pyFile": "23_seguridad.py",
-  "fileref": "📋 Copia y ejecuta: curso_ejemplos/23_seguridad.py — los ataques y los guardarraíles corren sin API✓ cubierto por tests (batería en test_redteam.py)",
-  "tested": true,
-  "goals": "🎯 Al terminar sabrás: pensar como atacante y montar guardarraíles en capas contra el OWASP LLM Top-10.",
-  "prereqs": "✅ Necesitas: el Módulo 11/12 (RAG) y el 07 (herramientas).",
-  "minutes": "⏱️ ~40 min"
-};
-
 Un agente que lee documentos, llama a herramientas y le responde a un usuario es una **superficie de ataque**. El estándar para razonar sobre esto es el **OWASP LLM Top-10**. Aquí atacamos —y defendemos— las tres piezas que se ven **offline**: la inyección de prompts, el manejo inseguro de la salida y la fuga de datos. La regla de oro: *si tú no rompes tu agente, lo hará alguien con peores intenciones*.
 
 <Box kind="def" label="◈ Definición · Tres familias del OWASP LLM">

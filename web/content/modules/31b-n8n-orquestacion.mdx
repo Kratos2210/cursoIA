@@ -1,20 +1,3 @@
-export const meta = {
-  "id": "m31b",
-  "slug": "31b-n8n-orquestacion",
-  "title": "n8n: orquestar el agente sin escribir el pegamento (anexo opcional)",
-  "kind": "module",
-  "level": 6,
-  "levelName": "Producción y LLMOps",
-  "order": 41,
-  "badge": "31b",
-  "pyFile": null,
-  "fileref": "📋 Anexo de integración. Workflow importable en canales/n8n/agente_rag_whatsapp.json — fuera del gate offline (ADR-0005): n8n es un servicio, no una dependencia de Python.",
-  "tested": false,
-  "goals": "🎯 Al terminar sabrás: cuándo usar un orquestador low-code (n8n) en vez de escribir el webhook a mano, y cómo n8n conecta WhatsApp con el POST /chat de tu agente — con manejo de errores.",
-  "prereqs": "✅ Necesitas: el m31 (canal WhatsApp) y entender que el agente ya se sirve por HTTP. Para ejecutarlo: n8n (Docker). Es lectura si no lo tienes.",
-  "minutes": "⏱️ ~20 min de lectura"
-};
-
 En el [m31](/modulo/31-canal-whatsapp) conectaste WhatsApp escribiendo el webhook **en código**. Hay otra forma, muy pedida en el mercado: un **orquestador low-code**, **n8n**, que hace el mismo pegamento **arrastrando cajas** en vez de escribir FastAPI. Este anexo enseña *cuándo* conviene cada una.
 
 <Box kind="warn" label="▲ n8n orquesta ALREDEDOR del agente, no lo reemplaza">

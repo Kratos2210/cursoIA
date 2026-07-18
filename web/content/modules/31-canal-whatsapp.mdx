@@ -1,20 +1,3 @@
-export const meta = {
-  "id": "m31",
-  "slug": "31-canal-whatsapp",
-  "title": "Canal WhatsApp: pon tu agente en un chat real (anexo opcional)",
-  "kind": "module",
-  "level": 6,
-  "levelName": "Producción y LLMOps",
-  "order": 40,
-  "badge": "31",
-  "pyFile": "canales/whatsapp/webhook.py",
-  "fileref": "📋 Anexo de integración. Artefactos en canales/whatsapp/ (webhook FastAPI + docker-compose + .env.example) — fuera del gate offline (ADR-0004): necesita Docker y un número de WhatsApp, no se testea en la CI.",
-  "tested": false,
-  "goals": "🎯 Al terminar sabrás: poner el agente que ya construiste detrás de un canal real de mensajería (WhatsApp) sin tocar su código, y ver el sistema end-to-end: mensaje → webhook → agente → respuesta.",
-  "prereqs": "✅ Necesitas: haber construido un agente (m10–m15) y saber servirlo por HTTP (m17, m25). Para ejecutarlo: Docker y un número de WhatsApp. Es lectura si no los tienes.",
-  "minutes": "⏱️ ~25 min de lectura (+ montaje si lo ejecutas)"
-};
-
 Hasta aquí el curso te dio el **agente** (m10–m15) y te enseñó a servirlo por **HTTP** (m17, m25). Un `POST /chat` está muy bien para un frontend, pero el negocio real muchas veces vive en **WhatsApp**. Este anexo le pone delante ese **canal** — y la buena noticia es que **el agente no cambia**: solo cambia por dónde entra y sale el texto.
 
 <Box kind="warn" label="▲ Anexo opcional, fuera del 'offline-first' del curso">

@@ -1,20 +1,3 @@
-export const meta = {
-  "id": "m22",
-  "slug": "22-multimodal",
-  "title": "Multimodal: un modelo que además VE",
-  "kind": "module",
-  "level": 5,
-  "levelName": "AI Engineer",
-  "order": 27,
-  "badge": "22",
-  "pyFile": "22_multimodal.py",
-  "fileref": "📋 Copia y ejecuta: curso_ejemplos/22_multimodal.py — el armado del mensaje es offline; la llamada real necesita un modelo con visión✓ cubierto por tests",
-  "tested": true,
-  "goals": "🎯 Al terminar sabrás: construir un mensaje con texto + imagen en el formato que espera un modelo con visión.",
-  "prereqs": "✅ Necesitas: el Módulo 01 (mensajes) y el 03 (interfaz unificada).",
-  "minutes": "⏱️ ~30 min"
-};
-
 Hasta aquí todo fue texto → texto. Los modelos con **visión** (Gemini, GPT-5, Claude) reciben además **imágenes**: le mandas la foto de una factura y te la extrae, la captura de un error y te lo explica, un diagrama y te lo describe. Lo único nuevo es cómo se *arma* el mensaje: el contenido deja de ser un string y pasa a ser una **lista de bloques**.
 
 <Box kind="def" label="◈ Definición · Contenido multimodal por bloques">

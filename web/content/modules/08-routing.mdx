@@ -1,20 +1,3 @@
-export const meta = {
-  "id": "m8",
-  "slug": "08-routing",
-  "title": "Routing: el ciclo completo de un agente",
-  "kind": "module",
-  "level": 2,
-  "levelName": "Intermedio",
-  "order": 9,
-  "badge": "08",
-  "pyFile": "08_routing.py",
-  "fileref": "📋 Copia y ejecuta: curso_ejemplos/08_routing.py✓ cubierto por tests",
-  "tested": true,
-  "goals": "🎯 Al terminar sabrás: cerrar el ciclo completo de tool calling (A→D) a mano.",
-  "prereqs": "✅ Necesitas: Módulo 07.",
-  "minutes": "⏱️ ~35 min"
-};
-
 Con `llm.bind_tools()` le entregas el "cinturón". El modelo **decide** si responder directo o pedir una herramienta (eso es *routing*). Pero pedirla es solo la mitad: el ciclo real tiene **cuatro pasos**.
 
 <Box kind="def" label="◈ Definición · Routing y tool calling">

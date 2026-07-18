@@ -1,20 +1,3 @@
-export const meta = {
-  "id": "m27",
-  "slug": "27-fundamentos-del-llm",
-  "title": "Mecánica del LLM: tokens, logits, softmax y atención",
-  "kind": "module",
-  "level": 5,
-  "levelName": "AI Engineer",
-  "order": 34,
-  "badge": "27",
-  "pyFile": "27_fundamentos_llm.py",
-  "fileref": "📋 El ejemplo: curso_ejemplos/27_fundamentos_llm.py — 100% offline, no toca la red✓ cubierto por tests",
-  "tested": true,
-  "goals": "🎯 Al terminar sabrás: qué es un token y por qué se cobra por él, qué hace de verdad temperature=0, cómo se saca una palabra con top_k/top_p, qué mide la perplejidad y qué es la atención.",
-  "prereqs": "✅ Necesitas: haber usado el modelo en los módulos anteriores (aquí lo abrimos); ayuda recordar el coseno del m12.",
-  "minutes": "⏱️ ~35 min"
-};
-
 Durante 26 módulos usaste el modelo como una **caja negra**: texto entra, texto sale. Este módulo la abre. No para que entrenes uno —eso son millones de dólares en GPUs— sino para que entiendas las piezas que explican *todo* lo que ya viste: por qué `temperature=0` es determinista, por qué se paga por token, por qué el modelo a veces "alucina" con seguridad. Y como en el resto del curso, cada pieza es una **función pura** que puedes testear byte a byte.
 
 <Box kind="def" label="◈ El árbol al que pertenece un LLM">

@@ -1,20 +1,3 @@
-export const meta = {
-  "id": "m28",
-  "slug": "28-desafios-y-alucinaciones",
-  "title": "Desafíos: alucinaciones y por qué fallan los LLM",
-  "kind": "module",
-  "level": 5,
-  "levelName": "AI Engineer",
-  "order": 35,
-  "badge": "28",
-  "pyFile": "28_alucinaciones.py",
-  "fileref": "📋 El ejemplo: curso_ejemplos/28_alucinaciones.py — taxonomía y detectores, 100% offline✓ cubierto por tests",
-  "tested": true,
-  "goals": "🎯 Al terminar sabrás: de dónde vienen las alucinaciones, cómo detectarlas midiendo la divergencia entre muestras y cómo cada desafío se mitiga con lo que el curso YA te enseñó.",
-  "prereqs": "✅ Necesitas: el m11 (RAG), el m16c (evals), el m26b (self-consistency) y el m27 (por qué el modelo predice, no consulta).",
-  "minutes": "⏱️ ~35 min"
-};
-
 Un LLM puede afirmar con total aplomo algo **falso**: eso es una **alucinación**. No es un bug que se "arregla" de una vez —es consecuencia de cómo funciona (el [m27](/modulo/27-fundamentos-del-llm) lo explicó: predice el siguiente token, no consulta la verdad)—. Lo que SÍ puedes es entender de dónde vienen y montar defensas. Este es un módulo **integrador**: cada desafío se conecta con la mitigación que ya practicaste, y añade dos detectores nuevos y medibles.
 
 <Box kind="def" label="◈ El paraguas · los cuatro grandes desafíos de un LLM">
@@ -51,12 +34,12 @@ TAXONOMIA = [
     {"causa": "Sobregeneralización de patrones", "categoria": "tecnica",
      "mitigacion": "Self-consistency (votar la moda) y verificación.", "modulo": "m26b"},
     {"causa": "Sin verificación de la salida", "categoria": "tecnica",
-     "mitigacion": "Evaluar con un dataset y una métrica.", "modulo": "m16"},
+     "mitigacion": "Evaluar con un dataset y una métrica.", "modulo": "m16c"},
     # …datos desactualizados (m11), contexto insuficiente (m26b), entrada envenenada (m23)
 ]
 ```
 
-Léelo al revés y es un resumen de todo el curso avanzado: contra la alucinación tienes **RAG** ([m11](/modulo/11-rag-profesional)), **evals** ([m16](/modulo/16-observabilidad-y-costo)), **self-consistency** ([m26b](/modulo/26b-prompt-engineering)) y **guardarraíles** ([m23](/modulo/23-seguridad-red-teaming)).
+Léelo al revés y es un resumen de todo el curso avanzado: contra la alucinación tienes **RAG** ([m11](/modulo/11-rag-profesional)), **evals** ([m16c](/modulo/16c-evaluacion)), **self-consistency** ([m26b](/modulo/26b-prompt-engineering)) y **guardarraíles** ([m23](/modulo/23-seguridad-red-teaming)).
 
 ### Detectar la inconsistencia · el reverso del self-consistency
 

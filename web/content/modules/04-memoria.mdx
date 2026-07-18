@@ -1,20 +1,3 @@
-export const meta = {
-  "id": "m4",
-  "slug": "04-memoria",
-  "title": "Memoria: que no olvide la conversación",
-  "kind": "module",
-  "level": 1,
-  "levelName": "Básico",
-  "order": 5,
-  "badge": "04",
-  "pyFile": "04_memoria.py",
-  "fileref": "📋 Copia y ejecuta: curso_ejemplos/04_memoria.py✓ cubierto por tests",
-  "tested": true,
-  "goals": "🎯 Al terminar sabrás: darle memoria a una conversación reenviando el historial.",
-  "prereqs": "✅ Necesitas: Módulo 02.",
-  "minutes": "⏱️ ~25 min"
-};
-
 Un LLM es **amnésico**: cada `.invoke()` es independiente. Para que "recuerde", tú le reenvías el historial en cada turno. La pieza que reserva ese hueco es `MessagesPlaceholder`.
 
 <Box kind="def" label="◈ Definición · Memoria">

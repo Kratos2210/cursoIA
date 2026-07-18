@@ -1,20 +1,3 @@
-export const meta = {
-  "id": "m33",
-  "slug": "33-agente-voz-realtime",
-  "title": "Agente de voz en tiempo real: el m22b con servicios de verdad (anexo opcional)",
-  "kind": "module",
-  "level": 5,
-  "levelName": "Modelos",
-  "order": 40,
-  "badge": "33",
-  "pyFile": "voz/agente_voz_realtime.py",
-  "fileref": "📋 Anexo. voz/agente_voz_realtime.py: Deepgram STT streaming → LLM → TTS por frase, reutilizando el pipeline del m22b — fuera del gate offline (ADR-0007): necesita micrófono + APIs, no se testea.",
-  "tested": false,
-  "goals": "🎯 Al terminar sabrás: montar un agente de voz real (escucha y responde hablando) reutilizando el pipeline testeable del m22b, cambiando las 'mentiras' por Deepgram + LLM reales sin cambiar la forma del flujo.",
-  "prereqs": "✅ Necesitas: el m22b (voz: el pipeline en streaming) y el m03 (streaming). Para ejecutarlo: micrófono + API de Deepgram + de LLM. Es lectura si no los tienes.",
-  "minutes": "⏱️ ~20 min de lectura (+ ejecución si tienes micrófono)"
-};
-
 El [m22b](/modulo/22-multimodal) te enseñó el pipeline de voz en tiempo real como un **generador determinista**: STT parcial → LLM token a token → TTS por frases, todo **de mentira** para poder **testearlo**. Este anexo cambia las mentiras por **servicios reales** (Deepgram) **sin cambiar la forma** del flujo — que es justo por qué el m22b lo enseñó así.
 
 <Box kind="warn" label="▲ Anexo opcional, fuera del 'offline-first'">

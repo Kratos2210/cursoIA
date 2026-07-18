@@ -1,20 +1,3 @@
-export const meta = {
-  "id": "m16c",
-  "slug": "16c-evaluacion",
-  "title": "Evaluación: medir la calidad y cazar regresiones",
-  "kind": "module",
-  "level": 4,
-  "levelName": "Producción",
-  "order": 19,
-  "badge": "16c",
-  "pyFile": "16_evaluacion.py",
-  "fileref": "📋 Copia y ejecuta: curso_ejemplos/16_evaluacion.py — evalúa un mini-RAG con dataset (corre sin llave)✓ cubierto por tests",
-  "tested": true,
-  "goals": "🎯 Al terminar sabrás: medir la calidad con un dataset, usar LLM-as-judge, aplicar la tríada RAG y detectar regresiones antes/después de un cambio.",
-  "prereqs": "✅ Necesitas: el m16 (observabilidad) y los Módulos 10–12.",
-  "minutes": "⏱️ ~35 min"
-};
-
 El [m16](/modulo/16-observabilidad-y-costo) te dio ojos para ver el sistema **en vivo**: trazas, tokens, coste. Pero observar no es medir la calidad. La observabilidad te dice que el sistema está *lento*; la **evaluación** te dice si se ha vuelto *tonto*. Este módulo cierra ese hueco: medir si las respuestas son buenas, de forma **repetible**, y detectar cuándo un cambio las empeora sin avisar.
 
 <Box kind="def" label="◈ Definición · Evaluación, dataset y el juez">

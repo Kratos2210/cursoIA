@@ -1,20 +1,3 @@
-export const meta = {
-  "id": "m24b",
-  "slug": "24b-feedback-a-b",
-  "title": "Feedback 👍/👎 y A/B de prompts: mejorar con datos, no con opiniones",
-  "kind": "module",
-  "level": 5,
-  "levelName": "AI Engineer",
-  "order": 30,
-  "badge": "24b",
-  "pyFile": null,
-  "fileref": "📋 Es una feature del servicio, no un script: proyecto_llmops/prompts/experimentos.py + proyecto_llmops/observability/feedback.py — 100% offline✓ cubierto por tests",
-  "tested": true,
-  "goals": "🎯 Al terminar sabrás: repartir usuarios entre dos prompts de forma pegajosa (A/B) y recoger su feedback 👍/👎 agregado por variante — el lazo que convierte \"creo que este prompt es mejor\" en \"mídelo\".",
-  "prereqs": "✅ Necesitas: el Módulo 17 (servir por HTTP) y el proyecto LLMOps.",
-  "minutes": "⏱️ ~30 min"
-};
-
 Tienes dos redacciones del prompt del sistema: una larga (`agente_gobdata`) y una concisa (`agente_gobdata_conciso`). ¿Cuál responde mejor? Eso no lo decide quien escribió el prompt: lo decide el usuario. Para medirlo hacen falta dos piezas que encajan — **repartir** el tráfico entre las dos variantes y **recoger** el 👍/👎 agregado por variante. Sin las dos, no hay experimento.
 
 <Box kind="def" label="◈ Definición · Bucketing pegajoso y feedback por variante">

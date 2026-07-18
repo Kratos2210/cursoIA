@@ -1,20 +1,3 @@
-export const meta = {
-  "id": "m24",
-  "slug": "24-vector-dbs-en-produccion",
-  "title": "Del vector store en memoria a una DB vectorial de verdad",
-  "kind": "module",
-  "level": 5,
-  "levelName": "AI Engineer",
-  "order": 29,
-  "badge": "24",
-  "pyFile": "24_vector_db.py",
-  "fileref": "📋 Copia y ejecuta: curso_ejemplos/24_vector_db.py — dedup e índice IVFFlat a mano, 100% offline✓ cubierto por tests",
-  "tested": true,
-  "goals": "🎯 Al terminar sabrás: por qué un vector store en memoria no escala y qué hacen las DBs vectoriales: dedup antes de indexar e índices ANN.",
-  "prereqs": "✅ Necesitas: el Módulo 12 (vectores y coseno).",
-  "minutes": "⏱️ ~40 min"
-};
-
 Cierra el arco de RAG (Módulos 11/12/20). Hasta ahora el "vector store" era una **lista en memoria** y la búsqueda comparaba la consulta con **TODOS** los vectores. Con 7 chunks funciona; con 7 millones, no. Dos ideas te separan del prototipo: no indexar basura repetida (**dedup**) y no comparar contra todo (**índice ANN**).
 
 <Box kind="def" label="◈ Definición · Dedup por hash e índice IVFFlat">
@@ -95,7 +78,7 @@ Tras deduplicar por hash: 7 (se cayó el casi-duplicado).
 
 <Box kind="warn" label="▲ Estos vectores son didácticos">
 
-Vectorizamos por **frecuencia de palabras** (como el Módulo 12), no con embeddings reales — para que la mecánica del índice se vea sin depender de un modelo. La *mecánica* de agrupar y sondar es idéntica con embeddings de verdad; lo que cambia es la calidad del vector. En producción NO escribes esto a mano: lo dan `pgvector` (Postgres), **Qdrant** o **Milvus**, que ofrecen IVFFlat y HNSW como tipos de índice.
+Vectorizamos por **frecuencia de palabras** (como el Módulo 12), no con embeddings reales — para que la mecánica del índice se vea sin depender de un modelo. La *mecánica* de agrupar y sondar es idéntica con embeddings de verdad; lo que cambia es la calidad del vector. En producción NO escribes esto a mano: lo dan `pgvector` (Postgres), **Qdrant** o **Milvus** con índices ANN listos para usar — HNSW en todos; `pgvector` y Milvus añaden además IVFFlat.
 
 </Box>
 
