@@ -79,6 +79,12 @@ El **estado** es una carpeta compartida que viaja por la oficina (lleva la pregu
 
 </Box>
 
+<Box kind="def" label="◈ El mapa completo: workflows deterministas vs agentes">
+
+Todo lo que has construido hasta aquí cae en una de dos familias, y conviene saber **nombrarlas** porque así se habla en la industria. Los **workflows** son flujos donde *tu código* decide el camino: **prompt chaining** (pasos encadenados — tus cadenas del [m02](/modulo/02-prompts-lcel)), **parallelization** (ramas a la vez — el `RunnableParallel` del [m06](/modulo/06-runnables)), **routing** (una bifurcación puntual la decide el modelo, el resto es fijo — [m08](/modulo/08-routing)), **orchestrator-workers** (uno reparte, varios ejecutan — el supervisor del [m15](/modulo/15-multiagente-supervisor)) y **evaluator-optimizer** (generar → evaluar → reintentar — el Paso 1 de este módulo). Un **agente** es la otra familia: el *modelo* decide el camino en cada vuelta, y cuántas vueltas hay se descubre en ejecución. La regla de elección es la del [m10](/modulo/10-agentes-prebuilt): flujo predecible → workflow (más barato, testeable de punta a punta); problema abierto → agente. El `StateGraph` construye **las dos** familias: la diferencia no es la herramienta, es quién decide el camino.
+
+</Box>
+
 ### Paso 1 — Reintentos con escalada: el ciclo que decide solo
 
 El poder real de un grafo cíclico se ve en este patrón de producción: si la búsqueda no encontró contexto, el agente **reintenta**; si falla varias veces, no se cae ni inventa — **escala a un humano**. Un nodo evaluador devuelve el nombre de la ruta a seguir:

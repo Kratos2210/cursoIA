@@ -147,6 +147,12 @@ El supervisor es *uno* de los patrones estrella; el otro es **deep research** (i
 
 </Box>
 
+<Box kind="analogy" label="🌐 El tercer patrón: enjambre (handoffs), sin jefe">
+
+Además del supervisor y del deep research existe el **enjambre** (*swarm*): no hay jefe — cada especialista puede **transferir el control directamente** a otro (*handoff*) cuando detecta que la conversación ya no es lo suyo. El agente de ventas nota una pregunta de facturación y le pasa el cliente al de facturación, sin subir a un supervisor que decida. Gana en **flujos conversacionales tipo triaje** (soporte, mostrador): un salto menos por turno (más barato, más rápido) y cada especialista conserva el contexto de la conversación. Su factura es la **auditabilidad**: sin punto central, reconstruir "quién decidió pasar a quién y por qué" es más difícil que leer el log de un supervisor — por eso en dominios regulados (como el capstone) el supervisor sigue ganando. En LangGraph los handoffs se implementan con `Command(goto=...)` devuelto por el propio nodo; también lo verás como librería (`langgraph-swarm`) y en otros frameworks (el *Agents SDK* de OpenAI lo trae como primitiva, [m26](/modulo/26-mapa-del-ecosistema)).
+
+</Box>
+
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 
 - Explicar por qué un agente con demasiadas herramientas elige peor, y cómo lo cura el patrón supervisor.

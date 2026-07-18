@@ -120,6 +120,12 @@ Un agente **no responde en una sola llamada**: puede iterar varias veces por pre
 
 </Avoid>
 
+<Box kind="def" label="◈ Más allá de ReAct: Plan-and-Execute y Reflexion">
+
+ReAct decide **un paso a la vez**: pensar → actuar → mirar → repetir. Para muchas tareas basta, pero hay otras dos arquitecturas canónicas que conviene reconocer por nombre. **Plan-and-Execute** (también verás *Plan-and-Solve*): el agente primero escribe el **plan completo** ("1. buscar X, 2. cruzar con Y, 3. redactar") y luego lo ejecuta paso a paso, replanificando solo si algo falla. Gana cuando la tarea es **multi-paso con dependencias** — con ReAct puro, el agente puede perderse a mitad de camino porque nunca miró el problema entero; además los pasos planificados pueden usar un modelo más barato que el planificador. **Reflexion**: el agente genera, un **crítico** (él mismo u otro modelo) señala qué está mal, y reintenta con esa crítica en el contexto. Gana cuando lo que importa es la **calidad iterativa** de una salida (código que debe pasar tests, un informe con requisitos). Ninguna necesita otro framework: ambas se arman con el `StateGraph` del [m13](/modulo/13-langgraph-a-fondo) — Plan-and-Execute es un nodo planificador + un bucle de ejecución; Reflexion es exactamente el patrón generar→evaluar→reintentar del Paso 1 del m13. La elección es por caso de uso, no por moda: paso a paso exploratorio → ReAct; multi-paso con dependencias → Plan-and-Execute; calidad con criterio verificable → Reflexion.
+
+</Box>
+
 <Box kind="practice" label="▸ Para practicar">
 
 Dale dos tools: `consultar_disponibilidad` y `agendar_cita`. En los docstrings escribe "usa consultar cuando PREGUNTAN" y "usa agendar SOLO cuando CONFIRMAN". Observa cómo elige según tu intención.
