@@ -303,8 +303,12 @@ a:hover { color: var(--accent); }
 .quiz-head { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent-ink); font-weight: 600; margin-bottom: 6px; }
 .quiz-sub { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
 .quiz-sub .hint { font-size: 13px; color: var(--ink-faint); }
-.quiz-score { margin-left: auto; font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--ink-faint); }
+.quiz-sub .quiz-score-wrap { margin-left: auto; }
+.quiz-score { font-family: var(--font-mono); font-size: 12px; font-weight: 600; color: var(--ink-faint); }
 .quiz-score.perfect { color: var(--good); }
+.quiz-best { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); opacity: 0.8; }
+.quiz-retry { font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.04em; background: transparent; border: 1px solid var(--line-2); color: var(--ink-faint); padding: 4px 10px; border-radius: 999px; cursor: pointer; }
+.quiz-retry:hover { color: var(--ink); border-color: var(--accent-ink); }
 .q { margin-bottom: 20px; display: flex; flex-direction: column; gap: 8px; }
 .q:last-child { margin-bottom: 0; }
 .q .enun { font-weight: 600; font-size: 15.5px; color: var(--ink); margin: 0 0 3px; }
@@ -428,3 +432,36 @@ details.qa[open] > summary::after { content: " –"; }
 .qa-answer { margin-top: 10px; color: var(--ink-soft); font-size: 15px; line-height: 1.7; }
 .qa-answer p:first-child { margin-top: 0; }
 .sol-body { margin-top: 12px; }
+
+/* print — the module as a readable handout: no chrome, everything unfolded */
+@media print {
+  .sidebar, .nav-overlay, .mobile-bar, .read-prog, .otp-rail, .otp-inline,
+  .mod-foot, .skip-link, .quiz-retry, .copy { display: none !important; }
+  .app, .main, .main-inner { display: block; margin: 0; padding: 0; max-width: none; }
+  body { background: #fff; color: #000; }
+  /* Collapsibles hide the payload on paper — solutions and answers must print. */
+  details { display: block; }
+  details > summary { list-style: none; font-weight: 600; }
+  details:not([open]) > *:not(summary) { display: revert; }
+  .solution, .sol-body, .qa-answer { display: block !important; }
+  .mod-view { display: block !important; }
+  /* Quiz options carry the answer in colour alone; mark the right one in ink. */
+  .opt.correct::after { content: " ✔"; font-weight: 700; }
+  .fb { display: block !important; }
+  pre, blockquote, .box, .quiz, .q, figure { break-inside: avoid; }
+  h1, h2, h3 { break-after: avoid; }
+  a[href^="/"]::after { content: " (" attr(href) ")"; font-size: 0.85em; color: #555; }
+}
+
+/* diagnóstico de nivel */
+.dg-hint { margin: 4px 0 10px; font-size: 13px; color: var(--ink-faint); }
+.dg-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.dg-actions .opt { flex: 1 1 200px; text-align: center; }
+.dg-progress { font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint); text-align: center; }
+/* .lede only existed scoped to .hero; the diagnóstico page reuses it standalone */
+.view > .lede { font-size: 17px; line-height: 1.65; color: var(--ink-soft); max-width: 62ch; margin: 16px 0 28px; }
+/* breadcrumbs */
+.crumbs { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); margin: 0 0 10px; }
+.crumbs a { color: var(--ink-faint); }
+.crumbs a:hover { color: var(--accent-ink); }
+.crumbs [aria-current="page"] { color: var(--ink-soft); }
