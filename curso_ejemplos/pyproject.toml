@@ -139,6 +139,19 @@ whatsapp = [
     "uvicorn==0.51.0",  # servidor ASGI
     "httpx>=0.27",      # POST de vuelta a EvolutionAPI
 ]
+# ANEXO opcional: el MISMO RAG del curso, pero en LlamaIndex (frameworks/
+# rag_llamaindex.py). FUERA del gate offline (ADR-0006): ilustrativo-ejecutable,
+# no lo instala ni lo testea la CI.  Instalar con:  uv sync --extra llamaindex
+llamaindex = [
+    "llama-index>=0.12",                    # core + query engine
+    "llama-index-llms-openai-like>=0.3",    # LLM vía endpoint OpenAI-compatible
+    "llama-index-embeddings-fastembed>=0.3",# embeddings LOCALES (ONNX, sin cuota)
+]
+# ANEXO opcional: orquestación por roles con CrewAI (frameworks/crew_crewai.py).
+# FUERA del gate offline (ADR-0006).  Instalar con:  uv sync --extra crewai
+crewai = [
+    "crewai>=0.80",   # define roles/tareas; usa LiteLLM por dentro
+]
 
 [tool.uv]
 # El curso son SCRIPTS SUELTOS, no una librería instalable. Con package=false
