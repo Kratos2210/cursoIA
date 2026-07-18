@@ -4,6 +4,12 @@ Un asistente que **integra casi todo el curso** en una sola app ejecutable.
 Y, además, es el ejemplo vivo del último tema: **cómo pasar de un archivo
 gigante a un agente modular y testeable**.
 
+> **¿Y la versión de producción?** Esto es el **prototipo didáctico** (CLI, estado
+> en RAM). El salto a producción —FastAPI + SSE, pgvector, Redis, guardrails,
+> tracing con Langfuse y un eval-gate que puede vetar un deploy— ya está
+> materializado en **`proyecto_llmops`**, que reutiliza el `construir_agente()` de
+> aquí. Si buscas el patrón "esto en serio", míralo allí.
+
 ## ¿Qué hace?
 1. Lee la normativa (`normativa.txt`) y la indexa para **RAG**.
 2. Expone 2 **herramientas** que el agente usa solo:
