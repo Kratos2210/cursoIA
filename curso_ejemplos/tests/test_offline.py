@@ -1517,3 +1517,27 @@ class TestTema22bVoz:
     def test_tts_rechaza_voz_desconocida(self, m22b):
         with pytest.raises(ValueError):
             m22b.peticion_tts("x", "inexistente")
+
+    # --- Tiempo real: pipeline STT→LLM→TTS por streaming (offline, determinista) ---
+    def test_dividir_en_frases_corta_por_puntuacion(self, m22b):
+        frases = list(m22b._dividir_en_frases("Hola. ¿Qué tal? Todo bien"))
+        assert frases == ["Hola.", "¿Qué tal?", "Todo bien"]
+
+    def test_pipeline_emite_eventos_en_orden(self, m22b):
+        fragmentos = ["a", "b", "c"]
+        responder = lambda _t: iter(["uno ", "dos."])
+        tipos = [tipo for tipo, _ in m22b.pipeline_voz_streaming(fragmentos, responder)]
+        # STT parcial ×3 → final_stt → token ×2 → audio ×1 (una sola frase)
+        assert tipos == ["parcial", "parcial", "parcial", "final_stt", "token", "token", "audio"]
+
+    def test_pipeline_transcribe_incremental_y_completo(self, m22b):
+        eventos = list(m22b.pipeline_voz_streaming(["¿Cuál ", "horario?"], lambda _t: iter([])))
+        parciales = [dato for tipo, dato in eventos if tipo == "parcial"]
+        assert parciales == ["¿Cuál ", "¿Cuál horario?"]          # la transcripción crece trozo a trozo
+        assert [dato for tipo, dato in eventos if tipo == "final_stt"] == ["¿Cuál horario?"]
+
+    def test_pipeline_sintetiza_una_frase_por_evento_audio(self, m22b):
+        responder = lambda _t: iter(["Sí. ", "Claro."])          # dos frases
+        audios = [dato for tipo, dato in m22b.pipeline_voz_streaming(["x"], responder) if tipo == "audio"]
+        assert [a["input"] for a in audios] == ["Sí.", "Claro."]  # una síntesis por frase completa
+        assert all(a["voice"] == "verse" for a in audios)         # y con el payload TTS bien armado

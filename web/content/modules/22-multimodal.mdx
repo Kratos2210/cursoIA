@@ -113,7 +113,42 @@ La imagen de entrada es solo una esquina del multimodal. El espectro completo ti
   <Def>Modelos texto→imagen (Imagen de Google, DALL·E, la generación de Gemini) devuelven una imagen, no texto. También es una API distinta de la de chat.</Def>
 </DefList>
 
-▲ Regla que se repite: el bloque `media`/`image_url` viaja igual, pero **el proveedor tiene que soportar esa modalidad** (Gemini oye y ve; un modelo de solo texto en Groq, no). Y audio/imagen pesan más que el texto: cuestan más y tardan más, así que mídelo ([m16b](/modulo/16-observabilidad-y-costo)) antes de meterlo en el camino caliente.
+▲ Regla que se repite: el bloque `media`/`image_url` viaja igual, pero **el proveedor tiene que soportar esa modalidad** (Gemini oye y ve; un modelo de solo texto en Groq, no). Y audio/imagen pesan más que el texto: cuestan más y tardan más, así que mídelo ([m16](/modulo/16-observabilidad-y-costo)) antes de meterlo en el camino caliente.
+
+</Box>
+
+### Del batch al tiempo real
+
+Todo lo anterior es **batch**: mandas el audio entero y esperas la respuesta entera. Un asistente de voz de verdad (un call-center con IA, un altavoz) no puede darse ese lujo — el usuario oiría silencio mientras habla y mientras el modelo piensa. La versión en **tiempo real** encadena tres flujos que corren *a la vez*, cada uno emitiendo por trozos:
+
+<Flow>
+  <Step n="1" title="STT streaming">El audio llega por trozos y se transcribe parcial, sin esperar a que termines de hablar.</Step>
+  <Step n="2" title="LLM streaming">Con la transcripción, el modelo responde token a token (el mismo stream del [m10](/modulo/10-agentes-prebuilt)/[m25](/modulo/25-frontend-chat-sse)).</Step>
+  <Step n="3" title="TTS por frases">En cuanto hay una frase completa, se sintetiza y se reproduce — no se espera al final.</Step>
+</Flow>
+
+La ganancia es la **latencia percibida**: la respuesta "empieza" casi al toque. En producción esto lo montan servicios especializados —**Deepgram** (STT), el streaming del propio LLM y **ElevenLabs**/**Cartesia** (TTS)— orquestados por algo como **LiveKit** o **Pipecat**. La *forma* del pipeline, en cambio, es simple y se puede simular sin red: `22b_voz.py` lo hace con un generador incremental (stdlib), inyectando el "modelo" por parámetro como en el resto del curso.
+
+```python title="22b_voz.py · pipeline_voz_streaming (simulado, stdlib pura)"
+def pipeline_voz_streaming(fragmentos_audio, responder):
+    transcripcion = ""
+    for trozo in fragmentos_audio:          # 1) STT: el audio llega a trozos…
+        transcripcion += trozo
+        yield ("parcial", transcripcion)    #    …y la transcripción crece
+    yield ("final_stt", transcripcion)
+
+    respuesta = ""
+    for token in responder(transcripcion):  # 2) LLM: responde token a token
+        respuesta += token
+        yield ("token", token)
+
+    for frase in _dividir_en_frases(respuesta):   # 3) TTS: una síntesis por frase completa
+        yield ("audio", peticion_tts(frase, voz="verse"))
+```
+
+<Box kind="warn" label="▲ El tiempo real añade problemas que el batch no tiene">
+
+Streaming de voz suena mágico, pero trae complicaciones nuevas: **barge-in** (el usuario interrumpe y hay que cortar el TTS a media frase), **detección de fin de turno** (¿terminó o solo hizo una pausa?) y el **presupuesto de latencia** —STT + LLM + TTS deben sumar menos de ~800 ms para que la charla se sienta natural. Para transcribir una nota de voz o narrar un texto, el **batch** de arriba basta y es mucho más simple. El tiempo real se gana cuando la conversación *fluida* es el producto.
 
 </Box>
 
@@ -123,6 +158,7 @@ La imagen de entrada es solo una esquina del multimodal. El espectro completo ti
 - Codificar una imagen en un `data:` URL con base64 de la stdlib.
 - Construir el bloque `image_url` que un modelo con visión espera.
 - Anticipar dos trampas: el coste por resolución y los proveedores sin visión.
+- Distinguir el modo **batch** (mandas todo, esperas todo) del **tiempo real** (STT→LLM→TTS por streaming) y cuándo vale cada uno.
 
 </Checkpoint>
 

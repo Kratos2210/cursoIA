@@ -84,6 +84,59 @@ def peticion_tts(texto: str, voz: str = "alloy", formato: str = "mp3") -> dict:
     return {"input": texto, "voice": voz, "format": formato}
 
 
+# ============ 4) DEL BATCH AL TIEMPO REAL: pipeline STT→LLM→TTS por streaming ============
+def _dividir_en_frases(texto: str):
+    """Parte un texto en frases por su puntuación final (. ! ?). stdlib pura.
+
+    Sirve para el TTS incremental: en cuanto hay una frase COMPLETA se puede
+    sintetizar, sin esperar a que el modelo termine de escribir toda la respuesta.
+    """
+    frase = ""
+    for caracter in texto:
+        frase += caracter
+        if caracter in ".!?":
+            yield frase.strip()
+            frase = ""
+    if frase.strip():                       # lo que quede sin puntuación final
+        yield frase.strip()
+
+
+def pipeline_voz_streaming(fragmentos_audio, responder):
+    """Simula un pipeline de voz en TIEMPO REAL como un generador incremental.
+
+    El modo BATCH (las funciones de arriba) manda TODO el audio y espera TODA la
+    respuesta: sencillo, pero el usuario oye silencio hasta el final. En TIEMPO
+    REAL el audio llega por trozos, el STT transcribe parcial, el LLM empieza a
+    responder antes de que termines de hablar y el TTS sintetiza por frases —así
+    baja la latencia percibida (la respuesta "empieza" casi al toque).
+
+    NO hay red ni modelos aquí: `responder` es un callable transcripcion→tokens
+    que inyectas (igual que el modelo va por parámetro en el resto del curso), así
+    todo el flujo es determinista y testeable. Produce eventos `(tipo, dato)` para
+    poder afirmar sobre su ORDEN:
+        ("parcial", texto)    el STT va entendiendo el audio trozo a trozo
+        ("final_stt", texto)  ya está toda la transcripción
+        ("token", token)      el LLM responde token a token
+        ("audio", payload)    el TTS sintetiza cada frase en cuanto está completa
+    """
+    # 1) STT incremental: cada trozo de audio amplía la transcripción parcial.
+    transcripcion = ""
+    for trozo in fragmentos_audio:
+        transcripcion += trozo
+        yield ("parcial", transcripcion)
+    yield ("final_stt", transcripcion)
+
+    # 2) LLM en streaming: responde token a token sobre la transcripción final.
+    respuesta = ""
+    for token in responder(transcripcion):
+        respuesta += token
+        yield ("token", token)
+
+    # 3) TTS por frases: sintetiza cada frase en cuanto está completa (no al final).
+    for frase in _dividir_en_frases(respuesta):
+        yield ("audio", peticion_tts(frase, voz="verse"))
+
+
 def main() -> None:
     import util
 
@@ -102,6 +155,17 @@ def main() -> None:
     print("\n== Petición TTS construida (salida) ==\n")
     print(f"  payload: {pet}")
     print("  (la respuesta REAL de TTS son bytes de audio, no texto)")
+
+    # --- TIEMPO REAL: el mismo trabajo, pero por streaming (simulado, sin red) ---
+    print("\n== Pipeline de voz en TIEMPO REAL (STT→LLM→TTS por streaming) ==\n")
+    fragmentos = ["¿Cuál ", "es el ", "horario?"]        # el audio llega a trozos
+    def responder(_transcripcion):                       # un LLM de mentira, token a token
+        for token in ["Atendemos ", "de 9 ", "a 18h."]:
+            yield token
+    etiquetas = {"parcial": "STT…", "final_stt": "STT ✓", "token": "LLM", "audio": "TTS→🔊"}
+    for tipo, dato in pipeline_voz_streaming(fragmentos, responder):
+        muestra = dato["input"] if tipo == "audio" else dato
+        print(f"  {etiquetas[tipo]:7} {muestra}")
 
     # La llamada REAL solo si hay llave: sin ella, no gastamos cuota.
     if util.requiere_llm_key() is not None:
