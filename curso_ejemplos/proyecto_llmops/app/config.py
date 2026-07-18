@@ -139,6 +139,13 @@ class Settings(BaseSettings):
     app_port: int = 8000
     app_rol_por_defecto: str = "analyst"
 
+    # ---- PERSISTENCIA DE MÉTRICAS ----
+    # "memoria" (por defecto) o "postgres". En memoria, cada worker cuenta lo
+    # suyo y un reinicio borra el historial; en postgres, la tabla la comparten
+    # todos los workers y /metrics vuelve a hablar del servicio entero.
+    # Reutiliza el Postgres que ya levanta el compose para pgvector.
+    metricas_backend: str = "memoria"
+
     # ---- LOGGING ----
     # DEBUG en desarrollo, INFO en producción. Cambiar la verbosidad de un
     # servicio no debería requerir tocar código ni reconstruir la imagen.

@@ -37,6 +37,13 @@ from dataclasses import dataclass, field
 from observability.cost_model import Uso, estimar_costo, formatear_costo, precio_de
 
 
+def _backend_por_defecto():
+    """El backend configurado. Import diferido para no crear un ciclo:
+    `metrics_backends` reconstruye MetricasRequest, que se define aquí."""
+    from observability.metrics_backends import crear_backend
+    return crear_backend()
+
+
 @dataclass(frozen=True)
 class MetricasRequest:
     """Todo lo observable de una sola request. Inmutable: es un hecho pasado."""
@@ -128,17 +135,31 @@ def percentil(valores: list[float], p: float) -> float:
 
 @dataclass
 class ColectorMetricas:
-    """Acumula MetricasRequest y las agrega. En memoria, por proceso.
+    """Acumula MetricasRequest y las agrega. Dónde las guarda lo decide el backend.
 
-    ⚠️ "En memoria, por proceso" tiene una consecuencia que hay que decir en voz
-       alta: con varios workers de uvicorn, **cada uno tiene su propio colector**
-       y ninguno ve el total. Sirve para un dashboard local y para los tests. La
-       agregación de verdad, entre procesos, la hace Langfuse.
+    Por defecto, en memoria y por proceso — lo de siempre, y lo correcto para el
+    curso y los tests. Con `METRICAS_BACKEND=postgres` pasan a una tabla
+    compartida y entonces, y solo entonces, `/metrics` habla del SERVICIO y no
+    del proceso que atendió esa petición.
+
+    ⚠️ Con el backend en memoria sigue vigente el aviso de siempre: varios
+       workers de uvicorn son varios colectores que no se suman, y ninguno ve el
+       total. La agregación entre procesos la da Langfuse, o el backend de
+       Postgres (ver observability/metrics_backends.py).
     """
-    registros: list[MetricasRequest] = field(default_factory=list)
+    backend: object = field(default_factory=lambda: _backend_por_defecto())
+
+    @property
+    def registros(self) -> list[MetricasRequest]:
+        """Las métricas vigentes, vengan de donde vengan.
+
+        Es una property y no una lista para que el colector no dependa de dónde
+        estén guardadas: todos los agregados de abajo siguen escritos igual.
+        """
+        return list(self.backend.leer())
 
     def registrar(self, metrica: MetricasRequest) -> None:
-        self.registros.append(metrica)
+        self.backend.registrar(metrica)
 
     # ---- Agregados ----
     @property
