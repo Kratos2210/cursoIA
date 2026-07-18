@@ -198,6 +198,12 @@ Trata cada tool MCP como tratarías a un practicante nuevo: acceso de **lectura*
 
 </Box>
 
+<Box kind="def" label="◈ Su primo A2A · MCP conecta agente↔herramienta; A2A, agente↔agente">
+
+MCP resuelve el "M×N" de conectar un agente a **herramientas y datos**. Hay un protocolo hermano para el otro eje: **A2A (Agent-to-Agent)**, impulsado por Google, que estandariza cómo un agente **descubre y delega en otro agente** —posiblemente de otra empresa y escrito en otro framework— publicando una "agent card" con lo que sabe hacer. En una frase: **MCP le da manos a un agente; A2A le da colegas.** En este curso no lo usamos (nuestro multiagente del [m15](/modulo/15-multiagente-supervisor) coordina agentes *dentro* del mismo proceso), pero es el estándar a mirar cuando los agentes viven en sistemas distintos y tienen que hablarse.
+
+</Box>
+
 <Avoid label="⛔ Cuándo NO usar esto">
 
 - No expongas por MCP lo que es una función local que solo tú vas a llamar: el `@tool` del Módulo 07 basta. MCP añade un proceso aparte, un protocolo y un transporte que ahí no necesitas.

@@ -94,7 +94,7 @@ El error caro: afinar un modelo con los precios, el inventario o la FAQ de hoy. 
 1. **Prompt (zero-shot)** — solo instrucciones. Cero datos, cambio en segundos. Tu primer intento SIEMPRE.
 2. **Few-shot** — metes 2–3 ejemplos en el prompt (m26b). Sigue sin entrenar nada; fija un formato "gratis".
 3. **RAG** — le das conocimiento fresco y citable en el momento (m11). El escalón que resuelve el 90% de los "que sepa lo mío".
-4. **PEFT / LoRA** — entrenas un **1–2% de los pesos** (unos adaptadores pequeños), no el modelo entero: cabe en una sola GPU, es barato y NO borra lo que el modelo ya sabía (menos "olvido catastrófico"). El fine-tuning que de verdad se usa hoy.
+4. **PEFT / LoRA** — entrenas un **1–2% de los pesos** (unos adaptadores pequeños), no el modelo entero: cabe en una sola GPU, es barato y NO borra lo que el modelo ya sabía (menos "olvido catastrófico"). El fine-tuning que de verdad se usa hoy. Su variante **QLoRA** cuantiza primero el modelo base a **4 bits** y le pone encima los adaptadores: así afinas un modelo de 7B–13B en **una sola GPU de consumo** (o en Colab), con una pérdida de calidad mínima. Es lo que vuelve el fine-tuning realista sin un datacenter.
 5. **Full fine-tuning** — reentrenas todos los pesos. Máximo control del comportamiento, pero caro, lento y con riesgo de olvido; casi nunca se justifica frente a LoRA.
 6. **Pre-entrenamiento de dominio** — entrenar (casi) desde cero con un corpus enorme del sector, como **BloombergGPT** (finanzas). Coste de millones; solo para quien tiene datos y bolsillo de esa escala.
 

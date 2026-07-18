@@ -54,6 +54,13 @@ Las columnas usan los mismos ejes que el curso te enseñó a valorar: control de
 
 Fíjate en algo que el curso repite: **inyección de dependencias, tests offline y observabilidad no son de un framework**, son *tuyos*. Puedes montar DI y `pytest -m offline` alrededor de casi cualquiera de estos. El framework decide la *ergonomía* del flujo; la *disciplina* de ingeniería la pones tú.
 
+### El ecosistema no acaba en los frameworks
+
+Los cinco de arriba son *frameworks de agentes*, pero el mapa tiene dos capas más que conviene ubicar:
+
+- **Observabilidad y evals**: junto a **LangSmith** (el del curso) y **Arize/Phoenix**, está **LangFuse** — una plataforma **open-source y auto-hospedable** de trazas, evaluaciones y gestión de prompts. Cuando necesites que las trazas *no* salgan de tu infraestructura (regulación, privacidad), es la alternativa a mirar frente a LangSmith. Misma idea del [m16](/modulo/16-observabilidad-y-costo)/[m16c](/modulo/16c-evaluacion), otro proveedor.
+- **Protocolos**: **MCP** ([m14](/modulo/14-mcp)) estandariza agente↔herramienta; **A2A** (Agent-to-Agent) estandariza agente↔agente entre sistemas distintos. Son *pegamento* del ecosistema, no frameworks: se combinan con cualquiera de los cinco.
+
 ### El "sabor" de otras APIs (ilustrativo, no se ejecuta aquí)
 
 Para que reconozcas el estilo si lo ves en un repo ajeno. Son formas canónicas y mínimas —el objetivo es el *tono*, no memorizar firmas.
@@ -110,6 +117,19 @@ Es el mismo tradeoff del m13 (prebuilt vs `StateGraph`), ahora a escala de frame
 <Box kind="practice" label="▸ Para practicar (reflexión, sin código)">
 
 Toma **un caso real tuyo** (uno del trabajo o una idea propia). Escríbelo en una frase y mapéalo a la tabla: ¿su corazón es *datos/RAG*, *orquestación multi-rol*, *salida muy tipada* o *control fino del flujo con pausas humanas*? Elige **un** framework y —lo más importante— redacta *por qué* ese y no los otros cuatro, nombrando el criterio (control, ingesta, ergonomía de roles, type-safety, acoplamiento a proveedor). Si tu justificación es "porque está de moda", vuelve a empezar: no es un criterio.
+
+</Box>
+
+<Box kind="def" label="◈ Lo que este curso NO cubre (y por qué)">
+
+Ser honesto con el mapa incluye marcar sus bordes. Cosas reales del ecosistema que **este curso deja fuera a propósito**:
+
+- **PyTorch / entrenar modelos desde cero.** Somos un curso de *aplicación*: construimos *con* modelos, no los entrenamos. La mecánica interna la ves en el [m27](/modulo/27-fundamentos-del-llm) y el [m27b](/modulo/27b-arquitecturas-e-historia), pero sin bajar a tensores.
+- **Reinforcement learning y recomendadores adaptativos.** Otra disciplina (y otro curso). Aquí el "aprendizaje" del sistema es RAG + evals, no políticas que se reentrenan.
+- **Chatbots clásicos (Rasa) y constructores no-code (n8n, Voiceflow).** Útiles en su nicho; nuestro foco es el código con LangChain/LangGraph, que da control fino y testeable.
+- **El *hands-on* de cada nube (Azure AI Foundry, Bedrock a fondo).** Comparamos los caminos en el [m18b](/modulo/18b-elegir-modelo-y-proveedor), pero desplegar en *una* nube concreta es específico de cada una y cambia rápido.
+
+No es que no importen: es que un curso que lo abarca *todo* no enseña *nada* a fondo. Aquí sabes dónde está cada frontera y por dónde seguir cuando la cruces.
 
 </Box>
 
