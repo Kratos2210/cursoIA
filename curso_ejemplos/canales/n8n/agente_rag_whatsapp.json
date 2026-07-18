@@ -1,0 +1,218 @@
+{
+  "name": "Agente RAG por WhatsApp (curso · anexo m31b)",
+  "meta": {
+    "templateNote": "Anexo del curso (ADR-0005). Orquesta ALREDEDOR del agente en código: recibe el webhook de WhatsApp (EvolutionAPI), llama al POST /chat del agente del proyecto_llmops y devuelve la respuesta al canal. Fuera del gate offline: n8n es un servicio Docker, no una dependencia de Python. Importa este JSON en n8n (Workflows -> Import from File) y rellena las credenciales/URLs marcadas con  <-- CONFIGURA."
+  },
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "b1a1e001-0001-4001-8001-000000000001",
+      "name": "Webhook WhatsApp",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-360, 300],
+      "webhookId": "whatsapp-curso"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a-numero",
+              "name": "numero",
+              "value": "={{ $json.body.data.key.remoteJid }}",
+              "type": "string"
+            },
+            {
+              "id": "a-texto",
+              "name": "texto",
+              "value": "={{ $json.body.data.message.conversation || $json.body.data.message.extendedTextMessage?.text || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "a-frommMe",
+              "name": "fromMe",
+              "value": "={{ $json.body.data.key.fromMe === true }}",
+              "type": "boolean"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b1a1e001-0001-4001-8001-000000000002",
+      "name": "Extraer numero + texto",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [-140, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "version": 2 },
+          "combinator": "and",
+          "conditions": [
+            {
+              "leftValue": "={{ $json.fromMe }}",
+              "rightValue": false,
+              "operator": { "type": "boolean", "operation": "false", "singleValue": true }
+            },
+            {
+              "leftValue": "={{ $json.texto }}",
+              "rightValue": "",
+              "operator": { "type": "string", "operation": "notEmpty", "singleValue": true }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b1a1e001-0001-4001-8001-000000000003",
+      "name": "¿Mensaje de texto entrante?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [80, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/chat",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"mensaje\": $json.texto, \"thread_id\": $json.numero } }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "b1a1e001-0001-4001-8001-000000000004",
+      "name": "Agente RAG (POST /chat)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [320, 200],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://evolution-api:8080/message/sendText/{{ $env.EVOLUTION_INSTANCE }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_APIKEY }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"number\": $('Extraer numero + texto').item.json.numero, \"text\": $json.respuesta || $json.data?.respuesta } }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "b1a1e001-0001-4001-8001-000000000005",
+      "name": "Responder por WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f-numero",
+              "name": "numero",
+              "value": "={{ $('Extraer numero + texto').item.json.numero }}",
+              "type": "string"
+            },
+            {
+              "id": "f-respuesta",
+              "name": "respuesta",
+              "value": "Ahora mismo no puedo responder. Un agente humano te escribirá en breve. 🙏",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b1a1e001-0001-4001-8001-000000000006",
+      "name": "Fallback (agente caído)",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [320, 420]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://evolution-api:8080/message/sendText/{{ $env.EVOLUTION_INSTANCE }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "apikey", "value": "={{ $env.EVOLUTION_APIKEY }}" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"number\": $json.numero, \"text\": $json.respuesta } }}",
+        "options": { "timeout": 30000 }
+      },
+      "id": "b1a1e001-0001-4001-8001-000000000007",
+      "name": "Enviar fallback",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [560, 420]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"ok\": true } }}",
+        "options": {}
+      },
+      "id": "b1a1e001-0001-4001-8001-000000000008",
+      "name": "200 a EvolutionAPI",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [800, 300]
+    },
+    {
+      "parameters": {},
+      "id": "b1a1e001-0001-4001-8001-000000000009",
+      "name": "Ignorar (fromMe / sin texto)",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [320, 40]
+    }
+  ],
+  "connections": {
+    "Webhook WhatsApp": {
+      "main": [[{ "node": "Extraer numero + texto", "type": "main", "index": 0 }]]
+    },
+    "Extraer numero + texto": {
+      "main": [[{ "node": "¿Mensaje de texto entrante?", "type": "main", "index": 0 }]]
+    },
+    "¿Mensaje de texto entrante?": {
+      "main": [
+        [{ "node": "Agente RAG (POST /chat)", "type": "main", "index": 0 }],
+        [{ "node": "Ignorar (fromMe / sin texto)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Agente RAG (POST /chat)": {
+      "main": [
+        [{ "node": "Responder por WhatsApp", "type": "main", "index": 0 }],
+        [{ "node": "Fallback (agente caído)", "type": "main", "index": 0 }]
+      ]
+    },
+    "Fallback (agente caído)": {
+      "main": [[{ "node": "Enviar fallback", "type": "main", "index": 0 }]]
+    },
+    "Responder por WhatsApp": {
+      "main": [[{ "node": "200 a EvolutionAPI", "type": "main", "index": 0 }]]
+    },
+    "Enviar fallback": {
+      "main": [[{ "node": "200 a EvolutionAPI", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "pinData": {}
+}

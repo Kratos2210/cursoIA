@@ -459,14 +459,21 @@ ui = [
     { name = "fastapi" },
     { name = "uvicorn" },
 ]
+whatsapp = [
+    { name = "fastapi" },
+    { name = "httpx" },
+    { name = "uvicorn" },
+]
 
 [package.metadata]
 requires-dist = [
     { name = "fastapi", marker = "extra == 'llmops'", specifier = ">=0.115" },
     { name = "fastapi", marker = "extra == 'ui'", specifier = ">=0.115" },
+    { name = "fastapi", marker = "extra == 'whatsapp'", specifier = ">=0.115" },
     { name = "fastembed", marker = "extra == 'emb'", specifier = ">=0.4" },
     { name = "fastembed", marker = "extra == 'llmops'", specifier = ">=0.4" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27" },
+    { name = "httpx", marker = "extra == 'whatsapp'", specifier = ">=0.27" },
     { name = "jinja2", marker = "extra == 'llmops'", specifier = ">=3.1" },
     { name = "langchain-anthropic", specifier = "==1.4.8" },
     { name = "langchain-core", specifier = "==1.4.8" },
@@ -493,8 +500,9 @@ requires-dist = [
     { name = "sentence-transformers", marker = "extra == 'hf'", specifier = ">=3.0" },
     { name = "uvicorn", marker = "extra == 'llmops'", specifier = "==0.51.0" },
     { name = "uvicorn", marker = "extra == 'ui'", specifier = "==0.51.0" },
+    { name = "uvicorn", marker = "extra == 'whatsapp'", specifier = "==0.51.0" },
 ]
-provides-extras = ["dev", "emb", "ui", "llmops", "hf"]
+provides-extras = ["dev", "emb", "ui", "llmops", "hf", "whatsapp"]
 
 [[package]]
 name = "distro"

@@ -1,0 +1,84 @@
+export const meta = {
+  "id": "m31b",
+  "slug": "31b-n8n-orquestacion",
+  "title": "n8n: orquestar el agente sin escribir el pegamento (anexo opcional)",
+  "kind": "module",
+  "level": 6,
+  "levelName": "Producción y LLMOps",
+  "order": 41,
+  "badge": "31b",
+  "pyFile": null,
+  "fileref": "📋 Anexo de integración. Workflow importable en canales/n8n/agente_rag_whatsapp.json — fuera del gate offline (ADR-0005): n8n es un servicio, no una dependencia de Python.",
+  "tested": false,
+  "goals": "🎯 Al terminar sabrás: cuándo usar un orquestador low-code (n8n) en vez de escribir el webhook a mano, y cómo n8n conecta WhatsApp con el POST /chat de tu agente — con manejo de errores.",
+  "prereqs": "✅ Necesitas: el m31 (canal WhatsApp) y entender que el agente ya se sirve por HTTP. Para ejecutarlo: n8n (Docker). Es lectura si no lo tienes.",
+  "minutes": "⏱️ ~20 min de lectura"
+};
+
+En el [m31](/modulo/31-canal-whatsapp) conectaste WhatsApp escribiendo el webhook **en código**. Hay otra forma, muy pedida en el mercado: un **orquestador low-code**, **n8n**, que hace el mismo pegamento **arrastrando cajas** en vez de escribir FastAPI. Este anexo enseña *cuándo* conviene cada una.
+
+<Box kind="warn" label="▲ n8n orquesta ALREDEDOR del agente, no lo reemplaza">
+
+El curso construye el agente **en código** (LangChain/LangGraph) a propósito: control, tests, versionado. n8n **no** sustituye eso. Su trabajo es el **plumbing de integración**: recibir el webhook, llamar al `POST /chat` de tu agente y devolver la respuesta al canal. El cerebro sigue en Python; n8n es el cableado exterior. Esa distinción —y por qué **revierte** el "no n8n" que se había decidido antes— está en `docs/adr/0005-n8n-orquestacion-anexo.md`.
+
+</Box>
+
+<Box kind="analogy" label="◆ Código vs low-code, en una frase">
+
+El webhook del m31 es como cablear tú mismo la casa: control total, pero cada enchufe lo pones a mano. n8n es una **regleta con módulos**: enchufas Webhook → HTTP → HTTP y ya fluye. Para *pegar sistemas* (WhatsApp ↔ agente ↔ CRM ↔ hoja de cálculo) la regleta gana; para *lógica del agente*, el código gana.
+
+</Box>
+
+### El mismo flujo, ahora en cajas
+
+El workflow `canales/n8n/agente_rag_whatsapp.json` es importable (en n8n: *Workflows → Import from File*). Hace exactamente lo del m31, con nodos:
+
+```text title="canales/n8n/agente_rag_whatsapp.json"
+Webhook ─▶ Set (numero+texto) ─▶ IF (¿texto entrante?) ─┬─▶ HTTP: POST /chat ─▶ HTTP: sendText ─▶ 200
+                                                        └─▶ NoOp (ignora fromMe / sin texto)
+```
+
+<Box kind="def" label="◈ Los nodos que importan">
+
+- **Webhook**: la URL que EvolutionAPI llama en cada mensaje (equivale a `@app.post` del m31).
+- **Set**: saca `numero` (`remoteJid`) y `texto` del JSON con expresiones `{{ }}` — el `_extraer_texto` del m31, sin código.
+- **IF**: el guardia de entrada (descarta `fromMe` y mensajes sin texto).
+- **HTTP Request → `/chat`**: llama a tu agente. Es el **único** punto que toca el cerebro.
+- **HTTP Request → `sendText`**: responde por WhatsApp (el `enviar_whatsapp` del m31).
+
+</Box>
+
+### Lo que un curso de mercado suele saltarse: los errores
+
+Un workflow de demo asume que el agente **siempre** responde. En producción se cae, y si no lo manejas el cliente se queda en visto. El workflow del anexo lleva **error handling** de serie (mi estándar para todo n8n):
+
+<Box kind="practice" label="▶ Manejo de errores en el nodo del agente">
+
+- **Reintentos**: el nodo `POST /chat` tiene `retryOnFail` (3 intentos, 2 s entre ellos) para el 429/timeout pasajero.
+- **Rama de fallback**: si aun así falla, `onError` desvía a un segundo camino que envía *"ahora no puedo responder, un humano te escribe"* — nunca silencio.
+- **Siempre 200 al webhook**: EvolutionAPI recibe su `200` en ambos caminos, así no reintenta el mensaje entero.
+
+</Box>
+
+<Avoid label="⛔ Cuándo NO metas n8n">
+
+- **Para la lógica del agente.** Bifurcaciones, memoria, RAG, herramientas → eso es LangGraph, con tests. Modelarlo en cajas te deja sin control ni CI.
+- **Como única fuente de verdad sin exportar.** Un workflow que vive solo dentro de n8n no está versionado. Expórtalo a JSON (como este) y guárdalo en git.
+- **Creyendo que "sin código" es "sin mantenimiento".** n8n es otro servicio que actualizar, con sus breaking changes en los nodos. Es menos código, no cero operación.
+
+</Avoid>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar el rol de n8n (orquestar **alrededor** del agente: pegar canal ↔ `/chat` ↔ sistemas), no reemplazarlo.
+- Mapear cada nodo del workflow a su equivalente del webhook en código del m31.
+- Decir por qué el flujo lleva reintentos + rama de fallback + `200` garantizado.
+- Elegir entre código y low-code según sea *lógica del agente* (código) o *integración de sistemas* (n8n).
+
+</Checkpoint>
+
+<Recap level={6} label="↺ En una frase">
+
+n8n hace el mismo pegamento del m31 arrastrando cajas —Webhook → IF → HTTP `/chat` → HTTP `sendText`— con reintentos y fallback incluidos; es la vía low-code para *integrar sistemas* alrededor de un agente que sigue viviendo en código. Anexo opcional, fuera del gate.<Arch>artefacto: `canales/n8n/agente_rag_whatsapp.json` (importable) · ADR-0005 (revierte "no n8n") · versión en código en el [m31](/modulo/31-canal-whatsapp)</Arch>
+
+</Recap>

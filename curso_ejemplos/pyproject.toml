@@ -129,6 +129,16 @@ hf = [
     "langchain-huggingface>=0.1",
     "sentence-transformers>=3.0",
 ]
+# ANEXO opcional: canal de WhatsApp (canales/whatsapp/). El webhook FastAPI que
+# pone tu agente en WhatsApp vía EvolutionAPI. FUERA del gate offline (ADR-0004):
+# la CI corre `uv sync --extra dev`, así que no lo instala ni lo testea.
+# Instalar con:  uv sync --extra whatsapp
+#   (o levanta todo con canales/whatsapp/docker-compose.yml)
+whatsapp = [
+    "fastapi>=0.115",   # el webhook
+    "uvicorn==0.51.0",  # servidor ASGI
+    "httpx>=0.27",      # POST de vuelta a EvolutionAPI
+]
 
 [tool.uv]
 # El curso son SCRIPTS SUELTOS, no una librería instalable. Con package=false
