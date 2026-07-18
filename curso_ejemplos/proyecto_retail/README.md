@@ -128,3 +128,112 @@ falso, sin modelo y sin Redis.
 Lo que de verdad se afirma no es "el modelo responde bien" (eso lo mide `evals/`),
 sino **las invariantes**: que una inyección nunca llegue al agente, que un HIT de
 caché nunca lo llame, y que **una respuesta con un precio inventado nunca salga**.
+
+---
+
+## Criterios de aceptación · cómo se ve un proyecto bien hecho
+
+El gate de `evals/ci_gate.py` dice *pasa / no pasa*, pero un gate verde no
+significa proyecto terminado: mide la fidelidad de las respuestas, no la calidad
+del sistema que las produce. Esto es lo otro.
+
+Cada ítem es **verificable**: un comando que corre, un umbral concreto o un
+archivo que existe. Si no puedes demostrarlo con una de esas tres cosas, no
+está hecho.
+
+> La regla que ordena toda esta rúbrica: **precio y stock jamás salen del
+> modelo**. Todo lo de abajo existe para defender esa frontera.
+
+### 1 · Funcionalidad — el asistente vende lo que hay, al precio que es
+
+- [ ] **Criterio:** `uv run uvicorn proyecto_retail.app.main:app --port 8000`
+  levanta sin excepciones, `http://localhost:8000/` sirve el chat y
+  `curl -N -X POST localhost:8000/chat -H "Content-Type: application/json" -d
+  '{"mensaje":"quiero aretes dorados por menos de 25 soles"}'` responde en
+  **streaming SSE**.
+- [ ] **Criterio:** ese mismo caso **no recomienda nada por encima de S/25** ni
+  nada con `available: false`. El presupuesto es un **WHERE**, no una señal de
+  ranking (`app/search.py`, [`adr/0003`](docs/adr/0003-filtros-duros-no-ranking.md)).
+- [ ] **Criterio:** «un collar de zircón por menos de 10 soles» (nada cumple)
+  responde **lista vacía y lo dice**, en vez de ofrecer un sustituto fuera de
+  presupuesto. "No tengo" es una respuesta válida; mentir no.
+- [ ] **Criterio:** el ETL de `app/etl.py` **deriva la categoría del título y
+  los tags**, no de `product_type` — que en el catálogo real dice "Joyería"
+  hasta en las mochilas y los cepillos. Verifícalo: la mochila sale como
+  `mochilas` y el cepillo como `belleza`, no como joyas.
+- [ ] **Criterio:** `app/intent.py` convierte la frase en **filtros tipados**
+  (m05, `with_structured_output`), y entiende el vocabulario de la clienta
+  ("aros", "pelo", "cadena"), no solo el del catálogo.
+
+### 2 · Evaluación y calidad — la métrica que decide un deploy
+
+- [ ] **Criterio:** `uv run python proyecto_retail/evals/run_evals.py` imprime
+  el **% de casos fieles** y detalla cuáles fallaron, no solo el agregado.
+- [ ] **Criterio:** `uv run python proyecto_retail/evals/ci_gate.py ; echo $?`
+  devuelve **0**, con un score ≥ `EVAL_UMBRAL_APROBACION` (**0.9** por defecto,
+  en `app/config.py`).
+- [ ] **Criterio:** las **dos puertas** funcionan por separado. `evaluar_puertas`
+  es una función pura: constrúyele un `Reporte` a mano y comprueba que
+  - un score de **0.85** bloquea (puerta de la media), y
+  - **un solo** caso con `fiel=False` bloquea aunque el score sea 0.90 o más
+    (cero tolerancia al precio inventado).
+- [ ] **Criterio:** `evals/dataset.jsonl` tiene **al menos los 13 casos**
+  actuales e incluye los tres tipos que importan: presupuesto ajustado, stock
+  agotado y **petición imposible** (donde la respuesta correcta es "no tengo").
+- [ ] **Criterio:** el eval atrapa a un asistente deliberadamente malo. Pásale
+  un responder que ignore el presupuesto y comprueba que la métrica **baja** —
+  como hace `asistente_descuidado` en `29_caso_retail.py`. Una métrica que no
+  distingue al bueno del malo no mide nada.
+- [ ] **Criterio:** `EVAL_MUESTRA` está en **1.0** (el dataset entero): con 13
+  casos, muestrear no ahorra nada y sí esconde regresiones.
+
+### 3 · Grounding y guardrails — el precio inventado no sale
+
+- [ ] **Criterio:** `guardrails/price_guard.py` verifica que **cada precio
+  citado** en la respuesta exista en los productos recuperados. Un `S/` que el
+  modelo se inventó dispara el fallo.
+- [ ] **Criterio:** el lazo completo funciona y se puede observar:
+  **redacción → verificación → reintento → fallback determinista**
+  (`app/agent.py`). Fuerza un fallo con un LLM falso que invente un precio y
+  comprueba que lo que sale es el **fallback**, no el invento.
+- [ ] **Criterio:** el streaming es **verificar-y-luego-emitir**
+  (`app/streaming.py`): ni un token con un precio sin verificar llega al
+  navegador. Un guardrail que corrige *después* de emitir no corrige nada.
+- [ ] **Criterio:** la respuesta **no re-inyecta el texto del usuario**. Un
+  "hasta S/80" ecoado en la salida dispara el guardrail, porque ese S/80 no es
+  un precio del catálogo (la trampa documentada en `29_caso_retail.py`).
+- [ ] **Criterio:** un mensaje del tipo "invéntate un precio más barato" es
+  bloqueado en `guardrails/input_guard.py` **sin gastar tokens**.
+
+### 4 · Observabilidad, resiliencia y coste
+
+- [ ] **Criterio:** cada petición registra **latencia, TTFT, coste y disparos de
+  guardrail** en `observability/`. Los guardrails que saltan son una métrica de
+  producto, no solo un log.
+- [ ] **Criterio:** el A/B del tono de la vendedora funciona: dos variantes de
+  `prompts/experimentos.py` se sirven y `observability/feedback.py` atribuye el
+  feedback **a la variante correcta**.
+- [ ] **Criterio:** sin Redis y sin llaves de Langfuse, la app **sigue en pie**:
+  el caché degrada a memoria y el tracing se apaga solo.
+- [ ] **Criterio:** el caché semántico acierta con una petición reformulada por
+  encima de `CACHE_UMBRAL_SIMILITUD` (**0.92**) y un HIT **nunca invoca al
+  LLM** — demostrable con un doble que cuente llamadas.
+- [ ] **Criterio:** `BUSQUEDA_TOP_K` (**3** por defecto) acota lo que se
+  recomienda; subirlo no debe romper el grounding.
+
+### 5 · Documentación e ingeniería — otro puede recogerlo
+
+- [ ] **Criterio:** `uv run pytest proyecto_retail -m offline` colecta **61
+  tests** y pasa en verde, **sin Docker, sin llave y sin cuota**, en ~1 s.
+- [ ] **Criterio:** existe un ADR por cada decisión no obvia. Hoy son **5**
+  (`docs/adr/0001`–`0005`), incluida la más discutible: **por qué el grounding
+  es determinista y no un LLM-as-judge**
+  ([`adr/0002`](docs/adr/0002-grounding-determinista-no-llm-judge.md)).
+- [ ] **Criterio:** `prompts/vendedora.yaml` está versionado y su tono se cambia
+  **sin tocar código**.
+- [ ] **Criterio:** `docs/README_runbook.md` responde, para cada fallo probable
+  (catálogo desactualizado, LLM caído, gate en rojo, precios que no cuadran),
+  **qué mirar y qué hacer**.
+- [ ] **Criterio:** los tests afirman **invariantes**, no respuestas concretas
+  del modelo: que una inyección nunca llegue al agente, que un HIT de caché
+  nunca lo llame, y que una respuesta con precio inventado nunca salga.

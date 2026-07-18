@@ -66,7 +66,7 @@ uv run python curso_ejemplos/proyecto_final/main.py
 uv run pytest curso_ejemplos/proyecto_final/tests -v
 ```
 
-43 tests que corren **sin llave y sin cuota**, gracias a los dobles de prueba
+44 tests que corren **sin llave y sin cuota**, gracias a los dobles de prueba
 de `tests/conftest.py`:
 
 - `tests/test_rag.py` — el troceado de la normativa y el armado del contexto.

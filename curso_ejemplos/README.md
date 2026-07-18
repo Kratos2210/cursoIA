@@ -3,7 +3,7 @@
 Cada archivo es **autónomo**: lo abres en VS Code, lo corres y funciona solo.
 Están comentados **sección por sección** para que entiendas cada línea.
 
-Y todo está **verificado por 642 tests** que corren sin gastar un solo token
+Y todo está **verificado por 652 tests** que corren sin gastar un solo token
 (ver [§6](#6-cómo-se-verifica-que-esto-funciona)).
 
 ## 1) Requisitos (una sola vez)
@@ -13,6 +13,10 @@ cd curso_ejemplos
 uv sync                  # instala todo desde pyproject.toml (el canon)
 cp .env.example .env     # edita y pon tu llave de https://aistudio.google.com
 ```
+
+> 🧰 ¿Usas pip en vez de uv, necesitas un extra concreto o algo se rompió?
+> **[SETUP.md](SETUP.md)** reúne las dos rutas de instalación, la tabla de extras
+> y todo el troubleshooting en un solo sitio.
 
 > `pyproject.toml` + `uv.lock` son la receta reproducible.
 > `requirements.txt` se mantiene solo por compatibilidad con `pip install -r`.
@@ -150,7 +154,7 @@ montón de scripts: **cada concepto tiene una prueba que lo defiende**.
 
 ```bash
 cd curso_ejemplos
-uv run pytest -m offline        # 642 tests, ~20 s, CERO llamadas a la API
+uv run pytest -m offline        # 652 tests, ~20 s, CERO llamadas a la API
 ```
 
 Qué cubren:
