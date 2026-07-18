@@ -61,11 +61,11 @@ Checklist contra el que se midió cada proyecto (target Docker + VPS):
 
 | # | Hallazgo | Evidencia |
 |---|---|---|
-| L1 | **Sin Dockerfile de la app.** `docker-compose.yml` levanta solo infra (Postgres+pgvector, Redis, Langfuse); la app corre con `uvicorn --reload` a mano. No hay imagen que desplegar. | `docker-compose.yml` |
-| L2 | **Sin auth ni CORS; el `rol` viaja en el body → RBAC decorativo.** Cualquier cliente elige su propio rol. `/chat`, `/metrics` y `/feedback` abiertos. El propio código lo confiesa. | `app/main.py:84-88`, ADR-0007 |
+| L1 | ~~**Sin Dockerfile de la app.**~~ **[Cerrado en Fase 1]** — `docker-compose.yml` levanta solo infra (Postgres+pgvector, Redis, Langfuse); la app corre con `uvicorn --reload` a mano. No hay imagen que desplegar. | `docker-compose.yml` |
+| L2 | ~~**Sin auth ni CORS; el `rol` viaja en el body → RBAC decorativo.**~~ **[Cerrado en Fase 1]** (`app/auth.py`: el rol sale de la credencial; sin `API_KEYS` el modo abierto se avisa y se publica en `/health`) — Cualquier cliente elige su propio rol. `/chat`, `/metrics` y `/feedback` abiertos. El propio código lo confiesa. | `app/main.py:84-88`, ADR-0007 |
 | L3 | **Métricas y feedback en memoria, por proceso.** Se pierden al reiniciar; con N workers hay N colectores que no agregan. El A/B (ADR-0006) decide sobre datos que se evaporan. | `observability/metrics.py`, ADR-0006 |
 | L4 | ~~**Tokens y coste en 0 sin Langfuse.** `_flujo` registraba `Uso()` vacío ("el conteo real lo aporta el callback de Langfuse") — si Langfuse no está, `/metrics` miente en silencio.~~ **[Cerrado en Fase 0]:** `ContadorDeUso` acumula el `usage_metadata` de todas las llamadas del ciclo ReAct desde el propio stream. Un 0 hoy significa "el proveedor no informó", no "fue gratis". | `app/main.py:366`, `observability/cost_model.py`, `app/streaming.py:180` |
-| L5 | **Sin logging estructurado.** Cero `import logging`; scripts con `print()`. En un VPS no hay forma de correlacionar un error con un request. | todo el árbol |
+| L5 | ~~**Sin logging estructurado.**~~ **[Cerrado en Fase 1]** (`observability/logs.py`: JSON a stdout + `request_id` por ContextVar) — Cero `import logging`; scripts con `print()`. En un VPS no hay forma de correlacionar un error con un request. | todo el árbol |
 | L6 | **Sin rate limiting, sin timeouts de cliente LLM, sin backoff.** Solo `with_fallbacks` (cascada cheap→strong). Un 429 sostenido o un proveedor colgado se propagan tal cual. | `app/llm.py:80-93`, runbook §2 |
 
 ### ▲ Importantes
@@ -155,14 +155,14 @@ Esfuerzo: **S** = horas · **M** = 1–3 días · **L** = 1 semana+. Orden = val
 | Añadir `proyecto_retail/evals/ci_gate.py` al workflow `eval-gate.yml` ✅ | retail | S |
 | Corregir las 5 discrepancias documentales (tests 232/652/229, tests 44/42, dataset 13/8, default embeddings, README de final → apuntar a llmops) ✅ | los tres | S |
 
-### Fase 1 — Deployable (M; cierra L1, L2, L5, R4-parcial)
+### Fase 1 — Deployable ✅ COMPLETADA (cierra L1, L2, L5 y R4 salvo el 429/backoff)
 
 | Ítem | Proyecto | Esfuerzo |
 |---|---|---|
-| Dockerfile multi-stage (uv + imagen slim) + servicio `app` en compose con healthcheck a `/health` y restart policy | llmops, retail | M |
-| `logging` JSON a stdout con nivel por env y un `request_id` correlacionado | llmops, retail | M |
-| Auth mínima (API key por header) + CORS + derivar `rol` del token, no del body + `/metrics` detrás de auth | llmops (retail hereda patrón) | M |
-| Quitar placeholders de secretos del compose (exigirlos por env, fail-fast si faltan) | llmops | S |
+| Dockerfile multi-stage (uv + imagen slim) + servicio `app` en compose con healthcheck a `/health` y restart policy ✅ | llmops, retail | M |
+| `logging` JSON a stdout con nivel por env y un `request_id` correlacionado ✅ | llmops, retail | M |
+| Auth mínima (API key por header) + CORS + derivar `rol` del token, no del body + `/metrics` detrás de auth ✅ | llmops (retail hereda, sin roles) | M |
+| Quitar placeholders de secretos del compose (exigirlos por env, fail-fast si faltan) ✅ | llmops | S |
 
 ### Fase 2 — Robusto (M/L; cierra L3, L4, L6 y ▲ estructurales)
 

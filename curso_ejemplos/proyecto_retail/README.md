@@ -114,7 +114,7 @@ inventado no es "un caso flojo", es un reclamo. Ver
 
 ---
 
-## 5) Cómo se prueba (61 tests, cero cuota, cero Docker)
+## 5) Cómo se prueba (94 tests, cero cuota, cero Docker)
 
 ```bash
 uv run pytest proyecto_retail/tests -m offline    # ~1 s
