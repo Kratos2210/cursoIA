@@ -44,6 +44,20 @@ class Settings(BaseSettings):
     llm_modelo: str = "qwen/qwen3-32b"
     llm_temperatura: float = 0.0
 
+    # ---- RESILIENCIA DEL CLIENTE LLM (ver app/llm.py) ----
+    # Segundos antes de dar por perdida una llamada. Sin timeout, un proveedor
+    # colgado bloquea al worker que le espera y el servicio se degrada sin que
+    # aparezca un solo error en los logs.
+    llm_timeout_s: float = Field(default=30.0, gt=0)
+    # Reintentos ante errores transitorios (429, 503). El cliente ya los espacia
+    # con backoff exponencial + jitter y respeta `Retry-After`.
+    llm_max_reintentos: int = Field(default=2, ge=0)
+
+    # ---- LÍMITE DE PETICIONES (ver app/rate_limit.py) ----
+    # Peticiones por cliente y ventana antes de responder 429. 0 = sin límite.
+    rate_limit_peticiones: int = Field(default=30, ge=0)
+    rate_limit_ventana_s: float = Field(default=60.0, gt=0)
+
     google_api_key: str = Field(default="", description="Llave de Google AI Studio (si llm_provider=google)")
 
     @property

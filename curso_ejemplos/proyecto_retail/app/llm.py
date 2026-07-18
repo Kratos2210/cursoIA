@@ -31,6 +31,8 @@ def crear_llm():
             model=settings.llm_modelo,
             temperature=settings.llm_temperatura,
             google_api_key=settings.google_api_key or None,
+            timeout=settings.llm_timeout_s,
+            max_retries=settings.llm_max_reintentos,
         )
 
     from langchain_openai import ChatOpenAI
@@ -52,4 +54,14 @@ def crear_llm():
         temperature=settings.llm_temperatura,
         base_url=settings.llm_base_url,
         api_key=settings.llm_api_key,
+        # RESILIENCIA. Sin `timeout`, el cliente espera indefinidamente a un
+        # proveedor que acepta la conexión y no contesta: la request queda
+        # colgada y con ella el worker, sin un solo error que registrar.
+        # `max_retries` cubre los transitorios (429 de cuota, 503). No hace
+        # falta escribir el backoff: el cliente `openai` ya reintenta con
+        # retraso exponencial + jitter y respeta la cabecera `Retry-After`
+        # cuando el proveedor la manda. Envolver esto en otra capa de
+        # reintentos solo multiplicaría las llamadas.
+        timeout=settings.llm_timeout_s,
+        max_retries=settings.llm_max_reintentos,
     )

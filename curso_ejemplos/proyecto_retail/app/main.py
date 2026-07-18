@@ -42,12 +42,12 @@ from __future__ import annotations
 import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from proyecto_retail.app import auth, frontend, streaming
+from proyecto_retail.app import auth, frontend, rate_limit, streaming
 from proyecto_retail.app.config import settings
 from proyecto_retail.guardrails import input_guard
 from proyecto_retail.observability import logs, metrics, tracing
@@ -97,6 +97,10 @@ def crear_app(responder=None, catalogo=None, cache=None,
     logs.configurar_logging(settings.log_level)
     # Y que quede dicho, en el arranque, si el servicio está abierto de par en par.
     auth.avisar_del_modo_abierto()
+
+    # Un limitador POR APLICACIÓN (no global de módulo): así cada test tiene el
+    # suyo y no hereda las peticiones que contó el anterior.
+    limitador = rate_limit.crear_limitador()
 
     estado = {
         "responder": responder,
@@ -174,6 +178,24 @@ def crear_app(responder=None, catalogo=None, cache=None,
         rid = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:12]
         token = logs.fijar_request_id(rid)
         try:
+            # El freno va ANTES de llamar a nada: el sentido de limitar es no
+            # gastar. /health queda fuera — lo llama el orquestador cada pocos
+            # segundos y un 429 ahí se leería como "servicio caído".
+            #
+            # ⚠️ Se captura y se convierte a JSONResponse a mano porque una
+            #    HTTPException lanzada DENTRO de un middleware no la maneja
+            #    nadie: el manejador de FastAPI vive más adentro, en el routing.
+            #    Sin este try, el 429 saldría como un 500.
+            if request.url.path != "/health":
+                try:
+                    rate_limit.revisar(limitador, request)
+                except HTTPException as limite:
+                    respuesta = JSONResponse(status_code=limite.status_code,
+                                             content={"error": limite.detail},
+                                             headers=limite.headers)
+                    respuesta.headers["X-Request-ID"] = rid
+                    return respuesta
+
             respuesta = await call_next(request)
             respuesta.headers["X-Request-ID"] = rid
             # /health lo llama el orquestador cada pocos segundos: registrarlo

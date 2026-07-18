@@ -29,6 +29,32 @@ LÓGICA:
    habla el dialecto de la API de OpenAI, así que un único cliente
    (ChatOpenAI + base_url) sirve para Groq, Ollama, Together u OpenAI.
    Gemini no lo habla, y por eso tiene su propia rama.
+
+RESILIENCIA — los dos parámetros que separan un demo de un servicio:
+
+  timeout      Sin él, el cliente espera INDEFINIDAMENTE. Un proveedor que
+               acepta la conexión y no contesta nunca deja la request colgada, y
+               con ella el worker que la atiende. Suficientes requests así y el
+               servicio deja de responder sin que nada haya "fallado": no hay
+               error que registrar, solo trabajadores esperando para siempre.
+
+  max_retries  Un 429 (cuota por minuto) o un 503 son TRANSITORIOS: el mismo
+               request funciona un segundo después. Reintentar es correcto;
+               reintentar *inmediatamente* no, porque añade carga justo al
+               proveedor que ya está saturado.
+
+  ⭐ EL BACKOFF NO HAY QUE ESCRIBIRLO: el cliente `openai` ya reintenta con
+     retraso EXPONENCIAL y jitter, y —mejor aún— si la respuesta trae la
+     cabecera `Retry-After`, respeta el tiempo que pide el proveedor en vez de
+     inventarse uno. Por eso aquí no hay `tenacity` ni un bucle propio: añadir
+     una capa de reintentos por encima multiplicaría los intentos (3 tuyos × 3
+     suyos = 9 llamadas por una) y estropearía la que ya funciona bien.
+
+  ⚠️ Los reintentos y `with_fallbacks` se COMPONEN: el cheap agota sus
+     reintentos y solo entonces salta al strong. Con valores altos, el peor caso
+     de latencia es (reintentos × timeout) por CADA modelo de la cascada. Por eso
+     el default de reintentos es 2 y no 10: quien espera al otro lado es una
+     persona con un navegador abierto.
 """
 from __future__ import annotations
 
@@ -50,6 +76,8 @@ def crear_modelo(nombre_modelo: str):
             model=nombre_modelo,
             temperature=settings.llm_temperatura,
             google_api_key=settings.google_api_key or None,
+            timeout=settings.llm_timeout_s,
+            max_retries=settings.llm_max_reintentos,
         )
 
     # Cualquier API compatible con OpenAI. Groq es el default del .env.example.
@@ -64,6 +92,10 @@ def crear_modelo(nombre_modelo: str):
         temperature=settings.llm_temperatura,
         base_url=settings.llm_base_url,
         api_key=settings.llm_api_key,
+        # Ver el bloque RESILIENCIA del docstring: sin estos dos, un proveedor
+        # colgado se lleva por delante el worker que le esperaba.
+        timeout=settings.llm_timeout_s,
+        max_retries=settings.llm_max_reintentos,
     )
 
 
