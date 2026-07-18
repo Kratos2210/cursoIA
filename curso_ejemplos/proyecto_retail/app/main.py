@@ -39,15 +39,18 @@ Probar:
 """
 from __future__ import annotations
 
+import asyncio
 import uuid
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from proyecto_retail.app import auth, frontend, rate_limit, streaming
+from proyecto_retail.app import auth
+from proyecto_retail.app import catalogo as catalogo_mod
+from proyecto_retail.app import frontend, rate_limit, streaming
 from proyecto_retail.app.config import settings
 from proyecto_retail.guardrails import input_guard
 from proyecto_retail.observability import logs, metrics, tracing
@@ -115,8 +118,17 @@ def crear_app(responder=None, catalogo=None, cache=None,
         """Lo caro se paga UNA vez, al arrancar. Todo antes del yield corre al
         arrancar; lo de después, al apagar (ahí se vacía el buffer de trazas)."""
         if estado["catalogo"] is None:
-            from proyecto_retail.app.etl import cargar_catalogo_demo
-            estado["catalogo"] = cargar_catalogo_demo()
+            # Respeta CATALOGO_FUENTE (demo|live). Con 'live', un fallo aquí
+            # impide arrancar a propósito: ver app/catalogo.py.
+            estado["catalogo"] = catalogo_mod.cargar_inicial()
+
+        # El refresco solo tiene sentido si la fuente es externa y el intervalo
+        # es positivo. En modo demo el fichero no cambia solo.
+        tarea_refresco = None
+        if settings.catalogo_fuente == "live" and settings.catalogo_refresco_s > 0:
+            tarea_refresco = asyncio.create_task(
+                catalogo_mod.refrescar_periodicamente(
+                    estado, settings.catalogo_refresco_s))
         if estado["responder"] is None:      # pragma: no cover - requiere API real
             from proyecto_retail.app import agent
             from proyecto_retail.app.llm import crear_llm
@@ -133,6 +145,15 @@ def crear_app(responder=None, catalogo=None, cache=None,
             estado["cache"] = SemanticCache(crear_embeddings(), crear_backend())
 
         yield
+
+        # Al apagar: se cancela el refresco ANTES de vaciar las trazas. Una
+        # tarea de fondo que sigue viva tras el shutdown mantiene el proceso
+        # colgado y el orquestador acaba matándolo a la fuerza.
+        if tarea_refresco is not None:
+            tarea_refresco.cancel()
+            with suppress(asyncio.CancelledError):
+                await tarea_refresco
+
         tracing.vaciar()
 
     app = FastAPI(

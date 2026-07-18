@@ -71,6 +71,11 @@ class Settings(BaseSettings):
     #            Es lo que se hace en el ejercicio "con los datos de verdad".
     catalogo_fuente: str = "demo"
     catalogo_url: str = "https://sifrah.com/products.json?limit=250"
+    # Cada cuántos segundos se vuelve a bajar el catálogo cuando la fuente es
+    # "live". 0 = no refrescar. Solo aplica en modo live: el fichero de demo no
+    # cambia solo. 900 s (15 min) es un término medio entre enterarse pronto de
+    # un cambio de precio y no martillear el endpoint de la tienda.
+    catalogo_refresco_s: float = Field(default=900.0, ge=0)
     # k productos que devuelve la búsqueda como máximo.
     busqueda_top_k: int = 3
 
