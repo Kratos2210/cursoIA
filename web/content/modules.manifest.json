@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-07-17T22:51:14.708Z",
-  "total": 46,
+  "total": 47,
   "modules": [
     {
       "id": "m0",
@@ -433,6 +433,22 @@
       "goals": "🎯 Al terminar sabrás: decidir entre RAG, fine-tuning, ambos o solo prompt, y armar un dataset de fine-tuning por chat.",
       "prereqs": "✅ Necesitas: el Módulo 11 (RAG) y el 05 (salida estructurada).",
       "minutes": "⏱️ ~35 min"
+    },
+    {
+      "id": "m21b",
+      "slug": "21b-fine-tuning-hands-on",
+      "title": "Fine-tuning hands-on: LoRA en Colab (módulo opcional)",
+      "kind": "module",
+      "level": 5,
+      "levelName": "AI Engineer",
+      "order": 26,
+      "badge": "21b",
+      "pyFile": null,
+      "fileref": "📋 Lectura + práctica en Colab (necesita GPU). El notebook vive en docs/notebooks/21b_lora_colab.ipynb — fuera del gate offline (ADR-0003): no se instala en el curso.",
+      "tested": false,
+      "goals": "🎯 Al terminar sabrás: afinar un modelo con LoRA/QLoRA en la GPU gratuita de Colab, y por qué eso enseña comportamiento, no conocimiento.",
+      "prereqs": "✅ Necesitas: el m21 (fine-tuning vs RAG). Opcional: una cuenta de Google para Colab.",
+      "minutes": "⏱️ ~40 min (con GPU de Colab)"
     },
     {
       "id": "m22",
