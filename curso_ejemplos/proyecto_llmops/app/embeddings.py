@@ -17,13 +17,13 @@ FINALIDAD:
 LÓGICA:
   Un mismo modelo multilingüe, dos motores intercambiables desde el .env:
 
-    EMBEDDINGS_PROVIDER=huggingface   (por defecto)
+    EMBEDDINGS_PROVIDER=huggingface
         langchain_huggingface.HuggingFaceEmbeddings → sentence-transformers → PyTorch.
         Lo estándar y lo más fácil de sustituir por otro modelo del Hub.
         Coste: ~16 paquetes y un torch de varios cientos de MB.
         Instalar con:  uv sync --extra llmops --extra hf
 
-    EMBEDDINGS_PROVIDER=fastembed
+    EMBEDDINGS_PROVIDER=fastembed   (por defecto: config.py y .env.example)
         El MISMO modelo, ejecutado en ONNX. Sin PyTorch (~70 MB).
         Es lo que instala la CI. El ADR-0002 ya rechazó arrastrar torch al
         curso por este mismo motivo.

@@ -55,7 +55,7 @@ from app import frontend, streaming
 from app.config import settings
 from guardrails import input_guard
 from observability import metrics, tracing
-from observability.cost_model import Uso
+from observability.cost_model import ContadorDeUso, Uso
 from observability.feedback import ColectorFeedback
 from prompts import experimentos
 
@@ -319,10 +319,11 @@ async def _flujo(peticion: PeticionChat, estado: dict):
 
         # ---- 3 y 4) AGENTE + GUARDRAIL DE SALIDA sobre el stream ----------
         guardia = streaming.GuardiaDeStream(rol=peticion.rol)
+        contador = ContadorDeUso()
         try:
             async for token in streaming.tokens_del_agente(
                 agente, pregunta, peticion.thread_id,
-                callbacks=tracing.callbacks(),
+                callbacks=tracing.callbacks(), contador=contador,
             ):
                 crono.primer_token()
                 trozo = guardia.empujar(token)
@@ -357,7 +358,12 @@ async def _flujo(peticion: PeticionChat, estado: dict):
     # Fuera del `with`: el cronómetro ya se cerró y la latencia es la final.
     metrica = metrics.MetricasRequest(
         modelo=settings.llm_modelo_cheap,
-        uso=Uso(),          # el conteo real lo aporta el callback de Langfuse
+        # El consumo sumado de TODAS las llamadas del ciclo ReAct, recogido del
+        # propio stream. Antes iba `Uso()` vacío delegando en el callback de
+        # Langfuse: sin Langfuse levantado, /metrics reportaba coste 0 en
+        # silencio, que es peor que no reportarlo. Un 0 hoy significa que el
+        # proveedor no informó del consumo (pasa en streaming), no que fue gratis.
+        uso=contador.uso,
         latencia_ms=crono.latencia_ms,
         ttft_ms=crono.ttft_ms,
         cache_hit=False,

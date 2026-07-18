@@ -143,24 +143,37 @@ class AgenteFalso:
     doble mintiera sobre el formato, el test pasaría y la app fallaría.
     """
 
-    def __init__(self, tokens: list[str], nodo: str = "agent"):
+    def __init__(self, tokens: list[str], nodo: str = "agent", uso: tuple | None = None):
         self.tokens = tokens
         self.nodo = nodo
+        # `uso=(entrada, salida)` reproduce lo que hace un proveedor real en
+        # streaming: el conteo NO viaja en cada chunk, llega solo en el último.
+        self.uso = uso
         self.invocaciones: list[dict] = []
 
     async def astream(self, entrada, config=None, stream_mode=None):
         self.invocaciones.append({
             "entrada": entrada, "config": config, "stream_mode": stream_mode,
         })
-        for token in self.tokens:
-            yield _FragmentoFalso(token), {"langgraph_node": self.nodo}
+        for indice, token in enumerate(self.tokens):
+            ultimo = indice == len(self.tokens) - 1
+            yield (_FragmentoFalso(token, self.uso if (ultimo and self.uso) else None),
+                   {"langgraph_node": self.nodo})
 
 
 class _FragmentoFalso:
-    """Un chunk de mensaje: streaming.py solo le mira `.content`."""
+    """Un chunk de mensaje: streaming.py le mira `.content` y `.usage_metadata`."""
 
-    def __init__(self, content: str):
+    def __init__(self, content: str, uso: tuple | None = None):
         self.content = content
+        # Los chunks intermedios NO tienen el atributo, igual que los reales:
+        # por eso `extraer_uso` usa getattr con default y no revienta.
+        if uso is not None:
+            self.usage_metadata = {
+                "input_tokens": uso[0],
+                "output_tokens": uso[1],
+                "total_tokens": uso[0] + uso[1],
+            }
 
 
 # ==================================================================
