@@ -168,6 +168,16 @@ Cachear reduce **coste y latencia**, no mejora la **calidad**: si la respuesta g
 
 </Box>
 
+<Box kind="analogy" label="🌐 Prompt caching: la palanca de coste que regalan los proveedores">
+
+Hay una tercera caché que no montas tú: la que ofrecen los propios proveedores. Anthropic y OpenAI **cachean el prefijo del prompt** — el system prompt, los documentos que precargaste, las definiciones de tus herramientas — y cuando la siguiente llamada empieza con ese mismo prefijo exacto, cobran esos tokens de entrada a **una fracción del precio** y los procesan con **menos latencia**. No es magia: reusan el cómputo interno (el *KV cache*) que ya hicieron para ese prefijo.
+
+La consecuencia práctica cambia cómo ordenas el prompt: pon **lo estable primero** (instrucciones, contexto fijo, corpus precargado) y **lo variable al final** (la pregunta del usuario del turno). Así el prefijo se repite llamada tras llamada y maximizas los aciertos de caché; si intercalas lo que cambia con lo que no, rompes el prefijo y pagas todo a precio completo. Es la palanca que hace viable el **CAG** del [m11](/modulo/11-rag-profesional): precargar un corpus entero solo sale a cuenta si no lo pagas íntegro en cada pregunta.
+
+Ojo con la distinción, porque son cosas distintas con el mismo nombre: este caché es **del proveedor** y casa por **prefijo exacto**; el **caché semántico** que viste arriba es **tuyo** y casa por **similitud** de la pregunta. Se combinan — uno abarata el prompt, el otro evita la llamada entera.
+
+</Box>
+
 <Avoid label="⛔ Cuándo NO obsesionarte con instrumentar y medir">
 
 - **En un prototipo de un día.** Activar LangSmith y calcular el coste al céntimo es prematuro si aún no sabes si la idea sirve: instrumenta cuando vayas a producción, o cuando algo falle y no sepas por qué.

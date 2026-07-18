@@ -150,6 +150,34 @@ Regla práctica: empieza vectorial; sube a GraphRAG solo cuando veas que las pre
 
 </Box>
 
+<Box kind="analogy" label="🌐 Citación y atribución: 'según el documento X'">
+
+Un RAG que responde bien pero no dice **de dónde** salió cada afirmación es media herramienta. En cuanto lo usas en algo serio —normativa, precios, historia clínica— el usuario necesita **verificar**, y auditoría o compliance directamente lo exigen. La solución no es un modelo mejor: es propagar la **metadata** que el retriever ya tiene.
+
+La mecánica es sencilla. Cada chunk recuperado trae su procedencia (`source`, título, sección o página); numeras las fuentes, se las das al modelo etiquetadas, y le pides que **cite por id** (`[1]`, `[2]`) al afirmar algo. Al final mapeas los ids a las fuentes reales.
+
+```python title="citar las fuentes que sostienen la respuesta"
+def format_context(docs):
+    # Each retrieved chunk carries provenance in .metadata — pass it along, numbered.
+    lines = []
+    for i, doc in enumerate(docs, start=1):
+        src = doc.metadata.get("source", "?")
+        section = doc.metadata.get("section", "")
+        lines.append(f"[{i}] ({src} · {section})\n{doc.page_content}")
+    return "\n\n".join(lines)
+
+PROMPT = (
+    "Responde SOLO con el contexto. Cita la fuente de cada afirmación "
+    "con su número entre corchetes, p. ej. [1]. Si no está en el contexto, dilo.\n\n"
+    "{context}\n\nPregunta: {question}"
+)
+# Después, mapeas [1],[2]… de la respuesta a la lista real de fuentes para mostrarlas.
+```
+
+El efecto de segundo orden es el más interesante: **obligar a citar reduce la alucinación**, no solo la percibida. Un modelo que tiene que anclar cada frase a un `[n]` concreto se inventa menos, porque no puede afirmar lo que no puede señalar — es el mismo grounding que persigue el detector del [m28](/modulo/28-desafios-y-alucinaciones) y el caso de precios del [m29](/modulo/29-caso-real-2-retail), atacado desde el prompt.
+
+</Box>
+
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 
 - Explicar la diferencia entre mejorar el RAG por el índice (Módulo 12) y por la pregunta (multi-query).

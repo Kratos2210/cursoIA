@@ -132,6 +132,18 @@ def responder_seguro(pregunta, contexto, modelo=modelo_ingenuo):
 
 </Box>
 
+<Box kind="analogy" label="🌐 Sandboxing: cuando el agente ejecuta código">
+
+El "mínimo privilegio" de arriba tiene un caso extremo que merece capítulo propio: el agente que **ejecuta código** o comandos de shell (un intérprete de Python, una tool que corre SQL, un `code_interpreter`). Ahí la inyección de prompts deja de ser "el modelo dice algo feo" y se convierte en **ejecución remota de código con tus credenciales**: si un documento envenenado logra colar `import os; os.system("...")`, corre en *tu* máquina, con *tus* permisos. El detector de patrones no te salva de esto — la defensa es **aislar la ejecución**, por capas:
+
+- **Subprocess acotado.** Corre el código en un proceso aparte con **timeout**, **sin red** y una **allowlist** de lo que puede importar o invocar. Barato y suficiente para código que tú generas.
+- **Contenedor efímero.** Un contenedor desechable **por ejecución**: el código toca un sistema de archivos de usar y tirar, y al terminar se destruye con todo lo que haya hecho dentro. El estándar para tools que ejecutan código no trivial.
+- **MicroVM / sandbox gestionado.** Aislamiento a nivel de kernel (microVMs tipo Firecracker, o un sandbox gestionado) para el caso más hostil: ejecutar **código de terceros o generado por el propio modelo** sin confiar en él en absoluto.
+
+Y sobre todas, la regla que ya conoces: **mínimo privilegio por herramienta**. El agente que solo consulta la normativa no necesita permisos de escritura ni de red; en el patrón supervisor del [m15](/modulo/15-multiagente-supervisor), cada especialista lleva únicamente las tools que su trabajo exige, de modo que una inyección que caiga en uno no hereda las capacidades de los demás.
+
+</Box>
+
 <Avoid label="⛔ Cuándo NO confiar en esto">
 
 - No uses `detectar_inyeccion` como **único** filtro: un atacante que parafrasea lo evade. Es la alarma, no la cerradura.

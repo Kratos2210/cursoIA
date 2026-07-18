@@ -92,6 +92,14 @@ Este módulo te enseñó, sin decirlo, el **ciclo de trabajo colaborativo** que 
 
 </Box>
 
+<Box kind="analogy" label="🌐 Skills: conocimiento empaquetado para tu asistente">
+
+El stack de quien trabaja en serio con asistentes de código tiene **tres pilares**, y ya conoces dos: **SDD** (este módulo — fija la *intención*) y **MCP** ([m14](/modulo/14-mcp) — le da *herramientas y datos*). El tercero son los **skills**: paquetes reutilizables de instrucciones + contexto + criterio que el asistente **carga cuando la tarea lo pide**, en vez de que se los repitas en cada sesión. "Cómo se revisa un PR en este equipo", "cómo se despliega este repo", "qué convenciones sigue nuestro SQL" — conocimiento operativo que hoy vive en la cabeza de alguien y que un skill vuelve **versionable en el repo**.
+
+La diferencia con MCP es la que aclara para qué sirve cada uno: **MCP le da al agente *capacidades*** (a qué sistemas puede tocar), un **skill le da *procedimiento*** (cómo se hace bien *aquí*). Un MCP conecta tu base de datos; un skill explica cómo tu equipo escribe migraciones sin romper producción. Los dos convierten conocimiento tribal —lo que "todos saben" pero nadie escribió— en algo que el asistente lee, aplica y tú revisas. Es la misma idea de este módulo, un nivel más arriba: no solo especificas *esta* tarea, empaquetas el *criterio* con el que se hace bien cualquier tarea de ese tipo.
+
+</Box>
+
 <Box kind="practice" label="✎ Para practicar">
 
 1. Abre `specs/001-verificador-curso/spec.md` y `tasks.md` y **traza una task de punta a punta**: toma T006 (`verificar_anclas`) y sigue el hilo desde el escenario del spec → la task → la función en `verificar_curso.py` → su test en `tests/test_verificar_curso.py`. ¿Se cumple lo que el spec prometía?

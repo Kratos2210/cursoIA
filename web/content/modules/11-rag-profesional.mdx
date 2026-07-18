@@ -174,6 +174,23 @@ for k in (2, 6):
 
 </Box>
 
+<Box kind="analogy" label="🌐 CAG: la alternativa que no recupera nada">
+
+Todo este módulo asume que tus documentos **no caben** en el prompt, y por eso hay que recuperar. Pero las ventanas de contexto crecieron muchísimo: hoy caben cientos de páginas en una sola llamada. Cuando el corpus entero cabe, aparece una alternativa que muchos equipos pasan por alto: **CAG** (*Cache-Augmented Generation*). En vez de indexar, trocear y recuperar, **precargas todo el corpus** en el contexto una vez y dejas que el **KV cache** del proveedor lo amortice en las siguientes preguntas. Sin retriever, sin vector store, sin el bug silencioso de recuperar el chunk equivocado — la respuesta ve *todo* el material, no solo los `k` fragmentos que el retriever adivinó.
+
+No es que CAG reemplace a RAG: cada uno gana en un terreno distinto.
+
+| | **CAG** (precargar el corpus) | **RAG** (recuperar por pregunta) |
+| --- | --- | --- |
+| Tamaño del corpus | Pequeño: cabe en el contexto | Grande o sin límite |
+| Frescura de los datos | Estable (recargas al cambiar) | Cambia a diario — reindexas y ya |
+| Coste por consulta | Contexto entero cada vez (lo abarata el caché del proveedor) | Solo los `k` chunks recuperados |
+| Permisos por usuario | Difícil: no puedes precargar lo que un usuario no debe ver | Natural: filtras en el retrieval |
+
+La regla práctica: si tu base de conocimiento es un manual acotado y estable, prueba CAG antes de montar toda la maquinaria de RAG — es más simple y elimina una clase entera de fallos. La palanca que lo hace barato es el **prompt caching del proveedor**, que verás en el [m16](/modulo/16-observabilidad-y-costo); no confundas ese caché (del prefijo, por el proveedor) con el **caché semántico** de respuestas del [proyecto_llmops](/recurso/llmops), que ataca otra parte del problema.
+
+</Box>
+
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 
 - Explicar los dos caminos de RAG: indexar *una vez* vs. recuperar *en cada pregunta*.
