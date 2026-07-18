@@ -152,6 +152,13 @@ llamaindex = [
 crewai = [
     "crewai>=0.80",   # define roles/tareas; usa LiteLLM por dentro
 ]
+# ANEXO opcional: agente de voz en TIEMPO REAL (voz/agente_voz_realtime.py):
+# Deepgram STT streaming -> LLM -> TTS por frase. FUERA del gate offline
+# (ADR-0007): necesita micrófono + API de Deepgram. La versión offline y
+# testeable es el m22b.  Instalar con:  uv sync --extra voice
+voice = [
+    "deepgram-sdk>=3.7",   # STT streaming + TTS
+]
 
 [tool.uv]
 # El curso son SCRIPTS SUELTOS, no una librería instalable. Con package=false

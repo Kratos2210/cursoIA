@@ -806,6 +806,9 @@ ui = [
     { name = "fastapi" },
     { name = "uvicorn" },
 ]
+voice = [
+    { name = "deepgram-sdk" },
+]
 whatsapp = [
     { name = "fastapi" },
     { name = "httpx" },
@@ -815,6 +818,7 @@ whatsapp = [
 [package.metadata]
 requires-dist = [
     { name = "crewai", marker = "extra == 'crewai'", specifier = ">=0.80" },
+    { name = "deepgram-sdk", marker = "extra == 'voice'", specifier = ">=3.7" },
     { name = "fastapi", marker = "extra == 'llmops'", specifier = ">=0.115" },
     { name = "fastapi", marker = "extra == 'ui'", specifier = ">=0.115" },
     { name = "fastapi", marker = "extra == 'whatsapp'", specifier = ">=0.115" },
@@ -853,7 +857,7 @@ requires-dist = [
     { name = "uvicorn", marker = "extra == 'ui'", specifier = "==0.51.0" },
     { name = "uvicorn", marker = "extra == 'whatsapp'", specifier = "==0.51.0" },
 ]
-provides-extras = ["dev", "emb", "ui", "llmops", "hf", "whatsapp", "llamaindex", "crewai"]
+provides-extras = ["dev", "emb", "ui", "llmops", "hf", "whatsapp", "llamaindex", "crewai", "voice"]
 
 [[package]]
 name = "dataclasses-json"
@@ -866,6 +870,22 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/64/a4/f71d9cf3a5ac257c993b5ca3f93df5f7fb395c725e7f1e6479d2514173c3/dataclasses_json-0.6.7.tar.gz", hash = "sha256:b6b3e528266ea45b9535223bc53ca645f5208833c29229e847b3f26a1cc55fc0", size = 32227, upload-time = "2024-06-09T16:20:19.103Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c3/be/d0d44e092656fe7a06b55e6103cbce807cdbdee17884a5367c68c9860853/dataclasses_json-0.6.7-py3-none-any.whl", hash = "sha256:0dbf33f26c8d5305befd61b39d2b3414e8a407bedc2834dea9b8d642666fb40a", size = 28686, upload-time = "2024-06-09T16:20:16.715Z" },
+]
+
+[[package]]
+name = "deepgram-sdk"
+version = "7.5.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+    { name = "pydantic" },
+    { name = "pydantic-core" },
+    { name = "typing-extensions" },
+    { name = "websockets" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/60/c2/ba5b06c2859d7824289c40037d1b55a51d9ee3766b2097483858f4ae7f1e/deepgram_sdk-7.5.0.tar.gz", hash = "sha256:4801596e7ac33fe4b0979d6b5358b003456f254f8040a15a061d23a12cb1b41b", size = 228040, upload-time = "2026-07-15T19:16:50.946Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2a/63/3afac9adfb9ec9f3a57329faf9b068dd5ce7c62e3f3632fbb5a1c4819518/deepgram_sdk-7.5.0-py3-none-any.whl", hash = "sha256:5a827d33f324324466af34b312bfbc215619a37ae0b7935a70f059558638f9f3", size = 604663, upload-time = "2026-07-15T19:16:49.49Z" },
 ]
 
 [[package]]

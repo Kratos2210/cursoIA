@@ -1,0 +1,81 @@
+export const meta = {
+  "id": "m33",
+  "slug": "33-agente-voz-realtime",
+  "title": "Agente de voz en tiempo real: el m22b con servicios de verdad (anexo opcional)",
+  "kind": "module",
+  "level": 5,
+  "levelName": "Modelos",
+  "order": 40,
+  "badge": "33",
+  "pyFile": "voz/agente_voz_realtime.py",
+  "fileref": "📋 Anexo. voz/agente_voz_realtime.py: Deepgram STT streaming → LLM → TTS por frase, reutilizando el pipeline del m22b — fuera del gate offline (ADR-0007): necesita micrófono + APIs, no se testea.",
+  "tested": false,
+  "goals": "🎯 Al terminar sabrás: montar un agente de voz real (escucha y responde hablando) reutilizando el pipeline testeable del m22b, cambiando las 'mentiras' por Deepgram + LLM reales sin cambiar la forma del flujo.",
+  "prereqs": "✅ Necesitas: el m22b (voz: el pipeline en streaming) y el m03 (streaming). Para ejecutarlo: micrófono + API de Deepgram + de LLM. Es lectura si no los tienes.",
+  "minutes": "⏱️ ~20 min de lectura (+ ejecución si tienes micrófono)"
+};
+
+El [m22b](/modulo/22-multimodal) te enseñó el pipeline de voz en tiempo real como un **generador determinista**: STT parcial → LLM token a token → TTS por frases, todo **de mentira** para poder **testearlo**. Este anexo cambia las mentiras por **servicios reales** (Deepgram) **sin cambiar la forma** del flujo — que es justo por qué el m22b lo enseñó así.
+
+<Box kind="warn" label="▲ Anexo opcional, fuera del 'offline-first'">
+
+Un agente de voz real rompe las tres reglas del curso a la vez: **micrófono** (hardware), **APIs con cuota** (Deepgram STT/TTS + un LLM) y **websockets async**. Por eso vive en `voz/` con un extra opcional (`uv sync --extra voice`) y **fuera** del gate offline — la CI no lo instala ni lo testea (`docs/adr/0007-voz-realtime-fuera-del-gate.md`). La versión **testeable** sigue siendo el m22b.
+
+</Box>
+
+### La idea que no cambia: sintetizar por frase, no al final
+
+<Box kind="def" label="◈ Por qué baja la latencia percibida">
+
+En **batch**, mandas todo el audio y esperas toda la respuesta: el usuario oye **silencio** hasta el final. En **tiempo real**, el audio llega por trozos, el STT transcribe parcial, el LLM **empieza a responder antes de que termines de hablar**, y el TTS sintetiza **cada frase en cuanto cierra** (`.`, `!`, `?`). La respuesta "empieza" casi al toque. Es exactamente el orden de eventos del m22b: `parcial → final_stt → token → audio`.
+
+</Box>
+
+### Cambiar las mentiras por servicios reales
+
+El m22b inyectaba `responder` (un LLM falso) y audio de juguete. Aquí:
+
+- **STT real**: Deepgram *live transcription* entrega transcripción **parcial** por websocket.
+- **Cerebro real**: `util.crear_llm(...).stream(...)` — el **mismo** LLM del curso, token a token.
+- **TTS real**: Deepgram sintetiza **cada frase** en cuanto está completa.
+
+```python title="voz/agente_voz_realtime.py · reutiliza el troceo del m22b"
+# El archivo del m22b empieza por dígito → se carga por ruta (como los tests).
+_m22b = _cargar("22b_voz.py")
+dividir_en_frases = _m22b._dividir_en_frases   # el MISMO criterio, sin duplicar
+
+for token in responder_stream(transcripcion):   # LLM real, en streaming
+    buffer += token
+    *completas, buffer = _partir_incremental(buffer)
+    for frase in completas:
+        audio = await sintetizar(frase)          # Deepgram TTS, frase a frase
+```
+
+<Box kind="analogy" label="◆ El m22b es el plano; esto es la casa construida">
+
+El m22b probó que el **plano** (el orden de eventos) es correcto, con materiales de mentira que puedes medir en un test. El anexo levanta la **casa** con materiales reales. Si la casa falla, sabes que no es el plano —eso está testeado— sino el cableado (una API key, un id de modelo, el micrófono). Separar plano de construcción es lo que te deja depurar rápido.
+
+</Box>
+
+<Avoid label="⛔ Los tres tropiezos del tiempo real">
+
+- **Esperar la respuesta completa antes de hablar.** Mata la sensación de "tiempo real". Sintetiza por frase (el `_dividir_en_frases` del m22b), no al final.
+- **Testear contra servicios reales.** Deepgram y el LLM son no deterministas y cuestan cuota. Lo testeable es el **orden** (m22b, con dobles); el cableado real va fuera del gate.
+- **Hardcodear el id del modelo de voz.** Los ids de Deepgram (STT/TTS) cambian; el archivo los deja como **placeholders verificables** en variables de entorno.
+
+</Avoid>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar por qué sintetizar por frase baja la latencia percibida (no esperas a toda la respuesta).
+- Nombrar qué pieza real sustituye a cada mentira del m22b (STT, `responder`, TTS).
+- Justificar por qué la lógica clave se testea en el m22b y el cableado real va fuera del gate.
+- Reconocer que la **forma** del flujo (orden de eventos) es idéntica en la versión simulada y en la real.
+
+</Checkpoint>
+
+<Recap level={5} label="↺ En una frase">
+
+Un agente de voz real es el pipeline del m22b con los materiales cambiados: Deepgram escucha en streaming, el LLM del curso responde token a token y Deepgram sintetiza cada frase en cuanto cierra — misma forma, latencia baja de verdad. El plano (el orden) sigue testeado en el m22b; aquí solo se añade el cableado, fuera del gate.<Arch>artefacto: `voz/agente_voz_realtime.py` · extra `voice` · reutiliza `22b_voz.py:_dividir_en_frases` · ADR-0007</Arch>
+
+</Recap>
