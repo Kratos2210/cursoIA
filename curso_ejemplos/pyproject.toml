@@ -159,6 +159,13 @@ crewai = [
 voice = [
     "deepgram-sdk>=3.7",   # STT streaming + TTS
 ]
+# COMPANION opcional del m24: el mismo ejercicio contra una DB vectorial REAL
+# (vectordb/qdrant_companion.py). FUERA del gate offline (ADR-0009): necesita
+# Docker.  Levanta:   docker compose -f vectordb/docker-compose.yml up -d
+#           Instala:  uv sync --extra qdrant --extra emb
+qdrant = [
+    "qdrant-client>=1.12",   # cliente oficial (REST/gRPC)
+]
 
 [tool.uv]
 # El curso son SCRIPTS SUELTOS, no una librería instalable. Con package=false

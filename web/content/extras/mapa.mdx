@@ -31,6 +31,7 @@ Cada concepto tiene un archivo donde practicarlo, un ejercicio que te obliga a
 | Agente ReAct | `10` | — | `test_agente.py::TestAgenteCompleto` |
 | RAG: trocear y unir | `11` | [11](/recurso/ejercicios) | `test_offline.py::TestTema11Rag` |
 | BM25 · coseno · RRF · re-rank | `12` | [12](/recurso/ejercicios) | `test_offline.py::TestTema12*` (25 tests) |
+| Re-ranker REAL (cross-encoder ONNX, sin torch) | `rerank/rerank_real.py` | [12](/modulo/12-recuperar-re-rankear) | — (companion, fuera del gate, ADR-0008) |
 | `StateGraph` (nodos y aristas) | `13` | — | `test_offline.py::TestTema13bHumanInTheLoop` |
 | Human-in-the-loop | `13b` | [13](/recurso/ejercicios) | `test_offline.py::TestTema13bHumanInTheLoop` |
 | MCP (servidor + cliente) | `14` | [14](/recurso/ejercicios) | `test_offline.py::TestTema14Mcp` |
@@ -50,6 +51,8 @@ Cada concepto tiene un archivo donde practicarlo, un ejercicio que te obliga a
 | Agente de voz en tiempo real (Deepgram STT→LLM→TTS) | `voz/agente_voz_realtime.py` | [33](/modulo/33-agente-voz-realtime) | — (anexo, fuera del gate, ADR-0007) |
 | Seguridad y red-teaming (OWASP LLM) | `23` | [23](/modulo/23-seguridad-red-teaming) | `test_redteam.py` |
 | Vector DBs en producción (dedup · IVFFlat) | `24` | [24](/modulo/24-vector-dbs-en-produccion) | `test_offline.py::TestTema24*` |
+| DB vectorial REAL (Qdrant · HNSW · upsert idempotente) | `vectordb/qdrant_companion.py` | [24](/modulo/24-vector-dbs-en-produccion) | — (companion, fuera del gate, ADR-0009) |
+| Caché exacta vs semántica (TTL, llave por rol, hit rate) | `proyecto_llmops/cache/` | [16](/modulo/16-observabilidad-y-costo) | `proyecto_llmops/tests/test_cache.py` |
 | Feedback 👍/👎 y A/B de prompts | `proyecto_llmops/observability/feedback.py` | [24b](/modulo/24b-feedback-a-b) | `proyecto_llmops/tests` |
 | Frontend de chat con SSE (streaming) | `proyecto_llmops/app/static/chat.html` | [25](/modulo/25-frontend-chat-sse) | — |
 | Canal WhatsApp (webhook + EvolutionAPI) | `canales/whatsapp/webhook.py` | [31](/modulo/31-canal-whatsapp) | — (anexo, fuera del gate, ADR-0004) |

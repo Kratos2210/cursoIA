@@ -124,6 +124,27 @@ La decisión no cambia tu código de búsqueda: en `pgvector` es una línea al c
 
 </Box>
 
+<Box kind="practice" label="▸ Companion opcional: el mismo ejercicio contra un Qdrant de verdad">
+
+Este módulo dice que "en producción NO escribes esto a mano". El companion lo comprueba: **el mismo ejercicio** contra un Qdrant real en Docker, con embeddings reales en vez de los vectores didácticos.
+
+```bash title="vectordb/ · fuera del gate offline (ADR-0009)"
+docker compose -f vectordb/docker-compose.yml up -d
+uv run --extra qdrant --extra emb python vectordb/qdrant_companion.py
+```
+
+Lo interesante es que **ninguna decisión que tomaste aquí desaparece — se vuelve un parámetro**:
+
+| Lo que hiciste a mano (m24) | Cómo se llama en Qdrant |
+| --- | --- |
+| Dedup por hash (un `set` de hashes) | Un `id` **derivado del contenido** → el `upsert` es idempotente. Corre el script dos veces: el número de puntos **no sube**. |
+| `n_sondas` de IVFFlat | `hnsw_ef` — la **misma** perilla recall↔velocidad, y se decide **por consulta**, no al crear el índice. |
+| Coseno calculado a mano | `Distance.COSINE` al crear la colección. |
+
+Y puedes **mirar** la colección con tus ojos en `localhost:6333/dashboard`. El dedup deja de ser código tuyo y pasa a ser una propiedad del `upsert`: esa es, en una frase, la diferencia entre implementarlo y operarlo.
+
+</Box>
+
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 
 - Explicar por qué deduplicar antes de indexar ahorra coste y mejora el ranking.

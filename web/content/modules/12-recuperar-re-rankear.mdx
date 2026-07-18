@@ -107,6 +107,20 @@ retriever_pro = ContextualCompressionRetriever(
 )                                                             # ...y quedan 3
 ```
 
+<Box kind="practice" label="▸ Companion opcional: corre el re-ranker REAL y velo fallar al didáctico">
+
+El re-ranker de este módulo se implementa **a mano** para que veas la mecánica sin instalar nada ([ADR-0002](/recurso/mapa)). Su límite lo cuenta la sección *"Tres formas de fallar"*: si ninguna palabra casa, puntúa **0.0 a todos** y el orden es arbitrario. Hay un companion opcional que pone los dos, uno al lado del otro, sobre la misma pregunta:
+
+```bash title="rerank/rerank_real.py · fuera del gate offline (ADR-0008)"
+uv run --extra emb python rerank/rerank_real.py
+```
+
+Con la pregunta *"¿Me devuelven la plata si no me gusta?"* —cero palabras en común con el manual— el didáctico contesta **"Formas de pago"** y el cross-encoder real acierta **"Política de reembolsos"**: entiende que *devolver la plata* **es** un reembolso. Eso es lo que compra un re-ranker de verdad.
+
+⚠️ Ojo con el snippet de arriba: `HuggingFaceCrossEncoder` arrastra **PyTorch**, que **no tiene wheels para macOS Intel**. El companion usa el mismo tipo de modelo sobre **ONNX** (`fastembed`), así que corre en cualquier plataforma del curso y sin torch. Y devuelve el **puntaje**, no solo el orden — son *logits* (verás negativos): lo que importa es la distancia entre el primero y el resto, y el umbral se calibra con tus preguntas.
+
+</Box>
+
 ### Búsqueda híbrida (denso + palabras clave)
 
 La búsqueda por significado falla con códigos exactos ("ISO-27001", un SKU, un nombre propio); la de palabras (BM25) falla con sinónimos. **Combinarlas cubre los huecos de ambas.**

@@ -144,6 +144,30 @@ La tabla `PRECIOS` del archivo caduca: Google los cambia. Antes de presupuestar 
 
 </Box>
 
+### Paso 4 — La palanca que más baja la factura: cachear
+
+Ya sabes medir el coste. La forma más directa de bajarlo no es cambiar de modelo ni recortar el prompt: es **no llamar al modelo** cuando la respuesta ya la tienes. En un asistente real, las preguntas se repiten muchísimo ("¿cuál es el horario?", "¿cómo pago?"), y una consulta cacheada cuesta **~0** y responde en milisegundos.
+
+<Box kind="def" label="◈ Caché exacta vs caché semántica">
+
+La **caché exacta** usa el texto de la pregunta como llave: si llega idéntico, devuelves lo guardado. Es trivial y no falla nunca… pero *"¿cuál es el horario?"* y *"¿a qué hora atienden?"* son llaves distintas, así que el acierto es bajísimo en lenguaje natural.
+
+La **caché semántica** guarda el **embedding** de la pregunta y acierta si la nueva se **parece** lo bastante (coseno por encima de un umbral). Es el mismo truco del [m11](/modulo/11-rag-profesional), aplicado a la pregunta en vez de a los documentos: las dos formulaciones de arriba caen en la misma entrada. A cambio introduce un riesgo nuevo: un umbral demasiado laxo sirve la respuesta **equivocada** con total confianza.
+
+</Box>
+
+En el `proyecto_llmops` esto ya está construido (`cache/semantic_cache.py` y `cache/cache_backends.py`), y el evento SSE `fin` de `/chat` expone `cache_hit` y `similitud` — por eso lo viste asomar en el [m24b](/modulo/24b-feedback-a-b) y el [m25](/modulo/25-frontend-chat-sse). Tres decisiones de ese código valen para cualquier caché que montes:
+
+- **El TTL no es opcional.** El backend Redis lo lleva por defecto (`ttl_segundos=86_400`). Una respuesta cacheada *para siempre* es una respuesta **obsoleta servida con confianza**: cuando cambie el precio o la política, tu caché seguirá jurando lo viejo. Si el dato tiene fecha de caducidad, la caché también.
+- **Cachea por rol/variante, no globalmente.** Las entradas se guardan por `rol`: si el prompt del sistema o la variante A/B cambian, la respuesta correcta cambia — mezclarlas sirve la respuesta de otro. La llave debe incluir *todo* lo que altera la salida.
+- **Mide el acierto, no lo supongas.** `cache_hit` es una métrica de primera: sin ella no sabes si tu umbral está sirviendo aciertos o disparates. Súbelo o bájalo con datos — es exactamente el A/B del [m24b](/modulo/24b-feedback-a-b).
+
+<Box kind="warn" label="▲ Lo que la caché NO arregla">
+
+Cachear reduce **coste y latencia**, no mejora la **calidad**: si la respuesta guardada era mala, ahora la sirves mala más rápido y más barato. Y una caché semántica con el umbral flojo *empeora* la calidad — sirve respuestas de preguntas parecidas-pero-distintas. Primero acierta (m16c), después abarata.
+
+</Box>
+
 <Avoid label="⛔ Cuándo NO obsesionarte con instrumentar y medir">
 
 - **En un prototipo de un día.** Activar LangSmith y calcular el coste al céntimo es prematuro si aún no sabes si la idea sirve: instrumenta cuando vayas a producción, o cuando algo falle y no sepas por qué.
