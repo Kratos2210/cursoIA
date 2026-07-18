@@ -102,13 +102,13 @@ agente = create_react_agent(
 
 </Box>
 
-<Box kind="def" label="⛔ Cuándo NO usar memoria de largo plazo">
+<Avoid label="⛔ Cuándo NO usar memoria de largo plazo">
 
 - **No metas TODO en la ficha.** Guardar cada mensaje ensucia la memoria, sube el coste (más contexto en cada prompt) y esconde lo importante. Guarda hechos destilados y estables, no el historial.
 - **Datos que cambian rápido** (el saldo de una cuenta, el stock) NO son memoria: se consultan a la fuente en cada turno, como en el [m29](/modulo/29-caso-real-2-retail). La memoria es para lo que *define* al usuario, no para hechos volátiles.
 - **PII sin consentimiento.** Recordar "es alérgica al maní" es dato de salud: aplica el [m23](/modulo/23-seguridad-red-teaming) (consentimiento, minimización, borrado a pedido). Una memoria que no se puede borrar es un problema legal, no una feature.
 
-</Box>
+</Avoid>
 
 <Box kind="practice" label="✎ Para practicar">
 

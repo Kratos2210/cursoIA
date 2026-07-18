@@ -58,6 +58,14 @@ Mete cualquier función de Python dentro de la cadena.
 
 ```python title="chaincompleja.ipynb · componer flujos"
 from langchain_core.runnables import RunnableParallel, RunnablePassthrough, RunnableLambda
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from util import crear_llm
+
+llm = crear_llm()
+# Dos prompts, cada uno pide una cosa distinta sobre el MISMO {texto}
+prompt_resumen     = ChatPromptTemplate.from_template("Resume en 5 palabras: {texto}")
+prompt_sentimiento = ChatPromptTemplate.from_template("Sentimiento en 1 palabra de: {texto}")
 
 # Dos análisis del mismo texto, en paralelo
 analisis = RunnableParallel(

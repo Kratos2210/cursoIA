@@ -53,7 +53,7 @@ Separa **lo que decide el modelo** de **lo que decide tu código**, y testea lo 
 
 ### El truco del capstone: un modelo que recita un guion
 
-¿Cómo se testea un agente entero sin LLM? Se le pasa uno falso. Recuerda la regla del Módulo 18: `construir_agente()` recibe el modelo **por parámetro**. Entonces en los tests le entregas un `ModeloFalso` que, en vez de pensar, va devolviendo respuestas de una lista preparada:
+¿Cómo se testea un agente entero sin LLM? Se le pasa uno falso. La regla que lo hace posible es la que venimos aplicando: `construir_agente()` recibe el modelo **por parámetro** y nunca lo crea por dentro — por eso puedes sustituirlo en un test (y es la misma disciplina que el [m18](/modulo/18-capstone-final) llevará hasta el capstone). Entonces en los tests le entregas un `ModeloFalso` que, en vez de pensar, va devolviendo respuestas de una lista preparada:
 
 ```python title="proyecto_final/tests/conftest.py · el modelo falso"
 class ModeloFalso(BaseChatModel):

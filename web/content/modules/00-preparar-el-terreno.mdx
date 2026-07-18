@@ -92,7 +92,7 @@ La terminal es como enviarle notas escritas a tu computadora en lugar de señala
 
 `uv` es la herramienta que gestiona tu Python y tus librerías (y si te falta Python, `uv` lo instala solo). Pega en tu terminal el comando de tu sistema:
 
-```python title="terminal · instalar uv"
+```bash title="terminal · instalar uv"
 # macOS o Linux:
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
@@ -120,7 +120,7 @@ Para crear tu primer archivo: abre VS Code → menú *Archivo → Nuevo archivo*
 
 ### Instalación (con `uv`)
 
-```python title="terminal · setup.sh"
+```bash title="terminal · setup.sh"
 # Básico e intermedio
 uv init mi-curso-ia && cd mi-curso-ia
 uv add langchain langgraph python-dotenv pypdf
@@ -162,7 +162,7 @@ wheels for … `macosx_14_0_arm64` …
 
 No es tu código: `chromadb` arrastra `onnxruntime`, y desde la versión **1.24** ese paquete dejó de publicar binarios para Mac Intel (`x86_64`). La última con binario es la **1.23.2**. La solución es ponerle un techo en tu `pyproject.toml` y repetir la instalación:
 
-```python title="pyproject.toml · añade este bloque, luego repite los uv add"
+```toml title="pyproject.toml · añade este bloque, luego repite los uv add"
 [tool.uv]
 # onnxruntime dejó de publicar wheels para Mac Intel desde la 1.24
 constraint-dependencies = ["onnxruntime<1.24"]
@@ -227,11 +227,11 @@ Para empezar, con Gemini o Groq te basta. Pero el conmutador entiende **más pro
 
 El paso 5 es el que más confunde. El comando de instalación te dejó un `.env` con un texto de ejemplo; tú lo cambias por tu llave real:
 
-```python title=".env · ANTES (lo que creó el comando)"
+```ini title=".env · ANTES (lo que creó el comando)"
 GOOGLE_API_KEY=tu_llave_secreta
 ```
 
-```python title=".env · DESPUÉS (con tu llave real, sin comillas ni espacios)"
+```ini title=".env · DESPUÉS (con tu llave real, sin comillas ni espacios)"
 LLM_PROVIDER=google
 GOOGLE_API_KEY=AIzaSyD-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
@@ -244,7 +244,7 @@ GOOGLE_API_KEY=AIzaSyD-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 4. **Copia** la llave — empieza con `gsk_…`. Solo se muestra *una vez*.
 5. Pégala en el `.env` y cambia el proveedor:
 
-```python title=".env · con Groq"
+```ini title=".env · con Groq"
 LLM_PROVIDER=groq
 GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
@@ -299,7 +299,7 @@ Por eso los embeddings tienen su propia variable. Y por eso existe una salida qu
 uv sync --extra emb     # trae fastembed (ONNX, sin PyTorch)
 ```
 
-```python title=".env · chat en Groq, embeddings en tu portátil → cero cuota de Gemini"
+```ini title=".env · chat en Groq, embeddings en tu portátil → cero cuota de Gemini"
 LLM_PROVIDER=groq
 GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
@@ -339,7 +339,7 @@ Instala lo del bloque básico y consigue tu llave: en **aistudio.google.com** (G
 
 <Solution summary="Ver una solución">
 
-```python title="solución · verificación en 4 comandos"
+```bash title="solución · verificación en 4 comandos"
 pwd                      # ¿estás DENTRO de mi-curso-ia? si no: cd mi-curso-ia
 cat .env                 # debe mostrar LLM_PROVIDER y tu llave (AIza… o gsk_…)
 cat .gitignore | grep .env   # debe imprimir ".env" (si no: echo ".env" >> .gitignore)

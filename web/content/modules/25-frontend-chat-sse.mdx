@@ -52,7 +52,7 @@ def pagina_chat():
 
 ### Paso 2 · El parser SSE del cliente (fetch + ReadableStream)
 
-```python title="proyecto_llmops/app/static/chat.html · el bucle de lectura del stream"
+```javascript title="proyecto_llmops/app/static/chat.html · el bucle de lectura del stream"
 const resp = await fetch("/chat", {          // POST: por eso no EventSource
   method: "POST", headers: { "Content-Type": "application/json" },
   body: JSON.stringify({ mensaje, rol, thread_id: THREAD_ID }),

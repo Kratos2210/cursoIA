@@ -93,7 +93,7 @@ Los meseros no llevan libreta propia: **toda comanda va al sistema de la cocina*
 
 Kubernetes (K8s) orquesta contenedores. Su idea central es **declarativa**: tú describes en un archivo el estado deseado ("quiero 3 copias del servicio de ranking, con esta memoria") y K8s lo hace realidad *y lo defiende*: si una copia muere, levanta otra; si un servidor falla, mueve las copias a otro. Leamos un manifiesto real, línea por línea:
 
-```python title="deploy/k8s/ranking.yaml · un servicio declarado"
+```yaml title="deploy/k8s/ranking.yaml · un servicio declarado"
 apiVersion: apps/v1
 kind: Deployment            # "quiero este servicio corriendo SIEMPRE"
 metadata:
@@ -165,7 +165,7 @@ El `Deployment` + `Service` de arriba *levanta* tu agente, pero un despliegue de
   <Term>autoescalado (HPA)</Term>
   <Def>El `HorizontalPodAutoscaler` sube y baja réplicas según CPU o latencia. Es lo que convierte el "2 réplicas fijas" en "2 cuando hay calma, 20 en el pico".</Def>
   <Term>secrets (no en el YAML)</Term>
-  <Def>La `API key` jamás va en el manifiesto: va en un `Secret` (o un gestor externo tipo Vault) y se inyecta como variable de entorno. El [m23](/modulo/23-seguridad-red-teaming) ya te avisó: una llave en texto plano es una fuga esperando pasar.</Def>
+  <Def>La `API key` jamás va en el manifiesto: va en un `Secret` (o un gestor externo tipo Vault) y se inyecta como variable de entorno. El [m23](/modulo/23-seguridad-red-teaming) te lo desarrollará más adelante (nivel AI Engineer): una llave en texto plano es una fuga esperando pasar.</Def>
   <Term>ingress + límites de recursos</Term>
   <Def>El `Ingress` expone el `Service` al mundo con TLS y enrutado por ruta/host; los *requests/limits* de CPU y memoria dejan que el scheduler ubique bien los pods y evitan que uno se coma el nodo (o que lo maten por OOM).</Def>
 </DefList>

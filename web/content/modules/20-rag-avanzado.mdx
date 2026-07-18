@@ -50,6 +50,8 @@ Buscar con una sola formulación es preguntarle a **un** bibliotecario que quiz�
 
 La pregunta cruda produce varias reformulaciones deterministas. La clave está en el **mapa de sinónimos del dominio**: es lo que tapa el hueco "lo que dice el usuario ↔ lo que dice el documento".
 
+<Note>Este módulo reutiliza los ayudantes que ya construiste en el [m12](/modulo/12-recuperar-re-rankear): `tokenizar()`, el conjunto `STOPWORDS`, el mapa `SINONIMOS` y `fusion_rrf()` viven en `12_rag_hibrido_rerank.py`. Aquí no se repiten; el archivo `20_rag_avanzado.py` los importa de allí para no duplicar código.</Note>
+
 ```python title="20_rag_avanzado.py · multi-query a mano"
 def expandir_consulta(pregunta):
     base = pregunta.strip()
