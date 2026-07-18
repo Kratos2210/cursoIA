@@ -46,6 +46,12 @@ Es ponerle **anteojeras** al modelo: deja de conversar y su única misión es re
 
 </Box>
 
+<Box kind="analogy" label="◆ Primera vez que ves `class`: es un molde">
+
+Hasta aquí usabas funciones (recetas). Una **`class`** es otra cosa: define un **molde** con campos, y con él creas *objetos* que tienen esa forma. `class Persona(BaseModel)` dice "toda Persona tendrá `nombre` y `edad`"; el `(BaseModel)` significa "hereda las reglas de Pydantic", que valida los tipos por ti. No necesitas dominar clases para el curso: léelas como **formularios con campos tipados**.
+
+</Box>
+
 ```python title="extraction.ipynb · extraer una lista"
 from pydantic import BaseModel, Field
 from typing import Optional, List
@@ -85,6 +91,14 @@ print(clasificador.invoke("I love this new system, it's super fast!"))
 Si declaras un campo como obligatorio (sin `Optional`) y el texto **no trae ese dato**, el modelo tiene que llenarlo igual… así que se lo **inventa** para no dejar el molde incompleto. La cura es doble: marca como `Optional` (con `default=None`) todo lo que *pueda* faltar, y **valida a mano lo crítico** después de recibir el objeto. Un molde que obliga a rellenar es un molde que invita a alucinar.
 
 </Box>
+
+<Avoid label="⛔ Cuándo NO forzar salida estructurada">
+
+- **Cuando la respuesta es para un humano.** Un chat, un resumen, una explicación: ahí quieres prosa, no un objeto. La salida estructurada es para lo que va a *otra* pieza de software (una base de datos, un `if`, otra API).
+- **Cuando el molde es enorme y anidado.** Un esquema con veinte campos y tres niveles hace que el modelo se ahogue y falle más. Si te pasa, **parte** la extracción en pasos pequeños en vez de pedir todo de un golpe.
+- **Cuando un `str` simple basta.** No envuelvas en Pydantic algo que es una sola línea de texto: añades ceremonia sin ganar validación útil.
+
+</Avoid>
 
 <Box kind="practice" label="▸ Para practicar">
 

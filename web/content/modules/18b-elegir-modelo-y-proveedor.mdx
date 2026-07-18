@@ -170,6 +170,14 @@ Elegir modelo se siente como una decisión enorme e irreversible. No lo es. Grac
 
 </Box>
 
+<Avoid label="⛔ Cuándo NO cambiar de modelo (ni perseguir el más nuevo o barato)">
+
+- **Sin re-evaluar.** Cambiar el modelo en producción sin correr tu dataset ([m16](/modulo/16-observabilidad-y-costo)) es apostar la calidad a ciegas: uno más barato puede alucinar más en TU caso.
+- **Por hype.** El modelo recién salido, o el más barato, no es el mejor para toda tarea. Si tu caso pide razonamiento fuerte o ventana enorme, el flagship se paga solo; si no, un modelo *flash* sobra.
+- **Montando on-premise para "ahorrar" sin volumen.** Las GPUs encendidas cuestan aunque nadie pregunte. On-premise gana por privacidad y control, no por dinero, hasta que tu tráfico es grande y constante.
+
+</Avoid>
+
 <Box kind="practice" label="✎ Para practicar">
 
 1. Consigue una llave gratuita de **OpenRouter** y corre el ejemplo `01_primer_modelo.py` con un modelo `:free` (`LLM_PROVIDER=openrouter` + `LLM_MODELO=…:free`). No debería costarte un centavo.

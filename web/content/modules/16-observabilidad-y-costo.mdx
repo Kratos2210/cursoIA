@@ -148,6 +148,14 @@ La tabla `PRECIOS` del archivo caduca: Google los cambia. Antes de presupuestar 
 
 </Box>
 
+<Avoid label="⛔ Cuándo NO obsesionarte con instrumentar y medir">
+
+- **En un prototipo de un día.** Activar LangSmith y calcular el coste al céntimo es prematuro si aún no sabes si la idea sirve: instrumenta cuando vayas a producción, o cuando algo falle y no sepas por qué.
+- **Cuando la métrica no dispara ninguna acción.** Un tablero lleno de números que nadie mira no mejora nada. Vigila las pocas que te harían *cambiar* algo (coste por consulta, tasa de alucinación), no todas las que se pueden graficar.
+- **Optimizando coste antes de tener tráfico.** Recortar tokens de una app con diez usuarios al día es afilar un lápiz mientras la casa está apagada: primero consigue uso real, luego abarata donde de verdad pesa.
+
+</Avoid>
+
 ### Paso 4 — Evaluación automatizada: datasets + tests
 
 Observar no basta: quieres **medir la calidad de forma repetible** y que un cambio de prompt o modelo no la rompa sin avisar. La receta tiene tres ingredientes: un *dataset* (preguntas con respuesta esperada — tu `proyectorag/preguntas.txt` ya es el borrador de uno), un *evaluador* que puntúa cada respuesta, y *tests* que corren en cada cambio.

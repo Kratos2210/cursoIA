@@ -112,6 +112,14 @@ Un agente **no responde en una sola llamada**: puede iterar varias veces por pre
 
 </Box>
 
+<Avoid label="⛔ Cuándo NO usar un agente (usa una cadena)">
+
+- **Cuando el flujo es predecible.** Si siempre haces los mismos pasos en el mismo orden, una cadena ([m02](/modulo/02-prompts-lcel)) o un router ([m08](/modulo/08-routing)) hace lo mismo más barato, más rápido y —lo importante— testeable de punta a punta.
+- **Cuando el coste o la latencia importan.** Un agente puede dar varias vueltas por consulta; una cadena da una sola llamada. No pagues la autonomía si no la necesitas.
+- **Cuando necesitas resultados reproducibles.** La longitud del ciclo de un agente se descubre en ejecución: eso es potencia, pero también imprevisibilidad. Para un paso que debe salir igual siempre, no uses un agente.
+
+</Avoid>
+
 <Box kind="practice" label="▸ Para practicar">
 
 Dale dos tools: `consultar_disponibilidad` y `agendar_cita`. En los docstrings escribe "usa consultar cuando PREGUNTAN" y "usa agendar SOLO cuando CONFIRMAN". Observa cómo elige según tu intención.

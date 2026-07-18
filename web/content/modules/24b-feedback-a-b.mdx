@@ -86,6 +86,35 @@ El cambio es **aditivo**: el evento SSE `fin` de `/chat` gana una clave `"varian
 
 </Avoid>
 
+<Box kind="def" label="◈ ¿Cuántos votos bastan? · el test z de dos proporciones">
+
+El Avoid de arriba dice "hace falta significancia". Aquí está, sin misterio. Comparas dos tasas de aprobación (`p_A`, `p_B`) y preguntas: *¿la diferencia es real o pudo salir por azar?* La herramienta estándar es el **test z de dos proporciones**.
+
+<Formula>
+z = (p_A − p_B) ÷ √( p·(1−p)·(1/n_A + 1/n_B) ) , con p = (👍_A + 👍_B) ÷ (n_A + n_B)
+</Formula>
+
+Regla de bolsillo: **|z| ≥ 1.96** ⇒ la diferencia es significativa al 95%. Y para *tener* con qué detectar una mejora de ~10 puntos necesitas del orden de **~100 votos por variante**, no tres.
+
+```python title="significancia.py · z de dos proporciones (stdlib, ilustrativo)"
+from math import sqrt
+
+def z_dos_proporciones(util_a, n_a, util_b, n_b):
+    """¿La diferencia entre dos tasas de aprobación es real o azar?
+    |z| >= 1.96 -> significativa al 95%. Solo `math`, sin dependencias."""
+    p_a, p_b = util_a / n_a, util_b / n_b
+    p = (util_a + util_b) / (n_a + n_b)          # tasa combinada (hipótesis nula)
+    se = sqrt(p * (1 - p) * (1/n_a + 1/n_b))     # error estándar de la diferencia
+    return (p_a - p_b) / se if se else 0.0
+
+print(round(z_dos_proporciones(8, 12, 9, 11), 2))      # -0.83  -> NO concluyente (pocos votos)
+print(round(z_dos_proporciones(80, 120, 90, 110), 2))  # -2.61  -> SÍ: la concisa gana al 95%
+```
+
+Con los 12 y 11 votos del ejemplo de arriba, `|z|` no llega a 1.96: **empate estadístico**, aunque `0.818` "se vea" mejor que `0.667`. Multiplica los votos por 10 y la *misma* diferencia sí es significativa. Esa es toda la distancia entre una opinión con pasos y una decisión.
+
+</Box>
+
 <Box kind="practice" label="▸ Para practicar">
 
 Manda varios `POST /chat` con distintos `thread_id` y comprueba en el evento `fin` que cada hilo cae siempre en la misma variante. Luego vota con `POST /feedback` y mira cómo `GET /feedback` mueve la `tasa_aprobacion`. Y el lazo ya está **cerrado de punta a punta** (ver `ADR-0006`): la variante no solo atribuye el voto, también **elige el agente** — cada uno con el prompt de su YAML (`construir_agentes_por_variante`), así que la `tasa_aprobacion` mide el efecto real del prompt.

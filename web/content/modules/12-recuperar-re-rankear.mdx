@@ -146,9 +146,13 @@ Pregunta: ¿Cuál es el horario de atención de soporte?
 
 <Box kind="warn" label="▲ Lo que RRF premia (y lo que NO)">
 
-Casi todo el mundo dice que RRF "premia al que queda equilibrado en ambas listas". **Es falso**, y se demuestra con una calculadora. Con `k=60`, un documento que queda 1º y 3º suma `1/61 + 1/63 = 0.032266`; uno que queda 2º y 2º suma `1/62 + 1/62 = 0.032258`. Gana el *extremista*, no el consistente: la curva `1/(k+puesto)` es **convexa**, así que el promedio de los extremos supera al del medio.
+Casi todo el mundo dice que RRF "premia al que queda equilibrado en ambas listas". **Es falso**. Lo que RRF premia de verdad es **estar presente en ambas listas**. Un documento 2º y 2º (`0.032258`) aplasta a uno que fue 1º en una lista pero que la otra *ni vio* (`1/61 = 0.016393`): la ausencia no suma nada. Ese, y no el equilibrio, es el mecanismo. Hay un test que lo fija en `tests/test_offline.py` — de hecho, ese test corrigió a quien escribió esta explicación.
 
-Lo que RRF premia de verdad es **estar presente en ambas listas**. Un documento 2º y 2º (`0.032258`) aplasta a uno que fue 1º en una lista pero que la otra *ni vio* (`1/61 = 0.016393`): la ausencia no suma nada. Ese, y no el equilibrio, es el mecanismo. Hay un test que lo fija en `tests/test_offline.py` — de hecho, ese test corrigió a quien escribió esta explicación.
+<Solution summary="Para curiosos · por qué gana el «extremista» (la demostración con la calculadora)">
+
+Con `k=60`, un documento que queda 1º y 3º suma `1/61 + 1/63 = 0.032266`; uno que queda 2º y 2º suma `1/62 + 1/62 = 0.032258`. Gana el *extremista*, no el consistente: la curva `1/(k+puesto)` es **convexa**, así que el promedio de los extremos supera al del medio. (No necesitas esto para usar RRF; es solo el *porqué* matemático.)
+
+</Solution>
 
 </Box>
 

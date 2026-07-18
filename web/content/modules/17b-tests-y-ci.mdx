@@ -135,6 +135,14 @@ Sin esa bandera, un marcador mal escrito (`@pytest.mark.ofline`) no falla: pytes
 
 </Box>
 
+<Avoid label="⛔ Cuándo NO escribir (o no fiarte de) un test">
+
+- **Cuando el test llama al LLM real.** En la CI eso cuesta dinero, es lento y se pone rojo por un 429 ajeno a tu código. Esos tests van en tu máquina, no en el pipeline (por eso la CI del curso no tiene la llave).
+- **Persiguiendo el 100% de cobertura.** Testear getters triviales o envoltorios de una línea infla el número sin proteger nada. Cubre la *lógica* que puede romperse, no cada línea.
+- **Cuando el test copia la implementación.** Un test que repite el *cómo* (los mismos cálculos que la función) pasa siempre, incluso cuando ambos están mal. Prueba el *comportamiento* observable, no el código por dentro.
+
+</Avoid>
+
 <Box kind="practice" label="▸ Para practicar">
 
 Rompe algo a propósito y mira cómo te avisa la red. Abre `util.py`, invierte la condición de `es_error_cuota()` (pon `not`) y corre `uv run pytest -m offline`. Después escribe tú un test nuevo: que `formatear_linea()` de `audit.py` incluya la severidad. Márcalo con `@pytest.mark.offline`.

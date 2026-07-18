@@ -56,6 +56,12 @@ Mete cualquier función de Python dentro de la cadena.
 
 </Grid3>
 
+<Box kind="analogy" label="◆ Primera vez que ves `lambda`: una función sin nombre">
+
+`lambda x: x.upper()` es una función de una sola línea escrita *en el sitio*, sin `def` ni nombre. Equivale a `def f(x): return x.upper()`. Se usa cuando la función es tan corta que ponerle nombre estorba — justo lo que pide `RunnableLambda` para colar un paso propio dentro de la cadena.
+
+</Box>
+
 ```python title="chaincompleja.ipynb · componer flujos"
 from langchain_core.runnables import RunnableParallel, RunnablePassthrough, RunnableLambda
 from langchain_core.prompts import ChatPromptTemplate
@@ -89,6 +95,14 @@ HOLA
 Una cadena RAG (Módulo 11) es literalmente esto: `{"context": retriever | unir, "question": RunnablePassthrough()}`. Recuperas contexto en una rama y conservas la pregunta en la otra, en paralelo.
 
 </Box>
+
+<Avoid label="⛔ Cuándo NO usar estos runnables">
+
+- **Cuando el flujo es una línea recta.** Si no hay ramas ni copias que conservar, un simple `prompt | llm | parser` sobra: meter `RunnableParallel` "por si acaso" solo añade indirección.
+- **Cuando el paso hace algo caro o con efectos.** Un `RunnableLambda` es para lógica trivial y pura (limpiar, formatear, contar). Si la función llama a una API, escribe en disco o puede fallar, merece ser una herramienta ([m07](/modulo/07-herramientas)) o un nodo de grafo ([m13](/modulo/13-langgraph-a-fondo)), no un lambda escondido en la cadena.
+- **Cuando la decisión es del modelo, no tuya.** Si el camino depende de lo que el modelo elija, eso es *routing* ([m08](/modulo/08-routing)) o un agente, no ramas fijas en paralelo.
+
+</Avoid>
 
 <Box kind="practice" label="▸ Para practicar">
 

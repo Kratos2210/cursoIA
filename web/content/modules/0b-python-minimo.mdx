@@ -10,12 +10,12 @@ export const meta = {
   "pyFile": null,
   "fileref": null,
   "tested": false,
-  "goals": "🎯 Al terminar sabrás: leer Python sin miedo (las 7 ideas que usa todo el curso).",
+  "goals": "🎯 Al terminar sabrás: leer Python sin miedo (las 8 ideas que usa todo el curso).",
   "prereqs": "✅ Necesitas: Módulo 00.",
   "minutes": "⏱️ ~40 min"
 };
 
-No necesitas ser programador para hacer este curso — pero sí **leer** Python sin miedo. Estas son las únicas 7 ideas que aparecen una y otra vez en los ejemplos. Si ya programas, salta directo al Módulo 01.
+No necesitas ser programador para hacer este curso — pero sí **leer** Python sin miedo. Estas son las únicas 8 ideas que aparecen una y otra vez en los ejemplos. Si ya programas, salta directo al Módulo 01.
 
 ### 1 · Variables: cajas con etiqueta
 
@@ -81,7 +81,27 @@ print(aplicar_descuento(3500, 18))
 2870.0
 ```
 
-### 5 · La indentación ES sintaxis
+### 5 · Decisiones y repeticiones: `if` y `for`
+
+Dos gestos que aparecen en casi todos los ejemplos. `if` **elige** un camino según una condición (y `else` es el "si no"); `for` **repite** una acción para cada elemento de una lista. Fíjate en los 4 espacios: marcan qué está *dentro* de cada bloque (es justo la idea siguiente).
+
+```python title="if y for"
+notas = [18, 11, 20]
+
+for n in notas:              # repite el bloque una vez por cada nota
+    if n >= 13:              # elige un camino según la condición
+        print(n, "aprobado")
+    else:                    # el "si no": cuando la condición es falsa
+        print(n, "jalado")
+```
+
+```text title="▸ deberías ver"
+18 aprobado
+11 jalado
+20 aprobado
+```
+
+### 6 · La indentación ES sintaxis
 
 <Box kind="warn" label="▲ La regla que más rompe código">
 
@@ -89,7 +109,7 @@ En Python, los espacios al inicio de línea no son estética: **definen qué est
 
 </Box>
 
-### 6 · import: traer piezas de otros
+### 7 · import: traer piezas de otros
 
 Casi ningún programa se escribe desde cero: `import` trae piezas ya hechas (librerías). Las dos formas que verás:
 
@@ -100,7 +120,7 @@ from dotenv import load_dotenv              # trae SOLO la pieza load_dotenv
 print(os.path.exists(".env"))               # se usa con su apellido: os.algo
 ```
 
-### 7 · Leer un traceback (el mensaje de error)
+### 8 · Leer un traceback (el mensaje de error)
 
 Cuando algo falla, Python imprime un **traceback**. Asusta, pero se lee fácil si sabes el truco: **ve directo a la última línea** (el qué), y la penúltima te dice el dónde.
 
@@ -123,7 +143,7 @@ Error → última línea → si no la entiendes, cópiala completa en un buscado
 Este bloque junta las 7 ideas. Si puedes explicar qué hace línea por línea, estás listo para **todo** el curso:
 
 ```python title="todo junto"
-from statistics import mean                    # 6: traer una pieza (promedio)
+from statistics import mean                    # 7: traer una pieza (promedio)
 
 def resumen(cliente):                          # 4: una función
     notas = cliente["notas"]                   # 3: leer un diccionario
@@ -134,7 +154,7 @@ clientes = [                                   # 3: una lista...
     {"nombre": "Luis", "notas": [11, 14, 13]},
 ]
 
-for c in clientes:                             # recorrer la lista, uno por uno
+for c in clientes:                             # 5: recorrer la lista, uno por uno
     print(resumen(c))                          # 1: mostrar el resultado
 ```
 
@@ -166,6 +186,6 @@ for p in personas:
 
 <Recap level={1} label="↺ En una frase">
 
-Con siete piezas de Python —variables, f-strings, listas y diccionarios, funciones, indentación, `import` y leer un traceback— tienes todo lo que este curso te va a pedir.<Arch>Sin archivo: practícalo en el intérprete, `uv run python`</Arch>
+Con ocho piezas de Python —variables, f-strings, listas y diccionarios, funciones, condicionales y bucles (`if`/`for`), indentación, `import` y leer un traceback— tienes todo lo que este curso te va a pedir.<Arch>Sin archivo: practícalo en el intérprete, `uv run python`</Arch>
 
 </Recap>

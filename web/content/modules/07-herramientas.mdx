@@ -40,6 +40,12 @@ Darle herramientas al modelo es como darle a un empleado nuevo **acceso al siste
 
 </Box>
 
+<Box kind="analogy" label="◆ Primera vez que ves `@`: un decorador">
+
+La línea `@tool` justo encima de un `def` es un **decorador**: envuelve tu función y le añade poderes sin que cambies su cuerpo. `@tool` toma la función normal de abajo y la registra como herramienta (leyendo su nombre, sus tipos y su docstring). Léelo como "convierte lo de abajo en una herramienta". En el curso solo necesitas *reconocer* el gesto, no escribir decoradores propios.
+
+</Box>
+
 ```python title="functioncall.ipynb · una herramienta"
 from langchain_core.tools import tool
 
@@ -55,6 +61,14 @@ def calculadora_descuentos(precio: float, porcentaje: float) -> float:
 El **docstring no es documentación: es programación**. El modelo decide *cuándo* usar la herramienta leyendo esa descripción, y usa los nombres/tipos de los parámetros (`precio: float`) para rellenar los datos. Docstring vago → agente que se equivoca.
 
 </Box>
+
+<Avoid label="⛔ Cuándo NO darle una herramienta al modelo">
+
+- **Cuando la acción debe correr siempre.** Si un paso es obligatorio y determinista (guardar el pedido, cobrar), llámalo *tú* en el código. No lo dejes a criterio del modelo, que puede decidir no usarlo.
+- **Cuando la acción es peligrosa sin control.** Borrar datos, mover dinero, mandar correos: exponerlas como tool sin una aprobación humana ([human-in-the-loop, m13](/modulo/13-langgraph-a-fondo)) es entregarle las llaves a algo que *pide* pero no entiende consecuencias.
+- **Cuando hay demasiadas.** Una tool por cada capricho satura la elección: el modelo se confunde entre veinte casi-iguales. Menos herramientas, bien descritas, eligen mejor.
+
+</Avoid>
 
 <Box kind="practice" label="▸ Para practicar">
 
