@@ -90,8 +90,15 @@ services:
     environment:
       # Langfuse necesita SU PROPIA base de datos (distinta del RAG).
       DATABASE_URL: "postgresql://langfuse:langfuse@langfuse-db:5432/langfuse"
-      NEXTAUTH_SECRET: "cambia-esto-en-produccion-usa-openssl-rand-base64-32"
-      SALT: "cambia-esto-tambien-usa-openssl-rand-base64-32"
+      # ⚠️ SIN DEFAULT A PROPÓSITO. La sintaxis `${VAR:?mensaje}` hace que
+      #    `docker compose up` FALLE si la variable no está definida, en vez de
+      #    arrancar con un secreto de ejemplo que todo el mundo conoce.
+      #    Antes aquí había literales "cambia-esto-en-produccion...": funcionaban,
+      #    y por eso nadie los cambiaba. Un secreto por defecto es un secreto
+      #    público. Genera los tuyos con:  openssl rand -base64 32
+      #    (El .env.example de al lado ya trae las dos líneas listas para copiar.)
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:?define NEXTAUTH_SECRET en tu .env (openssl rand -base64 32)}
+      SALT: ${LANGFUSE_SALT:?define LANGFUSE_SALT en tu .env (openssl rand -base64 32)}
       NEXTAUTH_URL: "http://localhost:3000"
       # Telemetría de Langfuse desactivada (no reporta a terceros).
       TELEMETRY_ENABLED: "false"
@@ -100,8 +107,13 @@ services:
       LANGFUSE_INIT_ORG_NAME: "GobData"
       LANGFUSE_INIT_PROJECT_ID: "gobdata-prod"
       LANGFUSE_INIT_PROJECT_NAME: "GobData Producción"
-      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: "pk-lf-xxxxxxxx"
-      LANGFUSE_INIT_PROJECT_SECRET_KEY: "sk-lf-xxxxxxxx"
+      # Estas SÍ llevan default, y es una decisión distinta: son las llaves con
+      # las que Langfuse se autoinicializa en LOCAL, y tienen que coincidir con
+      # las del .env de la app para que el tracing funcione nada más levantar.
+      # No protegen nada (el servicio solo escucha en tu máquina); si expones
+      # Langfuse a una red real, cámbialas por env como las de arriba.
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-pk-lf-local-demo}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-sk-lf-local-demo}
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3000/api/public/health || exit 1"]
       interval: 10s
@@ -126,7 +138,69 @@ services:
       timeout: 3s
       retries: 10
 
+  # ------------------------------------------------------------------
+  # 4) LA APP: el servicio en sí, ya como imagen desplegable.
+  #    Hasta la Fase 1 de la auditoría, este compose levantaba solo la
+  #    infraestructura y la app se arrancaba a mano con `uvicorn --reload`.
+  #    Eso servía para desarrollar, pero no había NADA que desplegar.
+  #
+  #    Se levanta con:  docker compose --profile app up -d
+  #    Sin el perfil, `docker compose up -d` sigue levantando solo la infra,
+  #    que es lo que quiere quien está siguiendo el curso y edita en caliente.
+  # ------------------------------------------------------------------
+  app:
+    profiles: ["app"]
+    build:
+      # El contexto es curso_ejemplos/ (dos niveles arriba de este archivo):
+      # la imagen necesita el pyproject.toml, el uv.lock y proyecto_final/.
+      # Ver el encabezado del Dockerfile.
+      context: ..
+      dockerfile: proyecto_llmops/Dockerfile
+    container_name: gobdata-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # Dentro de la red de compose, los servicios se llaman por su NOMBRE, no
+      # por localhost: 'localhost' dentro del contenedor es el contenedor mismo.
+      PG_HOST: postgres
+      PG_PORT: 5432          # el puerto interno, no el 5433 publicado al host
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      LANGFUSE_HOST: http://langfuse:3000
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-pk-lf-local-demo}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-sk-lf-local-demo}
+      # La llave del proveedor NO tiene default: sin ella el servicio no puede
+      # responder, y es mejor no arrancar que arrancar roto.
+      LLM_API_KEY: ${LLM_API_KEY:?define LLM_API_KEY en tu .env}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # Vacío = servicio abierto (la app lo avisa al arrancar y lo publica en
+      # /health). Para un despliegue real: API_KEYS=clave:rol,...
+      API_KEYS: ${API_KEYS:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # Sin curl: la imagen es slim y no lo trae. Se usa el Python que ya está.
+      test: ["CMD", "python", "-c",
+             "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=3).status==200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      # ⭐ El primer arranque descarga el modelo de embeddings (~220 MB) e indexa
+      #    la normativa. Sin este margen, el orquestador lo daría por muerto y lo
+      #    reiniciaría en bucle — reiniciando también la descarga, para siempre.
+      start_period: 180s
+    volumes:
+      # Persiste el modelo de embeddings entre reinicios: sin esto, cada
+      # arranque vuelve a descargar los ~220 MB.
+      - fastembed:/srv/.cache/fastembed
+
 volumes:
   pgdata:
   redisdata:
   langfusedata:
+  fastembed:

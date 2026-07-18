@@ -35,5 +35,68 @@ services:
       timeout: 3s
       retries: 5
 
+  # ------------------------------------------------------------------
+  # LA APP: el servicio en sí, ya como imagen desplegable.
+  #   Hasta la Fase 1 de la auditoría, este compose levantaba solo Redis y la
+  #   app se arrancaba a mano con `uvicorn --reload`. Eso servía para
+  #   desarrollar, pero no había NADA que desplegar.
+  #
+  #   Se levanta con:  docker compose -f proyecto_retail/docker-compose.yml --profile app up -d
+  #   Sin el perfil, `up -d` sigue levantando solo Redis, que es lo que quiere
+  #   quien está siguiendo el curso y edita en caliente.
+  # ------------------------------------------------------------------
+  app:
+    profiles: ["app"]
+    build:
+      # El contexto es curso_ejemplos/ (un nivel arriba de este archivo): la
+      # imagen necesita el pyproject.toml, el uv.lock y que `proyecto_retail`
+      # cuelgue de la raíz para ser importable. Ver el encabezado del Dockerfile.
+      context: ..
+      dockerfile: proyecto_retail/Dockerfile
+    container_name: sifrah-app
+    restart: unless-stopped
+    ports:
+      - "8001:8000"   # 8001 en el host, para no chocar con el de proyecto_llmops
+    environment:
+      # Dentro de la red de compose, los servicios se llaman por su NOMBRE, no
+      # por localhost: 'localhost' dentro del contenedor es el contenedor mismo.
+      REDIS_HOST: redis
+      REDIS_PORT: 6379       # el puerto interno, no el 6381 publicado al host
+      LANGFUSE_HOST: ${LANGFUSE_HOST:-http://localhost:3000}
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
+      # ⚠️ SIN DEFAULT A PROPÓSITO. La sintaxis `${VAR:?mensaje}` hace que
+      #    `docker compose up` FALLE si la variable no está definida, en vez de
+      #    arrancar con un placeholder que no responde. Sin llave del proveedor
+      #    el asistente no puede contestar, y es mejor no arrancar que arrancar
+      #    roto: un servicio que responde 500 a todo pasa el healthcheck de red
+      #    y engaña al orquestador durante horas.
+      LLM_API_KEY: ${LLM_API_KEY:?define LLM_API_KEY en tu .env (tu llave de Groq)}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.groq.com/openai/v1}
+      LLM_MODELO: ${LLM_MODELO:-qwen/qwen3-32b}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # Vacío = servicio abierto (la app lo avisa al arrancar y lo publica en
+      # /health). Para un despliegue real: API_KEYS=clave1,clave2
+      API_KEYS: ${API_KEYS:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # Sin curl: la imagen es slim y no lo trae. Se usa el Python que ya está.
+      test: ["CMD", "python", "-c",
+             "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health', timeout=3).status==200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      # ⭐ Margen para el arranque: cargar el catálogo demo y construir el LLM
+      #    tarda unos segundos. Es MUCHO menor que el de proyecto_llmops (180s)
+      #    porque aquí no se descarga ningún modelo de embeddings: los del caché
+      #    son propios y puros (app/embeddings.py). Aun así no es 0 — sin
+      #    margen, el orquestador daría por muerto un arranque sano y lo
+      #    reiniciaría en bucle.
+      start_period: 30s
+
 volumes:
   redis_data:
