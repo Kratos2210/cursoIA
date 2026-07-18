@@ -128,6 +128,32 @@ class Settings(BaseSettings):
     app_port: int = 8000
     app_rol_por_defecto: str = "analyst"
 
+    # ---- LOGGING ----
+    # DEBUG en desarrollo, INFO en producción. Cambiar la verbosidad de un
+    # servicio no debería requerir tocar código ni reconstruir la imagen.
+    log_level: str = "INFO"
+
+    # ---- AUTENTICACIÓN ----
+    # Credenciales y el rol que otorga cada una: "clave:rol,otra:rol".
+    # VACÍO = servicio abierto y el rol viaja en el body (el modo del curso).
+    # Ver app/auth.py: con claves configuradas, el rol deja de ser un dato de
+    # entrada y pasa a deducirse de la credencial.
+    #
+    # ⚠️ Es un `str` y no un dict a propósito: pydantic-settings intentaría
+    #    parsear un campo complejo como JSON, y "clave:rol,otra:rol" no lo es.
+    api_keys: str = ""
+
+    # Orígenes que pueden llamar a la API desde un navegador, separados por
+    # comas. Vacío = no se instala CORS (mismo origen, que es lo que hace la
+    # demo: el frontend lo sirve este mismo servicio en `/`).
+    # ⚠️ "*" con credenciales es una combinación que los navegadores rechazan,
+    #    y aquí además sería regalar la API a cualquier página. Sé explícito.
+    cors_origins: str = ""
+
+    @property
+    def lista_cors(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
     # ---- RUTAS ----
     @property
     def ruta_normativa(self) -> Path:

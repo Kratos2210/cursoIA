@@ -39,19 +39,23 @@ Probar:
 """
 from __future__ import annotations
 
+import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from proyecto_retail.app import frontend, streaming
+from proyecto_retail.app import auth, frontend, streaming
 from proyecto_retail.app.config import settings
 from proyecto_retail.guardrails import input_guard
-from proyecto_retail.observability import metrics, tracing
+from proyecto_retail.observability import logs, metrics, tracing
 from proyecto_retail.observability.cost_model import Uso
 from proyecto_retail.observability.feedback import ColectorFeedback
 from proyecto_retail.prompts.experimentos import Experimento
+
+log = logs.obtener_logger(__name__)
 
 # El A/B: A = la vendedora cálida (vendedora.yaml), B = la directa
 # (vendedora_directa.yaml). El thread_id fija cuál ve cada clienta, de forma
@@ -88,6 +92,12 @@ def crear_app(responder=None, catalogo=None, cache=None,
     colector  : dónde se acumulan las métricas del proceso.
     feedback  : dónde se acumulan los votos 👍/👎 del A/B.
     """
+    # Lo primero de todo: si algo falla más abajo, queremos que el fallo salga
+    # ya en formato legible por máquina y no en un print perdido.
+    logs.configurar_logging(settings.log_level)
+    # Y que quede dicho, en el arranque, si el servicio está abierto de par en par.
+    auth.avisar_del_modo_abierto()
+
     estado = {
         "responder": responder,
         "catalogo": catalogo,
@@ -128,30 +138,107 @@ def crear_app(responder=None, catalogo=None, cache=None,
         lifespan=lifespan,
     )
 
+    # ------------------------------------------------------------------
+    # CORS · qué páginas pueden llamar a esta API desde un navegador
+    # ------------------------------------------------------------------
+    # Solo si hay orígenes configurados. La demo sirve su propio frontend en `/`,
+    # así que es el MISMO origen y no necesita CORS: instalarlo "por si acaso"
+    # con "*" sería abrir la API a cualquier página de internet. En cuanto el
+    # widget viva en sifrah.com y el backend en otro dominio, aquí va ese origen
+    # y solo ese.
+    if settings.lista_cors:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=settings.lista_cors,
+            allow_credentials=True,
+            allow_methods=["GET", "POST"],      # lo que la API usa, nada más
+            allow_headers=["Content-Type", "X-API-Key", "X-Request-ID"],
+        )
+
+    # ------------------------------------------------------------------
+    # MIDDLEWARE · el request_id que cose los logs de una misma petición
+    # ------------------------------------------------------------------
+    @app.middleware("http")
+    async def correlacionar_y_registrar(request, call_next):
+        """Le pone un id a cada petición y registra cómo acabó.
+
+        ⭐ El id se RESPETA si viene de fuera (`X-Request-ID`). Así, cuando haya
+           un reverse proxy o el widget de la tienda delante, el mismo
+           identificador cose la traza de punta a punta y no empieza de cero en
+           cada salto.
+
+        Se devuelve también en la respuesta: cuando una clienta reporta "me
+        dijo un precio raro", con su `X-Request-ID` encontramos SU petición
+        entre millones.
+        """
+        rid = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:12]
+        token = logs.fijar_request_id(rid)
+        try:
+            respuesta = await call_next(request)
+            respuesta.headers["X-Request-ID"] = rid
+            # /health lo llama el orquestador cada pocos segundos: registrarlo
+            # ahogaría el log real en ruido.
+            #
+            # ⚠️ Este log va DENTRO del try, antes del `finally`. Si se emitiera
+            #    después, el ContextVar ya estaría limpio y la línea saldría sin
+            #    `request_id` — justo la que más lo necesita.
+            if request.url.path != "/health":
+                log.info("request", extra={
+                    "ruta": request.url.path,
+                    "metodo": request.method,
+                    "estado": respuesta.status_code,
+                })
+            return respuesta
+        except Exception:
+            # `exception()` mete el traceback dentro del JSON. Sin esto, un 500
+            # aparece en los logs sin una sola pista de dónde se rompió.
+            log.exception("request falló", extra={
+                "ruta": request.url.path, "metodo": request.method})
+            raise
+        finally:
+            logs.reiniciar_request_id(token)
+
     @app.get("/", response_class=HTMLResponse)
     def pagina_chat() -> str:
-        """Sirve la SPA de app/static/chat.html, ya cargada en memoria."""
+        """Sirve la SPA de app/static/chat.html, ya cargada en memoria.
+
+        ⚠️ La PÁGINA se sirve abierta a propósito (es HTML, no datos), pero el
+           /chat que consume ya exige credencial si `API_KEYS` está configurado.
+        """
         return frontend.PAGINA_CHAT
 
     @app.get("/health")
     def health() -> dict:
-        """Lo que mira el orquestador cada pocos segundos. BARATO: no llama al LLM."""
+        """Lo que mira el orquestador cada pocos segundos. BARATO: no llama al LLM.
+
+        Va SIN auth: el orquestador no tiene credenciales, y si /health exigiera
+        una, un fallo de configuración de las claves parecería un servicio caído
+        y desataría un reinicio en bucle.
+        """
         return {
             "estado": "ok",
             "modelo": settings.llm_modelo,
             "tracing": tracing.activo(),
             "listo": estado["responder"] is not None,
+            # Que el modo abierto sea VISIBLE. Un servicio sin auth debe poder
+            # detectarse desde fuera, no solo leyendo el .env del servidor.
+            "auth_activa": auth.auth_activa(),
         }
 
-    @app.get("/metrics")
+    @app.get("/metrics", dependencies=[Depends(auth.requiere_credencial)])
     def metricas() -> dict:
-        """Tokens, coste, p95 y tasa de aciertos del caché (por proceso)."""
+        """Tokens, coste, p95 y tasa de aciertos del caché (por proceso).
+
+        Detrás de auth: el consumo de tokens y la latencia de un servicio son
+        información de negocio. Publicarlos abiertamente le dice a cualquiera
+        cuánto tráfico manejas y cuánto te cuesta.
+        """
         resumen = estado["colector"].resumen()
         if estado["cache"] is not None:
             resumen["cache_tasa_aciertos"] = round(estado["cache"].tasa_aciertos, 3)
         return resumen
 
-    @app.post("/feedback")
+    @app.post("/feedback", dependencies=[Depends(auth.requiere_credencial)])
     def registrar_feedback(voto: Feedback) -> dict:
         """Registra un voto y lo agrega por variante. Si el cliente no manda
         `variante`, se deriva del thread_id con la MISMA asignación pegajosa."""
@@ -161,14 +248,25 @@ def crear_app(responder=None, catalogo=None, cache=None,
             thread_id=voto.thread_id, comentario=voto.comentario)
         return {"ok": True}
 
-    @app.get("/feedback")
+    @app.get("/feedback", dependencies=[Depends(auth.requiere_credencial)])
     def resumen_feedback() -> dict:
-        """👍/👎, total y tasa_aprobacion por variante (el resultado del A/B)."""
+        """👍/👎, total y tasa_aprobacion por variante (el resultado del A/B).
+
+        Protegido por lo mismo que /metrics: el resultado de tu experimento de
+        prompts es información de negocio, y el POST hermano deja de poder
+        envenenarse desde fuera (un bot votando 👎 mil veces decidiría el A/B).
+        """
         return estado["feedback"].resumen()
 
-    @app.post("/chat")
+    @app.post("/chat", dependencies=[Depends(auth.requiere_credencial)])
     async def chat(peticion: PeticionChat) -> StreamingResponse:
-        """Responde en streaming SSE, atravesando las capas."""
+        """Responde en streaming SSE, atravesando las capas.
+
+        ⚠️ La credencial se comprueba AQUÍ, en la dependencia, y no dentro de
+           `_flujo`: un 401 debe salir como un 401 de verdad. Una vez abierto el
+           stream SSE la cabecera ya se mandó, y solo se podría avisar por el
+           canal de eventos — con un 200 en el status, que es mentir.
+        """
         return StreamingResponse(
             _flujo(peticion, estado),
             media_type="text/event-stream",
@@ -215,6 +313,16 @@ async def _flujo(peticion: PeticionChat, estado: dict):
         try:
             respuesta = estado["responder"](pregunta, variante)
         except Exception as error:  # pragma: no cover - depende del proveedor
+            # Un 429 de Groq, un timeout, el catálogo live caído. El cliente ya
+            # tiene la cabecera 200 y el stream abierto: no podemos devolver un
+            # 503. Se lo decimos por el canal de eventos.
+            #
+            # Y lo dejamos en el log CON traceback: el cliente ve un mensaje, el
+            # operador necesita la pila. Antes esta rama era muda y un fallo del
+            # proveedor no dejaba ni una línea. El `request_id` del middleware ya
+            # viaja aquí, así que este fallo se cruza con el resto de la petición.
+            log.exception("el agente falló al responder",
+                          extra={"variante": variante})
             yield streaming.evento_sse({"error": str(error)}, evento="error")
             return
 

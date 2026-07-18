@@ -94,6 +94,37 @@ class Settings(BaseSettings):
     # ---- API ----
     app_port: int = 8000
 
+    # ---- OBSERVABILIDAD ----
+    # Verbosidad del log estructurado (ver observability/logs.py). DEBUG para
+    # desarrollar, INFO en producción, WARNING si el volumen aprieta. Se cambia
+    # por entorno: subir la verbosidad de un servicio vivo no debe exigir un
+    # redeploy del código.
+    log_level: str = "INFO"
+
+    # ---- AUTENTICACIÓN ----
+    # Credenciales válidas separadas por comas: "clave1,clave2".
+    # VACÍO = servicio abierto (el modo del curso). Ver app/auth.py.
+    #
+    # ⚠️ Aquí NO hay roles, a diferencia de proyecto_llmops ("clave:rol,..."):
+    #    el catálogo es público y todo el mundo ve lo mismo, así que solo hay
+    #    autenticación (¿te dejo entrar?), no autorización (¿qué puedes ver?).
+    #
+    # ⚠️ Es un `str` y no una lista a propósito: pydantic-settings intentaría
+    #    parsear un campo complejo como JSON, y "clave1,clave2" no lo es.
+    api_keys: str = ""
+
+    # Orígenes que pueden llamar a la API desde un navegador, separados por
+    # comas. Vacío = no se instala CORS (mismo origen, que es lo que hace la
+    # demo: el frontend lo sirve este mismo servicio en `/`).
+    # ⚠️ "*" con credenciales es una combinación que los navegadores rechazan,
+    #    y aquí además sería regalar la API a cualquier página. Sé explícito:
+    #    CORS_ORIGINS=https://sifrah.com
+    cors_origins: str = ""
+
+    @property
+    def lista_cors(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
     # ---- RUTAS ----
     @property
     def ruta_catalogo_demo(self) -> Path:
