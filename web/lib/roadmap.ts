@@ -1,9 +1,11 @@
 import manifest from "@/content/modules.manifest.json";
 
-// The full course (all 37 modules + 7 extras from the original curso-langchain.html,
+// The full course (all 40 modules + 7 extras from the original curso-langchain.html,
 // converted to MDX in F1) presented in the v2 "AI Engineer roadmap" design.
-// Levels come straight from the manifest's nav grouping; here we just relabel
-// each group with a v2 display name + color ramp.
+// Modules are grouped by THEME (ruta), not by difficulty: every RAG topic lives
+// together, every agent topic together, etc. — the shared goal across all rutas is
+// becoming an AI Engineer. Groups + order come straight from the manifest; here we
+// just relabel each group with a display name + color ramp.
 
 type ManifestItem = {
   id: string;
@@ -25,14 +27,16 @@ type ManifestItem = {
 const MODULES = manifest.modules as ManifestItem[];
 const EXTRAS = manifest.extras as ManifestItem[];
 
-// Original nav group -> v2 level display name + color.
+// Manifest thematic group (levelName) -> display name + color.
 const LEVEL_STYLE: Record<string, { name: string; short: string; colorVar: string }> = {
-  "Básico": { name: "Nivel 1 · Fundamentos", short: "1 · Fundamentos", colorVar: "--l1" },
-  "Intermedio": { name: "Nivel 2 · Construye con LangChain", short: "2 · LangChain", colorVar: "--l2" },
-  "Avanzado": { name: "Nivel 3 · RAG y Agentes", short: "3 · RAG y Agentes", colorVar: "--l3" },
-  "Producción": { name: "Nivel 4 · Producción", short: "4 · Producción", colorVar: "--l4" },
-  "Proyecto": { name: "Nivel 5 · Proyecto", short: "5 · Proyecto", colorVar: "--l5" },
-  "AI Engineer": { name: "Nivel 6 · AI Engineer", short: "6 · AI Engineer", colorVar: "--l6" },
+  "Fundamentos": { name: "Ruta 1 · Fundamentos", short: "1 · Fundamentos", colorVar: "--l1" },
+  "Prompts y composición": { name: "Ruta 2 · Prompts y composición (LCEL)", short: "2 · Prompts y LCEL", colorVar: "--l2" },
+  "Herramientas y Agentes": { name: "Ruta 3 · Herramientas y Agentes", short: "3 · Agentes", colorVar: "--l3" },
+  "RAG": { name: "Ruta 4 · RAG", short: "4 · RAG", colorVar: "--l4" },
+  "Modelos": { name: "Ruta 5 · Modelos: mecánica, fine-tuning y multimodal", short: "5 · Modelos", colorVar: "--l5" },
+  "Producción y LLMOps": { name: "Ruta 6 · Producción y LLMOps", short: "6 · Producción", colorVar: "--l6" },
+  "Proyectos": { name: "Ruta 7 · Proyectos y casos reales", short: "7 · Proyectos", colorVar: "--l7" },
+  "Cierre": { name: "Cierre · AI Engineer", short: "Cierre", colorVar: "--l8" },
 };
 const FALLBACK = { name: "Curso", short: "Curso", colorVar: "--accent" };
 

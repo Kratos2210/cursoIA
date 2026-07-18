@@ -37,7 +37,7 @@ export function Dashboard() {
 
   const stats = [
     { value: `${TOTAL_MODULES}`, label: "Módulos" },
-    { value: `${TOTAL_LEVELS}`, label: "Niveles" },
+    { value: `${TOTAL_LEVELS}`, label: "Etapas" },
     { value: `${TOTAL_EXTRAS}`, label: "Recursos" },
     { value: `${pct}%`, label: "Completado" },
   ];
@@ -51,9 +51,11 @@ export function Dashboard() {
         </p>
         <h1>Conviértete en AI Engineer, un módulo a la vez</h1>
         <p className="lede">
-          Seis niveles que van de <b>cero absoluto</b> (instalar Python) a <b>sistemas de IA en
-          producción</b>: LangChain, RAG, agentes con LangGraph, observabilidad y las técnicas que
-          separan al ingeniero. Cada módulo trae un ejemplo ejecutable y su autoevaluación.
+          Un recorrido por <b>temas</b> —Fundamentos, Prompts y LCEL, Agentes, RAG, Modelos,
+          Producción y Proyectos— que va de <b>cero absoluto</b> (instalar Python) a <b>sistemas de
+          IA en producción</b>. Cada tema reúne todo lo suyo en un solo sitio, y el objetivo de todas
+          las rutas es el mismo: <b>convertirte en AI Engineer</b>. Cada módulo trae un ejemplo
+          ejecutable y su autoevaluación.
         </p>
         <div className="cta-row">
           <Link href={continueHref} className="btn-primary">
@@ -76,8 +78,8 @@ export function Dashboard() {
 
       <h2 className="roadmap-h" id="roadmap">El roadmap</h2>
       <p className="roadmap-sub">
-        Sigue el orden. Cada módulo se estudia corriendo su ejemplo — no solo leyéndolo — y no
-        avances de nivel sin pasar su autoevaluación.
+        Ocho etapas temáticas: cada una reúne todo lo suyo. Cada módulo se estudia corriendo su
+        ejemplo — no solo leyéndolo — y no avances sin pasar su autoevaluación.
       </p>
 
       <div className="roadmap">
