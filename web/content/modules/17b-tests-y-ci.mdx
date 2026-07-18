@@ -72,7 +72,7 @@ Con eso puedes escribir un test que dice: *"si el modelo decide llamar a `evalua
 
 <Box kind="warn" label="▲ Lo que un test con modelo falso NO te dice">
 
-No te dice si el agente elige bien la herramienta, ni si la respuesta es buena. Eso **no es un test: es una evaluación**, y vive en el Módulo 16 (dataset + LLM-as-judge + puntaje). Los dos hacen falta y miden cosas distintas: los tests protegen tu *lógica*; la evaluación protege tu *calidad*. Confundirlos es la razón por la que tanta gente tiene una suite verde y un agente que alucina.
+No te dice si el agente elige bien la herramienta, ni si la respuesta es buena. Eso **no es un test: es una evaluación**, y vive en el [m16c](/modulo/16c-evaluacion) (dataset + LLM-as-judge + puntaje). Los dos hacen falta y miden cosas distintas: los tests protegen tu *lógica*; la evaluación protege tu *calidad*. Confundirlos es la razón por la que tanta gente tiene una suite verde y un agente que alucina.
 
 </Box>
 
@@ -174,7 +174,7 @@ Y al invertir `es_error_cuota()` deberías ver fallar `tests/test_util.py` en ro
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 
 - Explicar por qué un test de IA no debe llamar al LLM (lento, cuesta y falla por un 429 ajeno a tu código).
-- Distinguir un test (protege tu *lógica*) de una evaluación (protege tu *calidad*, Módulo 16).
+- Distinguir un test (protege tu *lógica*) de una evaluación (protege tu *calidad*, m16c).
 - Decir cómo se testea un agente entero sin API: un doble (`ModeloFalso`) que recita un guion, inyectado por parámetro.
 - Reconocer para qué sirven el marcador `-m offline` con `--strict-markers` y una CI que no tiene la llave.
 

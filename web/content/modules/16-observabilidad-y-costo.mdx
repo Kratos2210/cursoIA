@@ -1,37 +1,33 @@
 export const meta = {
   "id": "m16",
   "slug": "16-observabilidad-y-costo",
-  "title": "Observabilidad y evaluación",
+  "title": "Observabilidad y costo",
   "kind": "module",
   "level": 4,
   "levelName": "Producción",
   "order": 18,
   "badge": "16",
-  "pyFile": "16_evaluacion.py",
-  "fileref": "📋 Copia y ejecuta: curso_ejemplos/16_evaluacion.py — evalúa un mini-RAG con dataset (corre sin llave)✓ cubierto por tests",
+  "pyFile": "16b_observabilidad_langsmith.py",
+  "fileref": "📋 Copia y ejecuta: curso_ejemplos/16b_observabilidad_langsmith.py — trazas + tokens + coste; corre sin ninguna llave✓ cubierto por tests",
   "tested": true,
-  "goals": "🎯 Al terminar sabrás: observar (trazas, tokens, coste) y evaluar la calidad, y detectar regresiones.",
+  "goals": "🎯 Al terminar sabrás: observar el sistema en vivo (trazas, tokens, coste) y traducir tokens a dólares. La evaluación de calidad va en el m16c.",
   "prereqs": "✅ Necesitas: Módulos 10–12.",
-  "minutes": "⏱️ ~50 min"
+  "minutes": "⏱️ ~35 min"
 };
 
 "Funciona en mi máquina" no basta. En producción necesitas **ver** qué hace el sistema: cuánto tarda, cuánto cuesta y si está alucinando. Sin instrumentación, vuelas a ciegas — y te enteras de los problemas por los usuarios, que es la peor forma.
 
-<Box kind="def" label="◈ Definición · Observabilidad y evaluación">
+<Box kind="def" label="◈ Definición · Observabilidad (y su gemela, la evaluación)">
 
-**Observabilidad** es poder responder *qué está pasando ahí dentro* sin añadir código nuevo: qué prompt salió, qué herramienta se llamó, cuántos tokens costó, dónde se fue el tiempo. Es sobre el sistema **en vivo**.
+**Observabilidad** es poder responder *qué está pasando ahí dentro* sin añadir código nuevo: qué prompt salió, qué herramienta se llamó, cuántos tokens costó, dónde se fue el tiempo. Es sobre el sistema **en vivo** — de eso trata este módulo.
 
-**Evaluación** es distinto: es medir *si las respuestas son buenas*, contra un conjunto de casos con respuesta esperada. Es sobre el sistema **antes de desplegarlo**. Una te dice que el sistema está lento; la otra, que se ha vuelto tonto.
+Su gemela es la **evaluación**: medir *si las respuestas son buenas* contra un conjunto de casos con respuesta esperada. Es sobre el sistema **antes de desplegarlo**, y la desarrolla el [m16c](/modulo/16c-evaluacion). Una te dice que el sistema está lento; la otra, que se ha vuelto tonto.
 
 <DefList>
   <Term>traza (trace)</Term>
   <Def>El árbol completo de una ejecución: cada nodo, cada llamada al LLM, con su entrada, su salida y su duración. En LangSmith se activa con dos variables de entorno.</Def>
-  <Term>dataset de evaluación</Term>
-  <Def>Pares pregunta → respuesta esperada. Es tu red de seguridad: sin él, "mejoró" es una opinión.</Def>
-  <Term>LLM-as-judge</Term>
-  <Def>Usar un modelo para puntuar las respuestas de otro cuando no hay una respuesta exacta que comparar. Barato y útil, pero es un juez con sesgos: valídalo contra casos que ya sabes juzgar.</Def>
-  <Term>regresión</Term>
-  <Def>Que algo que antes funcionaba deje de funcionar. En IA aparece sin tocar tu código: cambia el modelo, cambian tus resultados. Por eso se re-evalúa periódicamente, no solo al programar.</Def>
+  <Term>usage_metadata</Term>
+  <Def>El campo que cada respuesta trae con los tokens que consumió (entrada y salida). De ahí al dólar solo hay una multiplicación.</Def>
 </DefList>
 
 </Box>
@@ -44,7 +40,7 @@ El lazo de la observabilidad · **medir para mejorar**
   <Step n="1" title="Agente">Corre en vivo y atiende consultas.</Step>
   <Step n="2" title="Traza">LangSmith registra cada paso, entrada y salida.</Step>
   <Step n="3" title="Métricas">Tokens, latencia y coste por consulta.</Step>
-  <Step n="4" title="Evaluación">Dataset + juez: ¿la calidad subió o bajó?</Step>
+  <Step n="4" title="Evaluación">Dataset + juez: ¿la calidad subió o bajó? (m16c)</Step>
   <Step n="5" title="Mejora">Ajustas prompt/modelo y vuelve al agente.</Step>
 </Flow>
 
@@ -100,7 +96,7 @@ Cada ejecución queda registrada como una **traza**: el recorrido completo de un
 
 </Box>
 
-Conviene no quedarse con "LangSmith = trazas". En 2026 es una **plataforma completa** que cubre tres patas del ciclo de vida del agente: **Observability** (las trazas y métricas que ves aquí), **Evaluation** (datasets, LLM-as-judge, regresiones — lo que verás abajo) y **Deployment** (publicar y operar el agente, en la línea del Módulo 17). El *tracing* es solo la puerta de entrada; la misma herramienta te acompaña hasta producción.
+Conviene no quedarse con "LangSmith = trazas". En 2026 es una **plataforma completa** que cubre tres patas del ciclo de vida del agente: **Observability** (las trazas y métricas que ves aquí), **Evaluation** (datasets, LLM-as-judge, regresiones — el [m16c](/modulo/16c-evaluacion)) y **Deployment** (publicar y operar el agente, en la línea del Módulo 17). El *tracing* es solo la puerta de entrada; la misma herramienta te acompaña hasta producción.
 
 ### Paso 3 — La otra pregunta: ¿cuánto me está costando?
 
@@ -156,121 +152,23 @@ La tabla `PRECIOS` del archivo caduca: Google los cambia. Antes de presupuestar 
 
 </Avoid>
 
-### Paso 4 — Evaluación automatizada: datasets + tests
-
-Observar no basta: quieres **medir la calidad de forma repetible** y que un cambio de prompt o modelo no la rompa sin avisar. La receta tiene tres ingredientes: un *dataset* (preguntas con respuesta esperada — tu `proyectorag/preguntas.txt` ya es el borrador de uno), un *evaluador* que puntúa cada respuesta, y *tests* que corren en cada cambio.
-
-```python title="run_eval.py · evaluar contra un dataset (LangSmith)"
-from langsmith import Client
-from langsmith.evaluation import evaluate
-
-client = Client()
-
-# 1) Dataset: preguntas con su respuesta esperada
-dataset = client.create_dataset("preguntas_normativa")
-client.create_examples(
-    dataset_id=dataset.id,
-    inputs=[{"q": "¿Qué es la completitud de datos?"}],
-    outputs=[{"esperado": "que no falten valores obligatorios"}],
-)
-
-# 2) Corre tu app contra TODO el dataset y puntúa la calidad
-def mi_app(inputs):
-    return {"respuesta": rag.invoke(inputs["q"])}
-
-evaluate(mi_app, data="preguntas_normativa", evaluators=[evaluador_correccion])
-```
-
-¿Y quién es `evaluador_correccion`? Comparar texto libre con "la respuesta esperada" no se puede con un `==`. La solución estándar es **LLM-as-judge**: otro modelo actúa de juez y califica si la respuesta contesta bien — con temperatura 0, porque un juez debe ser consistente:
-
-```python title="el juez · LLM-as-judge con openevals (patrón de la comisión de EricBz)"
-from openevals.llm import create_llm_as_judge
-from openevals.prompts import CORRECTNESS_PROMPT
-
-evaluador_correccion = create_llm_as_judge(
-    prompt=CORRECTNESS_PROMPT,     # prompt de juez ya probado, no lo inventas tú
-    judge_model=ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", temperature=0),
-)
-```
-
-Y los tests: además de tus asserts de siempre, el marcador de LangSmith hace que **cada corrida del test quede trazada** — la evaluación y la observabilidad se encuentran:
-
-```python title="test_app.py · tests que también se observan (pytest)"
-import pytest
-from langsmith import unit
-
-@pytest.mark.langsmith          # esta corrida queda registrada en LangSmith
-@unit
-def test_no_inventa_cuando_no_sabe():
-    r = rag.invoke("¿Cuál es la capital de Marte?")
-    assert "no" in r.lower()   # debe admitir que no está en el contexto
-```
-
-```text title="▸ deberías ver al correr 16_evaluacion.py (recortado)"
-=== Evaluando 5 preguntas ===
-
-· ¿Cuál es el horario de atención?
-  respuesta: Horario de atención: Nuestro horario de atención al cliente…
-  contenido esperado: 100%
-...
-==============================================
-PUNTAJE GLOBAL: 100%  (5.0 de 5 puntos)
-Guarda este número. Si tras cambiar el prompt/modelo baja: REGRESIÓN.
-```
-
-### Paso 5 — Detección de regresiones: el ritual que salva sistemas
-
-Una **regresión** es cuando algo que funcionaba deja de funcionar tras un cambio. El ritual: corre la evaluación completa *antes* del cambio (tu línea base: digamos 87%), haz el cambio, corre la *misma* evaluación. ¿92%? Adelante. ¿74%? El cambio no pasa, y las trazas te muestran exactamente qué preguntas se rompieron. En un equipo, esto corre automático en el CI: nadie integra un cambio que baje el puntaje. `16_evaluacion.py` te deja vivir este ciclo completo en pequeño y sin costo.
-
 <Box kind="practice" label="▸ Para practicar">
 
-Corre `16_evaluacion.py` y anota el puntaje. Rompe algo a propósito (por ejemplo, haz que `responder()` devuelva siempre el primer chunk) y corre de nuevo: acabas de *ver* una regresión. Después activa LangSmith con tu llave, corre el agente del Módulo 10 y sigue una traza completa: prompt, tool, tokens, costo.
-
-<Solution summary="Ver una solución">
-
-```python title="solución · provocar la regresión"
-# En 16_evaluacion.py, dentro de responder(), reemplaza la línea del max():
-    mejor = chunks[0]        # ← "bug": siempre devuelve el primer chunk
-
-# Corre de nuevo:
-#   PUNTAJE GLOBAL: 24%   (antes: 100%)  ← ESO es una regresión, detectada
-# Restaura la línea original y el puntaje vuelve a 100%.
-```
-
-</Solution>
-
-</Box>
-
-<Box kind="def" label="◈ La tríada de métricas RAG · qué mide un juez, exactamente">
-
-"¿La respuesta es buena?" es demasiado vago para un LLM-as-judge. La industria (marcos como **RAGAS**) parte esa pregunta en **tres** preguntas concretas, cada una un juez con su propio prompt — y las tres juntas separan los dos sitios donde un RAG puede fallar: *recuperar* mal o *redactar* mal.
-
-<DefList>
-  <Term>Faithfulness (fidelidad)</Term>
-  <Def>¿La respuesta se sostiene **solo** en el contexto recuperado, sin inventar? Es tu medidor directo de alucinación: si el juez encuentra una afirmación que no está en los chunks, baja.</Def>
-  <Term>Answer relevance (relevancia)</Term>
-  <Def>¿La respuesta **contesta la pregunta** que se hizo, sin irse por las ramas? Una respuesta fiel al contexto pero que no responde lo pedido puntúa bajo aquí.</Def>
-  <Term>Context precision / recall</Term>
-  <Def>La calidad del *retriever*, no del generador: **precision** = de lo que recuperaste, cuánto era relevante (¿metiste basura?); **recall** = de lo relevante que existía, cuánto llegaste a recuperar (¿te dejaste lo bueno fuera?).</Def>
-</DefList>
-
-El diagnóstico es lo valioso: fidelidad baja → el problema está en el *generador* (prompt, modelo); recall bajo → está en el *retriever* (chunking, búsqueda del [m12](/modulo/12-recuperar-re-rankear), o la pregunta del [m20](/modulo/20-rag-avanzado)). Cada una se implementa como un LLM-as-judge, exactamente el patrón que armaste arriba.
-
-Dos encuadres que ordenan todo lo anterior. **Model evals vs product evals:** un *model eval* pregunta "¿este modelo es bueno en general?" (benchmarks); un *product eval* pregunta "¿MI app resuelve el caso de MIS usuarios?" — y ese, con tu dataset y tu tríada, es el único que decide si despliegas. **Evaluar un agente** añade una capa: no basta con juzgar el resultado final, hay que mirar la **trayectoria** — ¿eligió las herramientas correctas?, ¿en el orden razonable?, ¿sin pasos inútiles? Un agente que acierta la respuesta por suerte tras tres llamadas equivocadas está roto aunque el resultado pase.
+Corre `16b_observabilidad_langsmith.py` y mira el desglose de tokens → dólares. Después activa LangSmith con tu llave, corre el agente del Módulo 10 y sigue una traza completa: prompt, tool, tokens, costo. Cuando lo tengas, sigue con el [m16c](/modulo/16c-evaluacion) para *medir la calidad* de esas respuestas, no solo su coste.
 
 </Box>
 
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 
-- Distinguir **observabilidad** (el sistema en vivo) de **evaluación** (la calidad antes de desplegar).
+- Distinguir **observabilidad** (el sistema en vivo) de **evaluación** (la calidad antes de desplegar, m16c).
 - Activar trazas de LangSmith con dos variables de entorno, sin tocar tu código.
 - Calcular el coste de una consulta a partir de los tokens de entrada y salida.
-- Explicar qué es una regresión y cómo la caza el ritual de re-evaluar antes/después.
+- Explicar por qué los tokens de salida pesan más en la factura que los de entrada.
 
 </Checkpoint>
 
 <Recap level={4} label="↺ En una frase">
 
-Si no mides latencia, coste, calidad y errores, no *operas* un sistema: lo esperas. Y ojo al recibo: los tokens de salida cuestan varias veces más que los de entrada.<Arch>archivos: `16_evaluacion.py` · `16b_observabilidad_langsmith.py`</Arch>
+Si no ves latencia, coste y errores en vivo, no *operas* un sistema: lo esperas. Y ojo al recibo: los tokens de salida cuestan varias veces más que los de entrada.<Arch>archivo: `16b_observabilidad_langsmith.py` · la evaluación, en el m16c</Arch>
 
 </Recap>

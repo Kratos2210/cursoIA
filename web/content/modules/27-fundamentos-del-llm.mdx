@@ -1,7 +1,7 @@
 export const meta = {
   "id": "m27",
   "slug": "27-fundamentos-del-llm",
-  "title": "Fundamentos: qué hay DENTRO de la caja (tokens, logits, softmax y atención)",
+  "title": "Mecánica del LLM: tokens, logits, softmax y atención",
   "kind": "module",
   "level": 5,
   "levelName": "AI Engineer",
@@ -102,48 +102,9 @@ Es `exp(-media de log-probabilidades)` de los tokens que *realmente* aparecieron
 
 La idea que hizo posible el transformer, sin frameworks: cada palabra pregunta "¿con cuáles de las demás me relaciono?". La afinidad es el **producto punto** entre su vector-consulta y el vector-clave de cada palabra (el mismo producto punto del coseno del [m12](/modulo/12-recuperar-re-rankear)); softmax lo vuelve un reparto de atención que suma 1. Así "el banco de la plaza" y "el banco me cobró" desambiguan: "banco" mira a palabras distintas en cada frase.
 
-<Box kind="def" label="◈ De dónde vino todo esto (y el cross-encoder que ya usaste)">
+<Box kind="analogy" label="◆ La historia y las arquitecturas van aparte">
 
-La historia en cuatro saltos: **Markov** (1906, estadística de "qué palabra sigue"), **RNN/LSTM** (procesan la frase palabra a palabra pero *olvidan* lo lejano), **atención** (2017, "Attention is all you need": mira toda la frase a la vez y *paraleliza*) y el **transformer**, que es hoy el estándar. De ahí salen tres familias:
-
-<DefList>
-  <Term>Encoder (p. ej. BERT)</Term>
-  <Def>Lee toda la frase para **entenderla** (clasificar, comparar). El **cross-encoder** que usaste para re-rankear en el [m12](/modulo/12-recuperar-re-rankear) es exactamente esto: lee pregunta + fragmento juntos y puntúa su relación.</Def>
-  <Term>Decoder (p. ej. GPT)</Term>
-  <Def>Genera texto **token a token**, cada uno mirando solo lo ya escrito. Es la familia de los modelos de chat que usas en todo el curso.</Def>
-  <Term>Encoder-decoder (p. ej. T5)</Term>
-  <Def>Lee una entrada completa y genera una salida: encaja en traducción o resumen.</Def>
-</DefList>
-
-</Box>
-
-<Box kind="def" label="◈ Por qué el modelo ”obedece”: RLHF y su alternativa DPO">
-
-Un modelo recién preentrenado solo sabe *continuar texto*; no sabe seguir instrucciones ni ser útil y educado. Eso se le enseña después con **preferencias humanas**: personas comparan respuestas ("esta es mejor que esta") y el modelo se ajusta hacia lo preferido. Dos formas de hacerlo:
-
-|  | RLHF | DPO |
-| --- | --- | --- |
-| Cómo | Entrena un "modelo de recompensa" y luego optimiza contra él con RL (PPO) | Optimiza directo sobre las preferencias, sin modelo de recompensa aparte |
-| Complejidad | Tres fases, más piezas móviles | Una sola fase, más simple y rápido |
-| Cuándo | Alineación fina, presupuesto para anotar mucho | Iteración rápida con preferencias binarias |
-
-Es la misma idea de "medir y ajustar" del [m16](/modulo/16-observabilidad-y-costo), pero a escala de entrenamiento. Tú no lo harás (necesita GPUs y datos enormes), pero saber que existe explica por qué dos modelos con el mismo tamaño se "portan" distinto.
-
-</Box>
-
-<Box kind="def" label="◈ Por qué la inferencia es lenta y cara (y cómo se abarata)">
-
-Un decoder genera **un token cada vez**, y cada token necesita todos los anteriores: es intrínsecamente secuencial. Por eso responder es más lento que un cálculo normal, y por eso existe el **streaming** que viste en el [m25](/modulo/25-frontend-chat-sse) —te va mostrando tokens conforme salen en vez de hacerte esperar al final. Para no recalcular lo ya hecho, el modelo guarda un **KV cache** (la "memoria de trabajo" de la atención sobre los tokens previos): acelera mucho a cambio de ocupar memoria. Y la **cuantización** —guardar los pesos con menos bits— es lo que hace que `qwen3:8b` quepa y corra en tu laptop con Ollama, con una pérdida de calidad casi imperceptible.
-
-</Box>
-
-<Box kind="analogy" label="◆ Qué viene después del transformer (panorama)">
-
-El transformer no es el final de la historia. Vale conocer tres direcciones que aparecen en entrevistas:
-
-- **Mixture of Experts (MoE)** — en vez de una red gigante, muchos "expertos" y un *router* que activa solo unos pocos por token: más parámetros totales sin pagar más cómputo por token. Es la arquitectura de modelos como Mixtral.
-- **Mamba / RWKV** — alternativas que escalan *lineal* con la longitud (la atención clásica escala al cuadrado), pensadas para secuencias larguísimas.
-- **Small Language Models (SLM)** — modelos pequeños y afinados que corren en el borde (tu máquina, el móvil): más baratos y privados cuando no necesitas un gigante.
+Hasta aquí, la **mecánica**. La otra mitad —de dónde salió el transformer (Markov → RNN → atención), las familias encoder/decoder, cómo se alinea un modelo (RLHF/DPO) y qué lo hace rápido y barato (KV cache, cuantización, MoE)— vive en el [m27b · Arquitecturas e historia](/modulo/27b-arquitecturas-e-historia). Aquí cerramos con dos avisos sobre lo que *no* arreglan los parámetros de muestreo.
 
 </Box>
 
@@ -157,7 +118,6 @@ Entender los internos es cultura útil, pero cuidado con dos trampas. Una: **sub
 
 - No te pongas a **optimizar `top_k`/`top_p`** antes de arreglar el prompt y el contexto: es pulir la última milla cuando el problema está tres pasos atrás.
 - No confundas **determinismo con verdad**: `temperature=0` da la MISMA respuesta siempre, no la CORRECTA. Un modelo puede equivocarse igual de fijo.
-- No persigas la **arquitectura de moda** (MoE, Mamba) para un problema de aplicación: casi siempre lo que decide el resultado es el prompt, el RAG y los datos, no el motor.
 
 </Avoid>
 
@@ -172,8 +132,7 @@ Corre `uv run python 27_fundamentos_llm.py` y juega con los logits: cambia `[2.0
 - Explicar qué es un token y por qué "proyectos" cuesta más que "proyecto".
 - Decir qué hace *de verdad* `temperature=0` y en qué se diferencia de top_k/top_p.
 - Interpretar una perplejidad alta como "el modelo no esperaba este texto".
-- Distinguir un encoder (BERT, el cross-encoder del m12) de un decoder (GPT, el chat que usas).
-- Explicar en una frase qué es MoE y por qué la inferencia es secuencial.
+- Explicar en una frase qué es la **atención** y cómo desambigua "banco".
 
 </Checkpoint>
 

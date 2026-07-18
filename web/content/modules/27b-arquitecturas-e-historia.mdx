@@ -1,0 +1,86 @@
+export const meta = {
+  "id": "m27b",
+  "slug": "27b-arquitecturas-e-historia",
+  "title": "Arquitecturas e historia: de Markov al transformer (y lo que viene)",
+  "kind": "module",
+  "level": 5,
+  "levelName": "AI Engineer",
+  "order": 35,
+  "badge": "27b",
+  "pyFile": null,
+  "fileref": null,
+  "tested": false,
+  "goals": "🎯 Al terminar sabrás: de dónde viene el transformer, en qué se diferencian encoder y decoder, cómo se alinea un modelo (RLHF/DPO) y qué son KV cache, cuantización, MoE, Mamba y SLM.",
+  "prereqs": "✅ Necesitas: el m27 (mecánica del LLM).",
+  "minutes": "⏱️ ~25 min"
+};
+
+El [m27](/modulo/27-fundamentos-del-llm) abrió la caja y miró la **mecánica**: tokens, softmax, muestreo, atención. Este módulo, todo de lectura, da el otro paso: **de dónde salió** esa máquina, en qué **familias** se divide, cómo se le enseña a obedecer y qué trucos la hacen rápida y barata. Son las preguntas que caen en una entrevista de AI Engineer — no las necesitas para *usar* el modelo, sí para *hablar* de él con propiedad.
+
+<Box kind="def" label="◈ De dónde vino todo esto (y el cross-encoder que ya usaste)">
+
+La historia en cuatro saltos: **Markov** (1906, estadística de "qué palabra sigue"), **RNN/LSTM** (procesan la frase palabra a palabra pero *olvidan* lo lejano), **atención** (2017, "Attention is all you need": mira toda la frase a la vez y *paraleliza*) y el **transformer**, que es hoy el estándar. De ahí salen tres familias:
+
+<DefList>
+  <Term>Encoder (p. ej. BERT)</Term>
+  <Def>Lee toda la frase para **entenderla** (clasificar, comparar). El **cross-encoder** que usaste para re-rankear en el [m12](/modulo/12-recuperar-re-rankear) es exactamente esto: lee pregunta + fragmento juntos y puntúa su relación.</Def>
+  <Term>Decoder (p. ej. GPT)</Term>
+  <Def>Genera texto **token a token**, cada uno mirando solo lo ya escrito. Es la familia de los modelos de chat que usas en todo el curso.</Def>
+  <Term>Encoder-decoder (p. ej. T5)</Term>
+  <Def>Lee una entrada completa y genera una salida: encaja en traducción o resumen.</Def>
+</DefList>
+
+</Box>
+
+<Box kind="def" label="◈ Por qué el modelo ”obedece”: RLHF y su alternativa DPO">
+
+Un modelo recién preentrenado solo sabe *continuar texto*; no sabe seguir instrucciones ni ser útil y educado. Eso se le enseña después con **preferencias humanas**: personas comparan respuestas ("esta es mejor que esta") y el modelo se ajusta hacia lo preferido. Dos formas de hacerlo:
+
+|  | RLHF | DPO |
+| --- | --- | --- |
+| Cómo | Entrena un "modelo de recompensa" y luego optimiza contra él con RL (PPO) | Optimiza directo sobre las preferencias, sin modelo de recompensa aparte |
+| Complejidad | Tres fases, más piezas móviles | Una sola fase, más simple y rápido |
+| Cuándo | Alineación fina, presupuesto para anotar mucho | Iteración rápida con preferencias binarias |
+
+Es la misma idea de "medir y ajustar" del [m16c](/modulo/16c-evaluacion), pero a escala de entrenamiento. Tú no lo harás (necesita GPUs y datos enormes), pero saber que existe explica por qué dos modelos con el mismo tamaño se "portan" distinto.
+
+</Box>
+
+<Box kind="def" label="◈ Por qué la inferencia es lenta y cara (y cómo se abarata)">
+
+Un decoder genera **un token cada vez**, y cada token necesita todos los anteriores: es intrínsecamente secuencial. Por eso responder es más lento que un cálculo normal, y por eso existe el **streaming** que viste en el [m25](/modulo/25-frontend-chat-sse) —te va mostrando tokens conforme salen en vez de hacerte esperar al final. Para no recalcular lo ya hecho, el modelo guarda un **KV cache** (la "memoria de trabajo" de la atención sobre los tokens previos): acelera mucho a cambio de ocupar memoria. Y la **cuantización** —guardar los pesos con menos bits— es lo que hace que `qwen3:8b` quepa y corra en tu laptop con Ollama, con una pérdida de calidad casi imperceptible.
+
+</Box>
+
+<Box kind="analogy" label="◆ Qué viene después del transformer (panorama)">
+
+El transformer no es el final de la historia. Vale conocer tres direcciones que aparecen en entrevistas:
+
+- **Mixture of Experts (MoE)** — en vez de una red gigante, muchos "expertos" y un *router* que activa solo unos pocos por token: más parámetros totales sin pagar más cómputo por token. Es la arquitectura de modelos como Mixtral.
+- **Mamba / RWKV** — alternativas que escalan *lineal* con la longitud (la atención clásica escala al cuadrado), pensadas para secuencias larguísimas.
+- **Small Language Models (SLM)** — modelos pequeños y afinados que corren en el borde (tu máquina, el móvil): más baratos y privados cuando no necesitas un gigante.
+
+</Box>
+
+<Avoid label="⛔ Cuándo NO perseguir la arquitectura de moda">
+
+- **Para un problema de aplicación.** Casi siempre lo que decide el resultado es el prompt, el RAG y los datos, no si el motor es MoE o Mamba. Elegir modelo se hace por capacidad/coste/ventana ([m18b](/modulo/18b-elegir-modelo-y-proveedor)), no por su arquitectura interna.
+- **Como sustituto de medir.** Que un modelo sea "más nuevo" o "más grande" no garantiza que sea mejor en TU caso: eso lo dice tu evaluación ([m16c](/modulo/16c-evaluacion)), no la ficha técnica.
+
+</Avoid>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Contar la historia en cuatro saltos: Markov → RNN/LSTM → atención → transformer.
+- Distinguir un **encoder** (BERT, el cross-encoder del m12) de un **decoder** (GPT, el chat que usas).
+- Explicar en una frase qué es RLHF y en qué se diferencia de DPO.
+- Decir qué son el KV cache y la cuantización, y por qué la inferencia es secuencial.
+- Explicar qué es MoE y para qué sirven Mamba y los SLM.
+
+</Checkpoint>
+
+<Recap level={5} label="↺ En una frase">
+
+El transformer (2017) destronó a las RNN mirando toda la frase a la vez; sus familias son **encoder** (entender), **decoder** (generar) y **encoder-decoder** (traducir); se alinea con **RLHF/DPO** y se abarata con **KV cache** y **cuantización** — y ya asoman MoE, Mamba y los SLM.<Arch>Módulo de lectura · sin archivo</Arch>
+
+</Recap>

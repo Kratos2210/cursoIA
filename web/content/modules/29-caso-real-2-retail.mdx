@@ -11,7 +11,7 @@ export const meta = {
   "fileref": "📋 Copia y ejecuta: curso_ejemplos/29_caso_retail.py — 100% offline, no gasta cuota✓ cubierto por tests",
   "tested": true,
   "goals": "🎯 Al terminar sabrás: diseñar un caso de IA end-to-end para un negocio real —del dato crudo al eval— y aplicar la regla de oro del retail: precio y stock jamás salen del modelo.",
-  "prereqs": "✅ Necesitas: el m05 (salida estructurada), el m11 (RAG), el m16 (evals) y el m23 (guardrails).",
+  "prereqs": "✅ Necesitas: el m05 (salida estructurada), el m11 (RAG), el m16c (evals) y el m23 (guardrails).",
   "minutes": "⏱️ ~60 min"
 };
 
@@ -27,7 +27,7 @@ Un consultor no llega con "un chatbot": llega con un **menú de casos**, cada un
 4. **Enriquecimiento automático del catálogo** — miles de SKUs importados por temporada; salida estructurada (m05) + visión (m22) para generar categorías, materiales y descripciones. Retorno: tiempo de catalogación.
 5. **Clasificación de reclamos y postventa** — sentimiento + enrutamiento de quejas (cambios, delivery) antes de que escalen. Retorno: riesgo reputacional.
 
-**Ganó la 1** por tres criterios que valen para cualquier proyecto: el **dato ya existe y es accesible** (no hay que esperar a un área de sistemas), el caso **integra lo que ya sabes** (estructurada + RAG + guardrails + evals: m05·m11·m16·m23), y el **riesgo de equivocarse es medible** (un precio inventado se detecta con un guardrail determinista). Las otras cuatro son variaciones del mismo esqueleto — la 2 es el paso 3 de este módulo con embeddings, la 3 es este mismo pipeline sobre otra fuente.
+**Ganó la 1** por tres criterios que valen para cualquier proyecto: el **dato ya existe y es accesible** (no hay que esperar a un área de sistemas), el caso **integra lo que ya sabes** (estructurada + RAG + guardrails + evals: m05·m11·m16c·m23), y el **riesgo de equivocarse es medible** (un precio inventado se detecta con un guardrail determinista). Las otras cuatro son variaciones del mismo esqueleto — la 2 es el paso 3 de este módulo con embeddings, la 3 es este mismo pipeline sobre otra fuente.
 
 </Box>
 
@@ -60,7 +60,7 @@ El end-to-end del caso · **siete pasos, todos ya vistos**
   <Step n="3" title="Intención">Petición → filtros tipados (m05).</Step>
   <Step n="4" title="Búsqueda">Filtros DUROS + ranking (m11/m24).</Step>
   <Step n="5" title="Grounding">Responder SOLO con lo recuperado (m23/m28).</Step>
-  <Step n="6" title="Eval">¿Respeta presupuesto y precios? (m16).</Step>
+  <Step n="6" title="Eval">¿Respeta presupuesto y precios? (m16c).</Step>
   <Step n="7" title="Producción">El stack LLMOps, en [proyecto_retail/](/modulo/29-caso-real-2-retail#m29-proyecto).</Step>
 </Flow>
 
@@ -106,7 +106,7 @@ Cada pieza del asistente tiene su módulo de origen y su archivo en el proyecto.
 | Buscar (filtros duros + ranking) | `buscar_productos` | `app/search.py` | [24](/modulo/24-vector-dbs-en-produccion) · [11](/modulo/11-rag-profesional) |
 | Redactar con tono de marca | plantilla fija | `app/agent.py` + `prompts/vendedora.yaml` | [02](/modulo/02-prompts-lcel) |
 | Grounding de precios | `respuesta_es_fiel` | `guardrails/price_guard.py` | [23](/modulo/23-seguridad-red-teaming) · [28](/modulo/28-desafios-y-alucinaciones) |
-| Evaluar (misma métrica) | `evaluar_asistente` | `evals/` + CI gate | [16](/modulo/16-observabilidad-y-costo) |
+| Evaluar (misma métrica) | `evaluar_asistente` | `evals/` + CI gate | [16c](/modulo/16c-evaluacion) |
 | Servir + observar | — | `app/main.py` · `cache/` · `observability/` | [17](/modulo/17-repo-productivo) · [24b](/modulo/24b-feedback-a-b) |
 
 ### Paso 2 · ETL: la categoría no se confía, se deriva

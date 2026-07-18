@@ -11,7 +11,7 @@ export const meta = {
   "fileref": "📋 El ejemplo: curso_ejemplos/26b_prompt_engineering.py — 100% offline en su lógica medible✓ cubierto por tests",
   "tested": true,
   "goals": "🎯 Al terminar sabrás: aplicar cuatro técnicas con evidencia —few-shot, chain-of-thought, self-consistency y descomposición— y, sobre todo, medir si mejoran el resultado en vez de creerlo.",
-  "prereqs": "✅ Necesitas: el m05 (salida estructurada), el m11 (RAG) y el m16 (evaluación): sin una métrica, \"mejorar un prompt\" es opinión.",
+  "prereqs": "✅ Necesitas: el m05 (salida estructurada), el m11 (RAG) y el m16c (evaluación): sin una métrica, \"mejorar un prompt\" es opinión.",
   "minutes": "⏱️ ~30 min"
 };
 
@@ -79,7 +79,7 @@ def self_consistency(respuestas):
       mide 'en serio' con un dataset y la tríada RAG, no a ojo.
 ```
 
-Ese último bloque es el corazón del módulo: un mini-dataset fijo y una métrica **determinista** (exact-match) que demuestran, sin gastar un token, que estructurar la tarea sube el acierto. Es el eco offline de lo que en el [m16](/modulo/16-observabilidad-y-costo) se mide "en serio" con la tríada RAG.
+Ese último bloque es el corazón del módulo: un mini-dataset fijo y una métrica **determinista** (exact-match) que demuestran, sin gastar un token, que estructurar la tarea sube el acierto. Es el eco offline de lo que en el [m16c](/modulo/16c-evaluacion) se mide "en serio" con la tríada RAG.
 
 <Box kind="warn" label="▲ Más ejemplos ≠ siempre mejor; CoT no inventa datos">
 
@@ -97,7 +97,7 @@ Cada demostración few-shot **gasta contexto y tokens**: veinte ejemplos "por si
 
 <Box kind="practice" label="▸ Para practicar">
 
-Toma un prompt real del proyecto (el del sistema del agente, o el del m05) y crea una **segunda variante** con CoT o con 2–3 ejemplos few-shot. Mídelas con un mini-dataset como el de este módulo —exact-match o coincidencia de palabra clave— y quédate con la que gane *de verdad*. Cuando quieras hacerlo con evals serios, es el [m16](/modulo/16-observabilidad-y-costo); y si te suena a artesanía repetitiva, mira **DSPy**: trata el prompt como parámetros a **optimizar** contra una métrica y un set de ejemplos —prompt engineering hecho búsqueda sistemática (solo lectura, no se instala aquí).
+Toma un prompt real del proyecto (el del sistema del agente, o el del m05) y crea una **segunda variante** con CoT o con 2–3 ejemplos few-shot. Mídelas con un mini-dataset como el de este módulo —exact-match o coincidencia de palabra clave— y quédate con la que gane *de verdad*. Cuando quieras hacerlo con evals serios, es el [m16c](/modulo/16c-evaluacion); y si te suena a artesanía repetitiva, mira **DSPy**: trata el prompt como parámetros a **optimizar** contra una métrica y un set de ejemplos —prompt engineering hecho búsqueda sistemática (solo lectura, no se instala aquí).
 
 </Box>
 
@@ -118,7 +118,7 @@ Few-shot, CoT, self-consistency y descomposición son el pan de cada día. Hay u
   <Def>Elegir con criterio **qué ejemplos etiquetar** para el few-shot: se marcan los casos donde el modelo duda más, porque son los que más enseñan. Sirve cuando etiquetar cuesta y quieres el máximo por ejemplo.</Def>
 </DefList>
 
-Regla práctica: **CoT + self-consistency (este módulo) cubren la mayoría de casos reales**. ToT, GoT y compañía pagan solo cuando el problema es genuinamente de búsqueda o razonamiento multi-paso — y siempre se justifican *midiendo* (m16), nunca por moda.
+Regla práctica: **CoT + self-consistency (este módulo) cubren la mayoría de casos reales**. ToT, GoT y compañía pagan solo cuando el problema es genuinamente de búsqueda o razonamiento multi-paso — y siempre se justifican *midiendo* (m16c), nunca por moda.
 
 </Box>
 
@@ -133,6 +133,6 @@ Regla práctica: **CoT + self-consistency (este módulo) cubren la mayoría de c
 
 <Recap level={5} label="↺ En una frase">
 
-Prompt engineering en serio son cuatro técnicas medibles: **few-shot** (muestra, no describas), **CoT** (razona paso a paso), **self-consistency** (vota la moda de N muestras) y **descomposición** (parte la tarea) —y ninguna vale hasta que la **mides** con un dataset y una métrica, como en el m16; DSPy lleva ese ajuste a la optimización automática.<Arch>archivos: `curso_ejemplos/26b_prompt_engineering.py`</Arch>
+Prompt engineering en serio son cuatro técnicas medibles: **few-shot** (muestra, no describas), **CoT** (razona paso a paso), **self-consistency** (vota la moda de N muestras) y **descomposición** (parte la tarea) —y ninguna vale hasta que la **mides** con un dataset y una métrica, como en el m16c; DSPy lleva ese ajuste a la optimización automática.<Arch>archivos: `curso_ejemplos/26b_prompt_engineering.py`</Arch>
 
 </Recap>

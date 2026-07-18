@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-07-17T22:51:14.708Z",
-  "total": 44,
+  "total": 46,
   "modules": [
     {
       "id": "m0",
@@ -293,18 +293,34 @@
     {
       "id": "m16",
       "slug": "16-observabilidad-y-costo",
-      "title": "Observabilidad y evaluación",
+      "title": "Observabilidad y costo",
       "kind": "module",
       "level": 4,
       "levelName": "Producción",
       "order": 18,
       "badge": "16",
+      "pyFile": "16b_observabilidad_langsmith.py",
+      "fileref": "📋 Copia y ejecuta: curso_ejemplos/16b_observabilidad_langsmith.py — trazas + tokens + coste; corre sin ninguna llave✓ cubierto por tests",
+      "tested": true,
+      "goals": "🎯 Al terminar sabrás: observar el sistema en vivo (trazas, tokens, coste) y traducir tokens a dólares. La evaluación de calidad va en el m16c.",
+      "prereqs": "✅ Necesitas: Módulos 10–12.",
+      "minutes": "⏱️ ~35 min"
+    },
+    {
+      "id": "m16c",
+      "slug": "16c-evaluacion",
+      "title": "Evaluación: medir la calidad y cazar regresiones",
+      "kind": "module",
+      "level": 4,
+      "levelName": "Producción",
+      "order": 19,
+      "badge": "16c",
       "pyFile": "16_evaluacion.py",
       "fileref": "📋 Copia y ejecuta: curso_ejemplos/16_evaluacion.py — evalúa un mini-RAG con dataset (corre sin llave)✓ cubierto por tests",
       "tested": true,
-      "goals": "🎯 Al terminar sabrás: observar (trazas, tokens, coste) y evaluar la calidad, y detectar regresiones.",
-      "prereqs": "✅ Necesitas: Módulos 10–12.",
-      "minutes": "⏱️ ~50 min"
+      "goals": "🎯 Al terminar sabrás: medir la calidad con un dataset, usar LLM-as-judge, aplicar la tríada RAG y detectar regresiones antes/después de un cambio.",
+      "prereqs": "✅ Necesitas: el m16 (observabilidad) y los Módulos 10–12.",
+      "minutes": "⏱️ ~35 min"
     },
     {
       "id": "m17",
@@ -533,7 +549,7 @@
     {
       "id": "m27",
       "slug": "27-fundamentos-del-llm",
-      "title": "Fundamentos: qué hay DENTRO de la caja (tokens, logits, softmax y atención)",
+      "title": "Mecánica del LLM: tokens, logits, softmax y atención",
       "kind": "module",
       "level": 5,
       "levelName": "AI Engineer",
@@ -544,7 +560,23 @@
       "tested": true,
       "goals": "🎯 Al terminar sabrás: qué es un token y por qué se cobra por él, qué hace de verdad temperature=0, cómo se saca una palabra con top_k/top_p, qué mide la perplejidad y qué es la atención.",
       "prereqs": "✅ Necesitas: haber usado el modelo en los módulos anteriores (aquí lo abrimos); ayuda recordar el coseno del m12.",
-      "minutes": "⏱️ ~35 min"
+      "minutes": "⏱️ ~30 min"
+    },
+    {
+      "id": "m27b",
+      "slug": "27b-arquitecturas-e-historia",
+      "title": "Arquitecturas e historia: de Markov al transformer (y lo que viene)",
+      "kind": "module",
+      "level": 5,
+      "levelName": "AI Engineer",
+      "order": 35,
+      "badge": "27b",
+      "pyFile": null,
+      "fileref": null,
+      "tested": false,
+      "goals": "🎯 Al terminar sabrás: de dónde viene el transformer, en qué se diferencian encoder y decoder, cómo se alinea un modelo (RLHF/DPO) y qué son KV cache, cuantización, MoE, Mamba y SLM.",
+      "prereqs": "✅ Necesitas: el m27 (mecánica del LLM).",
+      "minutes": "⏱️ ~25 min"
     },
     {
       "id": "m28",
