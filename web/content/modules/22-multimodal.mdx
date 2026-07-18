@@ -152,6 +152,33 @@ Streaming de voz suena mágico, pero trae complicaciones nuevas: **barge-in** (e
 
 </Box>
 
+### 🏗 Proyecto guiado: un agente que VE (y opcionalmente habla)
+
+Los módulos anteriores te dieron piezas sueltas. Este proyecto las junta en algo que resuelve una tarea real: **el cliente manda una foto y el agente actúa**. Caso concreto —un asistente de reclamos— *"llegó rota la caja"* + foto → clasifica el daño, decide si procede reembolso y redacta la respuesta.
+
+No hay archivo nuevo que copiar: **todo lo que necesitas ya está escrito y testeado**. Es trabajo de ensamblaje, que es exactamente lo que hace un AI Engineer.
+
+<Box kind="practice" label="▸ Los cuatro pasos (y de dónde sale cada pieza)">
+
+**1 · La entrada visual.** Usa `22_multimodal.py` tal cual: `imagen_a_data_url()` + el mensaje de dos bloques. El armado es offline; solo la llamada final necesita un modelo con visión.
+
+**2 · El contrato de salida.** No dejes que responda un párrafo: exige un molde como el del [m09b](/modulo/09b-proyecto-utilidad-texto) — `{"dano": "leve|grave|ninguno", "procede_reembolso": bool, "respuesta": str}` — y **valídalo**. Aquí importa más que nunca: una decisión de reembolso la va a consumir otro sistema.
+
+**3 · La acción.** Que el modelo no solo describa: dale herramientas ([m07](/modulo/07-herramientas)) y un agente que decida ([m10](/modulo/10-agentes-prebuilt)) — `registrar_reclamo(id, dano)` y `escalar_a_humano(motivo)`. La foto entra por el mensaje multimodal; la decisión sale por una tool.
+
+**4 · La voz (opcional).** Si quieres que además escuche y conteste hablando, el pipeline está en `22b_voz.py` y su versión con servicios reales en el [m33](/modulo/33-agente-voz-realtime). Añádelo **al final**: primero que funcione con texto.
+
+</Box>
+
+<Box kind="def" label="◈ Criterios de 'hecho' (para que no te quedes en la demo bonita)">
+
+- El sistema devuelve un **objeto validado**, no texto, y hay un test que lo comprueba con un doble (sin gastar cuota).
+- Si la foto es ilegible o el modelo duda, **escala a un humano** en vez de inventar un veredicto — `requiere_humano` del m09b, `interrupt` del [m13](/modulo/13-langgraph-a-fondo).
+- Registras **cuánto costó**: las imágenes se cobran caras (mira el aviso de tokens de arriba), así que mide antes de prometerle el precio a nadie.
+- Una decisión de dinero **nunca** la cierra el modelo solo: revisa la caja de ética del [m23](/modulo/23-seguridad-red-teaming).
+
+</Box>
+
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 
 - Explicar por qué el contenido multimodal es una lista de bloques y no un string.

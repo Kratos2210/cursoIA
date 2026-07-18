@@ -1,0 +1,102 @@
+export const meta = {
+  "id": "m09b",
+  "slug": "09b-proyecto-utilidad-texto",
+  "title": "Proyecto: utilidad de texto multi-tarea (cierre de las rutas 1 y 2)",
+  "kind": "module",
+  "level": 2,
+  "levelName": "Prompts y composición",
+  "order": 10,
+  "badge": "09b",
+  "pyFile": "09b_proyecto_texto.py",
+  "fileref": "📋 Copia y ejecuta: curso_ejemplos/09b_proyecto_texto.py — 100% offline, el modelo entra por parámetro.✓ cubierto por tests",
+  "tested": true,
+  "goals": "🎯 Al terminar habrás construido tu primer sistema completo: una utilidad que clasifica una consulta de soporte y devuelve un dato validado, con filtro de entrada, métricas y red de seguridad cuando el modelo rompe el contrato.",
+  "prereqs": "✅ Necesitas: prompts (m02), salida estructurada (m05), runnables (m06) y resiliencia (m09). Nada nuevo que instalar.",
+  "minutes": "⏱️ ~35 min"
+};
+
+Hasta aquí aprendiste las piezas **por separado**. Este módulo no enseña nada nuevo: las **cose**. Vas a construir tu primer sistema completo — una utilidad que recibe una consulta de soporte y devuelve un **dato**, no un párrafo:
+
+```text title="El pipeline completo"
+consulta ─▶ filtro (m23 lite) ─▶ prompt (m02) ─▶ modelo ─▶ JSON validado (m05)
+                                                              │
+                                   métricas (m16 lite) ◀──────┤
+                                   reintento + fallback (m09) ┘
+```
+
+<Box kind="def" label="◈ La idea que lo sostiene todo: el contrato">
+
+Tu código no quiere "una respuesta amable", quiere un **objeto con campos** que pueda meter en una base de datos o enrutar a un equipo. Eso es un **contrato**: le exiges al modelo un JSON con forma fija y lo **validas** con Pydantic. Y como el modelo es probabilístico, tarde o temprano lo romperá — devolverá texto suelto, o un `urgencia: 99`. Un sistema de verdad **no confía**: verifica, reintenta y, si no hay manera, **escala a un humano**. Esa es la diferencia entre un script de demo y algo que puedes poner delante de clientes.
+
+</Box>
+
+### El molde: qué forma debe tener la respuesta
+
+```python title="09b_proyecto_texto.py · el contrato"
+class RespuestaSoporte(BaseModel):
+    categoria: Literal["facturacion", "tecnico", "producto", "otro"]
+    urgencia: int = Field(ge=1, le=5)          # 1 = puede esperar, 5 = crítico
+    respuesta: str = Field(min_length=1)
+    requiere_humano: bool
+```
+
+Fíjate en `ge=1, le=5`: el contrato no es solo "que sea JSON", es que **cumpla el molde**. Un `urgencia: 99` es JSON perfectamente válido y aun así lo rechazamos — hay un test que lo comprueba.
+
+### La red de seguridad: qué pasa cuando el modelo miente
+
+```python title="09b_proyecto_texto.py · procesar() nunca lanza"
+for intento in range(1, intentos + 1):
+    try:
+        crudo = modelo(prompt)
+        resultado = parsear_respuesta(crudo)     # valida contra el molde
+        break
+    except ValueError:
+        if intento == intentos:                  # se acabaron los reintentos
+            resultado = _FALLBACK                # requiere_humano=True
+            metricas["uso_fallback"] = True
+```
+
+Reintentar aquí **sí** tiene sentido (m09): el fallo típico es que el modelo devuelva mal el formato *esta vez* — es transitorio, no un bug tuyo. Pero reintentar no es infinito: cuando se agota, la respuesta segura dice *"te contactará un agente"* y marca `requiere_humano=True`. **Fallar hacia el humano, no hacia el silencio.**
+
+<Box kind="warn" label="▲ El filtro de entrada de aquí es un juguete, y hay que decirlo">
+
+`filtro_entrada()` es una **lista negra de tres patrones**. Sirve para que veas *dónde* va la primera capa en el pipeline (antes del modelo: lo que se bloquea no se paga). Pero una lista negra se rodea parafraseando, y por eso el [m23](/modulo/23-seguridad-red-teaming) enseña la versión seria: seguridad **en capas**, separar datos de instrucciones y mínimo privilegio. No te lleves de aquí "con esto ya estoy protegido".
+
+</Box>
+
+<Box kind="analogy" label="◆ Por qué el modelo entra por parámetro (y no lo instancias dentro)">
+
+`procesar(consulta, modelo)` recibe cualquier callable `prompt → texto`. Por eso el proyecto corre **sin llave ni internet** con un doble que recita un guion, sus tests son **repetibles**, y cambiarlo por un modelo real es **una línea**. Es el mismo patrón que ya viste en `23_seguridad.py:responder_seguro` y el que hace testeable el capstone: la inyección de dependencias no es ceremonia, es lo que te deja probar la lógica sin pagar tokens.
+
+</Box>
+
+<Box kind="practice" label="▸ Para practicar">
+
+1. **Añade una tarea más**: un campo `idioma` al contrato y haz que el filtro no lo rompa. ¿Qué test falla primero?
+2. **Rompe el contrato a propósito**: haz que `modelo_demo` devuelva `urgencia: 0` y comprueba que el sistema escala en vez de aceptarlo.
+3. **Mide de verdad**: sustituye `estimar_tokens` por el `usage_metadata` real cuando tengas llave ([m16](/modulo/16-observabilidad-y-costo)) y compara cuánto se desviaba la regla de servilleta.
+
+</Box>
+
+<Avoid label="⛔ Cuándo NO montar todo este andamiaje">
+
+- **Para una consulta suelta y manual.** Si vas a leer tú la respuesta, no necesitas contrato ni fallback: pide texto y ya. Esto se justifica cuando **otro código** consume la salida.
+- **Confiando en el reintento para arreglar un mal prompt.** Reintentar cura fallos *transitorios* de formato. Si el modelo se equivoca siempre igual, el problema es tu prompt o tu contrato — reintentar solo te cobra tres veces el mismo error (m09).
+- **Estimando costes con la regla de 4 caracteres.** Sirve para intuir la magnitud, no para presupuestar. El número real lo da el proveedor.
+
+</Avoid>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar qué es un **contrato** y por qué validar no es opcional cuando otro código consume la salida.
+- Decir qué hace el sistema cuando el modelo devuelve algo inválido, y por qué el fallback marca `requiere_humano`.
+- Señalar por qué el filtro va **antes** del modelo y por qué el de este módulo no basta.
+- Justificar por qué el modelo entra por parámetro y qué te compra eso en los tests.
+
+</Checkpoint>
+
+<Recap level={2} label="↺ En una frase">
+
+Tu primer sistema completo no añade piezas nuevas: cose las de las rutas 1 y 2 alrededor de un **contrato** — el modelo devuelve JSON, Pydantic lo valida, el filtro para lo que no debe llegar, las métricas dicen qué costó y, cuando el modelo rompe el trato, el sistema reintenta y escala a un humano en vez de reventar.<Arch>archivo: `09b_proyecto_texto.py` · 100% offline · modelo inyectado por parámetro</Arch>
+
+</Recap>

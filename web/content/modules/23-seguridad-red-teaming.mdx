@@ -61,6 +61,18 @@ No todo ataque busca que el modelo *diga* algo malo; algunos buscan **extraer** 
 
 </Box>
 
+<Box kind="def" label="◈ Seguridad ≠ ética — y el rol responde por las dos">
+
+Todo lo anterior responde a *"¿pueden hacerle daño a mi sistema?"*. Falta la pregunta gemela: *"¿puede mi sistema hacerle daño a alguien?"*. No es filosofía: son decisiones de diseño con consecuencias legales y de producto.
+
+- **Minimiza datos, no solo los redactes.** El PII más seguro es el que nunca pediste ni guardaste. Antes de mandar una consulta al proveedor, pregúntate qué campos sobran — y recuerda que lo que sale de tu red **sale de tu red** (es el mismo cálculo del on-premise del [m18b](/modulo/18b-elegir-modelo-y-proveedor)).
+- **Transparencia: el usuario debe saber que habla con una IA.** Ocultarlo destruye la confianza cuando se descubre, y en varias jurisdicciones ya es obligatorio declararlo. Cuesta una frase.
+- **Hay decisiones que NO se automatizan.** Crédito, salud, contratación, expulsión de una plataforma: ahí el modelo puede *sugerir*, pero decide una persona que se hace responsable. Técnicamente ya sabes hacerlo — es el **human-in-the-loop** del [m13](/modulo/13-langgraph-a-fondo) y el `requiere_humano` del [m09b](/modulo/09b-proyecto-utilidad-texto). La pregunta no es si puedes automatizarlo, es si debes.
+- **El sesgo es un riesgo de producto, no una curiosidad académica.** Un modelo entrenado con datos torcidos responde peor a unos usuarios que a otros, y tu evaluación no lo verá si el dataset de evals tiene el mismo sesgo. Por eso el [m16c](/modulo/16c-evaluacion) insiste en validar al juez: un LLM-as-judge sesgado **certifica** el problema en vez de detectarlo.
+- **Trazabilidad = poder rendir cuentas.** El log de auditoría del capstone no es burocracia: es lo que te permite responder *"¿por qué el sistema decidió esto?"* meses después. Sin traza no hay responsabilidad, solo una caja negra con tu nombre encima.
+
+</Box>
+
 ### Paso 1 · Detectar la inyección (primera capa)
 
 Casi todos los ataques se apoyan en unas pocas frases-palanca. Una lista de patrones las caza y te dice **qué** tipo de ataque vio (útil para loguear y alertar).
