@@ -52,7 +52,7 @@ alguien escuchando al otro lado.
 - Ninguna normativa confidencial sale de la infraestructura.
 - El alumno ve trazas reales en `http://localhost:3000` sin registrarse en nada.
 - La instrumentación es **opcional**: sin llaves, `observar()` devuelve la
-  función intacta y `callbacks()` devuelve `[]`. Los 274 tests offline corren
+  función intacta y `callbacks()` devuelve `[]`. Los 322 tests offline corren
   sin Langfuse levantado.
 
 **Negativas** (las aceptamos a sabiendas)

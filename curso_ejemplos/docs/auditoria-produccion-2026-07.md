@@ -164,17 +164,17 @@ Esfuerzo: **S** = horas · **M** = 1–3 días · **L** = 1 semana+. Orden = val
 | Auth mínima (API key por header) + CORS + derivar `rol` del token, no del body + `/metrics` detrás de auth ✅ | llmops (retail hereda, sin roles) | M |
 | Quitar placeholders de secretos del compose (exigirlos por env, fail-fast si faltan) ✅ | llmops | S |
 
-### Fase 2 — Robusto (M/L; cierra L3, L4, L6 y ▲ estructurales)
+### Fase 2 — Robusto · 6 de 7 items (cierra L6 y L3; L4 ya cayó en Fase 0)
 
 | Ítem | Proyecto | Esfuerzo |
 |---|---|---|
-| Timeouts de cliente LLM + retry con backoff exponencial (tenacity o `max_retries` del cliente) | llmops, retail | M |
-| Rate limiting (slowapi en la app o límites en el reverse proxy) | llmops, retail | M |
-| Persistir métricas y feedback en Postgres (ya está en la infra de llmops) — el A/B por fin decide sobre datos reales | llmops, retail | M |
-| Checkpointer Postgres (`PostgresSaver`) para memoria conversacional | llmops | M |
-| RBAC en el `WHERE` SQL (filtro en pgvector, no en Python) | llmops | M |
-| Indexado idempotente (upsert por hash de fragmento) | llmops | M |
-| Cablear `catalogo_fuente="live"` en el lifespan + refresco periódico | retail | M |
+| Timeouts de cliente LLM + retry con backoff exponencial ✅ (sin tenacity: el cliente `openai` ya hace backoff exponencial con jitter y respeta `Retry-After`) | llmops, retail | M |
+| Rate limiting ✅ (ventana deslizante propia, sin slowapi; **por proceso**, documentado) | llmops, retail | M |
+| Persistir métricas en Postgres ⚠️ **código escrito, SIN verificar contra la base** (tests de contrato listos, hoy se saltan). Feedback: pendiente | llmops | M |
+| Checkpointer Postgres (`PostgresSaver`) ❌ **no empezado**: es todo base de datos, implementarlo a ciegas no aportaba | llmops | M |
+| RBAC en el `WHERE` SQL ⚠️ filtro construido y verificado como lógica pura; **que el WHERE filtre de verdad, sin probar** | llmops | M |
+| Indexado idempotente ⚠️ id por hash de contenido+nivel, verificado como lógica pura; **que el upsert no duplique, sin probar** | llmops | M |
+| Cablear `catalogo_fuente="live"` en el lifespan + refresco periódico ✅ (fail-fast al arrancar, degradación solo al refrescar) | retail | M |
 
 ### Fase 3 — Escala y madurez (L)
 
@@ -186,6 +186,33 @@ Esfuerzo: **S** = horas · **M** = 1–3 días · **L** = 1 semana+. Orden = val
 | Dataset de evals ≥50 casos balanceados por categoría; eval-gate contra Postgres real | llmops, retail | L |
 | Gestor de secretos (Vault/SSM/1Password) + rotación | los tres | L |
 | CD (build de imagen + deploy automatizado al VPS en tag) | llmops, retail | M |
+
+---
+
+## 7b · Deuda de verificación (2026-07-18)
+
+Tres items de la Fase 2 tienen el código escrito y la **lógica pura probada**,
+pero su afirmación central sigue sin demostrarse porque requiere Postgres, y el
+daemon de Docker dejó de responder a mitad de sesión:
+
+| Item | Probado | SIN probar |
+|---|---|---|
+| Persistir métricas | Contrato del backend en memoria; que el de Postgres degrada sin tumbar el servicio | DDL, INSERT y SELECT contra una base real |
+| Indexado idempotente | Que el id es estable y discriminante (incluido el nivel de confidencialidad) | Que el upsert no duplica |
+| RBAC en el WHERE | Que el filtro tiene la forma que acepta langchain-postgres y coincide con el de Python para todos los roles | Que el WHERE filtra |
+
+Cerrarlo es una sesión corta con la infra arriba:
+
+```bash
+docker compose -f proyecto_llmops/docker-compose.yml up -d postgres
+PYTEST_PG_DSN=postgresql://gobdata:gobdata@localhost:5433/gobdata uv run pytest
+```
+
+Los 7 tests de `TestPostgres` (test_metrics_backends.py) pasan de **saltados** a
+verdes sin escribir una línea: están escritos contra la interfaz, no contra la
+implementación. Faltarían aún dos tests de integración que no existen todavía:
+uno que indexe dos veces y cuente filas, y otro que compruebe que un `analyst`
+no recibe fragmentos `restricted` desde pgvector.
 
 ---
 
