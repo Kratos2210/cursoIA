@@ -230,8 +230,10 @@ async def _flujo(peticion: PeticionChat, estado: dict):
         yield streaming.evento_sse({"cache_hit": False, "variante": variante}, evento="fin")
 
     # ---- 6) MÉTRICAS ----
+    # El uso REAL viaja dentro de la respuesta del agente (suma de redacción +
+    # reintento). Antes iba `Uso()` vacío y /metrics reportaba coste 0 siempre.
     colector.registrar(metrics.MetricasRequest(
-        modelo=settings.llm_modelo, uso=Uso(),
+        modelo=settings.llm_modelo, uso=respuesta.uso,
         latencia_ms=crono.latencia_ms, ttft_ms=crono.ttft_ms, cache_hit=False,
         acciones_guardrail=(*entrada.acciones, *respuesta.acciones)))
 

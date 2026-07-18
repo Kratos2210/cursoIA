@@ -26,6 +26,8 @@ from dataclasses import dataclass, field
 from proyecto_retail.app import intent
 from proyecto_retail.app.search import buscar_productos
 from proyecto_retail.guardrails.output_guard import revisar_salida
+from proyecto_retail.observability import tracing
+from proyecto_retail.observability.cost_model import Uso, extraer_uso
 from proyecto_retail.prompts.loader import cargar_cacheado
 
 
@@ -36,6 +38,11 @@ class RespuestaAgente:
     texto: str
     variante: str = "vendedora"
     acciones: tuple[str, ...] = field(default_factory=tuple)
+    # El consumo real de las llamadas al LLM (suma de redacción + reintento). Se
+    # propaga hasta /metrics para que el coste deje de reportarse en 0. Un cero
+    # aquí significa "no hubo llamada" (sin_resultados) o "el proveedor no lo
+    # informó", nunca "fue gratis".
+    uso: Uso = field(default_factory=Uso)
 
 
 # ------------------------------------------------------------------
@@ -72,11 +79,15 @@ def armar_respuesta(productos: list[dict]) -> str:
 # La redacción con el LLM (tono de marca, sobre lo recuperado)
 # ------------------------------------------------------------------
 def redactar_respuesta_llm(llm, productos: list[dict],
-                           variante: str = "vendedora", correccion: str = "") -> str:
+                           variante: str = "vendedora", correccion: str = "") -> tuple[str, Uso]:
     """El LLM redacta la recomendación SOLO sobre los productos recuperados.
 
     `variante` elige el prompt (A/B). `correccion` se usa en el reintento: se le
     dice al modelo qué precios puede citar y se le pide rehacer la respuesta.
+
+    Devuelve `(texto, uso)`: el consumo se saca de la MISMA respuesta que ya
+    tenemos, sin una llamada extra. El callback de Langfuse se cablea aquí (y no
+    en un `except pass` lejano) para que cada `invoke` deje su traza forense.
     """
     prompt = cargar_cacheado(variante)
     sistema = prompt.render(productos=formatear_productos(productos))
@@ -84,8 +95,9 @@ def redactar_respuesta_llm(llm, productos: list[dict],
     if correccion:
         humano += f"\n\n{correccion}"
 
-    respuesta = llm.invoke([("system", sistema), ("human", humano)])
-    return respuesta.content.strip()
+    respuesta = llm.invoke([("system", sistema), ("human", humano)],
+                           config={"callbacks": tracing.callbacks()})
+    return respuesta.content.strip(), extraer_uso(respuesta)
 
 
 # ------------------------------------------------------------------
@@ -109,24 +121,28 @@ def responder_con_guardrail(llm, peticion: str, catalogo: list[dict],
                                acciones=("sin_resultados",))
 
     # 1) El LLM redacta con tono de marca.
-    texto = redactar_respuesta_llm(llm, productos, variante)
+    texto, uso = redactar_respuesta_llm(llm, productos, variante)
     veredicto = revisar_salida(texto, productos)
     if veredicto.permitido:
-        return RespuestaAgente(productos, texto, variante)
+        return RespuestaAgente(productos, texto, variante, uso=uso)
 
     # 2) Reintento correctivo: le recordamos qué precios son legítimos.
     precios_ok = ", ".join(f"S/{p['precio']:.2f}" for p in productos)
     correccion = (f"Tu respuesta anterior citó un precio que NO está en el "
                   f"catálogo. Los ÚNICOS precios permitidos son: {precios_ok}. "
                   f"Reescríbela usando solo esos.")
-    texto = redactar_respuesta_llm(llm, productos, variante, correccion)
+    texto, uso_reintento = redactar_respuesta_llm(llm, productos, variante, correccion)
+    # El reintento también consumió tokens: se cobran los dos, aunque acabe en fallback.
+    uso = Uso(entrada=uso.entrada + uso_reintento.entrada,
+              salida=uso.salida + uso_reintento.salida)
     veredicto = revisar_salida(texto, productos)
     if veredicto.permitido:
-        return RespuestaAgente(productos, texto, variante, acciones=("reintento_grounding",))
+        return RespuestaAgente(productos, texto, variante,
+                               acciones=("reintento_grounding",), uso=uso)
 
     # 3) El modelo insiste en inventar: gana el determinista. Fiel siempre.
     return RespuestaAgente(productos, armar_respuesta(productos), variante,
-                           acciones=("reintento_grounding", "fallback_determinista"))
+                           acciones=("reintento_grounding", "fallback_determinista"), uso=uso)
 
 
 def agente_compras(llm, *, variante: str = "vendedora", extraer=None):

@@ -177,7 +177,7 @@ está hecho.
   - un score de **0.85** bloquea (puerta de la media), y
   - **un solo** caso con `fiel=False` bloquea aunque el score sea 0.90 o más
     (cero tolerancia al precio inventado).
-- [ ] **Criterio:** `evals/dataset.jsonl` tiene **al menos los 13 casos**
+- [ ] **Criterio:** `evals/dataset.jsonl` tiene **al menos los 8 casos**
   actuales e incluye los tres tipos que importan: presupuesto ajustado, stock
   agotado y **petición imposible** (donde la respuesta correcta es "no tengo").
 - [ ] **Criterio:** el eval atrapa a un asistente deliberadamente malo. Pásale
