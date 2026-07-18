@@ -58,8 +58,8 @@ export function Sidebar() {
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar módulo…"
-          aria-label="Buscar módulo"
+          placeholder="Buscar concepto…"
+          aria-label="Buscar concepto"
         />
       </div>
 

@@ -1,4 +1,4 @@
-Durante 26 módulos usaste el modelo como una **caja negra**: texto entra, texto sale. Este módulo la abre. No para que entrenes uno —eso son millones de dólares en GPUs— sino para que entiendas las piezas que explican *todo* lo que ya viste: por qué `temperature=0` es determinista, por qué se paga por token, por qué el modelo a veces "alucina" con seguridad. Y como en el resto del curso, cada pieza es una **función pura** que puedes testear byte a byte.
+Durante 26 conceptos usaste el modelo como una **caja negra**: texto entra, texto sale. Este concepto la abre. No para que entrenes uno —eso son millones de dólares en GPUs— sino para que entiendas las piezas que explican *todo* lo que ya viste: por qué `temperature=0` es determinista, por qué se paga por token, por qué el modelo a veces "alucina" con seguridad. Y como en el resto del curso, cada pieza es una **función pura** que puedes testear byte a byte.
 
 <Box kind="def" label="◈ El árbol al que pertenece un LLM">
 
@@ -41,7 +41,7 @@ def tokenizar_bpe(palabra, merges):
     return secuencia
 ```
 
-Una palabra nueva reutiliza los trozos que quepan; lo que no encaje se queda en piezas pequeñas. Por eso `"proyectos"` = `['p','r','o','y','ecto','s']` cuesta un token **más** que `"proyecto"` = `['p','r','o','y','ecto']`: la `s` del plural no estaba en el vocabulario y viaja suelta. Multiplica eso por millones de palabras y entiendes por qué la factura del [m16](/modulo/16-observabilidad-y-costo) se cuenta en tokens, no en caracteres.
+Una palabra nueva reutiliza los trozos que quepan; lo que no encaje se queda en piezas pequeñas. Por eso `"proyectos"` = `['p','r','o','y','ecto','s']` cuesta un token **más** que `"proyecto"` = `['p','r','o','y','ecto']`: la `s` del plural no estaba en el vocabulario y viaja suelta. Multiplica eso por millones de palabras y entiendes por qué la factura del [c16](/concepto/16-observabilidad-y-costo) se cuenta en tokens, no en caracteres.
 
 ### Softmax con temperatura · qué hace de verdad `temperature=0`
 
@@ -57,7 +57,7 @@ def softmax_con_temperatura(logits, t):
     return [e / suma for e in exp]
 ```
 
-Aquí está el mito desmontado: el modelo **no "elige" una palabra**. Produce un logit por token y softmax los vuelve probabilidades. `temperature=0` del [m01](/modulo/01-tu-primer-modelo) no "apaga la creatividad": pone toda la probabilidad en el token de mayor logit (*greedy*), por eso sale siempre lo mismo. Subir la temperatura aplana la distribución y da paso al azar —y al riesgo de disparate.
+Aquí está el mito desmontado: el modelo **no "elige" una palabra**. Produce un logit por token y softmax los vuelve probabilidades. `temperature=0` del [c01](/concepto/01-tu-primer-modelo) no "apaga la creatividad": pone toda la probabilidad en el token de mayor logit (*greedy*), por eso sale siempre lo mismo. Subir la temperatura aplana la distribución y da paso al azar —y al riesgo de disparate.
 
 ### Muestreo · sacar una palabra sin caer siempre en la más probable
 
@@ -74,26 +74,26 @@ Elegir siempre el favorito hace el texto plano; muestrear de toda la distribuci�
 
 [4] PERPLEJIDAD · exp(-media de log-prob):
     texto fluido  → 1.15   (baja = no sorprende)
-    texto basura  → 18.80  (alta = sospechoso, ver m28)
+    texto basura  → 18.80  (alta = sospechoso, ver c28)
 ```
 
 ### Perplejidad · "qué tan sorprendido está el modelo"
 
-Es `exp(-media de log-probabilidades)` de los tokens que *realmente* aparecieron. Si a un texto fluido el modelo le asignó probabilidades altas, la perplejidad es baja ("esto lo esperaba"); si tuvo que apostar por tokens que creía improbables, se dispara. Es la métrica clásica de fluidez —y en el módulo siguiente (**m28**) reaparece como **defensa**: un prompt adversarial o basura tiene tokens improbables → perplejidad alta → un filtro puede marcarlo como sospechoso antes de que llegue al modelo.
+Es `exp(-media de log-probabilidades)` de los tokens que *realmente* aparecieron. Si a un texto fluido el modelo le asignó probabilidades altas, la perplejidad es baja ("esto lo esperaba"); si tuvo que apostar por tokens que creía improbables, se dispara. Es la métrica clásica de fluidez —y en el concepto siguiente (**c28**) reaparece como **defensa**: un prompt adversarial o basura tiene tokens improbables → perplejidad alta → un filtro puede marcarlo como sospechoso antes de que llegue al modelo.
 
 ### Atención · a qué palabras mira cada palabra
 
-La idea que hizo posible el transformer, sin frameworks: cada palabra pregunta "¿con cuáles de las demás me relaciono?". La afinidad es el **producto punto** entre su vector-consulta y el vector-clave de cada palabra (el mismo producto punto del coseno del [m12](/modulo/12-recuperar-re-rankear)); softmax lo vuelve un reparto de atención que suma 1. Así "el banco de la plaza" y "el banco me cobró" desambiguan: "banco" mira a palabras distintas en cada frase.
+La idea que hizo posible el transformer, sin frameworks: cada palabra pregunta "¿con cuáles de las demás me relaciono?". La afinidad es el **producto punto** entre su vector-consulta y el vector-clave de cada palabra (el mismo producto punto del coseno del [c12](/concepto/12-recuperar-re-rankear)); softmax lo vuelve un reparto de atención que suma 1. Así "el banco de la plaza" y "el banco me cobró" desambiguan: "banco" mira a palabras distintas en cada frase.
 
 <Box kind="analogy" label="◆ La historia y las arquitecturas van aparte">
 
-Hasta aquí, la **mecánica**. La otra mitad —de dónde salió el transformer (Markov → RNN → atención), las familias encoder/decoder, cómo se alinea un modelo (RLHF/DPO) y qué lo hace rápido y barato (KV cache, cuantización, MoE)— vive en el [m27b · Arquitecturas e historia](/modulo/27b-arquitecturas-e-historia). Aquí cerramos con dos avisos sobre lo que *no* arreglan los parámetros de muestreo.
+Hasta aquí, la **mecánica**. La otra mitad —de dónde salió el transformer (Markov → RNN → atención), las familias encoder/decoder, cómo se alinea un modelo (RLHF/DPO) y qué lo hace rápido y barato (KV cache, cuantización, MoE)— vive en el [c27b · Arquitecturas e historia](/concepto/27b-arquitecturas-e-historia). Aquí cerramos con dos avisos sobre lo que *no* arreglan los parámetros de muestreo.
 
 </Box>
 
 <Box kind="warn" label="▲ Saber esto NO reemplaza medir">
 
-Entender los internos es cultura útil, pero cuidado con dos trampas. Una: **subir la temperatura no arregla un prompt malo** —solo añade azar. Dos: **bajar `top_p` no arregla una alucinación** —si el modelo no tiene el dato, muestrear con más cuidado no lo inventa; lo que necesitas es grounding con RAG ([m11](/modulo/11-rag-profesional)). Los parámetros de muestreo se tocan al final, cuando el prompt y el contexto ya están bien.
+Entender los internos es cultura útil, pero cuidado con dos trampas. Una: **subir la temperatura no arregla un prompt malo** —solo añade azar. Dos: **bajar `top_p` no arregla una alucinación** —si el modelo no tiene el dato, muestrear con más cuidado no lo inventa; lo que necesitas es grounding con RAG ([c11](/concepto/11-rag-profesional)). Los parámetros de muestreo se tocan al final, cuando el prompt y el contexto ya están bien.
 
 </Box>
 
@@ -106,7 +106,42 @@ Entender los internos es cultura útil, pero cuidado con dos trampas. Una: **sub
 
 <Box kind="practice" label="▸ Para practicar">
 
-Corre `uv run python 27_fundamentos_llm.py` y juega con los logits: cambia `[2.0, 1.0, 0.2, -1.0]` por valores más parecidos entre sí y mira cómo softmax reparte casi por igual (el modelo "duda"). Luego calcula la perplejidad de una lista de probabilidades altas y otra de bajas y comprueba el salto. Cuando llegues al **m28**, ese mismo `calcular_perplejidad()` será la base de un filtro que detecta prompts sospechosos.
+Corre `uv run python 27_fundamentos_llm.py` y juega con los logits: cambia `[2.0, 1.0, 0.2, -1.0]` por valores más parecidos entre sí y mira cómo softmax reparte casi por igual (el modelo "duda"). Luego calcula la perplejidad de una lista de probabilidades altas y otra de bajas y comprueba el salto. Cuando llegues al **c28**, ese mismo `calcular_perplejidad()` será la base de un filtro que detecta prompts sospechosos.
+
+**Mini-reto** · escribe `margen_de_confianza(logits, t)`: una función pura que devuelva cuánto le saca el token más probable al segundo, usando `softmax_con_temperatura`. Es la forma de *medir* —no de intuir— lo que la temperatura le hace a la distribución.
+
+**Criterio de aceptación:** con `logits = [2.0, 1.0, 0.2, -1.0]`, el margen baja al subir la temperatura (`t=0.5` > `t=1.0` > `t=2.0`) y vale exactamente `1.0` con `t=0` (toda la masa en un token: greedy).
+
+<Solution summary="Ver una solución">
+
+```python title="solución · medir el efecto de la temperatura"
+from importlib import import_module
+c27 = import_module("27_fundamentos_llm")   # el archivo empieza por dígito
+
+def margen_de_confianza(logits, t):
+    probs = sorted(c27.softmax_con_temperatura(logits, t), reverse=True)
+    if len(probs) < 2:
+        return 1.0                          # un solo candidato: no hay competencia
+    return probs[0] - probs[1]              # cuánto le saca el favorito al segundo
+
+logits = [2.0, 1.0, 0.2, -1.0]
+for t in (0, 0.5, 1.0, 2.0):
+    print(f"t={t}: margen={margen_de_confianza(logits, t):.3f}")
+# t=0   : 1.000  ← greedy, el favorito se lleva TODA la probabilidad
+# t=0.5 : 0.742  ← distribución concentrada, el favorito domina
+# t=1.0 : 0.399
+# t=2.0 : 0.176  ← aplanada: el segundo casi empata → más azar al muestrear
+
+# El test que lo fija (los números exactos dependen de los logits; el ORDEN no):
+assert margen_de_confianza(logits, 0) == 1.0
+assert (margen_de_confianza(logits, 0.5)
+        > margen_de_confianza(logits, 1.0)
+        > margen_de_confianza(logits, 2.0))
+```
+
+Ojo con la conclusión: un margen alto dice que el modelo está **seguro**, no que tenga **razón**. Es la misma trampa del `temperature=0` — determinismo no es verdad.
+
+</Solution>
 
 </Box>
 
@@ -118,6 +153,42 @@ Corre `uv run python 27_fundamentos_llm.py` y juega con los logits: cambia `[2.0
 - Explicar en una frase qué es la **atención** y cómo desambigua "banco".
 
 </Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 27">
+
+<Question>
+  <Prompt>1 · Tu clasificador corre con `temperature=0` y sigue etiquetando mal el mismo caso. ¿Qué significa eso?</Prompt>
+  <Option>Que `temperature=0` no llegó a aplicarse y hay azar residual</Option>
+  <Option ok>Que el modelo se equivoca de forma consistente: determinismo no es verdad</Option>
+  <Option>Que hay que subir la temperatura para que explore otra respuesta</Option>
+  <Feedback>`temperature=0` pone toda la masa en el token de mayor logit: siempre la MISMA respuesta, no la CORRECTA. Se arregla con prompt, contexto o grounding, no con muestreo.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿En qué se diferencia top_p de top_k?</Prompt>
+  <Option>top_p recorta por logit crudo y top_k por probabilidad normalizada</Option>
+  <Option>top_p elige siempre el token más probable; top_k reparte el azar</Option>
+  <Option ok>top_k fija el número de candidatos; top_p adapta ese número a cuánto duda el modelo</Option>
+  <Feedback>top_p toma el menor grupo que suma probabilidad p: si el modelo está segurísimo, uno o dos tokens bastan; si duda, el núcleo se ensancha solo.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Un texto de entrada da perplejidad muy alta. ¿Qué te está diciendo?</Prompt>
+  <Option>Que el modelo está seguro de la respuesta que va a dar</Option>
+  <Option ok>Que el modelo no esperaba esos tokens — señal de texto raro o adversarial</Option>
+  <Option>Que el texto es demasiado largo para la ventana de contexto</Option>
+  <Feedback>Perplejidad = `exp(-media de log-prob)` de los tokens observados. Alta = tuvo que apostar por tokens improbables; el c28 usa justo eso como filtro de entrada.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · ¿Qué resuelve el mecanismo de atención en una frase como "el banco me cobró"?</Prompt>
+  <Option>Comprime la frase para que ocupe menos tokens en la ventana</Option>
+  <Option>Ordena las palabras por frecuencia en el corpus de entrenamiento</Option>
+  <Option ok>Deja que cada palabra reparta peso sobre las demás, y "banco" mira a "cobró" en vez de a "plaza"</Option>
+  <Feedback>La afinidad es un producto punto consulta·clave (el mismo del coseno del c12) y softmax lo vuelve un reparto que suma 1. Así el contexto desambigua el sentido.</Feedback>
+</Question>
+
+</Quiz>
 
 <Recap level={5} label="↺ En una frase">
 

@@ -2,7 +2,7 @@ Hasta ahora tus cadenas eran una línea recta. Estos tres "conectores" te dejan 
 
 <Box kind="def" label="◈ Definición · Runnable">
 
-Un **Runnable** es *cualquier* pieza que se puede meter en una cadena LCEL: un prompt, un modelo, un parser, una función tuya, o una cadena entera. Solo tiene que cumplir el contrato del Módulo 03 (`invoke`, `batch`, `stream`).
+Un **Runnable** es *cualquier* pieza que se puede meter en una cadena LCEL: un prompt, un modelo, un parser, una función tuya, o una cadena entera. Solo tiene que cumplir el contrato del Concepto 03 (`invoke`, `batch`, `stream`).
 
 La propiedad que lo vuelve poderoso es que **es cerrado bajo composición**: si `a` y `b` son Runnables, `a | b` también lo es. Por eso puedes tratar un RAG completo como si fuera un solo eslabón dentro de una cadena más grande.
 
@@ -75,15 +75,15 @@ HOLA
 
 <Box kind="analogy" label="◆ Por qué importa">
 
-Una cadena RAG (Módulo 11) es literalmente esto: `{"context": retriever | unir, "question": RunnablePassthrough()}`. Recuperas contexto en una rama y conservas la pregunta en la otra, en paralelo.
+Una cadena RAG (Concepto 11) es literalmente esto: `{"context": retriever | unir, "question": RunnablePassthrough()}`. Recuperas contexto en una rama y conservas la pregunta en la otra, en paralelo.
 
 </Box>
 
 <Avoid label="⛔ Cuándo NO usar estos runnables">
 
 - **Cuando el flujo es una línea recta.** Si no hay ramas ni copias que conservar, un simple `prompt | llm | parser` sobra: meter `RunnableParallel` "por si acaso" solo añade indirección.
-- **Cuando el paso hace algo caro o con efectos.** Un `RunnableLambda` es para lógica trivial y pura (limpiar, formatear, contar). Si la función llama a una API, escribe en disco o puede fallar, merece ser una herramienta ([m07](/modulo/07-herramientas)) o un nodo de grafo ([m13](/modulo/13-langgraph-a-fondo)), no un lambda escondido en la cadena.
-- **Cuando la decisión es del modelo, no tuya.** Si el camino depende de lo que el modelo elija, eso es *routing* ([m08](/modulo/08-routing)) o un agente, no ramas fijas en paralelo.
+- **Cuando el paso hace algo caro o con efectos.** Un `RunnableLambda` es para lógica trivial y pura (limpiar, formatear, contar). Si la función llama a una API, escribe en disco o puede fallar, merece ser una herramienta ([c07](/concepto/07-herramientas)) o un nodo de grafo ([c13](/concepto/13-langgraph-a-fondo)), no un lambda escondido en la cadena.
+- **Cuando la decisión es del modelo, no tuya.** Si el camino depende de lo que el modelo elija, eso es *routing* ([c08](/concepto/08-routing)) o un agente, no ramas fijas en paralelo.
 
 </Avoid>
 
@@ -116,6 +116,42 @@ print(analisis.invoke({"texto": "La automatización ahorra tiempo valioso"}))
 - Reconocer el patrón `{"context": retriever, "question": passthrough}` que armará el RAG.
 
 </Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 06">
+
+<Question>
+  <Prompt>1 · Que un Runnable sea "cerrado bajo composición" significa que…</Prompt>
+  <Option>Una vez compuesto, ya no puedes modificarlo</Option>
+  <Option ok>Si `a` y `b` son Runnables, `a | b` también lo es — así un RAG entero cabe como un solo eslabón</Option>
+  <Option>Solo se pueden encadenar piezas del mismo tipo</Option>
+  <Feedback>Por eso puedes meter una cadena dentro de otra sin adaptadores: el resultado sigue entendiendo `invoke`, `batch` y `stream` (Concepto 03).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · Tu paso intermedio llama a una API externa y a veces falla. ¿Lo metes en un `RunnableLambda`?</Prompt>
+  <Option>Sí: para eso existe, para meter tu propio código</Option>
+  <Option ok>No: un lambda es para lógica trivial y pura; algo que falla o tiene efectos merece ser una tool o un nodo de grafo</Option>
+  <Option>Sí, pero envolviéndolo en un `RunnableParallel`</Option>
+  <Feedback>Limpiar, formatear, contar → `RunnableLambda`. Llamar fuera, escribir en disco, poder fallar → `@tool` ([c07](/concepto/07-herramientas)) o un nodo ([c13](/concepto/13-langgraph-a-fondo)).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · El camino que toma el flujo depende de lo que decida el modelo. ¿`RunnableParallel` con dos ramas?</Prompt>
+  <Option>Sí: corres las dos y te quedas con la que sirva</Option>
+  <Option ok>No: si decide el modelo, eso es *routing* o un agente, no ramas fijas</Option>
+  <Option>Sí, pero pasando la decisión por `RunnablePassthrough`</Option>
+  <Feedback>Estos runnables arman topologías **fijas** que tú decides al escribir el código. Que elija el modelo es el Concepto 08.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · En el patrón `{"context": retriever, "question": RunnablePassthrough()}`, ¿qué hace el passthrough?</Prompt>
+  <Option>Copia el contexto recuperado a la segunda clave</Option>
+  <Option ok>Conserva la pregunta original intacta mientras la otra rama la usa para recuperar</Option>
+  <Option>Espera a que el retriever termine antes de continuar</Option>
+  <Feedback>Es el "cable": deja pasar la entrada tal cual. Sin él perderías la pregunta, porque el retriever devuelve documentos, no la pregunta (Concepto 11).</Feedback>
+</Question>
+
+</Quiz>
 
 <Recap level={2} label="↺ En una frase">
 

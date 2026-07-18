@@ -32,11 +32,11 @@ export function Dashboard() {
 
   const pct = ready ? Math.round((doneCount(ALL_IDS) / ALL_IDS.length) * 100) : 0;
   const firstIncomplete = MODULE_ITEMS.find((i) => !(ready && isDone(i.id))) ?? MODULE_ITEMS[0];
-  const continueHref = firstIncomplete?.href ?? "/modulo/00-preparar-el-terreno";
+  const continueHref = firstIncomplete?.href ?? "/concepto/00-preparar-el-terreno";
   const continueLabel = ready && doneCount(ALL_IDS) > 0 ? "Continuar" : "Comenzar el curso";
 
   const stats = [
-    { value: `${TOTAL_MODULES}`, label: "Módulos" },
+    { value: `${TOTAL_MODULES}`, label: "Conceptos" },
     { value: `${TOTAL_LEVELS}`, label: "Etapas" },
     { value: `${TOTAL_EXTRAS}`, label: "Recursos" },
     { value: `${pct}%`, label: "Completado" },
@@ -49,12 +49,12 @@ export function Dashboard() {
           <span className="rule" />
           Roadmap · de cero a AI Engineer
         </p>
-        <h1>Conviértete en AI Engineer, un módulo a la vez</h1>
+        <h1>Conviértete en AI Engineer, un concepto a la vez</h1>
         <p className="lede">
           Un recorrido por <b>temas</b> —Fundamentos, Prompts y LCEL, Agentes, RAG, Modelos,
           Producción y Proyectos— que va de <b>cero absoluto</b> (instalar Python) a <b>sistemas de
           IA en producción</b>. Cada tema reúne todo lo suyo en un solo sitio, y el objetivo de todas
-          las rutas es el mismo: <b>convertirte en AI Engineer</b>. Cada módulo trae un ejemplo
+          las rutas es el mismo: <b>convertirte en AI Engineer</b>. Cada concepto trae un ejemplo
           ejecutable y su autoevaluación.
         </p>
         <div className="cta-row">
@@ -64,6 +64,9 @@ export function Dashboard() {
           <button type="button" className="btn-ghost" onClick={scrollToRoadmap}>
             Ver el temario
           </button>
+          <Link href="/diagnostico" className="btn-ghost">
+            ¿Por dónde empiezo?
+          </Link>
         </div>
       </div>
 
@@ -78,7 +81,7 @@ export function Dashboard() {
 
       <h2 className="roadmap-h" id="roadmap">El roadmap</h2>
       <p className="roadmap-sub">
-        Ocho etapas temáticas: cada una reúne todo lo suyo. Cada módulo se estudia corriendo su
+        Ocho etapas temáticas: cada una reúne todo lo suyo. Cada concepto se estudia corriendo su
         ejemplo — no solo leyéndolo — y no avances sin pasar su autoevaluación.
       </p>
 
@@ -108,7 +111,7 @@ export function Dashboard() {
                   <div className="rm-card-head">
                     <h3>{lvl.name}</h3>
                     <span className="rm-count">
-                      {done}/{lvl.items.length} módulos
+                      {done}/{lvl.items.length} conceptos
                     </span>
                     <span className="rm-time">{levelTime(lvl.items)}</span>
                   </div>

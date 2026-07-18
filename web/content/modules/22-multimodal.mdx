@@ -81,6 +81,34 @@ Con una `GOOGLE_API_KEY`, cambia el `PNG_DEMO_1x1` por una imagen real (lee un a
 
 Segundo reto: añade un **tercer** bloque de imagen al mismo mensaje y pídele al modelo que compare las dos. El formato de bloques lo permite sin cambiar nada más.
 
+**Criterio de aceptación:** `len(mensaje.content) == 3` y sus tipos son `['text', 'image_url', 'image_url']`. Con llave y un modelo con visión, la respuesta menciona algo que aparece **solo en la segunda** imagen — si te describe una sola, revisa que no estés pisando el bloque anterior en vez de añadirlo a la lista.
+
+<Solution summary="Ver una solución">
+
+```python title="solución · dos imágenes en el mismo mensaje"
+from langchain_core.messages import HumanMessage
+
+def mensaje_comparar(texto, data_urls):
+    # El content es una LISTA: nada impide que lleve N bloques de imagen.
+    # Se APILAN, no se sobrescriben — ese es todo el truco del formato por bloques.
+    bloques = [{"type": "text", "text": texto}]
+    for url in data_urls:
+        bloques.append({"type": "image_url", "image_url": {"url": url}})
+    return HumanMessage(content=bloques)
+
+a = imagen_a_data_url(open("factura_a.png", "rb").read(), mime="image/png")
+b = imagen_a_data_url(open("factura_b.png", "rb").read(), mime="image/png")
+mensaje = mensaje_comparar("Compara ambas facturas: ¿qué campos difieren?", [a, b])
+
+print(len(mensaje.content))                             # 3
+print([bloque["type"] for bloque in mensaje.content])   # ['text', 'image_url', 'image_url']
+# util.crear_llm().invoke([mensaje])  ← la llamada real, SOLO con un modelo con visión.
+```
+
+Dos avisos que el ejercicio hace evidentes. Uno: el coste **se duplica**, porque cada imagen paga sus tokens por resolución — comparar dos capturas de 4000×3000 sale caro por detalle que nadie mira. Dos: si el proveedor no ve, esto no falla ruidosamente; el bloque se ignora y el modelo te contesta algo plausible sobre nada. Verifica la capacidad antes, no después de leer la respuesta.
+
+</Solution>
+
 </Box>
 
 <Box kind="def" label="◈ Más allá de VER: oír, hablar y generar imágenes">
@@ -96,7 +124,7 @@ La imagen de entrada es solo una esquina del multimodal. El espectro completo ti
   <Def>Modelos texto→imagen (Imagen de Google, DALL·E, la generación de Gemini) devuelven una imagen, no texto. También es una API distinta de la de chat.</Def>
 </DefList>
 
-▲ Regla que se repite: el bloque `media`/`image_url` viaja igual, pero **el proveedor tiene que soportar esa modalidad** (Gemini oye y ve; un modelo de solo texto en Groq, no). Y audio/imagen pesan más que el texto: cuestan más y tardan más, así que mídelo ([m16](/modulo/16-observabilidad-y-costo)) antes de meterlo en el camino caliente.
+▲ Regla que se repite: el bloque `media`/`image_url` viaja igual, pero **el proveedor tiene que soportar esa modalidad** (Gemini oye y ve; un modelo de solo texto en Groq, no). Y audio/imagen pesan más que el texto: cuestan más y tardan más, así que mídelo ([c16](/concepto/16-observabilidad-y-costo)) antes de meterlo en el camino caliente.
 
 </Box>
 
@@ -106,7 +134,7 @@ Todo lo anterior es **batch**: mandas el audio entero y esperas la respuesta ent
 
 <Flow>
   <Step n="1" title="STT streaming">El audio llega por trozos y se transcribe parcial, sin esperar a que termines de hablar.</Step>
-  <Step n="2" title="LLM streaming">Con la transcripción, el modelo responde token a token (el mismo stream del [m10](/modulo/10-agentes-prebuilt)/[m25](/modulo/25-frontend-chat-sse)).</Step>
+  <Step n="2" title="LLM streaming">Con la transcripción, el modelo responde token a token (el mismo stream del [c10](/concepto/10-agentes-prebuilt)/[c25](/concepto/25-frontend-chat-sse)).</Step>
   <Step n="3" title="TTS por frases">En cuanto hay una frase completa, se sintetiza y se reproduce — no se espera al final.</Step>
 </Flow>
 
@@ -137,7 +165,7 @@ Streaming de voz suena mágico, pero trae complicaciones nuevas: **barge-in** (e
 
 ### 🏗 Proyecto guiado: un agente que VE (y opcionalmente habla)
 
-Los módulos anteriores te dieron piezas sueltas. Este proyecto las junta en algo que resuelve una tarea real: **el cliente manda una foto y el agente actúa**. Caso concreto —un asistente de reclamos— *"llegó rota la caja"* + foto → clasifica el daño, decide si procede reembolso y redacta la respuesta.
+Los conceptos anteriores te dieron piezas sueltas. Este proyecto las junta en algo que resuelve una tarea real: **el cliente manda una foto y el agente actúa**. Caso concreto —un asistente de reclamos— *"llegó rota la caja"* + foto → clasifica el daño, decide si procede reembolso y redacta la respuesta.
 
 No hay archivo nuevo que copiar: **todo lo que necesitas ya está escrito y testeado**. Es trabajo de ensamblaje, que es exactamente lo que hace un AI Engineer.
 
@@ -145,20 +173,20 @@ No hay archivo nuevo que copiar: **todo lo que necesitas ya está escrito y test
 
 **1 · La entrada visual.** Usa `22_multimodal.py` tal cual: `imagen_a_data_url()` + el mensaje de dos bloques. El armado es offline; solo la llamada final necesita un modelo con visión.
 
-**2 · El contrato de salida.** No dejes que responda un párrafo: exige un molde como el del [m09b](/modulo/09b-proyecto-utilidad-texto) — `{"dano": "leve|grave|ninguno", "procede_reembolso": bool, "respuesta": str}` — y **valídalo**. Aquí importa más que nunca: una decisión de reembolso la va a consumir otro sistema.
+**2 · El contrato de salida.** No dejes que responda un párrafo: exige un molde como el del [c09b](/concepto/09b-proyecto-utilidad-texto) — `{"dano": "leve|grave|ninguno", "procede_reembolso": bool, "respuesta": str}` — y **valídalo**. Aquí importa más que nunca: una decisión de reembolso la va a consumir otro sistema.
 
-**3 · La acción.** Que el modelo no solo describa: dale herramientas ([m07](/modulo/07-herramientas)) y un agente que decida ([m10](/modulo/10-agentes-prebuilt)) — `registrar_reclamo(id, dano)` y `escalar_a_humano(motivo)`. La foto entra por el mensaje multimodal; la decisión sale por una tool.
+**3 · La acción.** Que el modelo no solo describa: dale herramientas ([c07](/concepto/07-herramientas)) y un agente que decida ([c10](/concepto/10-agentes-prebuilt)) — `registrar_reclamo(id, dano)` y `escalar_a_humano(motivo)`. La foto entra por el mensaje multimodal; la decisión sale por una tool.
 
-**4 · La voz (opcional).** Si quieres que además escuche y conteste hablando, el pipeline está en `22b_voz.py` y su versión con servicios reales en el [m33](/modulo/33-agente-voz-realtime). Añádelo **al final**: primero que funcione con texto.
+**4 · La voz (opcional).** Si quieres que además escuche y conteste hablando, el pipeline está en `22b_voz.py` y su versión con servicios reales en el [c33](/concepto/33-agente-voz-realtime). Añádelo **al final**: primero que funcione con texto.
 
 </Box>
 
 <Box kind="def" label="◈ Criterios de 'hecho' (para que no te quedes en la demo bonita)">
 
 - El sistema devuelve un **objeto validado**, no texto, y hay un test que lo comprueba con un doble (sin gastar cuota).
-- Si la foto es ilegible o el modelo duda, **escala a un humano** en vez de inventar un veredicto — `requiere_humano` del m09b, `interrupt` del [m13](/modulo/13-langgraph-a-fondo).
+- Si la foto es ilegible o el modelo duda, **escala a un humano** en vez de inventar un veredicto — `requiere_humano` del c09b, `interrupt` del [c13](/concepto/13-langgraph-a-fondo).
 - Registras **cuánto costó**: las imágenes se cobran caras (mira el aviso de tokens de arriba), así que mide antes de prometerle el precio a nadie.
-- Una decisión de dinero **nunca** la cierra el modelo solo: revisa la caja de ética del [m23](/modulo/23-seguridad-red-teaming).
+- Una decisión de dinero **nunca** la cierra el modelo solo: revisa la caja de ética del [c23](/concepto/23-seguridad-red-teaming).
 
 </Box>
 
@@ -171,6 +199,42 @@ No hay archivo nuevo que copiar: **todo lo que necesitas ya está escrito y test
 - Distinguir el modo **batch** (mandas todo, esperas todo) del **tiempo real** (STT→LLM→TTS por streaming) y cuándo vale cada uno.
 
 </Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 22">
+
+<Question>
+  <Prompt>1 · ¿Por qué el `content` de un mensaje multimodal es una lista y no un string?</Prompt>
+  <Option>Porque LangChain necesita la lista para mandar los trozos en paralelo</Option>
+  <Option ok>Porque cada elemento es un bloque con su propio `type`, y el modelo lee texto e imagen como una sola entrada</Option>
+  <Option>Porque el modelo procesa primero la imagen y después el texto, en ese orden</Option>
+  <Feedback>Es el sobre con dos hojas: el modelo lo abre y lee ambas a la vez. El `type` de cada bloque es lo que le dice cómo interpretarlo.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Por qué la imagen viaja en base64 dentro de un `data:` URL?</Prompt>
+  <Option>Porque comprime la imagen y así abarata la llamada</Option>
+  <Option ok>Porque el JSON de la petición es texto y no admite bytes crudos: base64 los reescribe como ASCII</Option>
+  <Option>Porque permite que el proveedor cachee la imagen por su hash</Option>
+  <Feedback>base64 no comprime — de hecho agranda el payload alrededor de un 33%. Solo resuelve el transporte por un canal que es texto.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Cambias a `LLM_PROVIDER=groq` con el Qwen de texto y el multimodal deja de funcionar. ¿Qué pasó?</Prompt>
+  <Option>El bloque `image_url` cambia de formato según el proveedor</Option>
+  <Option ok>Ese modelo no tiene visión: el bloque de imagen se ignora o da error, aunque el resto del curso conmute solo</Option>
+  <Option>Falta convertir la imagen a un bloque `media` con su `mime_type`</Option>
+  <Feedback>La interfaz unificada conmuta el **proveedor**, no las **capacidades**. Antes de cambiar, comprueba que el modelo destino vea.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Le mandas al modelo la foto de 4000×3000 recién sacada del teléfono. ¿Cuál es el problema real?</Prompt>
+  <Option>Que el proveedor rechaza cualquier imagen de más de 1 MB</Option>
+  <Option ok>Que las imágenes se cobran en tokens y crecen con la resolución: pagas detalle que el modelo no necesita</Option>
+  <Option>Que base64 pierde calidad al codificar imágenes grandes</Option>
+  <Feedback>Redimensiona antes de enviar. Y si el texto ya existe —un PDF con texto seleccionable— extraerlo y hacer RAG sale más barato y más exacto que "mirarlo".</Feedback>
+</Question>
+
+</Quiz>
 
 <Recap level={5} label="↺ En una frase">
 

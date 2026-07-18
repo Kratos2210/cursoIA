@@ -57,9 +57,9 @@ Con el 18% de descuento, pagarías 2870 soles por el producto de 3500.
 
 ### El ciclo, línea por línea
 
-Ese bloque es corto pero cada línea hace algo concreto. Vale la pena leerlo despacio, porque este mismo ciclo es el que LangGraph automatiza en el Módulo 10:
+Ese bloque es corto pero cada línea hace algo concreto. Vale la pena leerlo despacio, porque este mismo ciclo es el que LangGraph automatiza en el Concepto 10:
 
-- `mapa = {t.name: t for t in herramientas}` — es una **dict comprehension** (no la vimos en el Módulo 0b): construye un diccionario *nombre → herramienta* en una sola línea. Equivale a un `for` con asignaciones: recorrer la lista y por cada herramienta `t` guardar `mapa[t.name] = t`. Lo necesitas porque el modelo pide la tool *por su nombre* (un texto), y con este diccionario pasas de ese texto a la función real.
+- `mapa = {t.name: t for t in herramientas}` — es una **dict comprehension** (no la vimos en el Concepto 0b): construye un diccionario *nombre → herramienta* en una sola línea. Equivale a un `for` con asignaciones: recorrer la lista y por cada herramienta `t` guardar `mapa[t.name] = t`. Lo necesitas porque el modelo pide la tool *por su nombre* (un texto), y con este diccionario pasas de ese texto a la función real.
 - `llm_tools = llm.bind_tools(herramientas)` — **(A)** le "ata" las herramientas al modelo: a partir de aquí, cada llamada lleva los nombres y docstrings de las tools.
 - `ai = llm_tools.invoke(mensajes)` — **(B)** el modelo decide. Devuelve un `AIMessage`; si quiere una tool, viene con `ai.tool_calls` lleno en vez de texto.
 - `for llamada in ai.tool_calls:` — recorremos cada petición que hizo el modelo (puede pedir más de una).
@@ -88,7 +88,7 @@ Añade una segunda herramienta y haz una pregunta que necesite **las dos**. Como
 <Solution summary="Ver una solución">
 
 ```python title="solución"
-herramientas = [calculadora_descuentos, convertir_moneda]   # la del Módulo 07
+herramientas = [calculadora_descuentos, convertir_moneda]   # la del Concepto 07
 mapa = {t.name: t for t in herramientas}
 llm_tools = llm.bind_tools(herramientas)
 
@@ -97,7 +97,7 @@ mensajes = [HumanMessage(content=
 # el resto del ciclo A→D no cambia: el for sobre ai.tool_calls ejecuta AMBAS
 ```
 
-Observa en `ai.tool_calls` que el modelo pide las dos herramientas (a veces en dos vueltas: por eso los agentes del Módulo 10 iteran).
+Observa en `ai.tool_calls` que el modelo pide las dos herramientas (a veces en dos vueltas: por eso los agentes del Concepto 10 iteran).
 
 </Solution>
 
@@ -111,6 +111,42 @@ Observa en `ai.tool_calls` que el modelo pide las dos herramientas (a veces en d
 - Reconocer para qué sirve el `tool_call_id` del `ToolMessage`.
 
 </Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 08">
+
+<Question>
+  <Prompt>1 · Ejecutas la herramienta, imprimes el resultado y te saltas el paso D. ¿Qué te falta?</Prompt>
+  <Option>Nada: el resultado de la tool ya es la respuesta</Option>
+  <Option ok>El modelo nunca ve ese resultado, así que no puede redactar la respuesta final</Option>
+  <Option>Falta liberar el `tool_call_id` para la siguiente vuelta</Option>
+  <Feedback>Sin C y D no tienes un agente: tienes media función. Hay que devolver un `ToolMessage` **y volver a invocar** al modelo (Concepto 08).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Para qué sirve el diccionario `mapa = {t.name: t for t in herramientas}`?</Prompt>
+  <Option>Para que el modelo sepa qué herramientas existen</Option>
+  <Option ok>Para traducir el **nombre** que pidió el modelo (un texto) a la función real de Python</Option>
+  <Option>Para guardar el resultado de cada herramienta ya ejecutada</Option>
+  <Feedback>Quien le cuenta al modelo qué tools hay es `bind_tools`. El mapa es cosa tuya: el modelo pide por nombre y tú resuelves ese texto (Concepto 08).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · El camino se decide siempre por una regla fija (si el texto trae un número de factura, va a facturación). ¿Atas herramientas al modelo?</Prompt>
+  <Option>Sí: es más flexible por si mañana cambia la regla</Option>
+  <Option ok>No: un `if` en tu código es gratis, determinista y no alucina</Option>
+  <Option>Sí, pero con `temperature=0` para que no se equivoque</Option>
+  <Feedback>El routing con LLM se paga en tokens y en imprevisibilidad. Úsalo cuando la decisión de verdad depende del lenguaje, no cuando cabe en una condición (Concepto 08).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · El `ai.tool_calls` llega con **dos** peticiones. ¿Qué tienes que hacer?</Prompt>
+  <Option>Ejecutar solo la primera: el modelo pedirá la otra en la siguiente vuelta</Option>
+  <Option ok>Ejecutar las dos y añadir un `ToolMessage` por cada una antes de volver a invocar</Option>
+  <Option>Devolver un único `ToolMessage` con los dos resultados juntos</Option>
+  <Feedback>Por eso el ciclo se escribe con un `for` sobre `ai.tool_calls`: cada petición lleva su propio `id` y necesita su propia respuesta (Concepto 08).</Feedback>
+</Question>
+
+</Quiz>
 
 <Recap level={2} label="↺ En una frase">
 

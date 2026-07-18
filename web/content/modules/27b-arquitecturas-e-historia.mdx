@@ -1,4 +1,4 @@
-El [m27](/modulo/27-fundamentos-del-llm) abrió la caja y miró la **mecánica**: tokens, softmax, muestreo, atención. Este módulo, todo de lectura, da el otro paso: **de dónde salió** esa máquina, en qué **familias** se divide, cómo se le enseña a obedecer y qué trucos la hacen rápida y barata. Son las preguntas que caen en una entrevista de AI Engineer — no las necesitas para *usar* el modelo, sí para *hablar* de él con propiedad.
+El [c27](/concepto/27-fundamentos-del-llm) abrió la caja y miró la **mecánica**: tokens, softmax, muestreo, atención. Este concepto, todo de lectura, da el otro paso: **de dónde salió** esa máquina, en qué **familias** se divide, cómo se le enseña a obedecer y qué trucos la hacen rápida y barata. Son las preguntas que caen en una entrevista de AI Engineer — no las necesitas para *usar* el modelo, sí para *hablar* de él con propiedad.
 
 <Box kind="def" label="◈ De dónde vino todo esto (y el cross-encoder que ya usaste)">
 
@@ -6,7 +6,7 @@ La historia en cuatro saltos: **Markov** (1906, estadística de "qué palabra si
 
 <DefList>
   <Term>Encoder (p. ej. BERT)</Term>
-  <Def>Lee toda la frase para **entenderla** (clasificar, comparar). El **cross-encoder** que usaste para re-rankear en el [m12](/modulo/12-recuperar-re-rankear) es exactamente esto: lee pregunta + fragmento juntos y puntúa su relación.</Def>
+  <Def>Lee toda la frase para **entenderla** (clasificar, comparar). El **cross-encoder** que usaste para re-rankear en el [c12](/concepto/12-recuperar-re-rankear) es exactamente esto: lee pregunta + fragmento juntos y puntúa su relación.</Def>
   <Term>Decoder (p. ej. GPT)</Term>
   <Def>Genera texto **token a token**, cada uno mirando solo lo ya escrito. Es la familia de los modelos de chat que usas en todo el curso.</Def>
   <Term>Encoder-decoder (p. ej. T5)</Term>
@@ -25,13 +25,13 @@ Un modelo recién preentrenado solo sabe *continuar texto*; no sabe seguir instr
 | Complejidad | Tres fases, más piezas móviles | Una sola fase, más simple y rápido |
 | Cuándo | Alineación fina, presupuesto para anotar mucho | Iteración rápida con preferencias binarias |
 
-Es la misma idea de "medir y ajustar" del [m16c](/modulo/16c-evaluacion), pero a escala de entrenamiento. Tú no lo harás (necesita GPUs y datos enormes), pero saber que existe explica por qué dos modelos con el mismo tamaño se "portan" distinto.
+Es la misma idea de "medir y ajustar" del [c16c](/concepto/16c-evaluacion), pero a escala de entrenamiento. Tú no lo harás (necesita GPUs y datos enormes), pero saber que existe explica por qué dos modelos con el mismo tamaño se "portan" distinto.
 
 </Box>
 
 <Box kind="def" label="◈ Por qué la inferencia es lenta y cara (y cómo se abarata)">
 
-Un decoder genera **un token cada vez**, y cada token necesita todos los anteriores: es intrínsecamente secuencial. Por eso responder es más lento que un cálculo normal, y por eso existe el **streaming** que viste en el [m25](/modulo/25-frontend-chat-sse) —te va mostrando tokens conforme salen en vez de hacerte esperar al final. Para no recalcular lo ya hecho, el modelo guarda un **KV cache** (la "memoria de trabajo" de la atención sobre los tokens previos): acelera mucho a cambio de ocupar memoria. Y la **cuantización** —guardar los pesos con menos bits— es lo que hace que `qwen3:8b` quepa y corra en tu laptop con Ollama, con una pérdida de calidad casi imperceptible.
+Un decoder genera **un token cada vez**, y cada token necesita todos los anteriores: es intrínsecamente secuencial. Por eso responder es más lento que un cálculo normal, y por eso existe el **streaming** que viste en el [c25](/concepto/25-frontend-chat-sse) —te va mostrando tokens conforme salen en vez de hacerte esperar al final. Para no recalcular lo ya hecho, el modelo guarda un **KV cache** (la "memoria de trabajo" de la atención sobre los tokens previos): acelera mucho a cambio de ocupar memoria. Y la **cuantización** —guardar los pesos con menos bits— es lo que hace que `qwen3:8b` quepa y corra en tu laptop con Ollama, con una pérdida de calidad casi imperceptible.
 
 </Box>
 
@@ -47,23 +47,87 @@ El transformer no es el final de la historia. Vale conocer tres direcciones que 
 
 <Avoid label="⛔ Cuándo NO perseguir la arquitectura de moda">
 
-- **Para un problema de aplicación.** Casi siempre lo que decide el resultado es el prompt, el RAG y los datos, no si el motor es MoE o Mamba. Elegir modelo se hace por capacidad/coste/ventana ([m18b](/modulo/18b-elegir-modelo-y-proveedor)), no por su arquitectura interna.
-- **Como sustituto de medir.** Que un modelo sea "más nuevo" o "más grande" no garantiza que sea mejor en TU caso: eso lo dice tu evaluación ([m16c](/modulo/16c-evaluacion)), no la ficha técnica.
+- **Para un problema de aplicación.** Casi siempre lo que decide el resultado es el prompt, el RAG y los datos, no si el motor es MoE o Mamba. Elegir modelo se hace por capacidad/coste/ventana ([c18b](/concepto/18b-elegir-modelo-y-proveedor)), no por su arquitectura interna.
+- **Como sustituto de medir.** Que un modelo sea "más nuevo" o "más grande" no garantiza que sea mejor en TU caso: eso lo dice tu evaluación ([c16c](/concepto/16c-evaluacion)), no la ficha técnica.
 
 </Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Este concepto es de lectura, así que el reto es de **decisión**: la pregunta que de verdad cae en una entrevista no es "¿qué es un encoder?", es "¿cuál usarías aquí?". Clasifica estos cinco escenarios en **encoder**, **decoder** o **encoder-decoder**, y anota en una línea por qué:
+
+1. Detectar si dos tickets de soporte son duplicados.
+2. Redactar el resumen ejecutivo de una reunión.
+3. Re-rankear 50 fragmentos recuperados contra una pregunta (lo del [c12](/concepto/12-recuperar-re-rankear)).
+4. Traducir un manual de inglés a español.
+5. Un chat que responde token a token con streaming ([c25](/concepto/25-frontend-chat-sse)).
+
+**Criterio de aceptación:** aciertas la familia de los cinco **y** para cada uno nombras la propiedad que lo decide (¿hay que *entender* una entrada fija, *generar* texto libre, o ambas?), sin apoyarte en la marca del modelo.
+
+<Solution summary="Ver una solución">
+
+| # | Familia | La propiedad que decide |
+| --- | --- | --- |
+| 1 · Duplicados | **Encoder** | No genera nada: compara dos entradas fijas y saca un puntaje. Clasificación pura. |
+| 2 · Resumen ejecutivo | **Decoder** (o encoder-decoder) | Genera texto libre. Con un LLM de chat moderno lo haces con un decoder y el acta en el prompt; T5 lo modelaría como encoder-decoder. |
+| 3 · Re-rankear | **Encoder** | Es el **cross-encoder** del c12: lee pregunta + fragmento *juntos* y puntúa la relación. Cero generación. |
+| 4 · Traducir un manual | **Encoder-decoder** | El caso canónico: hay una entrada completa que leer *y* una salida que generar, con correspondencia entre ambas. |
+| 5 · Chat con streaming | **Decoder** | Genera token a token mirando solo lo ya escrito — por eso el streaming del c25 es posible: los tokens salen de uno en uno. |
+
+La regla que se extrae: **si la salida es un número o una etiqueta → encoder; si la salida es texto → hay un decoder de por medio.** Y el aviso del c18b: en la práctica eliges por capacidad, coste y ventana, no por la familia — pero saber la familia explica *por qué* un modelo de chat no sirve para re-rankear barato.
+
+</Solution>
+
+</Box>
 
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 
 - Contar la historia en cuatro saltos: Markov → RNN/LSTM → atención → transformer.
-- Distinguir un **encoder** (BERT, el cross-encoder del m12) de un **decoder** (GPT, el chat que usas).
+- Distinguir un **encoder** (BERT, el cross-encoder del c12) de un **decoder** (GPT, el chat que usas).
 - Explicar en una frase qué es RLHF y en qué se diferencia de DPO.
 - Decir qué son el KV cache y la cuantización, y por qué la inferencia es secuencial.
 - Explicar qué es MoE y para qué sirven Mamba y los SLM.
 
 </Checkpoint>
 
+<Quiz title="✅ Autoevaluación · Concepto 27b">
+
+<Question>
+  <Prompt>1 · ¿Qué le trajo la atención (2017) que las RNN/LSTM no tenían?</Prompt>
+  <Option>Menos parámetros, y por eso los modelos empezaron a caber en una laptop</Option>
+  <Option ok>Mirar toda la secuencia a la vez, lo que permite paralelizar y no olvidar lo lejano</Option>
+  <Option>La capacidad de generar texto, que las RNN no podían</Option>
+  <Feedback>Las RNN procesaban palabra a palabra y se les diluía el contexto lejano. La atención relaciona cualquier par de posiciones directamente — y al no ser secuencial, se entrena en paralelo.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · Necesitas puntuar cuán relacionados están una pregunta y un fragmento. ¿Qué familia encaja?</Prompt>
+  <Option ok>Un encoder tipo BERT — es el cross-encoder que usaste para re-rankear en el c12</Option>
+  <Option>Un decoder tipo GPT, porque son los modelos más capaces hoy</Option>
+  <Option>Un encoder-decoder tipo T5, porque hay dos textos de entrada</Option>
+  <Feedback>La salida es un número, no texto: no hace falta generación. El encoder lee ambos textos juntos y devuelve el puntaje — más barato y más rápido que un decoder.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · ¿Cuál es la diferencia práctica entre RLHF y DPO?</Prompt>
+  <Option>RLHF usa preferencias humanas; DPO se entrena sin intervención humana</Option>
+  <Option ok>DPO optimiza directo sobre las preferencias; RLHF entrena antes un modelo de recompensa y optimiza contra él con RL</Option>
+  <Option>DPO alinea el modelo; RLHF solo lo preentrena para continuar texto</Option>
+  <Feedback>Los dos parten de preferencias humanas. DPO se salta la fase del modelo de recompensa: una fase en vez de tres, más simple y rápido de iterar.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · ¿Por qué existe el KV cache y qué te cuesta?</Prompt>
+  <Option>Guarda respuestas ya dadas para no volver a llamar al modelo; cuesta que la respuesta quede desactualizada</Option>
+  <Option>Comprime los pesos del modelo a menos bits; cuesta algo de calidad</Option>
+  <Option ok>Guarda la atención sobre los tokens previos para no recalcularla en cada token nuevo; cuesta memoria</Option>
+  <Feedback>Eso otro que describe la primera opción es el caché semántico (c11) y lo segundo es la cuantización. El KV cache vive dentro de la inferencia y su precio es RAM/VRAM.</Feedback>
+</Question>
+
+</Quiz>
+
 <Recap level={5} label="↺ En una frase">
 
-El transformer (2017) destronó a las RNN mirando toda la frase a la vez; sus familias son **encoder** (entender), **decoder** (generar) y **encoder-decoder** (traducir); se alinea con **RLHF/DPO** y se abarata con **KV cache** y **cuantización** — y ya asoman MoE, Mamba y los SLM.<Arch>Módulo de lectura · sin archivo</Arch>
+El transformer (2017) destronó a las RNN mirando toda la frase a la vez; sus familias son **encoder** (entender), **decoder** (generar) y **encoder-decoder** (traducir); se alinea con **RLHF/DPO** y se abarata con **KV cache** y **cuantización** — y ya asoman MoE, Mamba y los SLM.<Arch>Concepto de lectura · sin archivo</Arch>
 
 </Recap>

@@ -64,7 +64,7 @@ El **estado** es una carpeta compartida que viaja por la oficina (lleva la pregu
 
 <Box kind="def" label="◈ El mapa completo: workflows deterministas vs agentes">
 
-Todo lo que has construido hasta aquí cae en una de dos familias, y conviene saber **nombrarlas** porque así se habla en la industria. Los **workflows** son flujos donde *tu código* decide el camino: **prompt chaining** (pasos encadenados — tus cadenas del [m02](/modulo/02-prompts-lcel)), **parallelization** (ramas a la vez — el `RunnableParallel` del [m06](/modulo/06-runnables)), **routing** (una bifurcación puntual la decide el modelo, el resto es fijo — [m08](/modulo/08-routing)), **orchestrator-workers** (uno reparte, varios ejecutan — el supervisor del [m15](/modulo/15-multiagente-supervisor)) y **evaluator-optimizer** (generar → evaluar → reintentar — el Paso 1 de este módulo). Un **agente** es la otra familia: el *modelo* decide el camino en cada vuelta, y cuántas vueltas hay se descubre en ejecución. La regla de elección es la del [m10](/modulo/10-agentes-prebuilt): flujo predecible → workflow (más barato, testeable de punta a punta); problema abierto → agente. El `StateGraph` construye **las dos** familias: la diferencia no es la herramienta, es quién decide el camino.
+Todo lo que has construido hasta aquí cae en una de dos familias, y conviene saber **nombrarlas** porque así se habla en la industria. Los **workflows** son flujos donde *tu código* decide el camino: **prompt chaining** (pasos encadenados — tus cadenas del [c02](/concepto/02-prompts-lcel)), **parallelization** (ramas a la vez — el `RunnableParallel` del [c06](/concepto/06-runnables)), **routing** (una bifurcación puntual la decide el modelo, el resto es fijo — [c08](/concepto/08-routing)), **orchestrator-workers** (uno reparte, varios ejecutan — el supervisor del [c15](/concepto/15-multiagente-supervisor)) y **evaluator-optimizer** (generar → evaluar → reintentar — el Paso 1 de este concepto). Un **agente** es la otra familia: el *modelo* decide el camino en cada vuelta, y cuántas vueltas hay se descubre en ejecución. La regla de elección es la del [c10](/concepto/10-agentes-prebuilt): flujo predecible → workflow (más barato, testeable de punta a punta); problema abierto → agente. El `StateGraph` construye **las dos** familias: la diferencia no es la herramienta, es quién decide el camino.
 
 </Box>
 
@@ -146,7 +146,7 @@ def nodo_aprobacion(state):
 
 <Box kind="analogy" label="🌐 Patrón del mundo real: agentes ambientales">
 
-Este mismo `interrupt()` es el corazón de uno de los patrones estrella de LangChain: los **agentes ambientales** (*ambient agents*). Son agentes que corren **en segundo plano**, disparados por eventos (un correo que llega, un ticket nuevo) en vez de por un humano que escribe. Trabajan solos… hasta que van a hacer algo irreversible —enviar una respuesta, borrar algo— y ahí **se detienen y piden tu aprobación**. El caso canónico de LangChain es un **asistente de correo**: lee tu bandeja, redacta borradores y pausa antes de enviar. Es exactamente el ciclo pausa → humano → reanudar de este módulo, aplicado a un caso real.
+Este mismo `interrupt()` es el corazón de uno de los patrones estrella de LangChain: los **agentes ambientales** (*ambient agents*). Son agentes que corren **en segundo plano**, disparados por eventos (un correo que llega, un ticket nuevo) en vez de por un humano que escribe. Trabajan solos… hasta que van a hacer algo irreversible —enviar una respuesta, borrar algo— y ahí **se detienen y piden tu aprobación**. El caso canónico de LangChain es un **asistente de correo**: lee tu bandeja, redacta borradores y pausa antes de enviar. Es exactamente el ciclo pausa → humano → reanudar de este concepto, aplicado a un caso real.
 
 </Box>
 
@@ -210,7 +210,7 @@ class Estado(TypedDict):
     attempts: int
     # ...los campos que ya tenías
 
-# 2) El evaluador decide la ruta (el código completo está arriba en este módulo)
+# 2) El evaluador decide la ruta (el código completo está arriba en este concepto)
 #    "finish" | "retry" | "human" según docs y attempts
 
 # 3) Cada nodo registra su paso
@@ -225,14 +225,14 @@ Y el ciclo pausa→humano→reanudar completo, listo para correr: `13b_human_in_
 
 </Box>
 
-<Quiz title="✅ Autoevaluación · Nivel Avanzado (módulos 10–13)">
+<Quiz title="✅ Autoevaluación · Nivel Avanzado (conceptos 10–13)">
 
 <Question>
   <Prompt>1 · ¿Qué aporta un re-ranker al RAG?</Prompt>
   <Option>Hace la búsqueda vectorial más rápida</Option>
   <Option ok>Un segundo filtro más preciso que reordena los candidatos</Option>
   <Option>Aumenta la cantidad de chunks recuperados</Option>
-  <Feedback>Recupera barato y ancho (20 candidatos), refina caro y angosto (quedan 3) — Módulo 12.</Feedback>
+  <Feedback>Recupera barato y ancho (20 candidatos), refina caro y angosto (quedan 3) — Concepto 12.</Feedback>
 </Question>
 
 <Question>
@@ -240,7 +240,7 @@ Y el ciclo pausa→humano→reanudar completo, listo para correr: `13b_human_in_
   <Option>Dos modelos LLM distintos</Option>
   <Option>Dos vector stores en paralelo</Option>
   <Option ok>BM25 (palabras exactas) + búsqueda vectorial (significado)</Option>
-  <Feedback>BM25 rescata códigos exactos ("ISO-27001"); lo vectorial entiende sinónimos. Se cubren mutuamente (Módulo 12).</Feedback>
+  <Feedback>BM25 rescata códigos exactos ("ISO-27001"); lo vectorial entiende sinónimos. Se cubren mutuamente (Concepto 12).</Feedback>
 </Question>
 
 <Question>
@@ -248,7 +248,7 @@ Y el ciclo pausa→humano→reanudar completo, listo para correr: `13b_human_in_
   <Option ok>Una arista condicional que puede volver a un nodo anterior</Option>
   <Option>El MemorySaver</Option>
   <Option>Usar temperature=0</Option>
-  <Feedback>Tras usar una tool, el flujo VUELVE al modelo, que decide si necesita otra vuelta (Módulo 13).</Feedback>
+  <Feedback>Tras usar una tool, el flujo VUELVE al modelo, que decide si necesita otra vuelta (Concepto 13).</Feedback>
 </Question>
 
 <Question>
@@ -256,7 +256,7 @@ Y el ciclo pausa→humano→reanudar completo, listo para correr: `13b_human_in_
   <Option>Para detener el programa cuando hay un error</Option>
   <Option ok>Para pausar el grafo hasta que un humano responda</Option>
   <Option>Para acelerar la generación</Option>
-  <Feedback>El grafo se congela (minutos o días) y reanuda con `Command(resume=…)` — pruébalo en 13b (Módulo 13).</Feedback>
+  <Feedback>El grafo se congela (minutos o días) y reanuda con `Command(resume=…)` — pruébalo en 13b (Concepto 13).</Feedback>
 </Question>
 
 <Question>
@@ -264,7 +264,7 @@ Y el ciclo pausa→humano→reanudar completo, listo para correr: `13b_human_in_
   <Option>En una variable global del archivo</Option>
   <Option>En el prompt del sistema</Option>
   <Option ok>En el estado del grafo</Option>
-  <Feedback>Todo lo que el agente necesita recordar entre vueltas viaja en la "carpeta" (el estado) — Módulo 13.</Feedback>
+  <Feedback>Todo lo que el agente necesita recordar entre vueltas viaja en la "carpeta" (el estado) — Concepto 13.</Feedback>
 </Question>
 
 </Quiz>

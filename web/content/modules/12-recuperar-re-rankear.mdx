@@ -1,4 +1,4 @@
-En el Módulo 11 armaste un RAG que funciona. Aquí lo llevamos a **calidad de producción**: entender qué pasa en cada etapa del pipeline, dónde se pierde calidad, dónde se gana latencia, y las dos técnicas que más mejoran los resultados: la **búsqueda híbrida** y el **re-ranking**.
+En el Concepto 11 armaste un RAG que funciona. Aquí lo llevamos a **calidad de producción**: entender qué pasa en cada etapa del pipeline, dónde se pierde calidad, dónde se gana latencia, y las dos técnicas que más mejoran los resultados: la **búsqueda híbrida** y el **re-ranking**.
 
 <Box kind="def" label="◈ Definición · Búsqueda híbrida y re-ranking">
 
@@ -51,7 +51,7 @@ Para optimizar hay que saber **dónde duele cada etapa**. Esta tabla es tu mapa 
 
 Todo lo que el sistema podrá responder depende de cómo cortaste los documentos. Dos estrategias que ya usaste:
 
-- **Por párrafos** (Módulo 11): respeta unidades de sentido. Ideal si el documento está bien estructurado.
+- **Por párrafos** (Concepto 11): respeta unidades de sentido. Ideal si el documento está bien estructurado.
 - **Por caracteres con solapamiento** (tu `proyectorag`): corta cada N caracteres y retrocede un poco en cada corte, para que ninguna frase quede huérfana de contexto.
 
 ```python title="proyectorag/app_rag.py · chunking con solapamiento, paso a paso"
@@ -64,7 +64,7 @@ def trocear(texto, tamano=500, solape=50):
     return chunks
 ```
 
-En producción, `RecursiveCharacterTextSplitter` (Módulo 11) combina ambas ideas: intenta cortar por párrafo, si no puede corta por frase, y solo como último recurso por carácter.
+En producción, `RecursiveCharacterTextSplitter` (Concepto 11) combina ambas ideas: intenta cortar por párrafo, si no puede corta por frase, y solo como último recurso por carácter.
 
 ### Re-ranking: el segundo filtro
 
@@ -92,7 +92,7 @@ retriever_pro = ContextualCompressionRetriever(
 
 <Box kind="practice" label="▸ Companion opcional: corre el re-ranker REAL y velo fallar al didáctico">
 
-El re-ranker de este módulo se implementa **a mano** para que veas la mecánica sin instalar nada ([ADR-0002](/recurso/mapa)). Su límite lo cuenta la sección *"Tres formas de fallar"*: si ninguna palabra casa, puntúa **0.0 a todos** y el orden es arbitrario. Hay un companion opcional que pone los dos, uno al lado del otro, sobre la misma pregunta:
+El re-ranker de este concepto se implementa **a mano** para que veas la mecánica sin instalar nada ([ADR-0002](/recurso/mapa)). Su límite lo cuenta la sección *"Tres formas de fallar"*: si ninguna palabra casa, puntúa **0.0 a todos** y el orden es arbitrario. Hay un companion opcional que pone los dos, uno al lado del otro, sobre la misma pregunta:
 
 ```bash title="rerank/rerank_real.py · fuera del gate offline (ADR-0008)"
 uv run --extra emb python rerank/rerank_real.py
@@ -185,11 +185,11 @@ Los fallos 1 y 2 se ven. El 3 **no**: el sistema no lanza ningún error, no avis
 
 </Box>
 
-La cura del fallo 1 son **embeddings de verdad** (los del Módulo 11), que sí colocan "devolución" y "reembolso" cerca. La del 2, eliminar *stopwords* antes de indexar. La del 3, umbrales. Y hay un cuarto fallo, más sutil, que descubres al medir: **fusionar dos buscadores que se equivocan igual no arregla nada** — RRF fusiona *opiniones*, y aquí las dos opiniones son la misma (coincidencia léxica). Un híbrido de verdad combina señales *independientes*: léxica + semántica.
+La cura del fallo 1 son **embeddings de verdad** (los del Concepto 11), que sí colocan "devolución" y "reembolso" cerca. La del 2, eliminar *stopwords* antes de indexar. La del 3, umbrales. Y hay un cuarto fallo, más sutil, que descubres al medir: **fusionar dos buscadores que se equivocan igual no arregla nada** — RRF fusiona *opiniones*, y aquí las dos opiniones son la misma (coincidencia léxica). Un híbrido de verdad combina señales *independientes*: léxica + semántica.
 
 ### ¿Recupera bien? No lo adivines: mídelo
 
-La métrica más simple es **precision@k**: de los `k` fragmentos que trajiste, ¿cuántos eran realmente útiles para responder? Si traes 4 y solo 1 sirve, tu precisión es 25% — y los otros 3 son ruido que confunde al modelo y cuesta tokens. Para medirla necesitas un **banco de preguntas** con su fragmento correcto conocido (tu `proyectorag/preguntas.txt` es exactamente eso). En el [m16c](/modulo/16c-evaluacion) convertimos ese banco en una evaluación automática.
+La métrica más simple es **precision@k**: de los `k` fragmentos que trajiste, ¿cuántos eran realmente útiles para responder? Si traes 4 y solo 1 sirve, tu precisión es 25% — y los otros 3 son ruido que confunde al modelo y cuesta tokens. Para medirla necesitas un **banco de preguntas** con su fragmento correcto conocido (tu `proyectorag/preguntas.txt` es exactamente eso). En el [c16c](/concepto/16c-evaluacion) convertimos ese banco en una evaluación automática.
 
 <Box kind="warn" label="▲ Compromiso latencia ↔ calidad">
 
@@ -216,7 +216,7 @@ Dos conclusiones incómodas y verdaderas. Primero: **un dataset de preguntas fá
 
 <Avoid label="⛔ Cuándo NO usar esto">
 
-- Si el RAG básico del Módulo 11 ya acierta (`precision@k` alto), no añadas re-ranking: sumas cientos de ms y un modelo más por una ganancia que aquí fue nula. Mídelo antes de meterlo.
+- Si el RAG básico del Concepto 11 ya acierta (`precision@k` alto), no añadas re-ranking: sumas cientos de ms y un modelo más por una ganancia que aquí fue nula. Mídelo antes de meterlo.
 - No montes búsqueda híbrida si tus dos buscadores fallan igual: fusionar dos señales que se equivocan igual no arregla nada. El híbrido paga cuando combinas señales *independientes* (léxica + semántica).
 - No afines el ranking a ciegas: sin un banco de preguntas con su chunk correcto para medir `precision@k`, cualquier "mejora" es una corazonada.
 
@@ -245,7 +245,7 @@ Re-rankeado: [6, 5, 4]     <- el 6 (Formas de pago). Correcto.
 
 </Box>
 
-¿Por qué este módulo implementa BM25 y el re-ranker a mano en vez de instalar `rank_bm25` y un cross-encoder? La decisión está razonada, con sus alternativas y sus consecuencias, en un ADR real del repo: `docs/adr/0002-re-ranker.md` (Módulo 17).
+¿Por qué este concepto implementa BM25 y el re-ranker a mano en vez de instalar `rank_bm25` y un cross-encoder? La decisión está razonada, con sus alternativas y sus consecuencias, en un ADR real del repo: `docs/adr/0002-re-ranker.md` (Concepto 17).
 
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 
@@ -255,6 +255,42 @@ Re-rankeado: [6, 5, 4]     <- el 6 (Formas de pago). Correcto.
 - Reconocer `precision@k` como la métrica que convierte "creo que mejoró" en un número.
 
 </Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 12">
+
+<Question>
+  <Prompt>1 · ¿Qué premia RRF de verdad al fusionar dos rankings?</Prompt>
+  <Option>Al documento que queda equilibrado en ambas listas</Option>
+  <Option ok>Al que **está presente** en ambas listas: la ausencia no suma nada</Option>
+  <Option>Al que tiene el puntaje más alto sumando BM25 y coseno</Option>
+  <Feedback>Un documento 2.º y 2.º aplasta a uno que fue 1.º en una lista y en la otra ni apareció. Los puntajes no se suman —son incomparables—, solo cuenta el puesto (Concepto 12).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · El chunk correcto no salió entre los 20 candidatos que recuperaste. ¿Lo salva el re-ranker?</Prompt>
+  <Option>Sí: por eso el re-ranker lee la pregunta junto al documento</Option>
+  <Option ok>No: no puedes arreglar en el re-ranking lo que perdiste en la recuperación</Option>
+  <Option>Sí, si le bajas el `top_n` de 3 a 1</Option>
+  <Feedback>El re-ranker solo reordena lo que le llega. Por eso se recupera **ancho y barato** primero, y se refina caro sobre pocos candidatos (Concepto 12).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · ¿Por qué un re-ranker de producción devuelve el **puntaje**, no solo el orden?</Prompt>
+  <Option>Para poder ordenar los resultados en el frontend</Option>
+  <Option ok>Para que quien lo llama pueda decir "todos por debajo del umbral: no tengo respuesta"</Option>
+  <Option>Para calcular el coste de la consulta</Option>
+  <Feedback>Cuando ninguna palabra casa, el re-ranker didáctico puntúa 0.0 a todos y devuelve tres finalistas arbitrarios con toda la confianza del mundo. Un ranking sin puntajes es una opinión disfrazada de dato (Concepto 12).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Tus 4 preguntas de evaluación dan 100% en las cuatro configuraciones (BM25, vectorial, híbrido, híbrido+rerank). ¿Qué concluyes?</Prompt>
+  <Option>Que el re-ranking no aporta nada y puedes quitarlo</Option>
+  <Option ok>Que tu dataset es demasiado fácil y no está midiendo nada</Option>
+  <Option>Que ya puedes desplegar: el RAG es perfecto</Option>
+  <Feedback>Preguntas que usan las mismas palabras del documento acierta cualquier cosa. Mete sinónimos y morfología y aparecen las diferencias — es el error nº1 al construir un set de evaluación ([c16c](/concepto/16c-evaluacion)).</Feedback>
+</Question>
+
+</Quiz>
 
 <Recap level={3} label="↺ En una frase">
 

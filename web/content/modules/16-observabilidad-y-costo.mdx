@@ -2,9 +2,9 @@
 
 <Box kind="def" label="◈ Definición · Observabilidad (y su gemela, la evaluación)">
 
-**Observabilidad** es poder responder *qué está pasando ahí dentro* sin añadir código nuevo: qué prompt salió, qué herramienta se llamó, cuántos tokens costó, dónde se fue el tiempo. Es sobre el sistema **en vivo** — de eso trata este módulo.
+**Observabilidad** es poder responder *qué está pasando ahí dentro* sin añadir código nuevo: qué prompt salió, qué herramienta se llamó, cuántos tokens costó, dónde se fue el tiempo. Es sobre el sistema **en vivo** — de eso trata este concepto.
 
-Su gemela es la **evaluación**: medir *si las respuestas son buenas* contra un conjunto de casos con respuesta esperada. Es sobre el sistema **antes de desplegarlo**, y la desarrolla el [m16c](/modulo/16c-evaluacion). Una te dice que el sistema está lento; la otra, que se ha vuelto tonto.
+Su gemela es la **evaluación**: medir *si las respuestas son buenas* contra un conjunto de casos con respuesta esperada. Es sobre el sistema **antes de desplegarlo**, y la desarrolla el [c16c](/concepto/16c-evaluacion). Una te dice que el sistema está lento; la otra, que se ha vuelto tonto.
 
 <DefList>
   <Term>traza (trace)</Term>
@@ -23,7 +23,7 @@ El lazo de la observabilidad · **medir para mejorar**
   <Step n="1" title="Agente">Corre en vivo y atiende consultas.</Step>
   <Step n="2" title="Traza">LangSmith registra cada paso, entrada y salida.</Step>
   <Step n="3" title="Métricas">Tokens, latencia y coste por consulta.</Step>
-  <Step n="4" title="Evaluación">Dataset + juez: ¿la calidad subió o bajó? (m16c)</Step>
+  <Step n="4" title="Evaluación">Dataset + juez: ¿la calidad subió o bajó? (c16c)</Step>
   <Step n="5" title="Mejora">Ajustas prompt/modelo y vuelve al agente.</Step>
 </Flow>
 
@@ -51,7 +51,7 @@ De cada 100 respuestas, cuántas inventan algo que no estaba en el contexto. La 
 
 </Grid3>
 
-Y la cuarta: **costo por consulta** — cada token de entrada y salida se cobra; un contexto sucio de 20 chunks (Módulo 12) no solo confunde al modelo: lo pagas en cada pregunta.
+Y la cuarta: **costo por consulta** — cada token de entrada y salida se cobra; un contexto sucio de 20 chunks (Concepto 12) no solo confunde al modelo: lo pagas en cada pregunta.
 
 ### Paso 2 — Instrumentación: dos variables y ya estás viendo
 
@@ -79,7 +79,7 @@ Cada ejecución queda registrada como una **traza**: el recorrido completo de un
 
 </Box>
 
-Conviene no quedarse con "LangSmith = trazas". En 2026 es una **plataforma completa** que cubre tres patas del ciclo de vida del agente: **Observability** (las trazas y métricas que ves aquí), **Evaluation** (datasets, LLM-as-judge, regresiones — el [m16c](/modulo/16c-evaluacion)) y **Deployment** (publicar y operar el agente, en la línea del Módulo 17). El *tracing* es solo la puerta de entrada; la misma herramienta te acompaña hasta producción.
+Conviene no quedarse con "LangSmith = trazas". En 2026 es una **plataforma completa** que cubre tres patas del ciclo de vida del agente: **Observability** (las trazas y métricas que ves aquí), **Evaluation** (datasets, LLM-as-judge, regresiones — el [c16c](/concepto/16c-evaluacion)) y **Deployment** (publicar y operar el agente, en la línea del Concepto 17). El *tracing* es solo la puerta de entrada; la misma herramienta te acompaña hasta producción.
 
 ### Paso 3 — La otra pregunta: ¿cuánto me está costando?
 
@@ -100,7 +100,7 @@ def extraer_tokens(mensaje) -> dict[str, int]:
             "salida":  uso.get("output_tokens", 0)}
 ```
 
-Contraintuición útil: **lo caro no es el contexto gigante, es la respuesta larga**. Un RAG que mete 20 chunks sucios (Módulo 12) paga 4× menos por ese ruido que por cada párrafo de más que escribe el modelo. Si necesitas recortar la factura, empieza por la salida.
+Contraintuición útil: **lo caro no es el contexto gigante, es la respuesta larga**. Un RAG que mete 20 chunks sucios (Concepto 12) paga 4× menos por ese ruido que por cada párrafo de más que escribe el modelo. Si necesitas recortar la factura, empieza por la salida.
 
 ```text title="▸ deberías ver al correr 16b (recortado)"
 🙋 ¿Cuál es el horario de atención?
@@ -135,19 +135,19 @@ Ya sabes medir el coste. La forma más directa de bajarlo no es cambiar de model
 
 La **caché exacta** usa el texto de la pregunta como llave: si llega idéntico, devuelves lo guardado. Es trivial y no falla nunca… pero *"¿cuál es el horario?"* y *"¿a qué hora atienden?"* son llaves distintas, así que el acierto es bajísimo en lenguaje natural.
 
-La **caché semántica** guarda el **embedding** de la pregunta y acierta si la nueva se **parece** lo bastante (coseno por encima de un umbral). Es el mismo truco del [m11](/modulo/11-rag-profesional), aplicado a la pregunta en vez de a los documentos: las dos formulaciones de arriba caen en la misma entrada. A cambio introduce un riesgo nuevo: un umbral demasiado laxo sirve la respuesta **equivocada** con total confianza.
+La **caché semántica** guarda el **embedding** de la pregunta y acierta si la nueva se **parece** lo bastante (coseno por encima de un umbral). Es el mismo truco del [c11](/concepto/11-rag-profesional), aplicado a la pregunta en vez de a los documentos: las dos formulaciones de arriba caen en la misma entrada. A cambio introduce un riesgo nuevo: un umbral demasiado laxo sirve la respuesta **equivocada** con total confianza.
 
 </Box>
 
-En el `proyecto_llmops` esto ya está construido (`cache/semantic_cache.py` y `cache/cache_backends.py`), y el evento SSE `fin` de `/chat` expone `cache_hit` y `similitud` — por eso lo viste asomar en el [m24b](/modulo/24b-feedback-a-b) y el [m25](/modulo/25-frontend-chat-sse). Tres decisiones de ese código valen para cualquier caché que montes:
+En el `proyecto_llmops` esto ya está construido (`cache/semantic_cache.py` y `cache/cache_backends.py`), y el evento SSE `fin` de `/chat` expone `cache_hit` y `similitud` — por eso lo viste asomar en el [c24b](/concepto/24b-feedback-a-b) y el [c25](/concepto/25-frontend-chat-sse). Tres decisiones de ese código valen para cualquier caché que montes:
 
 - **El TTL no es opcional.** El backend Redis lo lleva por defecto (`ttl_segundos=86_400`). Una respuesta cacheada *para siempre* es una respuesta **obsoleta servida con confianza**: cuando cambie el precio o la política, tu caché seguirá jurando lo viejo. Si el dato tiene fecha de caducidad, la caché también.
 - **Cachea por rol/variante, no globalmente.** Las entradas se guardan por `rol`: si el prompt del sistema o la variante A/B cambian, la respuesta correcta cambia — mezclarlas sirve la respuesta de otro. La llave debe incluir *todo* lo que altera la salida.
-- **Mide el acierto, no lo supongas.** `cache_hit` es una métrica de primera: sin ella no sabes si tu umbral está sirviendo aciertos o disparates. Súbelo o bájalo con datos — es exactamente el A/B del [m24b](/modulo/24b-feedback-a-b).
+- **Mide el acierto, no lo supongas.** `cache_hit` es una métrica de primera: sin ella no sabes si tu umbral está sirviendo aciertos o disparates. Súbelo o bájalo con datos — es exactamente el A/B del [c24b](/concepto/24b-feedback-a-b).
 
 <Box kind="warn" label="▲ Lo que la caché NO arregla">
 
-Cachear reduce **coste y latencia**, no mejora la **calidad**: si la respuesta guardada era mala, ahora la sirves mala más rápido y más barato. Y una caché semántica con el umbral flojo *empeora* la calidad — sirve respuestas de preguntas parecidas-pero-distintas. Primero acierta (m16c), después abarata.
+Cachear reduce **coste y latencia**, no mejora la **calidad**: si la respuesta guardada era mala, ahora la sirves mala más rápido y más barato. Y una caché semántica con el umbral flojo *empeora* la calidad — sirve respuestas de preguntas parecidas-pero-distintas. Primero acierta (c16c), después abarata.
 
 </Box>
 
@@ -155,7 +155,7 @@ Cachear reduce **coste y latencia**, no mejora la **calidad**: si la respuesta g
 
 Hay una tercera caché que no montas tú: la que ofrecen los propios proveedores. Ambos **cachean el prefijo del prompt** — el system prompt, los documentos que precargaste, las definiciones de tus herramientas — pero se activan distinto: **OpenAI lo hace automático** (cachea el prefijo de los prompts largos sin que toques el código), mientras que en **Anthropic es opt-in**: tú marcas con `cache_control` hasta qué punto del prompt cachear (sin esa marca no cachea nada). En los dos, cuando la siguiente llamada empieza con ese mismo prefijo exacto, cobran esos tokens de entrada a **una fracción del precio** y los procesan con **menos latencia**. No es magia: reusan el cómputo interno (el *KV cache*) que ya hicieron para ese prefijo.
 
-La consecuencia práctica cambia cómo ordenas el prompt: pon **lo estable primero** (instrucciones, contexto fijo, corpus precargado) y **lo variable al final** (la pregunta del usuario del turno). Así el prefijo se repite llamada tras llamada y maximizas los aciertos de caché; si intercalas lo que cambia con lo que no, rompes el prefijo y pagas todo a precio completo. Es la palanca que hace viable el **CAG** del [m11](/modulo/11-rag-profesional): precargar un corpus entero solo sale a cuenta si no lo pagas íntegro en cada pregunta.
+La consecuencia práctica cambia cómo ordenas el prompt: pon **lo estable primero** (instrucciones, contexto fijo, corpus precargado) y **lo variable al final** (la pregunta del usuario del turno). Así el prefijo se repite llamada tras llamada y maximizas los aciertos de caché; si intercalas lo que cambia con lo que no, rompes el prefijo y pagas todo a precio completo. Es la palanca que hace viable el **CAG** del [c11](/concepto/11-rag-profesional): precargar un corpus entero solo sale a cuenta si no lo pagas íntegro en cada pregunta.
 
 Ojo con la distinción, porque son cosas distintas con el mismo nombre: este caché es **del proveedor** y casa por **prefijo exacto**; el **caché semántico** que viste arriba es **tuyo** y casa por **similitud** de la pregunta. Se combinan — uno abarata el prompt, el otro evita la llamada entera.
 
@@ -171,13 +171,13 @@ Ojo con la distinción, porque son cosas distintas con el mismo nombre: este cac
 
 <Box kind="practice" label="▸ Para practicar">
 
-Corre `16b_observabilidad_langsmith.py` y mira el desglose de tokens → dólares. Después activa LangSmith con tu llave, corre el agente del Módulo 10 y sigue una traza completa: prompt, tool, tokens, costo. Cuando lo tengas, sigue con el [m16c](/modulo/16c-evaluacion) para *medir la calidad* de esas respuestas, no solo su coste.
+Corre `16b_observabilidad_langsmith.py` y mira el desglose de tokens → dólares. Después activa LangSmith con tu llave, corre el agente del Concepto 10 y sigue una traza completa: prompt, tool, tokens, costo. Cuando lo tengas, sigue con el [c16c](/concepto/16c-evaluacion) para *medir la calidad* de esas respuestas, no solo su coste.
 
 <Solution summary="Qué deberías observar">
 
 Al correr `16b` verás el desglose de más arriba: **225 tokens de entrada y 122 de salida** en 3 consultas, ≈ $0.000024 por consulta. La lección no es el número exacto (los precios caducan), sino la **proporción**: cada token de salida se cobra varias veces más caro que uno de entrada, así que la respuesta *larga* pesa más en la factura que el contexto *grande*. Si mañana tu factura sube, mira primero cuánto **escribe** el modelo, no cuánto contexto le metes.
 
-En la traza de LangSmith (con tu llave) deberías poder señalar, para UNA consulta: el prompt exacto que se armó, qué herramienta se llamó (si el agente del m10 usó alguna) y el `usage_metadata` con los tokens de ese paso. Cuando algo falle, la traza te dice *en qué eslabón* — ese es el punto de instrumentar.
+En la traza de LangSmith (con tu llave) deberías poder señalar, para UNA consulta: el prompt exacto que se armó, qué herramienta se llamó (si el agente del c10 usó alguna) y el `usage_metadata` con los tokens de ese paso. Cuando algo falle, la traza te dice *en qué eslabón* — ese es el punto de instrumentar.
 
 </Solution>
 
@@ -185,15 +185,51 @@ En la traza de LangSmith (con tu llave) deberías poder señalar, para UNA consu
 
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 
-- Distinguir **observabilidad** (el sistema en vivo) de **evaluación** (la calidad antes de desplegar, m16c).
+- Distinguir **observabilidad** (el sistema en vivo) de **evaluación** (la calidad antes de desplegar, c16c).
 - Activar trazas de LangSmith con dos variables de entorno, sin tocar tu código.
 - Calcular el coste de una consulta a partir de los tokens de entrada y salida.
 - Explicar por qué los tokens de salida pesan más en la factura que los de entrada.
 
 </Checkpoint>
 
+<Quiz title="✅ Autoevaluación · Concepto 16">
+
+<Question>
+  <Prompt>1 · Tu factura se dispara. ¿Qué miras primero?</Prompt>
+  <Option>Cuántos chunks mete el RAG en el contexto</Option>
+  <Option ok>Cuánto **escribe** el modelo: los tokens de salida cuestan varias veces más que los de entrada</Option>
+  <Option>Cuántas veces al día se reindexa el vector store</Option>
+  <Feedback>Contraintuitivo pero cierto: un contexto sucio de 20 chunks pesa mucho menos en el recibo que cada párrafo de más de la respuesta. Recorta la salida primero (Concepto 16).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Qué hace falta para empezar a ver trazas en LangSmith?</Prompt>
+  <Option>Envolver cada cadena en un decorador `@traceable`</Option>
+  <Option ok>Dos o tres variables de entorno: no tocas tu código</Option>
+  <Option>Migrar el agente a LangGraph Platform</Option>
+  <Feedback>`LANGSMITH_TRACING`, `LANGSMITH_API_KEY` y el proyecto. LangChain envía las trazas solo — por eso el mismo archivo sirve para estudiar y para producción (Concepto 16).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Pones una caché semántica con un umbral de similitud muy laxo. ¿Qué arriesgas?</Prompt>
+  <Option>Que la caché nunca acierte y no ahorres nada</Option>
+  <Option ok>Servir la respuesta de una pregunta parecida-pero-distinta, con total confianza</Option>
+  <Option>Que el TTL deje de aplicarse a las entradas guardadas</Option>
+  <Feedback>Cachear baja coste y latencia, nunca mejora la calidad: si la respuesta guardada era mala, ahora la sirves mala más rápido. Primero acierta ([c16c](/concepto/16c-evaluacion)), después abarata.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Quieres aprovechar el *prompt caching* del proveedor. ¿Cómo ordenas el prompt?</Prompt>
+  <Option>Lo variable primero, para que el modelo lo lea antes</Option>
+  <Option ok>Lo estable primero (instrucciones, corpus, definiciones de tools) y la pregunta del turno al final</Option>
+  <Option>Da igual el orden: el proveedor cachea el prompt completo</Option>
+  <Feedback>El caché casa por **prefijo exacto**. Si intercalas lo que cambia con lo que no, rompes el prefijo y pagas todo a precio completo — y el CAG del [c11](/concepto/11-rag-profesional) deja de salir a cuenta.</Feedback>
+</Question>
+
+</Quiz>
+
 <Recap level={4} label="↺ En una frase">
 
-Si no ves latencia, coste y errores en vivo, no *operas* un sistema: lo esperas. Y ojo al recibo: los tokens de salida cuestan varias veces más que los de entrada.<Arch>archivo: `16b_observabilidad_langsmith.py` · la evaluación, en el m16c</Arch>
+Si no ves latencia, coste y errores en vivo, no *operas* un sistema: lo esperas. Y ojo al recibo: los tokens de salida cuestan varias veces más que los de entrada.<Arch>archivo: `16b_observabilidad_langsmith.py` · la evaluación, en el c16c</Arch>
 
 </Recap>

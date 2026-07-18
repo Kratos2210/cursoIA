@@ -1,4 +1,4 @@
-Un agente con demasiadas herramientas se vuelve tonto, y la cura es **repartir el trabajo entre especialistas** coordinados por un supervisor. Es el principio de *divide y acota* aplicado al razonamiento del sistema. La misma idea, una escala más arriba —repartir el *sistema* en servicios independientes— es el [Módulo 15b](/modulo/15b-arquitectura-de-despliegue).
+Un agente con demasiadas herramientas se vuelve tonto, y la cura es **repartir el trabajo entre especialistas** coordinados por un supervisor. Es el principio de *divide y acota* aplicado al razonamiento del sistema. La misma idea, una escala más arriba —repartir el *sistema* en servicios independientes— es el [Concepto 15b](/concepto/15b-arquitectura-de-despliegue).
 
 ### El problema: el agente que sabe demasiado
 
@@ -26,7 +26,7 @@ El **patrón supervisor** es la forma más simple de coordinarlos: un nodo centr
   <Term>especialista (worker)</Term>
   <Def>Un agente acotado: pocas herramientas, un dominio, un prompt corto. Se equivoca, pero se equivoca dentro de un terreno pequeño.</Def>
   <Term>por qué no una arista fija</Term>
-  <Def>Porque no sabes de antemano cuántas veces hará falta cada especialista. El supervisor es una **arista condicional** (Módulo 13) con más de dos destinos.</Def>
+  <Def>Porque no sabes de antemano cuántas veces hará falta cada especialista. El supervisor es una **arista condicional** (Concepto 13) con más de dos destinos.</Def>
   <Term>el coste real</Term>
   <Def>Cada salto al supervisor es una llamada al LLM más. Un multiagente es más preciso y más caro: úsalo cuando un agente único ya falle, no antes.</Def>
 </DefList>
@@ -41,7 +41,7 @@ El **patrón supervisor** es la forma más simple de coordinarlos: un nodo centr
   <Step n="vuelve" title="Supervisor">¿Queda trabajo? No → END.</Step>
 </Flow>
 
-Se arma con lo que ya sabes del Módulo 13: un `StateGraph`, nodos, y una **arista condicional** que enruta según el estado.
+Se arma con lo que ya sabes del Concepto 13: un `StateGraph`, nodos, y una **arista condicional** que enruta según el estado.
 
 ```python title="15_supervisor_multiagente.py · el cerebro del supervisor"
 Destino = Literal["consultor", "evaluador", "FIN"]
@@ -98,7 +98,7 @@ El especialista devuelve el control al supervisor, que vuelve a delegar, que vue
 
 <Box kind="analogy" label="◆ Por qué el supervisor decide con reglas… y en producción con un LLM">
 
-El ejemplo enruta con `if`, para que corra offline y puedas testearlo. En producción el supervisor *es* un LLM con **salida estructurada sobre un `Literal`** — exactamente el molde del Módulo 05. Así el modelo solo puede devolver un destino válido: si escribe `"evaluadorr"`, Pydantic lo rechaza antes de que el grafo intente enrutar a un nodo que no existe. Míralo en `decidir_con_llm()`, en el mismo archivo.
+El ejemplo enruta con `if`, para que corra offline y puedas testearlo. En producción el supervisor *es* un LLM con **salida estructurada sobre un `Literal`** — exactamente el molde del Concepto 05. Así el modelo solo puede devolver un destino válido: si escribe `"evaluadorr"`, Pydantic lo rechaza antes de que el grafo intente enrutar a un nodo que no existe. Míralo en `decidir_con_llm()`, en el mismo archivo.
 
 </Box>
 
@@ -132,7 +132,7 @@ El supervisor es *uno* de los patrones estrella; el otro es **deep research** (i
 
 <Box kind="analogy" label="🌐 El tercer patrón: enjambre (handoffs), sin jefe">
 
-Además del supervisor y del deep research existe el **enjambre** (*swarm*): no hay jefe — cada especialista puede **transferir el control directamente** a otro (*handoff*) cuando detecta que la conversación ya no es lo suyo. El agente de ventas nota una pregunta de facturación y le pasa el cliente al de facturación, sin subir a un supervisor que decida. Gana en **flujos conversacionales tipo triaje** (soporte, mostrador): un salto menos por turno (más barato, más rápido) y cada especialista conserva el contexto de la conversación. Su factura es la **auditabilidad**: sin punto central, reconstruir "quién decidió pasar a quién y por qué" es más difícil que leer el log de un supervisor — por eso en dominios regulados (como el capstone) el supervisor sigue ganando. En LangGraph los handoffs se implementan con `Command(goto=...)` devuelto por el propio nodo; también lo verás como librería (`langgraph-swarm`) y en otros frameworks (el *Agents SDK* de OpenAI lo trae como primitiva, [m26](/modulo/26-mapa-del-ecosistema)).
+Además del supervisor y del deep research existe el **enjambre** (*swarm*): no hay jefe — cada especialista puede **transferir el control directamente** a otro (*handoff*) cuando detecta que la conversación ya no es lo suyo. El agente de ventas nota una pregunta de facturación y le pasa el cliente al de facturación, sin subir a un supervisor que decida. Gana en **flujos conversacionales tipo triaje** (soporte, mostrador): un salto menos por turno (más barato, más rápido) y cada especialista conserva el contexto de la conversación. Su factura es la **auditabilidad**: sin punto central, reconstruir "quién decidió pasar a quién y por qué" es más difícil que leer el log de un supervisor — por eso en dominios regulados (como el capstone) el supervisor sigue ganando. En LangGraph los handoffs se implementan con `Command(goto=...)` devuelto por el propio nodo; también lo verás como librería (`langgraph-swarm`) y en otros frameworks (el *Agents SDK* de OpenAI lo trae como primitiva, [c26](/concepto/26-mapa-del-ecosistema)).
 
 </Box>
 
@@ -143,6 +143,42 @@ Además del supervisor y del deep research existe el **enjambre** (*swarm*): no 
 - Justificar cuándo vale la pena un multiagente pese a que cada salto al supervisor es una llamada más al LLM.
 
 </Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 15">
+
+<Question>
+  <Prompt>1 · LangGraph te lanza un `GraphRecursionError` en tu supervisor. ¿Dónde miras primero?</Prompt>
+  <Option>En el `recursion_limit`: hay que subirlo</Option>
+  <Option ok>En la regla que corta el bucle: "si un especialista ya respondió, FIN"</Option>
+  <Option>En los prompts de los especialistas, que se están confundiendo</Option>
+  <Feedback>El especialista devuelve el control al supervisor, que vuelve a delegar… para siempre. Y esa regla es **código**: delegarla al modelo invita al bucle infinito (Concepto 15).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Cuál es el trabajo del nodo supervisor?</Prompt>
+  <Option>Resumir las respuestas de los especialistas antes de devolverlas</Option>
+  <Option ok>Ninguno de fondo: solo decide a qué especialista le toca ahora, o si ya se terminó</Option>
+  <Option>Ejecutar las herramientas que los especialistas piden</Option>
+  <Feedback>El supervisor no sabe hacer nada — sabe *a quién preguntarle*. Su única salida útil es un nombre (Concepto 15).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · ¿Por qué repartir en especialistas mejora las decisiones?</Prompt>
+  <Option>Porque varios modelos razonando en paralelo aciertan más</Option>
+  <Option ok>Porque la calidad de decisión de un LLM cae cuando le das demasiadas opciones; cada especialista tiene pocas tools y un prompt corto</Option>
+  <Option>Porque cada especialista puede usar un modelo distinto</Option>
+  <Feedback>Con 3 tools elige bien; con 12 confunde `buscar_normativa` con `buscar_reporte`. No es que el modelo sea malo: le pediste ser experto en todo a la vez (Concepto 15).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · En producción el supervisor enruta con un LLM. ¿Cómo evitas que devuelva `"evaluadorr"` y rompa el grafo?</Prompt>
+  <Option>Con un `try/except` alrededor de la arista condicional</Option>
+  <Option ok>Con salida estructurada sobre un `Literal`: Pydantic rechaza cualquier destino que no exista</Option>
+  <Option>Bajando la temperatura del supervisor a 0</Option>
+  <Feedback>Es el molde del [c05](/concepto/05-salida-estructurada) aplicado al enrutamiento: el modelo solo puede devolver un destino válido, y el error se caza antes de llegar al grafo.</Feedback>
+</Question>
+
+</Quiz>
 
 <Recap level={4} label="↺ En una frase">
 

@@ -23,7 +23,7 @@ Imagina que al entrar te asignan una caja por tu número de socio, no al azar en
 
 ```python title="proyecto_llmops/prompts/experimentos.py · asignar_variante (stdlib hashlib)"
 def asignar_variante(clave, variantes):
-    # sha256(clave) es un entero de 256 bits repartido uniforme; su módulo
+    # sha256(clave) es un entero de 256 bits repartido uniforme; su concepto
     # reparte parejo entre variantes. La MISMA clave -> SIEMPRE la misma variante.
     # ⭐ No se usa hash() de Python: está aleatorizado por proceso
     #    (PYTHONHASHSEED), así dos workers asignarían distinto al mismo usuario.
@@ -102,6 +102,44 @@ Con los 12 y 11 votos del ejemplo de arriba, `|z|` no llega a 1.96: **empate est
 
 Manda varios `POST /chat` con distintos `thread_id` y comprueba en el evento `fin` que cada hilo cae siempre en la misma variante. Luego vota con `POST /feedback` y mira cómo `GET /feedback` mueve la `tasa_aprobacion`. Y el lazo ya está **cerrado de punta a punta** (ver `ADR-0006`): la variante no solo atribuye el voto, también **elige el agente** — cada uno con el prompt de su YAML (`construir_agentes_por_variante`), así que la `tasa_aprobacion` mide el efecto real del prompt.
 
+**Segundo reto: audita el bucketing antes de fiarte de ningún resultado.** Asigna 1000 `thread_id` sintéticos, comprueba que el reparto es uniforme y que reasignar la misma clave da siempre lo mismo. Después calcula cuántos votos te faltarían para que tu diferencia actual fuera significativa.
+
+**Criterio de aceptación:** el reparto queda a ±3 puntos del 50/50 con 1000 claves, la reasignación coincide en el **100%** de los ids, y sabes decir el `|z|` de tus votos de hoy y si pasa de 1.96. Un experimento cuyo repartidor no auditaste no mide el prompt: mide tu suerte.
+
+<Solution summary="Ver una solución">
+
+```python title="solución · auditar el repartidor antes de creerte el experimento"
+from collections import Counter
+from math import sqrt
+from proyecto_llmops.prompts.experimentos import asignar_variante
+
+VARIANTES = ["agente_gobdata", "agente_gobdata_conciso"]
+claves = [f"thread-{i}" for i in range(1000)]
+
+# 1) UNIFORMIDAD · sha256 % n reparte parejo, y tú no guardas estado de nadie.
+print(Counter(asignar_variante(c, VARIANTES) for c in claves))      # ~500 / ~500
+
+# 2) PEGAJOSIDAD · la MISMA clave, la MISMA variante — en cualquier worker y cualquier día.
+assert all(asignar_variante(c, VARIANTES) == asignar_variante(c, VARIANTES) for c in claves)
+
+# 3) ¿CUÁNTOS VOTOS FALTAN? Escala las mismas proporciones y mira cuándo |z| pasa 1.96.
+def z(util_a, n_a, util_b, n_b):
+    p_a, p_b = util_a / n_a, util_b / n_b
+    p = (util_a + util_b) / (n_a + n_b)              # tasa combinada (hipótesis nula)
+    se = sqrt(p * (1 - p) * (1 / n_a + 1 / n_b))
+    return (p_a - p_b) / se if se else 0.0
+
+for factor in (1, 3, 5, 10):
+    print(factor, round(abs(z(8 * factor, 12 * factor, 9 * factor, 11 * factor)), 2))
+# 1 -> 0.83 · 3 -> 1.43 · 5 -> 1.85 · 10 -> 2.61
+```
+
+Fíjate en lo que **no** cambia en ese último bucle: las tasas siguen siendo 0.667 y 0.818 en las cuatro filas. La diferencia entre variantes es idéntica; lo único que crece es la **evidencia**. Por eso "B se ve mejor" no es un resultado — con 12 y 11 votos es exactamente el mismo dato que con 120 y 110, salvo que uno permite decidir y el otro no.
+
+Y el paso 2 no es paranoia: si alguien "optimizara" `asignar_variante` cambiando `hashlib.sha256` por el `hash()` de Python, este assert seguiría pasando dentro de un proceso y **fallaría silenciosamente entre workers** — que es justo donde vive tu producción.
+
+</Solution>
+
 </Box>
 
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
@@ -112,6 +150,42 @@ Manda varios `POST /chat` con distintos `thread_id` y comprueba en el evento `fi
 - Añadir una clave a un evento SSE sin romper los tests que dependen de las anteriores.
 
 </Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 24b">
+
+<Question>
+  <Prompt>1 · ¿Por qué la asignación de variante tiene que ser **pegajosa**?</Prompt>
+  <Option>Porque es la única forma de repartir el tráfico exactamente 50/50</Option>
+  <Option ok>Porque si el usuario ve A y B en la misma conversación, su voto no se puede atribuir a ninguna variante</Option>
+  <Option>Porque el proveedor cachea mejor el prompt cuando no cambia entre peticiones</Option>
+  <Feedback>Sin pegajosidad el experimento no mide nada. La variante es una **función** del `thread_id`, no un sorteo por request.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Por qué `hashlib.sha256(clave)` y no el `hash()` de Python?</Prompt>
+  <Option>Porque `hash()` no acepta cadenas largas como un UUID</Option>
+  <Option ok>Porque `hash()` está aleatorizado por proceso (`PYTHONHASHSEED`): dos workers asignarían distinto al mismo usuario</Option>
+  <Option>Porque `sha256` reparte uniforme y `hash()` tiende a agrupar las claves parecidas</Option>
+  <Feedback>El bucketing debe ser reproducible **sin coordinar workers**. `hash()` lo rompe en cuanto tienes más de un proceso — y falla en silencio.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · La variante A va 8/12 (0.667) y la B 9/11 (0.818). ¿Declaras ganadora a B?</Prompt>
+  <Option>Sí: quince puntos de diferencia es un margen amplio</Option>
+  <Option ok>No: `|z|` no llega a 1.96 — empate estadístico. Harían falta del orden de ~100 votos por variante</Option>
+  <Option>No, pero solo porque las dos variantes no tienen el mismo número de votos</Option>
+  <Feedback>Con esas mismas proporciones y diez veces los votos, `|z| ≈ 2.61` y sí sería significativo. La diferencia no cambió: cambió la evidencia.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · El evento SSE `fin` gana la clave `"variante"` junto a las que ya tenía. ¿Por qué importa que el cambio sea **aditivo**?</Prompt>
+  <Option>Porque el protocolo SSE no permite quitar claves de un evento ya publicado</Option>
+  <Option ok>Porque los clientes y los smoke tests que dependen de `cache_hit`/`similitud` siguen funcionando sin tocarse</Option>
+  <Option>Porque el front necesita las tres claves a la vez para poder pintar el voto</Option>
+  <Feedback>Añadir no rompe contratos; renombrar o quitar sí. Es la disciplina de tests del c17b aplicada al contrato de un evento de streaming.</Feedback>
+</Question>
+
+</Quiz>
 
 <Recap level={5} label="↺ En una frase">
 

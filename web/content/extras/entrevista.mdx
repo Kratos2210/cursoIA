@@ -1,8 +1,8 @@
-El examen midió si entendiste el curso. Esto es distinto: son las preguntas que te harán en una **entrevista real** de AI Engineer, con la respuesta que se espera y —lo importante— **el módulo donde la construiste con tus manos**. No memorices la respuesta: abre el módulo, reléelo, y explícala con tus palabras. Al final, cuatro casos de **system design**: la parte que de verdad separa a quien "sabe la teoría" de quien diseña sistemas.
+El examen midió si entendiste el curso. Esto es distinto: son las preguntas que te harán en una **entrevista real** de AI Engineer, con la respuesta que se espera y —lo importante— **el concepto donde la construiste con tus manos**. No memorices la respuesta: abre el concepto, reléelo, y explícala con tus palabras. Al final, cuatro casos de **system design**: la parte que de verdad separa a quien "sabe la teoría" de quien diseña sistemas.
 
 <Box kind="practice" label="▸ Cómo usar esta sección">
 
-Lee la pregunta, responde **en voz alta y completa** antes de abrir la respuesta —como en la entrevista de verdad, donde el silencio pensando cuenta. Solo entonces despliega para contrastar. Si tu respuesta se quedó corta, el chip de la derecha te dice a qué módulo volver.
+Lee la pregunta, responde **en voz alta y completa** antes de abrir la respuesta —como en la entrevista de verdad, donde el silencio pensando cuenta. Solo entonces despliega para contrastar. Si tu respuesta se quedó corta, el chip de la derecha te dice a qué concepto volver.
 
 </Box>
 
@@ -10,9 +10,9 @@ Lee la pregunta, responde **en voz alta y completa** antes de abrir la respuesta
 
 ### Bloque 1 · Fundamentos del LLM
 
-Qué hay dentro de la caja. Módulos 27 y 28.
+Qué hay dentro de la caja. Conceptos 27 y 28.
 
-<QA mod="m27">
+<QA mod="c27">
   <QSummary>¿Qué es un token y por qué se cobra por token y no por palabra?</QSummary>
   <QAnswer>
 
@@ -21,7 +21,7 @@ Un token es la unidad en que el modelo parte el texto: normalmente sub-palabras 
   </QAnswer>
 </QA>
 
-<QA mod="m27">
+<QA mod="c27">
   <QSummary>¿Qué hace realmente `temperature=0`?</QSummary>
   <QAnswer>
 
@@ -30,7 +30,7 @@ El modelo produce un vector de *logits*; *softmax* los vuelve una distribución 
   </QAnswer>
 </QA>
 
-<QA mod="m27">
+<QA mod="c27">
   <QSummary>Explica la atención como se la explicarías a alguien no técnico.</QSummary>
   <QAnswer>
 
@@ -39,16 +39,16 @@ Al procesar cada palabra, el modelo decide **a qué otras palabras mirar** y cu�
   </QAnswer>
 </QA>
 
-<QA mod="m27">
+<QA mod="c27">
   <QSummary>BERT vs GPT: ¿qué diferencia hay entre un encoder y un decoder?</QSummary>
   <QAnswer>
 
-Un **encoder** (BERT) mira la frase entera a la vez y produce una *representación*: sirve para *entender* (clasificar, buscar, comparar) — el cross-encoder que usaste en el re-ranking del m12 es esto. Un **decoder** (GPT) genera token a token mirando solo hacia atrás: sirve para *producir* texto. T5 combina ambos (encoder-decoder). Regla: ¿entender o comparar? encoder. ¿Generar? decoder.
+Un **encoder** (BERT) mira la frase entera a la vez y produce una *representación*: sirve para *entender* (clasificar, buscar, comparar) — el cross-encoder que usaste en el re-ranking del c12 es esto. Un **decoder** (GPT) genera token a token mirando solo hacia atrás: sirve para *producir* texto. T5 combina ambos (encoder-decoder). Regla: ¿entender o comparar? encoder. ¿Generar? decoder.
 
   </QAnswer>
 </QA>
 
-<QA mod="m27">
+<QA mod="c27">
   <QSummary>RLHF vs DPO: ¿por qué el modelo "obedece" y qué las diferencia?</QSummary>
   <QAnswer>
 
@@ -57,25 +57,25 @@ Un modelo base solo autocompleta; para que *siga instrucciones* se le alinea con
   </QAnswer>
 </QA>
 
-<QA mod="m27 · m28">
+<QA mod="c27 · c28">
   <QSummary>¿Qué mide la perplejidad y para qué sirve como defensa?</QSummary>
   <QAnswer>
 
-La perplejidad mide **cuán sorprendido** está el modelo ante un texto: baja si lo predice bien, alta si le resulta raro. Texto natural → perplejidad baja; una cadena adversarial de tokens sin sentido → perplejidad alta. De ahí el *filtro de perplejidad* del m28: un prompt con perplejidad anómala es sospechoso de ataque. No es garantía, es una señal barata.
+La perplejidad mide **cuán sorprendido** está el modelo ante un texto: baja si lo predice bien, alta si le resulta raro. Texto natural → perplejidad baja; una cadena adversarial de tokens sin sentido → perplejidad alta. De ahí el *filtro de perplejidad* del c28: un prompt con perplejidad anómala es sospechoso de ataque. No es garantía, es una señal barata.
 
   </QAnswer>
 </QA>
 
-<QA mod="m27">
+<QA mod="c27">
   <QSummary>¿Por qué la inferencia de un LLM es lenta y cara? ¿Qué es el KV cache?</QSummary>
   <QAnswer>
 
-Es **autoregresiva**: cada token nuevo necesita todos los anteriores, así que no se paraleliza la generación — se hace en fila, y por eso existe el *streaming* del m18. El **KV cache** guarda las claves/valores de atención ya calculados para no recomputarlos en cada paso: acelera muchísimo, a cambio de memoria que crece con la longitud. La *cuantización* (menos bits por peso) es la otra palanca: por eso un modelo cabe y corre en tu laptop con Ollama.
+Es **autoregresiva**: cada token nuevo necesita todos los anteriores, así que no se paraleliza la generación — se hace en fila, y por eso existe el *streaming* del c18. El **KV cache** guarda las claves/valores de atención ya calculados para no recomputarlos en cada paso: acelera muchísimo, a cambio de memoria que crece con la longitud. La *cuantización* (menos bits por peso) es la otra palanca: por eso un modelo cabe y corre en tu laptop con Ollama.
 
   </QAnswer>
 </QA>
 
-<QA mod="m27">
+<QA mod="c27">
   <QSummary>¿Qué es un MoE (Mixture of Experts) y por qué importa?</QSummary>
   <QAnswer>
 
@@ -84,11 +84,11 @@ En vez de una red densa donde *todos* los pesos se activan por token, un MoE tie
   </QAnswer>
 </QA>
 
-<QA mod="m28">
+<QA mod="c28">
   <QSummary>¿Por qué alucina un LLM y cómo lo detectas sin llamar a un humano?</QSummary>
   <QAnswer>
 
-Alucina porque su trabajo es producir texto *plausible*, no verdadero: sin grounding rellena huecos con lo más probable. Causas típicas: datos desactualizados, contexto insuficiente, sobregeneralización. Detección automática (estilo SelfCheckGPT): muestrea la **misma** pregunta varias veces — si las respuestas *divergen*, es señal de invención (un hecho real sale consistente). Mitigación de raíz: grounding con RAG (m11) y evals (m16).
+Alucina porque su trabajo es producir texto *plausible*, no verdadero: sin grounding rellena huecos con lo más probable. Causas típicas: datos desactualizados, contexto insuficiente, sobregeneralización. Detección automática (estilo SelfCheckGPT): muestrea la **misma** pregunta varias veces — si las respuestas *divergen*, es señal de invención (un hecho real sale consistente). Mitigación de raíz: grounding con RAG (c11) y evals (c16).
 
   </QAnswer>
 </QA>
@@ -99,9 +99,9 @@ Alucina porque su trabajo es producir texto *plausible*, no verdadero: sin groun
 
 ### Bloque 2 · RAG y recuperación
 
-Del chunking a las métricas. Módulos 11, 12, 20 y 16.
+Del chunking a las métricas. Conceptos 11, 12, 20 y 16.
 
-<QA mod="m21">
+<QA mod="c21">
   <QSummary>RAG vs fine-tuning: ¿cuándo cada uno? Es la pregunta trampa clásica.</QSummary>
   <QAnswer>
 
@@ -110,7 +110,7 @@ RAG da **conocimiento** fresco, citable y actualizable (una biblioteca que se le
   </QAnswer>
 </QA>
 
-<QA mod="m12">
+<QA mod="c12">
   <QSummary>¿Por qué la búsqueda híbrida gana a solo semántica, y qué es RRF?</QSummary>
   <QAnswer>
 
@@ -119,16 +119,16 @@ La búsqueda densa (embeddings) capta significado pero falla con términos exact
   </QAnswer>
 </QA>
 
-<QA mod="m20">
+<QA mod="c20">
   <QSummary>¿Qué resuelve multi-query / RAG-Fusion que la búsqueda normal no?</QSummary>
   <QAnswer>
 
-Una sola formulación es una sola apuesta: si el usuario dice "devolución" y el doc dice "reembolso", el chunk correcto queda invisible. Multi-query reformula la pregunta en varias variantes (sinónimos, solo palabras clave), busca con todas y fusiona con RRF. Sube el **recall** a costa de N búsquedas + N llamadas al LLM. Es mejorar el RAG por la *pregunta*, no por el índice (eso era el m12).
+Una sola formulación es una sola apuesta: si el usuario dice "devolución" y el doc dice "reembolso", el chunk correcto queda invisible. Multi-query reformula la pregunta en varias variantes (sinónimos, solo palabras clave), busca con todas y fusiona con RRF. Sube el **recall** a costa de N búsquedas + N llamadas al LLM. Es mejorar el RAG por la *pregunta*, no por el índice (eso era el c12).
 
   </QAnswer>
 </QA>
 
-<QA mod="m20">
+<QA mod="c20">
   <QSummary>¿Cómo funciona HyDE y por qué buscar con una respuesta inventada mejora?</QSummary>
   <QAnswer>
 
@@ -137,7 +137,7 @@ HyDE pide al LLM una **respuesta hipotética** a la pregunta y busca con ESA en 
   </QAnswer>
 </QA>
 
-<QA mod="m16">
+<QA mod="c16">
   <QSummary>Explica la tríada de métricas RAG (estilo RAGAS).</QSummary>
   <QAnswer>
 
@@ -146,7 +146,7 @@ HyDE pide al LLM una **respuesta hipotética** a la pregunta y busca con ESA en 
   </QAnswer>
 </QA>
 
-<QA mod="m16">
+<QA mod="c16">
   <QSummary>Model evals vs product evals: ¿cuál decide si despliegas?</QSummary>
   <QAnswer>
 
@@ -161,9 +161,9 @@ Un *model eval* pregunta "¿este modelo es bueno en general?" (benchmarks públi
 
 ### Bloque 3 · Adaptación de modelos
 
-El espectro completo, de un prompt a pre-entrenar. Módulo 21.
+El espectro completo, de un prompt a pre-entrenar. Concepto 21.
 
-<QA mod="m21">
+<QA mod="c21">
   <QSummary>LoRA / PEFT vs full fine-tuning: ¿por qué casi siempre LoRA?</QSummary>
   <QAnswer>
 
@@ -172,7 +172,7 @@ Full fine-tuning reentrena *todos* los pesos: caro, lento y con riesgo de **olvi
   </QAnswer>
 </QA>
 
-<QA mod="m21">
+<QA mod="c21">
   <QSummary>Nombra el espectro completo de adaptación de menos a más esfuerzo.</QSummary>
   <QAnswer>
 
@@ -181,7 +181,7 @@ Full fine-tuning reentrena *todos* los pesos: caro, lento y con riesgo de **olvi
   </QAnswer>
 </QA>
 
-<QA mod="m21 · m27">
+<QA mod="c21 · c27">
   <QSummary>¿Qué es el instruction tuning y en qué se diferencia del pre-entrenamiento?</QSummary>
   <QAnswer>
 
@@ -190,7 +190,7 @@ El *pre-entrenamiento* enseña a predecir el siguiente token sobre un corpus mas
   </QAnswer>
 </QA>
 
-<QA mod="m21">
+<QA mod="c21">
   <QSummary>¿Cuándo se justifica pre-entrenar un modelo de dominio (BloombergGPT)?</QSummary>
   <QAnswer>
 
@@ -205,9 +205,9 @@ Casi nunca. Solo cuando tienes un **corpus enorme y propio** de un dominio muy p
 
 ### Bloque 4 · Prompting, agentes y multimodal
 
-Cómo se razona y se orquesta. Módulos 26b, 10, 13, 15, 22.
+Cómo se razona y se orquesta. Conceptos 26b, 10, 13, 15, 22.
 
-<QA mod="m26b">
+<QA mod="c26b">
   <QSummary>CoT vs self-consistency vs Tree-of-Thoughts: ¿cuándo cada uno?</QSummary>
   <QAnswer>
 
@@ -216,16 +216,16 @@ Cómo se razona y se orquesta. Módulos 26b, 10, 13, 15, 22.
   </QAnswer>
 </QA>
 
-<QA mod="m26b · m28">
+<QA mod="c26b · c28">
   <QSummary>¿Qué es Chain-of-Verification (CoVe) y qué problema ataca?</QSummary>
   <QAnswer>
 
-El modelo responde, luego **se genera preguntas de verificación** sobre su propia respuesta, las contesta y se corrige. Ataca la alucinación desde dentro del prompt, sin herramientas externas — es el mismo espíritu del detector de inconsistencias del m28, pero autoaplicado. Útil en respuestas factuales donde un error pasa desapercibido si no te obligas a chequearlo.
+El modelo responde, luego **se genera preguntas de verificación** sobre su propia respuesta, las contesta y se corrige. Ataca la alucinación desde dentro del prompt, sin herramientas externas — es el mismo espíritu del detector de inconsistencias del c28, pero autoaplicado. Útil en respuestas factuales donde un error pasa desapercibido si no te obligas a chequearlo.
 
   </QAnswer>
 </QA>
 
-<QA mod="m10 · m13">
+<QA mod="c10 · c13">
   <QSummary>¿Qué es el patrón ReAct y por qué un agente lo necesita?</QSummary>
   <QAnswer>
 
@@ -234,16 +234,16 @@ ReAct = *Reason + Act*: el modelo alterna pensar ("necesito el saldo") y actuar 
   </QAnswer>
 </QA>
 
-<QA mod="m16 · m15">
+<QA mod="c16 · c15">
   <QSummary>¿Cómo evalúas un agente? No basta con mirar la respuesta final.</QSummary>
   <QAnswer>
 
-Además del **resultado**, evalúas la **trayectoria**: ¿eligió las herramientas correctas?, ¿en orden razonable?, ¿sin pasos inútiles ni bucles? Un agente que acierta la respuesta por suerte tras tres llamadas equivocadas está roto. Se combina LLM-as-judge sobre el resultado + inspección de la traza (m16) sobre el camino. En multiagente, además: ¿el supervisor enrutó al agente correcto?
+Además del **resultado**, evalúas la **trayectoria**: ¿eligió las herramientas correctas?, ¿en orden razonable?, ¿sin pasos inútiles ni bucles? Un agente que acierta la respuesta por suerte tras tres llamadas equivocadas está roto. Se combina LLM-as-judge sobre el resultado + inspección de la traza (c16) sobre el camino. En multiagente, además: ¿el supervisor enrutó al agente correcto?
 
   </QAnswer>
 </QA>
 
-<QA mod="m22">
+<QA mod="c22">
   <QSummary>¿Cómo "ve" un modelo multimodal por dentro?</QSummary>
   <QAnswer>
 
@@ -252,7 +252,7 @@ Tres piezas: un **encoder de la modalidad** (p.ej. un vision encoder) convierte 
   </QAnswer>
 </QA>
 
-<QA mod="m15">
+<QA mod="c15">
   <QSummary>¿Cuándo un sistema multiagente supera a un solo agente con muchas tools?</QSummary>
   <QAnswer>
 
@@ -267,9 +267,9 @@ Cuando las tareas son *separables* por especialidad y meterlas todas en un agent
 
 ### Bloque 5 · Producción, LLMOps y seguridad
 
-Lo que separa un demo de un servicio. Módulos 16, 18b, 24, 24b, 23.
+Lo que separa un demo de un servicio. Conceptos 16, 18b, 24, 24b, 23.
 
-<QA mod="m16">
+<QA mod="c16">
   <QSummary>Observabilidad vs evaluación: no son lo mismo.</QSummary>
   <QAnswer>
 
@@ -278,7 +278,7 @@ Lo que separa un demo de un servicio. Módulos 16, 18b, 24, 24b, 23.
   </QAnswer>
 </QA>
 
-<QA mod="m16">
+<QA mod="c16">
   <QSummary>¿Qué es una regresión en IA y cómo la atrapas si no tocaste tu código?</QSummary>
   <QAnswer>
 
@@ -287,7 +287,7 @@ Es que algo que funcionaba deje de funcionar. En IA aparece *sin* tocar tu códi
   </QAnswer>
 </QA>
 
-<QA mod="m18b">
+<QA mod="c18b">
   <QSummary>¿Cómo eliges modelo y proveedor para un caso nuevo?</QSummary>
   <QAnswer>
 
@@ -296,7 +296,7 @@ No por el ranking de moda, sino por el **triángulo coste / latencia / calidad**
   </QAnswer>
 </QA>
 
-<QA mod="m24">
+<QA mod="c24">
   <QSummary>¿Cuándo pasas del vector store en memoria a una DB vectorial de verdad?</QSummary>
   <QAnswer>
 
@@ -305,7 +305,7 @@ El store en memoria (FAISS/InMemory) muere al reiniciar y no escala ni se compar
   </QAnswer>
 </QA>
 
-<QA mod="m24b">
+<QA mod="c24b">
   <QSummary>¿Cómo montas un A/B de prompts que dé datos atribuibles?</QSummary>
   <QAnswer>
 
@@ -314,7 +314,7 @@ Asignación **pegajosa**: `sha256(thread_id) % n` — el mismo usuario cae siemp
   </QAnswer>
 </QA>
 
-<QA mod="m23">
+<QA mod="c23">
   <QSummary>¿Qué es la inyección de prompts y por qué no se "arregla" del todo?</QSummary>
   <QAnswer>
 
@@ -337,15 +337,15 @@ Restricciones: la documentación cambia cada semana; debe **citar la fuente**; n
 
 **Preguntas guía:** ¿RAG o fine-tuning? ¿Cómo garantizas las citas? ¿Dónde metes caché? ¿Qué guardrails? ¿Cómo mides que no alucina?
 
-<QA mod="m11·m12·m16·m23">
+<QA mod="c11·c12·c16·c23">
   <QSummary>Ver solución esquemática</QSummary>
   <QAnswer>
 
-**RAG, no fine-tuning**: los datos cambian cada semana → biblioteca, no escuela (m21). Ingesta con chunking + búsqueda híbrida y re-ranking (m12); devuelve el chunk con su metadato de fuente para **citar**.
+**RAG, no fine-tuning**: los datos cambian cada semana → biblioteca, no escuela (c21). Ingesta con chunking + búsqueda híbrida y re-ranking (c12); devuelve el chunk con su metadato de fuente para **citar**.
 
-**Anti-alucinación**: prompt que obliga a responder solo desde el contexto y a decir "no lo sé" si falta; evalúas con la tríada RAGAS, vigilando *faithfulness* (m16). **Guardrails**: sanear la entrada y marcar el contexto recuperado como no confiable frente a inyección (m23).
+**Anti-alucinación**: prompt que obliga a responder solo desde el contexto y a decir "no lo sé" si falta; evalúas con la tríada RAGAS, vigilando *faithfulness* (c16). **Guardrails**: sanear la entrada y marcar el contexto recuperado como no confiable frente a inyección (c23).
 
-**Caché**: en preguntas frecuentes idénticas (caché semántico de respuestas) y en los embeddings de los documentos (no re-embedas en cada consulta). **Coste**: modelo pequeño para el grueso, con evals que confirmen que aguanta la calidad (m18b).
+**Caché**: en preguntas frecuentes idénticas (caché semántico de respuestas) y en los embeddings de los documentos (no re-embedas en cada consulta). **Coste**: modelo pequeño para el grueso, con evals que confirmen que aguanta la calidad (c18b).
 
   </QAnswer>
 </QA>
@@ -356,15 +356,15 @@ Restricciones: millones de documentos con metadatos (área, fecha, permisos); ba
 
 **Preguntas guía:** ¿Vector store en memoria o DB vectorial? ¿Cómo filtras por permisos? ¿Cómo mejoras el recall sin disparar la latencia? ¿Cómo evalúas la búsqueda?
 
-<QA mod="m24·m20·m12·m16">
+<QA mod="c24·c20·c12·c16">
   <QSummary>Ver solución esquemática</QSummary>
   <QAnswer>
 
-**DB vectorial de verdad** (m24): millones de vectores + filtros de metadatos + permisos descartan el store en memoria. Los **permisos se aplican como filtro de metadatos en la propia búsqueda** (pre-filtrado), nunca filtrando después de recuperar: así el modelo jamás ve lo prohibido.
+**DB vectorial de verdad** (c24): millones de vectores + filtros de metadatos + permisos descartan el store en memoria. Los **permisos se aplican como filtro de metadatos en la propia búsqueda** (pre-filtrado), nunca filtrando después de recuperar: así el modelo jamás ve lo prohibido.
 
-**Recall vs latencia**: híbrida (denso + léxico) + RRF (m12) como base; multi-query/HyDE (m20) *solo* si el recall es el cuello de botella, porque multiplican búsquedas. Re-ranking del top-k, no de todo.
+**Recall vs latencia**: híbrida (denso + léxico) + RRF (c12) como base; multi-query/HyDE (c20) *solo* si el recall es el cuello de botella, porque multiplican búsquedas. Re-ranking del top-k, no de todo.
 
-**Evaluación**: context precision/recall sobre un set de consultas etiquetadas (m16); vigilas latencia p95 en las trazas. Caché de embeddings de consultas frecuentes.
+**Evaluación**: context precision/recall sobre un set de consultas etiquetadas (c16); vigilas latencia p95 en las trazas. Caché de embeddings de consultas frecuentes.
 
   </QAnswer>
 </QA>
@@ -375,15 +375,15 @@ Restricciones: ejecuta **acciones** reales, no solo responde; algunas son irreve
 
 **Preguntas guía:** ¿Un agente o varios? ¿Cómo controlas acciones peligrosas? ¿Cómo separas usuarios? ¿Cómo lo evalúas y observas? ¿Cómo lo despliegas?
 
-<QA mod="m10·m13·m15·m16·m23·m17">
+<QA mod="c10·c13·c15·c16·c23·c17">
   <QSummary>Ver solución esquemática</QSummary>
   <QAnswer>
 
-**Agente ReAct** (m10/m13) con tools bien tipadas; pasa a **supervisor multiagente** (m15) solo si las especialidades lo piden. Las acciones **irreversibles** pasan por *human-in-the-loop* (interrupción + confirmación) antes de ejecutarse.
+**Agente ReAct** (c10/c13) con tools bien tipadas; pasa a **supervisor multiagente** (c15) solo si las especialidades lo piden. Las acciones **irreversibles** pasan por *human-in-the-loop* (interrupción + confirmación) antes de ejecutarse.
 
-**Seguridad**: permisos mínimos por tool, validación de argumentos, y defensa frente a inyección que intente disparar acciones (m23). **Concurrencia**: cada usuario aislado por `thread_id`; el agente se construye una vez al arrancar (m17).
+**Seguridad**: permisos mínimos por tool, validación de argumentos, y defensa frente a inyección que intente disparar acciones (c23). **Concurrencia**: cada usuario aislado por `thread_id`; el agente se construye una vez al arrancar (c17).
 
-**Observabilidad + eval**: trazas de cada paso y evaluación por **trayectoria** además del resultado (m16) — ¿usó la tool correcta?, ¿pidió confirmación cuando debía? **Auditoría**: log de cada acción ejecutada con su input y quién la disparó.
+**Observabilidad + eval**: trazas de cada paso y evaluación por **trayectoria** además del resultado (c16) — ¿usó la tool correcta?, ¿pidió confirmación cuando debía? **Auditoría**: log de cada acción ejecutada con su input y quién la disparó.
 
   </QAnswer>
 </QA>
@@ -394,17 +394,17 @@ Restricciones: el catálogo cambia a diario (precios, promos, stock); **jamás**
 
 **Preguntas guía:** ¿Dónde vive el catálogo, RAG o fine-tuning? ¿Cómo entiende la petición? ¿El presupuesto es filtro o ranking? ¿Cómo garantizas que no invente un precio? ¿Cómo lo evalúas y qué bloquea un deploy?
 
-<QA mod="m29·m05·m21·m23·m16">
+<QA mod="c29·c05·c21·c23·c16">
   <QSummary>Ver solución esquemática</QSummary>
   <QAnswer>
 
-**RAG, no fine-tuning** (m21): el catálogo cambia a diario, así que se recupera en cada consulta; afinar con los precios de este mes es fabricar un mentiroso para el próximo. El LLM entiende y redacta; el catálogo pone los hechos.
+**RAG, no fine-tuning** (c21): el catálogo cambia a diario, así que se recupera en cada consulta; afinar con los precios de este mes es fabricar un mentiroso para el próximo. El LLM entiende y redacta; el catálogo pone los hechos.
 
-**Entender la petición**: `with_structured_output` a un molde tipado (m05) — presupuesto, categoría, color. **Presupuesto = filtro DURO** (un WHERE, m24), no señal de ranking: un producto que se pasa del tope es inválido, no "menos relevante"; solo entre los válidos se ordena por afinidad.
+**Entender la petición**: `with_structured_output` a un molde tipado (c05) — presupuesto, categoría, color. **Presupuesto = filtro DURO** (un WHERE, c24), no señal de ranking: un producto que se pasa del tope es inválido, no "menos relevante"; solo entre los válidos se ordena por afinidad.
 
-**Anti-precio-inventado**: guardrail determinista que verifica que cada S/xx.xx citado exista en lo recuperado (m23); si falla, reintento correctivo y luego fallback a una respuesta armada por plantilla, fiel por construcción. No un LLM-judge: la verdad —el catálogo— está a mano, y comprobar un precio es una resta, no un juicio.
+**Anti-precio-inventado**: guardrail determinista que verifica que cada S/xx.xx citado exista en lo recuperado (c23); si falla, reintento correctivo y luego fallback a una respuesta armada por plantilla, fiel por construcción. No un LLM-judge: la verdad —el catálogo— está a mano, y comprobar un precio es una resta, no un juicio.
 
-**Eval + gate**: métrica que exige respetar presupuesto, stock y fidelidad de precios (m16); el CI gate tiene **cero tolerancia** a un precio inventado — un solo caso infiel bloquea el deploy aunque la media pase. Alrededor: caché semántico para las repetidas y A/B del tono de la vendedora.
+**Eval + gate**: métrica que exige respetar presupuesto, stock y fidelidad de precios (c16); el CI gate tiene **cero tolerancia** a un precio inventado — un solo caso infiel bloquea el deploy aunque la media pase. Alrededor: caché semántico para las repetidas y A/B del tono de la vendedora.
 
   </QAnswer>
 </QA>

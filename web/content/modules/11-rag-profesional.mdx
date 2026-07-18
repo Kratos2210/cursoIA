@@ -19,7 +19,7 @@ Resuelve tres problemas de un golpe: el modelo no conoce tus datos privados, su 
 
 </Box>
 
-Casi todo el mundo dibuja RAG como una sola tubería, y por eso confunde dos cosas que ocurren en momentos distintos. Son **dos caminos**: uno se recorre *una vez*, cuando preparas tus documentos; el otro, *en cada pregunta*. Este es el mapa completo — los módulos 11 y 12 lo recorren entero, pieza por pieza.
+Casi todo el mundo dibuja RAG como una sola tubería, y por eso confunde dos cosas que ocurren en momentos distintos. Son **dos caminos**: uno se recorre *una vez*, cuando preparas tus documentos; el otro, *en cada pregunta*. Este es el mapa completo — los conceptos 11 y 12 lo recorren entero, pieza por pieza.
 
 Camino A · **una sola vez**, cuando indexas tus documentos
 
@@ -35,7 +35,7 @@ Camino B · **en cada pregunta** del usuario
 <Flow>
   <Step n="B1" title="Pregunta">Se vectoriza con el *mismo* modelo de embeddings.</Step>
   <Step n="B2" title="Retrieval">El vector store devuelve los k más parecidos.</Step>
-  <Step n="B3" title="Re-rank">Segundo filtro que reordena. Módulo 12.</Step>
+  <Step n="B3" title="Re-rank">Segundo filtro que reordena. Concepto 12.</Step>
   <Step n="B4" title="LLM">Lee pregunta + fragmentos y redacta.</Step>
   <Step n="B5" title="Respuesta">Fundamentada en *tus* documentos.</Step>
 </Flow>
@@ -159,7 +159,7 @@ for k in (2, 6):
 
 <Box kind="analogy" label="🌐 CAG: la alternativa que no recupera nada">
 
-Todo este módulo asume que tus documentos **no caben** en el prompt, y por eso hay que recuperar. Pero las ventanas de contexto crecieron muchísimo: hoy caben cientos de páginas en una sola llamada. Cuando el corpus entero cabe, aparece una alternativa que muchos equipos pasan por alto: **CAG** (*Cache-Augmented Generation*). En vez de indexar, trocear y recuperar, **precargas todo el corpus** en el contexto una vez y dejas que el **KV cache** del proveedor lo amortice en las siguientes preguntas. Sin retriever, sin vector store, sin el bug silencioso de recuperar el chunk equivocado — la respuesta ve *todo* el material, no solo los `k` fragmentos que el retriever adivinó.
+Todo este concepto asume que tus documentos **no caben** en el prompt, y por eso hay que recuperar. Pero las ventanas de contexto crecieron muchísimo: hoy caben cientos de páginas en una sola llamada. Cuando el corpus entero cabe, aparece una alternativa que muchos equipos pasan por alto: **CAG** (*Cache-Augmented Generation*). En vez de indexar, trocear y recuperar, **precargas todo el corpus** en el contexto una vez y dejas que el **KV cache** del proveedor lo amortice en las siguientes preguntas. Sin retriever, sin vector store, sin el bug silencioso de recuperar el chunk equivocado — la respuesta ve *todo* el material, no solo los `k` fragmentos que el retriever adivinó.
 
 No es que CAG reemplace a RAG: cada uno gana en un terreno distinto.
 
@@ -170,7 +170,7 @@ No es que CAG reemplace a RAG: cada uno gana en un terreno distinto.
 | Coste por consulta | Contexto entero cada vez (lo abarata el caché del proveedor) | Solo los `k` chunks recuperados |
 | Permisos por usuario | Difícil: no puedes precargar lo que un usuario no debe ver | Natural: filtras en el retrieval |
 
-La regla práctica: si tu base de conocimiento es un manual acotado y estable, prueba CAG antes de montar toda la maquinaria de RAG — es más simple y elimina una clase entera de fallos. La palanca que lo hace barato es el **prompt caching del proveedor**, que verás en el [m16](/modulo/16-observabilidad-y-costo); no confundas ese caché (del prefijo, por el proveedor) con el **caché semántico** de respuestas del [proyecto_llmops](/recurso/llmops), que ataca otra parte del problema.
+La regla práctica: si tu base de conocimiento es un manual acotado y estable, prueba CAG antes de montar toda la maquinaria de RAG — es más simple y elimina una clase entera de fallos. La palanca que lo hace barato es el **prompt caching del proveedor**, que verás en el [c16](/concepto/16-observabilidad-y-costo); no confundas ese caché (del prefijo, por el proveedor) con el **caché semántico** de respuestas del [proyecto_llmops](/recurso/llmops), que ataca otra parte del problema.
 
 </Box>
 
@@ -182,6 +182,42 @@ La regla práctica: si tu base de conocimiento es un manual acotado y estable, p
 - Ajustar `k` y entender el compromiso entre contexto corto y ruido.
 
 </Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 11">
+
+<Question>
+  <Prompt>1 · Indexaste tu Chroma con `gemini-embedding-001` y luego cambiaste el `.env` a `fastembed`. ¿Qué observas?</Prompt>
+  <Option>Un error al abrir el índice: las dimensiones no coinciden</Option>
+  <Option ok>Respuestas sin sentido, sin ningún error: los vectores viejos y los nuevos viven en espacios distintos</Option>
+  <Option>Nada: LangChain reindexa solo al detectar el cambio</Option>
+  <Feedback>Es el bug de RAG más silencioso que existe. Si cambias de motor de embeddings con un índice persistente, **reindexa** (Concepto 11).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Cuáles son los dos caminos de un RAG y cada cuánto corre cada uno?</Prompt>
+  <Option>Búsqueda vectorial y búsqueda por palabras, ambas en cada pregunta</Option>
+  <Option ok>Indexar (cargar → trocear → vectorizar → guardar), **una vez**; y recuperar + generar, **en cada pregunta**</Option>
+  <Option>Entrenar el modelo con tus documentos y luego consultarlo</Option>
+  <Feedback>Confundirlos es el error de lectura más común del diagrama. Y RAG no reentrena nada: pega contexto en el prompt (Concepto 11).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · ¿Qué gana `RecursiveCharacterTextSplitter` frente a cortar cada 500 caracteres a ciegas?</Prompt>
+  <Option>Produce menos chunks, así que el índice ocupa menos</Option>
+  <Option ok>Intenta cortar por párrafo, luego por frase y solo como último recurso por carácter: no parte ideas a la mitad</Option>
+  <Option>Ajusta el tamaño del chunk según la ventana de contexto del modelo</Option>
+  <Feedback>Un chunk que parte una idea recupera medio dato. Todo lo que el sistema podrá responder depende de cómo cortaste (Concepto 12).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Tu base de conocimiento es un manual acotado y estable que cabe entero en la ventana de contexto. ¿Qué pruebas primero?</Prompt>
+  <Option>Un RAG con re-ranking, para asegurar la precisión</Option>
+  <Option ok>CAG: precargar el corpus completo y dejar que el prompt caching del proveedor lo abarate</Option>
+  <Option>Fine-tuning con el contenido del manual</Option>
+  <Feedback>Sin retriever no hay chunk equivocado que recuperar: la respuesta ve *todo* el material. RAG gana cuando el corpus es grande, cambia a diario o hay permisos por usuario (Concepto 11).</Feedback>
+</Question>
+
+</Quiz>
 
 <Recap level={3} label="↺ En una frase">
 

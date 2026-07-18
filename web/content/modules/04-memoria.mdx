@@ -12,7 +12,7 @@ Entender esto explica dos cosas de golpe: por qué la conversación cuesta más 
   <Term>historial</Term>
   <Def>La lista de `HumanMessage` / `AIMessage` acumulados. Vive en tu programa (una lista, una base de datos, un checkpointer), nunca en el modelo.</Def>
   <Term>thread_id</Term>
-  <Def>La etiqueta que separa una conversación de otra. Dos usuarios con el mismo agente y distinto `thread_id` no se pisan el historial. Aparece a partir del Módulo 10.</Def>
+  <Def>La etiqueta que separa una conversación de otra. Dos usuarios con el mismo agente y distinto `thread_id` no se pisan el historial. Aparece a partir del Concepto 10.</Def>
 </DefList>
 
 </Box>
@@ -46,7 +46,7 @@ print(chatear("¿Recuerdas mi nombre y qué me gusta?"))  # -> sí
 
 <Box kind="analogy" label="◆ Analogía">
 
-Es como un chat de WhatsApp: cada mensaje ve todo el hilo arriba. Aquí tú "subes el hilo" reenviando `history`. En el Módulo 10 verás cómo LangGraph hace esto *automáticamente*.
+Es como un chat de WhatsApp: cada mensaje ve todo el hilo arriba. Aquí tú "subes el hilo" reenviando `history`. En el Concepto 10 verás cómo LangGraph hace esto *automáticamente*.
 
 </Box>
 
@@ -79,14 +79,14 @@ Prueba: di tu nombre en el turno 1, pregunta por él en el turno 4.
 
 </Checkpoint>
 
-<Quiz title="✅ Autoevaluación · Nivel Básico (módulos 00–04)">
+<Quiz title="✅ Autoevaluación · Nivel Básico (conceptos 00–04)">
 
 <Question>
   <Prompt>1 · ¿Qué hace `StrOutputParser()` al final de una cadena?</Prompt>
   <Option>Llama al modelo una segunda vez para verificar</Option>
   <Option ok>Convierte la respuesta del modelo en texto plano</Option>
   <Option>Corrige la ortografía de la respuesta</Option>
-  <Feedback>Evita escribir `.content` a cada rato: la cadena ya devuelve el texto listo (Módulo 02).</Feedback>
+  <Feedback>Evita escribir `.content` a cada rato: la cadena ya devuelve el texto listo (Concepto 02).</Feedback>
 </Question>
 
 <Question>
@@ -94,7 +94,7 @@ Prueba: di tu nombre en el turno 1, pregunta por él en el turno 4.
   <Option ok>El dato pasa de estación en estación, como línea de ensamblaje</Option>
   <Option>Los tres se ejecutan al mismo tiempo</Option>
   <Option>Es una comparación lógica tipo "o"</Option>
-  <Feedback>El `|` conecta pasos en orden: el prompt arma el mensaje, el modelo responde, el parser limpia (Módulo 02).</Feedback>
+  <Feedback>El `|` conecta pasos en orden: el prompt arma el mensaje, el modelo responde, el parser limpia (Concepto 02).</Feedback>
 </Question>
 
 <Question>
@@ -102,7 +102,7 @@ Prueba: di tu nombre en el turno 1, pregunta por él en el turno 4.
   <Option>Para que responda más rápido</Option>
   <Option>Para gastar menos cuota</Option>
   <Option ok>Para respuestas precisas y repetibles</Option>
-  <Feedback>Temperatura baja = menos creatividad. Ideal para clasificar, calcular o usar tools (Módulo 01).</Feedback>
+  <Feedback>Temperatura baja = menos creatividad. Ideal para clasificar, calcular o usar tools (Concepto 01).</Feedback>
 </Question>
 
 <Question>
@@ -110,7 +110,7 @@ Prueba: di tu nombre en el turno 1, pregunta por él en el turno 4.
   <Option>HumanMessage</Option>
   <Option ok>SystemMessage</Option>
   <Option>ToolMessage</Option>
-  <Feedback>El SystemMessage son las "instrucciones del puesto"; el usuario nunca lo ve (Módulo 01).</Feedback>
+  <Feedback>El SystemMessage son las "instrucciones del puesto"; el usuario nunca lo ve (Concepto 01).</Feedback>
 </Question>
 
 <Question>
@@ -118,7 +118,7 @@ Prueba: di tu nombre en el turno 1, pregunta por él en el turno 4.
   <Option>Porque la llave gratuita no incluye memoria</Option>
   <Option>Porque el modelo se reinicia cada hora</Option>
   <Option ok>Porque cada invoke es independiente: hay que reenviar el historial</Option>
-  <Feedback>La "memoria" siempre es reenviar la conversación previa — a mano (Módulo 04) o automática con LangGraph (Módulo 10).</Feedback>
+  <Feedback>La "memoria" siempre es reenviar la conversación previa — a mano (Concepto 04) o automática con LangGraph (Concepto 10).</Feedback>
 </Question>
 
 </Quiz>

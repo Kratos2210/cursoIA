@@ -1,4 +1,4 @@
-No necesitas ser programador para hacer este curso — pero sí **leer** Python sin miedo. Estas son las únicas 8 ideas que aparecen una y otra vez en los ejemplos. Si ya programas, salta directo al Módulo 01.
+No necesitas ser programador para hacer este curso — pero sí **leer** Python sin miedo. Estas son las únicas 8 ideas que aparecen una y otra vez en los ejemplos. Si ya programas, salta directo al Concepto 01.
 
 ### 1 · Variables: cajas con etiqueta
 
@@ -50,7 +50,7 @@ Ana
 
 ### 4 · Funciones: recetas con nombre
 
-`def` define una receta: recibe ingredientes (parámetros), hace algo y `return` devuelve el resultado. Las "herramientas" del Módulo 07 son exactamente esto.
+`def` define una receta: recibe ingredientes (parámetros), hace algo y `return` devuelve el resultado. Las "herramientas" del Concepto 07 son exactamente esto.
 
 ```python title="funciones"
 def aplicar_descuento(precio, porcentaje):
@@ -166,6 +166,42 @@ for p in personas:
 </Solution>
 
 </Box>
+
+<Quiz title="✅ Autoevaluación · Concepto 0b">
+
+<Question>
+  <Prompt>1 · Te sale un traceback de veinte líneas. ¿Por dónde empiezas a leer?</Prompt>
+  <Option>Por la primera línea, que dice dónde arrancó todo</Option>
+  <Option ok>Por la última: ahí está el tipo de error y su causa</Option>
+  <Option>Por el medio, donde aparecen las librerías</Option>
+  <Feedback>La última línea es el *qué* y la penúltima el *dónde*. Si no la entiendes, cópiala completa en un buscador o pégasela a una IA (Concepto 0b).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · En Python, los 4 espacios al inicio de una línea son…</Prompt>
+  <Option>Una convención de estilo que hace el código más legible</Option>
+  <Option ok>Sintaxis: definen qué está dentro de qué bloque</Option>
+  <Option>Obligatorios solo dentro de las funciones</Option>
+  <Feedback>Si copias código y se desalinea, Python protesta con `IndentationError`. Por eso el botón *copiar* de este curso copia el bloque exacto (Concepto 0b).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Con `frutas = ["manzana", "pera", "uva"]`, ¿qué imprime `print(frutas[1])`?</Prompt>
+  <Option>manzana</Option>
+  <Option ok>pera</Option>
+  <Option>Da error: las listas se leen por clave, no por número</Option>
+  <Feedback>Las listas se cuentan desde **cero**, así que el `[1]` es el segundo elemento. Leer por clave es cosa de los diccionarios (Concepto 0b).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · ¿Por qué el docstring de una función importa tanto en este curso?</Prompt>
+  <Option>Porque Python lo exige para que la función se pueda llamar</Option>
+  <Option>Porque acelera la ejecución al describir los tipos</Option>
+  <Option ok>Porque a partir del Concepto 07 es lo que **lee el modelo** para decidir si usa esa herramienta</Option>
+  <Feedback>Una función con `def` y un docstring es exactamente el material del que están hechas las tools. Ahí el docstring deja de ser documentación y pasa a ser programación (Concepto 07).</Feedback>
+</Question>
+
+</Quiz>
 
 <Recap level={1} label="↺ En una frase">
 

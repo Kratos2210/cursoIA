@@ -74,7 +74,7 @@ Una conversación es una lista de mensajes con roles distintos. Entenderlos es c
 - **SystemMessage**: las reglas y personalidad ("eres un tutor paciente").
 - **HumanMessage**: lo que dice el usuario.
 - **AIMessage**: lo que responde el modelo (aquí también viajan los `tool_calls`).
-- **ToolMessage**: el resultado de ejecutar una herramienta (Módulo 08).
+- **ToolMessage**: el resultado de ejecutar una herramienta (Concepto 08).
 
 ```python title="roles en acción"
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -123,6 +123,42 @@ for _ in range(3):
 - Reconocer por qué `util.crear_llm()` te deja cambiar de proveedor sin tocar el resto del código.
 
 </Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 01">
+
+<Question>
+  <Prompt>1 · `llm.invoke([HumanMessage(...)])` te devuelve…</Prompt>
+  <Option ok>Un `AIMessage`, del que sacas el texto con `.content`</Option>
+  <Option>Un `str` con la respuesta ya lista para imprimir</Option>
+  <Option>Un diccionario con la respuesta y los tokens</Option>
+  <Feedback>Mensajes entran, un mensaje sale. Por eso escribes `.content` — y por eso en el Concepto 02 aparece `StrOutputParser()`, para no repetirlo (Concepto 01).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Qué ocupa la ventana de contexto de una llamada?</Prompt>
+  <Option>Solo la pregunta que escribe el usuario</Option>
+  <Option>La pregunta y el historial, pero no los documentos</Option>
+  <Option ok>Pregunta + historial + documentos + la propia respuesta del modelo</Option>
+  <Feedback>Todo cuenta, incluida la salida. Por eso una conversación larga se encarece y llega un momento en que hay que resumir o recortar (Concepto 04).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · ¿Qué diferencia hay entre "un LLM" y un *chat model* de LangChain?</Prompt>
+  <Option>Ninguna: son dos nombres para lo mismo</Option>
+  <Option ok>El LLM es el modelo entrenado; el chat model es la envoltura que le da la misma interfaz en Gemini, OpenAI o Claude</Option>
+  <Option>El chat model es una versión más pequeña, optimizada para conversar</Option>
+  <Feedback>Esa envoltura es la razón de que `.invoke()`, `.batch()` y `.stream()` funcionen igual con cualquier proveedor (Concepto 03).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Cuando el modelo pide una herramienta, ¿en qué tipo de mensaje viaja esa petición?</Prompt>
+  <Option>En un `ToolMessage`</Option>
+  <Option>En un `SystemMessage` generado automáticamente</Option>
+  <Option ok>En un `AIMessage`, dentro de su campo `tool_calls`</Option>
+  <Feedback>El modelo responde con un `AIMessage` que, en vez de texto, trae `tool_calls`. El `ToolMessage` es lo que **tú** devuelves después, con el resultado (Concepto 08).</Feedback>
+</Question>
+
+</Quiz>
 
 <Recap level={1} label="↺ En una frase">
 

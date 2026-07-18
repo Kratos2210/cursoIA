@@ -1,6 +1,6 @@
-El [m21](/modulo/21-fine-tuning-vs-rag) te dio la **decisión** (cuándo afinar y cuándo hacer RAG). Este módulo, **opcional**, es la **práctica**: afinar un modelo de verdad con **LoRA/QLoRA**. Es lectura si no tienes GPU, y hands-on si la tienes.
+El [c21](/concepto/21-fine-tuning-vs-rag) te dio la **decisión** (cuándo afinar y cuándo hacer RAG). Este concepto, **opcional**, es la **práctica**: afinar un modelo de verdad con **LoRA/QLoRA**. Es lectura si no tienes GPU, y hands-on si la tienes.
 
-<Box kind="warn" label="▲ Este módulo rompe el 'offline-first' del curso, a propósito">
+<Box kind="warn" label="▲ Este concepto rompe el 'offline-first' del curso, a propósito">
 
 Todo lo demás del curso corre sin GPU, sin red y sin cuota. Afinar de verdad, no: necesita **GPU**, descarga varios GB (PyTorch + `transformers` + `peft`) y tarda minutos. Por eso el hands-on vive en un **notebook de Colab** (`docs/notebooks/21b_lora_colab.ipynb`), **fuera** del gate offline: no añade dependencias al curso ni corre en la CI (la decisión está documentada en `docs/adr/0003-notebook-lora-fuera-del-gate.md`). Ábrelo en [Colab](https://colab.research.google.com) con entorno **GPU (T4)** y no en tu máquina.
 
@@ -8,7 +8,7 @@ Todo lo demás del curso corre sin GPU, sin red y sin cuota. Afinar de verdad, n
 
 <Box kind="def" label="◈ QLoRA en una frase">
 
-**LoRA** congela el modelo y le añade unos **adaptadores** pequeños (entrenas ~1% de los pesos). **QLoRA** es LoRA sobre un modelo base **cuantizado a 4 bits**: así un modelo de miles de millones de parámetros **cabe en la GPU gratuita** de Colab. Es lo que vuelve el fine-tuning realista sin un datacenter — el mismo punto 4 del espectro del [m21](/modulo/21-fine-tuning-vs-rag).
+**LoRA** congela el modelo y le añade unos **adaptadores** pequeños (entrenas ~1% de los pesos). **QLoRA** es LoRA sobre un modelo base **cuantizado a 4 bits**: así un modelo de miles de millones de parámetros **cabe en la GPU gratuita** de Colab. Es lo que vuelve el fine-tuning realista sin un datacenter — el mismo punto 4 del espectro del [c21](/concepto/21-fine-tuning-vs-rag).
 
 </Box>
 
@@ -49,7 +49,7 @@ modelo = get_peft_model(modelo, lora)
 modelo.print_trainable_parameters()   # 'trainable: 0.5M || all: 500M || 0.1%'
 ```
 
-**4 · El dataset (formato chat).** El mismo `system/user/assistant` del m21. Aquí enseñas un **comportamiento** (responder corto, en tono de vendedor), no datos:
+**4 · El dataset (formato chat).** El mismo `system/user/assistant` del c21. Aquí enseñas un **comportamiento** (responder corto, en tono de vendedor), no datos:
 
 ```python title="21b_lora_colab.ipynb · celda 4"
 SISTEMA = "Eres un asesor de ventas: responde en UNA frase, claro y amable."
@@ -68,11 +68,55 @@ No guardas un modelo nuevo: guardas el **diff**. El base de 4 bits sigue siendo 
 
 <Avoid label="⛔ Cuándo NO afinar (aunque ya sepas hacerlo)">
 
-- **Para meter datos que cambian.** Lo repite el m21: precios, stock, políticas → RAG. Afinar los congela y los vuelve mentira mañana. LoRA es para la *forma*, no para los hechos.
+- **Para meter datos que cambian.** Lo repite el c21: precios, stock, políticas → RAG. Afinar los congela y los vuelve mentira mañana. LoRA es para la *forma*, no para los hechos.
 - **Sin un dataset de calidad y suficiente.** Tres ejemplos son un juguete para aprender el mecanismo; un caso real pide cientos o miles de ejemplos buenos. Un dataset ruidoso empeora el modelo.
 - **Cuando un buen prompt o few-shot ya resuelve.** Es más rápido de iterar y no tienes que servir un modelo afinado. Afina solo cuando el prompt se queda corto *y* tienes con qué enseñar.
 
 </Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+**Prepara el entrenamiento antes de tener GPU** (esto corre en tu máquina, offline). Decide un comportamiento que quieras enseñar —por ejemplo *"responde en UNA frase, en tono de asesor"*— y arma su dataset con `preparar_dataset_chat()` y `a_jsonl()` del `21_fine_tuning.py`. Después escribe el **control**: los mismos ejemplos, pero como few-shot en el prompt.
+
+**Criterio de aceptación:** tienes un `.jsonl` donde `json.loads()` lee **cada línea** sin error y cada conversación trae sus tres turnos en orden `system → user → assistant`. Y tienes la respuesta del modelo base con few-shot al lado — porque si esa ya cumple el formato, el criterio de aceptación real del ejercicio es que **te ahorres el entrenamiento**.
+
+<Solution summary="Ver una solución">
+
+```python title="solución · el dataset y su control few-shot, antes de encender la GPU"
+import json
+from importlib import import_module
+
+ft = import_module("21_fine_tuning")   # el nombre empieza por dígito: no vale `import 21_...`
+
+SISTEMA = "Eres un asesor de ventas: responde en UNA frase, claro y amable."
+pares = [
+    ("¿Tienen envíos?", "¡Claro! Enviamos a todo el país en 24-48 h."),
+    ("¿Aceptan Yape?",  "Sí, aceptamos Yape, Plin y tarjeta sin recargo."),
+    ("¿Hacen boleta?",  "Sí, emitimos boleta o factura al momento de la compra."),
+]
+
+registros = ft.preparar_dataset_chat(pares, SISTEMA)
+with open("tono_ventas.jsonl", "w", encoding="utf-8") as f:
+    f.write(ft.a_jsonl(registros))
+
+# La verificación que exige el criterio: UNA conversación por línea, tres turnos en orden.
+with open("tono_ventas.jsonl", encoding="utf-8") as f:
+    for linea in f:
+        roles = [m["role"] for m in json.loads(linea)["messages"]]
+        assert roles == ["system", "user", "assistant"], roles
+print(f"{len(registros)} conversaciones listas para Colab.")
+
+# El CONTROL: los mismos pares, pero en el prompt. Si el modelo base ya responde
+# con el formato correcto, acabas de ahorrarte una GPU y un entrenamiento entero.
+few_shot = "\n\n".join(f"P: {p}\nR: {r}" for p, r in pares) + "\n\nP: ¿Tienen garantía?\nR:"
+# util.crear_llm().invoke(f"{SISTEMA}\n\n{few_shot}")   ← compáralo antes de afinar
+```
+
+El orden importa más que el código: **primero el control, después la GPU**. Es el espectro del [c21](/concepto/21-fine-tuning-vs-rag) aplicado — se baja un escalón solo cuando el anterior se queda corto, y aquí el escalón anterior cuesta cero.
+
+</Solution>
+
+</Box>
 
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 
@@ -82,6 +126,42 @@ No guardas un modelo nuevo: guardas el **diff**. El base de 4 bits sigue siendo 
 - Repetir la regla que no cambia: afinas **comportamiento**, no conocimiento; para datos, RAG.
 
 </Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 21b">
+
+<Question>
+  <Prompt>1 · ¿Qué añade exactamente la **Q** de QLoRA?</Prompt>
+  <Option>Que se entrenen más capas que en LoRA, no solo las de atención</Option>
+  <Option ok>Que el modelo base se cargue **cuantizado a 4 bits**, para que quepa en una GPU pequeña</Option>
+  <Option>Que se descarte el conjunto de validación para acelerar el entrenamiento</Option>
+  <Feedback>LoRA congela el base y entrena adaptadores; la Q cuantiza ese base. Es lo que vuelve realista afinar en la GPU gratuita de Colab.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · Terminas el entrenamiento, guardas el resultado y pesa unos MB. ¿Por qué no GB?</Prompt>
+  <Option>Porque el modelo se guarda comprimido y se descomprime al cargarlo</Option>
+  <Option ok>Porque guardas solo los **adaptadores** (el diff): el base sigue siendo el mismo archivo para todos</Option>
+  <Option>Porque los pesos en 4 bits ocupan la mitad que los originales</Option>
+  <Feedback>Por eso una empresa mantiene *un* base y decenas de adaptadores —uno por cliente, tono o idioma— sin duplicar el modelo entero cada vez.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · `print_trainable_parameters()` imprime algo como `0.1%`. ¿Qué te está diciendo ese número?</Prompt>
+  <Option>Que el entrenamiento va por el 0.1% de su progreso total</Option>
+  <Option ok>Que solo esa fracción de los pesos se actualiza: el resto del modelo está congelado</Option>
+  <Option>Que el 0.1% del dataset se apartó para validar</Option>
+  <Feedback>Ese número es la definición operativa de PEFT: entrenas poquísimo, y por eso cabe, es barato y no borra lo que el base ya sabía.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · ¿Por qué este hands-on vive en un notebook de Colab y no en `curso_ejemplos/`?</Prompt>
+  <Option>Porque `peft` no tiene una versión compatible con `uv`</Option>
+  <Option ok>Porque exige GPU y varios GB de dependencias: meterlo rompería el "offline-first" del curso y su CI</Option>
+  <Option>Porque el fine-tuning no se puede testear de ninguna forma</Option>
+  <Feedback>Es una excepción **consciente** al gate offline, documentada en el ADR-0003 — no un descuido. El resto del curso corre sin GPU, sin red y sin cuota.</Feedback>
+</Question>
+
+</Quiz>
 
 <Recap level={5} label="↺ En una frase">
 

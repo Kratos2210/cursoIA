@@ -143,19 +143,19 @@ OPENAI_API_KEY=sk-...      # openai      (default gpt-5.4-mini)
 
 <Box kind="analogy" label="◆ El respaldo puede ser de otra empresa">
 
-Recuerda el [Módulo 09](/modulo/09-resiliencia-async): `with_fallbacks` deja poner un modelo principal de pago y un **respaldo barato de otro proveedor**. La estrategia recomendada para arrancar: empieza con una **API de pago** (cero fricción, sales rápido), **mide el coste real** con lo del [Módulo 16b](/modulo/16-observabilidad-y-costo) (tokens → dólares), y **abarata después** — a Gemini Flash, a DeepSeek o a un open weights — sin tocar el código, solo el `.env`.
+Recuerda el [Concepto 09](/concepto/09-resiliencia-async): `with_fallbacks` deja poner un modelo principal de pago y un **respaldo barato de otro proveedor**. La estrategia recomendada para arrancar: empieza con una **API de pago** (cero fricción, sales rápido), **mide el coste real** con lo del [Concepto 16b](/concepto/16-observabilidad-y-costo) (tokens → dólares), y **abarata después** — a Gemini Flash, a DeepSeek o a un open weights — sin tocar el código, solo el `.env`.
 
 </Box>
 
 <Box kind="analogy" label="◆ No es un matrimonio">
 
-Elegir modelo se siente como una decisión enorme e irreversible. No lo es. Gracias a la **interfaz unificada** de LangChain ([Módulo 03](/modulo/03-interfaz-unificada)), el modelo es una **variable de entorno**: pruebas cuatro, mides, te quedas con el que mejor equilibra capacidad y coste, y lo cambias el mes que viene cuando salga uno mejor o más barato.
+Elegir modelo se siente como una decisión enorme e irreversible. No lo es. Gracias a la **interfaz unificada** de LangChain ([Concepto 03](/concepto/03-interfaz-unificada)), el modelo es una **variable de entorno**: pruebas cuatro, mides, te quedas con el que mejor equilibra capacidad y coste, y lo cambias el mes que viene cuando salga uno mejor o más barato.
 
 </Box>
 
 <Avoid label="⛔ Cuándo NO cambiar de modelo (ni perseguir el más nuevo o barato)">
 
-- **Sin re-evaluar.** Cambiar el modelo en producción sin correr tu dataset ([m16](/modulo/16-observabilidad-y-costo)) es apostar la calidad a ciegas: uno más barato puede alucinar más en TU caso.
+- **Sin re-evaluar.** Cambiar el modelo en producción sin correr tu dataset ([c16](/concepto/16-observabilidad-y-costo)) es apostar la calidad a ciegas: uno más barato puede alucinar más en TU caso.
 - **Por hype.** El modelo recién salido, o el más barato, no es el mejor para toda tarea. Si tu caso pide razonamiento fuerte o ventana enorme, el flagship se paga solo; si no, un modelo *flash* sobra.
 - **Montando on-premise para "ahorrar" sin volumen.** Las GPUs encendidas cuestan aunque nadie pregunte. On-premise gana por privacidad y control, no por dinero, hasta que tu tráfico es grande y constante.
 
@@ -190,10 +190,10 @@ El precio por token de arriba asume que pagas *cada* token *cada* vez. Dos mecan
   <Term>caché de prompt (prompt caching)</Term>
   <Def>Si tu prompt repite un prefijo largo en cada llamada —el *system prompt*, los ejemplos few-shot, el documento de contexto—, el proveedor **cachea** ese prefijo y te cobra esos tokens con un **descuento fuerte** (hasta del orden de 10× más baratos, según el proveedor) en las llamadas siguientes. La ganancia crece cuanto más largo y estable sea el prefijo: un agente con 2K tokens de instrucciones que atiende miles de consultas paga esas instrucciones casi gratis a partir de la segunda.</Def>
   <Term>Batch API (procesamiento por lotes)</Term>
-  <Def>Para trabajo que **no** es interactivo —evaluar un dataset ([m16](/modulo/16-observabilidad-y-costo)), enriquecer un catálogo, clasificar miles de reclamos— mandas todo junto y aceptas la respuesta en minutos/horas en vez de segundos. A cambio, típicamente ~**50% de descuento**. La regla: si nadie espera la respuesta en pantalla, va por batch.</Def>
+  <Def>Para trabajo que **no** es interactivo —evaluar un dataset ([c16](/concepto/16-observabilidad-y-costo)), enriquecer un catálogo, clasificar miles de reclamos— mandas todo junto y aceptas la respuesta en minutos/horas en vez de segundos. A cambio, típicamente ~**50% de descuento**. La regla: si nadie espera la respuesta en pantalla, va por batch.</Def>
 </DefList>
 
-Ambas se combinan con la disciplina del [m16b](/modulo/16-observabilidad-y-costo): mide primero el coste real en tokens, y luego decide dónde aplicar caché (prefijos repetidos) y batch (trabajo diferible).
+Ambas se combinan con la disciplina del [c16b](/concepto/16-observabilidad-y-costo): mide primero el coste real en tokens, y luego decide dónde aplicar caché (prefijos repetidos) y batch (trabajo diferible).
 
 </Box>
 
@@ -205,6 +205,42 @@ Ambas se combinan con la disciplina del [m16b](/modulo/16-observabilidad-y-costo
 - Estimar el coste mensual de un servicio con la tabla de precios, y cambiar de proveedor tocando solo el `.env`.
 
 </Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 18b">
+
+<Question>
+  <Prompt>1 · Tu equipo propone: "usemos Llama, es open source, así no pagamos nada". ¿Dónde está el error?</Prompt>
+  <Option>Llama no es open weights: solo publica el código, no el modelo entrenado</Option>
+  <Option ok>Gratis es el archivo de pesos; la inferencia —GPUs encendidas y operadas— siempre la paga alguien</Option>
+  <Option>Los pesos abiertos no se pueden usar en un producto comercial</Option>
+  <Feedback>La partitura es gratis, la orquesta no. Y ojo con la licencia: la de Llama pone condiciones que Apache 2.0 (Qwen, Mistral, DeepSeek) no.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · Un banco frena el proyecto porque "los datos de clientes no pueden salir". ¿Qué aporta Bedrock que una API pública no?</Prompt>
+  <Option ok>Las llamadas se quedan en tu VPC y heredan el compliance de AWS, con IAM y factura unificadas</Option>
+  <Option>Que los modelos responden más rápido al estar en tu misma región</Option>
+  <Option>Que puedes descargarte los pesos del modelo y auditarlos</Option>
+  <Feedback>Bedrock, Vertex y Foundry son "modelos de terceros dentro de tu nube": la ventaja es de red, identidad y auditoría — no de velocidad, y sin acceso a los pesos.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Sale un modelo más barato y lo pones en producción cambiando una línea del `.env`. ¿Qué te falta?</Prompt>
+  <Option>Reescribir las cadenas para el dialecto de API del nuevo proveedor</Option>
+  <Option ok>Volver a correr tu dataset de evaluación: más barato puede alucinar más en TU caso</Option>
+  <Option>Pedir una llave distinta para cada entorno antes de conmutar</Option>
+  <Feedback>Cambiar de modelo es barato justo por `crear_llm()`. Lo que nunca es gratis es dar por hecha la calidad sin medirla (c16).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Tu agente manda los mismos 2K tokens de instrucciones en cada una de miles de consultas. ¿Qué palanca ataca ese coste?</Prompt>
+  <Option ok>El caché de prompt: el proveedor cobra ese prefijo estable con descuento fuerte desde la segunda llamada</Option>
+  <Option>La Batch API, que agrupa las consultas interactivas y las cobra a mitad de precio</Option>
+  <Option>Bajar la temperatura, que reduce los tokens que el modelo genera</Option>
+  <Feedback>Caché de prompt = prefijo largo y estable. La Batch API es para trabajo que nadie espera en pantalla; en un chat en vivo no aplica.</Feedback>
+</Question>
+
+</Quiz>
 
 <Recap level={5} label="↺ En una frase">
 

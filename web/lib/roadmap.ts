@@ -11,7 +11,7 @@ type ManifestItem = {
   id: string;
   slug: string;
   title: string;
-  kind: "module" | "extra";
+  kind: "concept" | "extra";
   level: number;
   levelName: string;
   order: number;
@@ -46,7 +46,7 @@ export type Item = {
   num: string;
   title: string;
   href: string;
-  kind: "module" | "extra";
+  kind: "concept" | "extra";
   levelKey: string;
   levelName: string;
   levelShort: string;
@@ -66,7 +66,7 @@ function toItem(m: ManifestItem): Item {
     slug: m.slug,
     num: m.badge || (isExtra ? "✦" : m.slug.split("-")[0]),
     title: m.title,
-    href: isExtra ? `/recurso/${m.slug}` : `/modulo/${m.slug}`,
+    href: isExtra ? `/recurso/${m.slug}` : `/concepto/${m.slug}`,
     kind: m.kind,
     levelKey: m.levelName,
     levelName: style.name,

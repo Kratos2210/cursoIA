@@ -10,9 +10,9 @@ Un **repositorio productivo** no es uno con más carpetas: es uno del que **otra
   <Term>ADR</Term>
   <Def>*Architecture Decision Record*: una página que registra **una decisión y su porqué** ("elegimos este vector store porque…"). Su valor no es la decisión, es el contexto — dentro de un año explicará por qué NO se hizo de la forma obvia.</Def>
   <Term>inyección de dependencias</Term>
-  <Def>Pasar las piezas caras (modelo, retriever) **por parámetro** en vez de crearlas al importar el módulo. Es la línea que separa un script de un sistema testeable; el proyecto final lo demuestra.</Def>
+  <Def>Pasar las piezas caras (modelo, retriever) **por parámetro** en vez de crearlas al importar el concepto. Es la línea que separa un script de un sistema testeable; el proyecto final lo demuestra.</Def>
   <Term>nada se ejecuta al importar</Term>
-  <Def>La regla derivada. Si `import config` llama a la API, no puedes ni correr los tests ni abrir el módulo en un notebook.</Def>
+  <Def>La regla derivada. Si `import config` llama a la API, no puedes ni correr los tests ni abrir el concepto en un notebook.</Def>
 </DefList>
 
 </Box>
@@ -64,7 +64,7 @@ Precisión del contexto: de 60% a 85% en el banco de preguntas.
 
 - **Componentes modulares**: cada etapa del pipeline en su carpeta, testeable por separado.
 - **Scripts de despliegue**: K8s + serverless versionados junto al código — el despliegue se lee, se revisa y se repite; no vive en la cabeza de nadie.
-- **Adaptadores MCP**: integraciones externas aisladas y con los controles de seguridad del Módulo 14.
+- **Adaptadores MCP**: integraciones externas aisladas y con los controles de seguridad del Concepto 14.
 - **Documentación viva**: ADRs + métricas definidas + un runbook de operación.
 
 ### El README como manual de operación (runbook)
@@ -72,7 +72,7 @@ Precisión del contexto: de 60% a 85% en el banco de preguntas.
 El README de un sistema productivo no describe el código: responde las preguntas de quien lo **opera**, sobre todo a las 3 de la mañana. Como mínimo:
 
 - **Cómo arrancarlo**: comandos exactos, variables de entorno necesarias y dónde conseguirlas.
-- **Cómo saber que está sano**: qué métricas mirar (Módulo 16) y sus valores normales.
+- **Cómo saber que está sano**: qué métricas mirar (Concepto 16) y sus valores normales.
 - **Qué hacer cuando falla**: los errores conocidos y su primera respuesta ("429 → esperar cuota o activar el fallback"; "respuestas inventadas → revisar qué contexto recuperó la traza").
 - **A quién escalar** cuando la primera respuesta no alcanza.
 
@@ -96,7 +96,7 @@ Tu agente vive en una terminal. **Nadie lo usa así.** Ponerlo detrás de una AP
 
 <Card num="" title="Concurrencia">
 
-Varios usuarios a la vez, cada uno con su conversación. Ya sabes resolverlo: el `thread_id` del checkpointer (Módulo 13).
+Varios usuarios a la vez, cada uno con su conversación. Ya sabes resolverlo: el `thread_id` del checkpointer (Concepto 13).
 
 </Card>
 
@@ -115,7 +115,7 @@ Un 429 no puede tumbar el servidor. Se traduce a un `HTTP 503` y el servicio sig
 </Grid3>
 
 ```python title="17_servidor_agente.py · el contrato y el endpoint"
-# El mismo Pydantic del Módulo 05, ahora con TRES trabajos:
+# El mismo Pydantic del Concepto 05, ahora con TRES trabajos:
 # valida la entrada, serializa la salida y genera la doc de /docs.
 class ConsultaEntrada(BaseModel):
     pregunta: str = Field(description="La consulta del usuario", min_length=1)
@@ -157,15 +157,15 @@ $ curl -X POST http://127.0.0.1:8000/chat -H 'Content-Type: application/json' \
 
 <Box kind="analogy" label="◆ El detalle que hace testeable este archivo">
 
-Los `import` de FastAPI están **dentro de las funciones**, no arriba. Parece una rareza; es deliberado: así el archivo se puede importar (y testear en la CI) aunque FastAPI no esté instalado. La misma idea del Módulo 15b — el `lifespan` construye el agente al arrancar y lo guarda, porque un servidor *stateless* puede tener estado *de proceso* (el índice) mientras el estado *de conversación* viva afuera, en el checkpointer.
+Los `import` de FastAPI están **dentro de las funciones**, no arriba. Parece una rareza; es deliberado: así el archivo se puede importar (y testear en la CI) aunque FastAPI no esté instalado. La misma idea del Concepto 15b — el `lifespan` construye el agente al arrancar y lo guarda, porque un servidor *stateless* puede tener estado *de proceso* (el índice) mientras el estado *de conversación* viva afuera, en el checkpointer.
 
 </Box>
 
-Y lo que sale gratis: FastAPI genera la documentación interactiva en `/docs` a partir de esos mismos moldes Pydantic, y un `GET /salud` le dice al balanceador de carga (Módulo 15b) si esta copia sigue viva.
+Y lo que sale gratis: FastAPI genera la documentación interactiva en `/docs` a partir de esos mismos moldes Pydantic, y un `GET /salud` le dice al balanceador de carga (Concepto 15b) si esta copia sigue viva.
 
 <Box kind="analogy" label="◆ Patrón: agente LangGraph modular + auditoría">
 
-En vez de un archivo gigante, un agente productivo se separa por responsabilidad: `state.py` (el estado), `graph_builder.py` (nodos y aristas), `rag.py`, `persistence.py` (checkpointer), `config.py` y — clave en cumplimiento — `audit.py`, que registra **cada decisión y cada tool ejecutada** en un log de auditoría (lo viste por dentro en el Módulo 13). Para desplegar el grafo, un archivo `langgraph.json` lo publica en **LangGraph Platform** (`langgraph dev` / `deploy`).
+En vez de un archivo gigante, un agente productivo se separa por responsabilidad: `state.py` (el estado), `graph_builder.py` (nodos y aristas), `rag.py`, `persistence.py` (checkpointer), `config.py` y — clave en cumplimiento — `audit.py`, que registra **cada decisión y cada tool ejecutada** en un log de auditoría (lo viste por dentro en el Concepto 13). Para desplegar el grafo, un archivo `langgraph.json` lo publica en **LangGraph Platform** (`langgraph dev` / `deploy`).
 
 </Box>
 
@@ -203,14 +203,14 @@ vector store servido (el retriever se cambia sin tocar la cadena).
 
 </Box>
 
-<Quiz title="✅ Autoevaluación · Nivel Producción (módulos 14–17b)">
+<Quiz title="✅ Autoevaluación · Nivel Producción (conceptos 14–17b)">
 
 <Question>
   <Prompt>1 · ¿Para qué sirve MCP?</Prompt>
   <Option ok>Conectar agentes con herramientas externas de forma estándar y controlada</Option>
   <Option>Entrenar modelos con tus datos</Option>
   <Option>Comprimir el contexto para gastar menos tokens</Option>
-  <Feedback>El "USB-C de los agentes": un solo conector, con permisos y bordes claros (Módulo 14).</Feedback>
+  <Feedback>El "USB-C de los agentes": un solo conector, con permisos y bordes claros (Concepto 14).</Feedback>
 </Question>
 
 <Question>
@@ -218,7 +218,7 @@ vector store servido (el retriever se cambia sin tocar la cadena).
   <Option>Porque usa menos memoria RAM</Option>
   <Option ok>Para que sus copias sean intercambiables y pueda escalar</Option>
   <Option>Porque lo exige Kubernetes</Option>
-  <Feedback>Si una copia "recuerda" algo propio, la siguiente petición puede caer en otra copia y perderlo. El estado vive afuera (Módulo 15b).</Feedback>
+  <Feedback>Si una copia "recuerda" algo propio, la siguiente petición puede caer en otra copia y perderlo. El estado vive afuera (Concepto 15b).</Feedback>
 </Question>
 
 <Question>
@@ -226,7 +226,7 @@ vector store servido (el retriever se cambia sin tocar la cadena).
   <Option>Siempre: es más moderno</Option>
   <Option ok>Con tráfico esporádico o de picos: pagas solo por ejecución</Option>
   <Option>Cuando el proceso es pesado y constante</Option>
-  <Feedback>Tráfico constante y pesado → K8s. Ingesta ocasional o webhooks → serverless. Se decide por componente (Módulo 15b).</Feedback>
+  <Feedback>Tráfico constante y pesado → K8s. Ingesta ocasional o webhooks → serverless. Se decide por componente (Concepto 15b).</Feedback>
 </Question>
 
 <Question>
@@ -234,7 +234,7 @@ vector store servido (el retriever se cambia sin tocar la cadena).
   <Option>Un error 429 repetido</Option>
   <Option>Cuando el modelo responde más lento</Option>
   <Option ok>Algo que funcionaba se rompe tras un cambio</Option>
-  <Feedback>Se detecta corriendo la MISMA evaluación antes y después del cambio: si el puntaje baja, no pasa (Módulo 16).</Feedback>
+  <Feedback>Se detecta corriendo la MISMA evaluación antes y después del cambio: si el puntaje baja, no pasa (Concepto 16).</Feedback>
 </Question>
 
 <Question>
@@ -242,7 +242,7 @@ vector store servido (el retriever se cambia sin tocar la cadena).
   <Option>La lista de bugs pendientes</Option>
   <Option ok>Una decisión de arquitectura, su porqué y sus consecuencias</Option>
   <Option>Las credenciales del sistema</Option>
-  <Feedback>Para que quien llegue después entienda el *porqué* — y no deshaga en marzo lo aprendido en enero (Módulo 17).</Feedback>
+  <Feedback>Para que quien llegue después entienda el *porqué* — y no deshaga en marzo lo aprendido en enero (Concepto 17).</Feedback>
 </Question>
 
 <Question>
@@ -250,7 +250,7 @@ vector store servido (el retriever se cambia sin tocar la cadena).
   <Option>Porque cachea las respuestas reales de Gemini en disco</Option>
   <Option ok>Porque recita un guion fijo: se ejercita tu lógica alrededor del LLM, no el LLM</Option>
   <Option>Porque usa un modelo local más pequeño en vez de Gemini</Option>
-  <Feedback>El LLM no es tuyo; lo que testeas es el grafo, las tools y la auditoría. Un doble que devuelve respuestas fijas basta — y no gasta cuota (Módulo 17b).</Feedback>
+  <Feedback>El LLM no es tuyo; lo que testeas es el grafo, las tools y la auditoría. Un doble que devuelve respuestas fijas basta — y no gasta cuota (Concepto 17b).</Feedback>
 </Question>
 
 <Question>
@@ -258,7 +258,7 @@ vector store servido (el retriever se cambia sin tocar la cadena).
   <Option>Para que los tests sean más rápidos al arrancar</Option>
   <Option>Porque GitHub no permite guardar secretos</Option>
   <Option ok>A propósito: si un test empezara a llamar al modelo, fallaría de inmediato</Option>
-  <Feedback>Sin llave, cualquier test que se cuele llamando al LLM revienta en el acto. Es la garantía de que `-m offline` de verdad no gasta cuota (Módulo 17b).</Feedback>
+  <Feedback>Sin llave, cualquier test que se cuele llamando al LLM revienta en el acto. Es la garantía de que `-m offline` de verdad no gasta cuota (Concepto 17b).</Feedback>
 </Question>
 
 <Question>
@@ -266,7 +266,7 @@ vector store servido (el retriever se cambia sin tocar la cadena).
   <Option>Hace que el modelo razone mejor sobre cuándo usar cada tool</Option>
   <Option ok>Convierte M×N integraciones en M+N: un conector estándar entre agentes y herramientas</Option>
   <Option>Cifra las llamadas a las herramientas externas</Option>
-  <Feedback>Cada agente contra cada herramienta es M×N piezas a medida; con un estándar, cada lado habla el mismo protocolo y son M+N (Módulo 14).</Feedback>
+  <Feedback>Cada agente contra cada herramienta es M×N piezas a medida; con un estándar, cada lado habla el mismo protocolo y son M+N (Concepto 14).</Feedback>
 </Question>
 
 <Question>
@@ -274,7 +274,7 @@ vector store servido (el retriever se cambia sin tocar la cadena).
   <Option>Subes el cambio igual: una evaluación no es un test de verdad</Option>
   <Option>Vuelves a correr hasta que el LLM-as-judge dé un número mejor</Option>
   <Option ok>Es una regresión: el cambio no pasa hasta entender por qué empeoró</Option>
-  <Feedback>La misma evaluación antes/después es justo lo que atrapa una regresión. Si el puntaje baja, algo que funcionaba se rompió (Módulo 16).</Feedback>
+  <Feedback>La misma evaluación antes/después es justo lo que atrapa una regresión. Si el puntaje baja, algo que funcionaba se rompió (Concepto 16).</Feedback>
 </Question>
 
 </Quiz>

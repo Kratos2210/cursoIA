@@ -4,9 +4,9 @@ Todo junto en un caso real: un asistente de gobierno de datos para una entidad f
 
 </LevelBanner>
 
-<Box kind="analogy" label="◆ El proyecto final es el Módulo 17 hecho realidad">
+<Box kind="analogy" label="◆ El proyecto final es el Concepto 17 hecho realidad">
 
-Empezó siendo un `app.py` de 158 líneas que llamaba a la API con solo importarlo — imposible de testear. Hoy está partido exactamente como prescribe el módulo anterior: `config.py`, `rag.py`, `audit.py`, `tools.py`, `state.py`, `persistence.py`, `graph_builder.py` y `main.py`. (`app.py` sigue ahí como atajo de compatibilidad.)
+Empezó siendo un `app.py` de 158 líneas que llamaba a la API con solo importarlo — imposible de testear. Hoy está partido exactamente como prescribe el concepto anterior: `config.py`, `rag.py`, `audit.py`, `tools.py`, `state.py`, `persistence.py`, `graph_builder.py` y `main.py`. (`app.py` sigue ahí como atajo de compatibilidad.)
 
 ⭐ La regla que lo hizo testeable cabe en una línea: `construir_agente()` recibe modelo, evaluador y retriever **por parámetro**. Por eso sus 44 tests pueden pasarle un modelo falso que recita un guion, y ejercitar el grafo completo **sin llamar a la API ni una vez**. Eso es lo que significa "modular": no que haya más archivos, sino que puedes sustituir las piezas caras.
 
@@ -41,9 +41,9 @@ Un **capstone** o **proyecto integrador** es el trabajo final que **junta en un 
   <Step n="5" title="Observar">LangSmith + Arize.</Step>
 </Flow>
 
-### Los módulos y quién depende de quién
+### Los conceptos y quién depende de quién
 
-Esa arquitectura, traducida a archivos. Léelo de izquierda a derecha: **cada módulo solo conoce a los de su izquierda**. Ninguna flecha va hacia atrás, y por eso puedes testear cualquier pieza sin arrastrar las demás.
+Esa arquitectura, traducida a archivos. Léelo de izquierda a derecha: **cada concepto solo conoce a los de su izquierda**. Ninguna flecha va hacia atrás, y por eso puedes testear cualquier pieza sin arrastrar las demás.
 
 Las hojas · **no importan a nadie más**
 
@@ -78,7 +78,7 @@ from langchain_core.tools import tool
 def buscar_normativa(pregunta: str) -> str:
     """Busca en la normativa y reportes regulatorios indexados.
     Úsala para responder dudas sobre reglas de calidad de datos."""
-    docs = retriever_pro.invoke(pregunta)   # retriever con re-ranking (Módulo 12)
+    docs = retriever_pro.invoke(pregunta)   # retriever con re-ranking (Concepto 12)
     return "\n\n".join(d.page_content for d in docs)
 ```
 
@@ -102,12 +102,12 @@ evaluador = llm.with_structured_output(HallazgoCalidad)
 ```python title="capstone · agente con fallbacks + memoria"
 herramientas = [buscar_normativa, registrar_hallazgo]
 
-# resiliencia: si el modelo principal falla, salta al respaldo (Módulo 09)
+# resiliencia: si el modelo principal falla, salta al respaldo (Concepto 09)
 modelo = llm.bind_tools(herramientas).with_fallbacks(
     [respaldo.bind_tools(herramientas)]
 )
 
-# se monta sobre el StateGraph del Módulo 13 (con nodo de aprobación humana)
+# se monta sobre el StateGraph del Concepto 13 (con nodo de aprobación humana)
 app = grafo.compile(checkpointer=MemorySaver())
 config = {"configurable": {"thread_id": "analista_ale"}}
 
@@ -143,7 +143,7 @@ LLM + LCEL + salida estructurada + herramientas + routing + agente LangGraph (`S
 3. **Fase 3 — Herramientas**: envuelve el RAG como `buscar_normativa`, crea `evaluar_regla_calidad` (Pydantic) y `registrar_hallazgo`.
 4. **Fase 4 — Orquestación**: monta un `StateGraph` con memoria por analista y un nodo `interrupt` para aprobar incumplimientos.
 5. **Fase 5 — Escala y resiliencia**: `with_fallbacks` entre modelos y `abatch` para evaluar muchas reglas en paralelo.
-6. **Fase 6 — Producción**: separa servicios (Módulo 15b), registra un **audit trail** de cada decisión, corre tests de evaluación, activa LangSmith + Arize y escribe los ADR (Módulo 17).
+6. **Fase 6 — Producción**: separa servicios (Concepto 15b), registra un **audit trail** de cada decisión, corre tests de evaluación, activa LangSmith + Arize y escribe los ADR (Concepto 17).
 
 ### Mini-ADR de ejemplo
 
@@ -161,14 +161,74 @@ LLM + LCEL + salida estructurada + herramientas + routing + agente LangGraph (`S
 
 </Box>
 
+<Box kind="practice" label="▸ Para practicar">
+
+**Muda el capstone de dominio, sin escribir una línea.** Elige otro sector regulado —historia clínica, siniestros de seguros, expedientes legales— y redacta su **mini-ADR de 5 filas** (decisión + por qué), más una frase por cada una de las **6 fases** diciendo qué cambia respecto al caso financiero.
+
+**Criterio de aceptación:** tu mini-ADR nombra explícitamente las tres cosas que hacen al capstone lo que es — (a) **dónde va el `interrupt` humano** y qué decisión concreta protege, (b) **qué se escribe en el audit trail** y por qué ese registro y no otro, y (c) **qué pieza inyectarías por parámetro** para poder testear el grafo sin llamar a la API. Si alguna de las tres te sale genérica ("por seguridad", "por buenas prácticas"), todavía no has decidido nada.
+
+<Solution summary="Ver una solución">
+
+**Caso elegido:** asistente de **siniestros de seguros**. Responde dudas sobre las coberturas de una póliza, evalúa si un siniestro reportado encaja en ellas y registra el dictamen.
+
+| Decisión | Por qué |
+| --- | --- |
+| Chroma persistente sobre el clausulado de cada producto | El corpus es acotado y cambia por versión de póliza, no a diario: no justifica una DB vectorial gestionada (c24). |
+| Re-ranker cross-encoder | Las cláusulas de exclusión se parecen muchísimo entre sí; recuperar la del producto equivocado produce un dictamen erróneo. |
+| `interrupt` **antes de emitir un rechazo de cobertura** | Un rechazo tiene efecto legal sobre el asegurado y es reclamable. El modelo *propone* el dictamen; lo firma un perito. Aprobar un pago menor sí puede ir automático. |
+| Audit trail con **qué cláusula sostuvo el dictamen** | No basta con "se rechazó": ante el regulador o una demanda hay que poder señalar el artículo exacto, la versión del clausulado y quién aprobó. |
+| `construir_agente(modelo, evaluador, retriever)` | El evaluador de cobertura es la lógica de negocio: con un doble que recita un dictamen fijo, los tests cubren el camino "rechazo → interrupt → registro" sin gastar cuota ni tocar una póliza real. |
+
+**Las 6 fases, qué cambia:** *(1) Ingesta* — no son PDFs sueltos: cada clausulado se indexa **con su versión** en la metadata, porque un siniestro se juzga con la póliza vigente en la fecha del hecho. *(2) Recuperación* — el híbrido pesa más que en el caso financiero: los códigos de producto son literales y el vectorial solo no los caza (c12). *(3) Herramientas* — `buscar_clausula`, `evaluar_cobertura` (Pydantic: `cubierto`, `articulo`, `monto_estimado`, `justificacion`) y `registrar_dictamen`. *(4) Orquestación* — el `thread_id` es el **número de siniestro**, no el analista: el hilo sigue al caso aunque cambie el perito. *(5) Escala* — `abatch` para revisar la cola nocturna de siniestros simples; los complejos van por el camino con humano. *(6) Producción* — el audit trail es aquí el entregable principal, no un extra: es lo que se enseña en una auditoría.
+
+</Solution>
+
+</Box>
+
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 
 - Reconocer, en el capstone, cada concepto del curso (RAG, tools, Pydantic, agente, memoria, auditoría).
 - Explicar por qué `construir_agente()` recibe sus piezas por parámetro y qué habilita eso.
-- Recorrer las 6 fases del proyecto y decir qué módulo del curso sostiene cada una.
+- Recorrer las 6 fases del proyecto y decir qué concepto del curso sostiene cada una.
 - Justificar en un mini-ADR por qué se usó human-in-the-loop antes de marcar un incumplimiento.
 
 </Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 18">
+
+<Question>
+  <Prompt>1 · ¿Qué habilita que `construir_agente()` reciba modelo, evaluador y retriever por parámetro?</Prompt>
+  <Option>Que el agente pueda atender a varios analistas a la vez sin mezclar historiales</Option>
+  <Option ok>Que los tests le pasen dobles y ejerciten el grafo completo sin gastar un token</Option>
+  <Option>Que el grafo se recompile solo cuando cambias de proveedor en el `.env`</Option>
+  <Feedback>Eso es inyección de dependencias: `main.py` pasa las piezas reales, `tests/` pasa un modelo falso que recita un guion. Atender a varios analistas es el `thread_id`, otra cosa.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · El capstone monta un `StateGraph` en vez de `create_react_agent`. ¿Por qué?</Prompt>
+  <Option>Porque el prebuilt no admite herramientas con salida Pydantic</Option>
+  <Option>Porque el prebuilt gasta más tokens en cada turno</Option>
+  <Option ok>Porque hace falta un nodo de aprobación humana y ramas propias que el prebuilt no expone</Option>
+  <Feedback>El prebuilt cubre el bucle estándar; en cuanto necesitas un `interrupt` antes de marcar un incumplimiento, toca el grafo explícito del Concepto 13.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · El audit trail es **append-only**: se añade, nunca se borra ni se reescribe. ¿Cuál es la razón de fondo?</Prompt>
+  <Option>Ahorra espacio en disco frente a reescribir el archivo de log</Option>
+  <Option ok>Ante el regulador hay que demostrar qué se decidió y cuándo, y un registro editable no prueba nada</Option>
+  <Option>Evita condiciones de carrera cuando dos analistas escriben a la vez</Option>
+  <Feedback>Un log que se puede reescribir deja de ser evidencia. En banca la trazabilidad es un requisito, no una comodidad de ingeniería.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · El asistente empieza a afirmar cosas que no están en la normativa indexada. ¿Dónde miras primero?</Prompt>
+  <Option ok>En el prompt del RAG: falta la regla "responde solo con el contexto"</Option>
+  <Option>En la temperatura del modelo de respaldo que entra por `with_fallbacks`</Option>
+  <Option>En el tamaño del checkpointer, que estará truncando el historial</Option>
+  <Feedback>Las respuestas inventadas casi siempre son un prompt sin anclar al contexto recuperado, antes que un fallo del retriever o del modelo.</Feedback>
+</Question>
+
+</Quiz>
 
 <Recap level={5} label="↺ En una frase">
 

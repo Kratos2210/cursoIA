@@ -1,4 +1,4 @@
-Hasta aquí el curso te dio el **agente** (m10–m15) y te enseñó a servirlo por **HTTP** (m17, m25). Un `POST /chat` está muy bien para un frontend, pero el negocio real muchas veces vive en **WhatsApp**. Este anexo le pone delante ese **canal** — y la buena noticia es que **el agente no cambia**: solo cambia por dónde entra y sale el texto.
+Hasta aquí el curso te dio el **agente** (c10–c15) y te enseñó a servirlo por **HTTP** (c17, c25). Un `POST /chat` está muy bien para un frontend, pero el negocio real muchas veces vive en **WhatsApp**. Este anexo le pone delante ese **canal** — y la buena noticia es que **el agente no cambia**: solo cambia por dónde entra y sale el texto.
 
 <Box kind="warn" label="▲ Anexo opcional, fuera del 'offline-first' del curso">
 
@@ -81,6 +81,70 @@ docker compose up -d          # EvolutionAPI (:8081) + el webhook (:8080)
 #   http://webhook:8080/webhook/whatsapp
 ```
 
+<Box kind="practice" label="▸ Para practicar">
+
+El guardia de entrada está incrustado dentro del handler `async` — y eso lo vuelve intestable sin levantar Docker ni EvolutionAPI. **Mini-reto:** extráelo a una función pura `motivo_para_ignorar(evento) -> str | None` que reciba el JSON crudo del webhook y devuelva el motivo del descarte, o `None` si hay que responder.
+
+**Criterio de aceptación:** un evento con `fromMe: true` devuelve `"fromMe"`; uno de audio (sin `conversation` ni `extendedTextMessage`) devuelve `"sin_texto"`; uno sin `remoteJid` también; y un mensaje de texto normal devuelve `None`. Los cuatro casos como test, **sin red y sin Docker**.
+
+<Solution summary="Ver una solución">
+
+```python title="canales/whatsapp/webhook.py · el guardia, ahora testeable"
+def motivo_para_ignorar(evento: dict) -> str | None:
+    """None = hay que responder. Un string = por qué se descarta.
+
+    Función PURA sobre el JSON: ni red ni estado, así que se testea byte a byte.
+    """
+    data = evento.get("data", {})
+    clave = data.get("key", {})
+    if clave.get("fromMe"):                       # tu propia respuesta vuelve como evento
+        return "fromMe"
+    if not _extraer_texto(data.get("message", {})):   # audio, imagen, sticker…
+        return "sin_texto"
+    if not clave.get("remoteJid"):                # sin remitente no hay a quién responder
+        return "sin_remitente"
+    return None
+```
+
+```python title="el handler queda de tres líneas (y sin lógica que testear)"
+@app.post("/webhook/whatsapp")
+async def webhook(request: Request) -> dict:
+    evento = await request.json()
+    if (motivo := motivo_para_ignorar(evento)):
+        return {"ignorado": motivo}               # 200 igual: EvolutionAPI no reintenta
+    data = evento["data"]
+    numero = data["key"]["remoteJid"]
+    respuesta = responder(_extraer_texto(data["message"]), thread_id=numero)
+    enviar_whatsapp(numero, respuesta)
+    return {"ok": True}
+```
+
+```python title="tests · offline, sin Docker ni EvolutionAPI"
+def _evento(**key_extra):
+    return {"data": {"key": {"remoteJid": "51999@s.whatsapp.net", **key_extra},
+                     "message": {"conversation": "hola"}}}
+
+def test_ignora_mensajes_propios():
+    assert motivo_para_ignorar(_evento(fromMe=True)) == "fromMe"
+
+def test_ignora_audio():
+    e = _evento(); e["data"]["message"] = {"audioMessage": {"url": "..."}}
+    assert motivo_para_ignorar(e) == "sin_texto"
+
+def test_ignora_sin_remitente():
+    e = _evento(); e["data"]["key"]["remoteJid"] = ""
+    assert motivo_para_ignorar(e) == "sin_remitente"
+
+def test_responde_un_mensaje_normal():
+    assert motivo_para_ignorar(_evento()) is None
+```
+
+Esto es la lección del anexo en pequeño: el canal necesita Docker, pero su **lógica de decisión** no. Separar la función pura del cableado `async` es lo que deja testear la parte que de verdad se rompe —el bucle infinito de `fromMe`— dentro del gate offline.
+
+</Solution>
+
+</Box>
+
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 
 - Explicar por qué el agente **no cambia** al ponerle un canal: solo cambia la entrada/salida del texto.
@@ -90,8 +154,44 @@ docker compose up -d          # EvolutionAPI (:8081) + el webhook (:8080)
 
 </Checkpoint>
 
+<Quiz title="✅ Autoevaluación · Concepto 31">
+
+<Question>
+  <Prompt>1 · Montas el canal sin el guardia de `fromMe`. ¿Qué pasa?</Prompt>
+  <Option>Nada grave: los mensajes propios no traen texto y se descartan solos</Option>
+  <Option ok>Tu respuesta vuelve como evento entrante y el bot se contesta a sí mismo en bucle</Option>
+  <Option>EvolutionAPI rechaza la conexión por detectar tráfico duplicado</Option>
+  <Feedback>El evento `messages.upsert` incluye lo que TÚ envías. Sin el descarte, cada respuesta dispara otra respuesta — y la factura de tokens con ella.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Qué dos trabajos hace el `remoteJid`?</Prompt>
+  <Option>Identifica tu instancia de EvolutionAPI y autentica el webhook</Option>
+  <Option ok>Es a quién respondes y, a la vez, la clave de memoria del hilo — un chat por persona</Option>
+  <Option>Marca si el mensaje es de grupo y en qué formato viene el texto</Option>
+  <Feedback>Pasarlo como `thread_id` es lo que da memoria por número sin escribir nada extra: el checkpointer del agente ya hace el resto.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Tu agente tarda 20 s en responder y el cliente recibe el mismo mensaje dos veces. ¿Por qué?</Prompt>
+  <Option ok>EvolutionAPI reintenta cuando el webhook tarda: hay que responderle rápido y seguir en segundo plano, o encolar</Option>
+  <Option>WhatsApp duplica los mensajes largos por diseño del protocolo</Option>
+  <Option>Falta el guardia de `fromMe`, que es lo que filtra los duplicados</Option>
+  <Feedback>El webhook es un contrato con timeout: tu 200 dice "recibido". Bloquearlo mientras piensa el agente es pedirle al puente que lo reintente.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · ¿Qué hay que cambiar en el agente para ponerlo en WhatsApp?</Prompt>
+  <Option>Adaptarlo a mensajes: hay que quitarle el streaming y rehacer su memoria por número</Option>
+  <Option ok>Nada — solo cambia por dónde entra y sale el texto; si el agente streamea, juntas sus tokens en un solo string</Option>
+  <Option>Reescribir sus tools, porque WhatsApp no admite llamadas a herramientas</Option>
+  <Feedback>El canal es una capa exterior enchufable. `responder(texto, thread_id)` es el punto de extensión: el núcleo sigue igual, y por eso el anexo puede vivir fuera del gate sin tocar el curso.</Feedback>
+</Question>
+
+</Quiz>
+
 <Recap level={6} label="↺ En una frase">
 
-Poner tu agente en WhatsApp es envolverlo en un webhook: EvolutionAPI te reenvía cada mensaje, tú llamas a `responder(texto, thread_id=numero)` —el mismo agente de siempre, inyectado por parámetro— y devuelves el texto por su endpoint de salida. El núcleo no se toca; el canal es una capa exterior enchufable, fuera del gate offline.<Arch>artefactos: `canales/whatsapp/` · extra `whatsapp` · fuera del gate (ADR-0004) · integración low-code en el [m31b](/modulo/31b-n8n-orquestacion)</Arch>
+Poner tu agente en WhatsApp es envolverlo en un webhook: EvolutionAPI te reenvía cada mensaje, tú llamas a `responder(texto, thread_id=numero)` —el mismo agente de siempre, inyectado por parámetro— y devuelves el texto por su endpoint de salida. El núcleo no se toca; el canal es una capa exterior enchufable, fuera del gate offline.<Arch>artefactos: `canales/whatsapp/` · extra `whatsapp` · fuera del gate (ADR-0004) · integración low-code en el [c31b](/concepto/31b-n8n-orquestacion)</Arch>
 
 </Recap>

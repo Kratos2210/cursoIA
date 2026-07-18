@@ -1,4 +1,4 @@
-El [m16](/modulo/16-observabilidad-y-costo) te dio ojos para ver el sistema **en vivo**: trazas, tokens, coste. Pero observar no es medir la calidad. La observabilidad te dice que el sistema está *lento*; la **evaluación** te dice si se ha vuelto *tonto*. Este módulo cierra ese hueco: medir si las respuestas son buenas, de forma **repetible**, y detectar cuándo un cambio las empeora sin avisar.
+El [c16](/concepto/16-observabilidad-y-costo) te dio ojos para ver el sistema **en vivo**: trazas, tokens, coste. Pero observar no es medir la calidad. La observabilidad te dice que el sistema está *lento*; la **evaluación** te dice si se ha vuelto *tonto*. Este concepto cierra ese hueco: medir si las respuestas son buenas, de forma **repetible**, y detectar cuándo un cambio las empeora sin avisar.
 
 <Box kind="def" label="◈ Definición · Evaluación, dataset y el juez">
 
@@ -113,7 +113,7 @@ Corre `16_evaluacion.py` y anota el puntaje. Rompe algo a propósito (por ejempl
   <Def>La calidad del *retriever*, no del generador: **precision** = de lo que recuperaste, cuánto era relevante (¿metiste basura?); **recall** = de lo relevante que existía, cuánto llegaste a recuperar (¿te dejaste lo bueno fuera?).</Def>
 </DefList>
 
-El diagnóstico es lo valioso: fidelidad baja → el problema está en el *generador* (prompt, modelo); recall bajo → está en el *retriever* (chunking, búsqueda del [m12](/modulo/12-recuperar-re-rankear), o la pregunta del [m20](/modulo/20-rag-avanzado)). Cada una se implementa como un LLM-as-judge, exactamente el patrón que armaste arriba.
+El diagnóstico es lo valioso: fidelidad baja → el problema está en el *generador* (prompt, modelo); recall bajo → está en el *retriever* (chunking, búsqueda del [c12](/concepto/12-recuperar-re-rankear), o la pregunta del [c20](/concepto/20-rag-avanzado)). Cada una se implementa como un LLM-as-judge, exactamente el patrón que armaste arriba.
 
 Dos encuadres que ordenan todo lo anterior. **Model evals vs product evals:** un *model eval* pregunta "¿este modelo es bueno en general?" (benchmarks); un *product eval* pregunta "¿MI app resuelve el caso de MIS usuarios?" — y ese, con tu dataset y tu tríada, es el único que decide si despliegas. **Evaluar un agente** añade una capa: no basta con juzgar el resultado final, hay que mirar la **trayectoria** — ¿eligió las herramientas correctas?, ¿en el orden razonable?, ¿sin pasos inútiles? Un agente que acierta la respuesta por suerte tras tres llamadas equivocadas está roto aunque el resultado pase.
 
@@ -136,8 +136,44 @@ Dos encuadres que ordenan todo lo anterior. **Model evals vs product evals:** un
 
 </Checkpoint>
 
+<Quiz title="✅ Autoevaluación · Concepto 16c">
+
+<Question>
+  <Prompt>1 · ¿Qué te dice la evaluación que la observabilidad no te dice?</Prompt>
+  <Option>Cuántos tokens consumió cada paso de la ejecución</Option>
+  <Option ok>Si el sistema se ha vuelto *tonto*: la observabilidad te dice que está *lento*</Option>
+  <Option>Qué herramienta eligió el agente en cada vuelta</Option>
+  <Feedback>Una mira el sistema en vivo; la otra mide la calidad contra casos con respuesta esperada, antes de desplegar. Hacen falta las dos ([c16](/concepto/16-observabilidad-y-costo)).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Con qué temperatura corres el modelo que hace de juez?</Prompt>
+  <Option>0.7, para que valore matices y no sea rígido</Option>
+  <Option ok>0: un juez que puntúa distinto la misma respuesta no sirve para comparar antes/después</Option>
+  <Option>La misma que use el modelo evaluado, para ser justos</Option>
+  <Feedback>Toda la evaluación se apoya en que el número sea **repetible**. Y aun con temperatura 0, el juez tiene sesgos: valídalo contra casos que ya sabes puntuar (Concepto 16c).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · La fidelidad (*faithfulness*) sale baja pero el *context recall* está alto. ¿Dónde está el problema?</Prompt>
+  <Option>En el chunking: los fragmentos parten ideas</Option>
+  <Option ok>En el generador: recuperaste lo relevante, pero el modelo está afirmando cosas que no están en el contexto</Option>
+  <Option>En el re-ranker, que deja pasar ruido</Option>
+  <Feedback>Ese es el valor de partir "¿es buena?" en tres jueces: fidelidad baja → prompt o modelo; recall bajo → retriever ([c12](/concepto/12-recuperar-re-rankear)).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Un agente da la respuesta correcta tras tres llamadas a herramientas equivocadas. ¿Pasa la evaluación?</Prompt>
+  <Option>Sí: lo que importa es el resultado que ve el usuario</Option>
+  <Option ok>No: hay que evaluar también la **trayectoria** — acertar por suerte es estar roto</Option>
+  <Option>Depende de si las tres llamadas costaron menos que el presupuesto</Option>
+  <Feedback>Evaluar un agente añade una capa sobre el resultado: ¿eligió las tools correctas?, ¿en orden razonable?, ¿sin pasos inútiles? (Concepto 16c).</Feedback>
+</Question>
+
+</Quiz>
+
 <Recap level={4} label="↺ En una frase">
 
-Sin un dataset y un juez, "mejoró" es una opinión. Mide la calidad de forma repetible, parte "¿es buena?" en la tríada RAG, y corre la misma evaluación antes/después de cada cambio para cazar regresiones.<Arch>archivo: `16_evaluacion.py` · la observabilidad, en el m16</Arch>
+Sin un dataset y un juez, "mejoró" es una opinión. Mide la calidad de forma repetible, parte "¿es buena?" en la tríada RAG, y corre la misma evaluación antes/después de cada cambio para cazar regresiones.<Arch>archivo: `16_evaluacion.py` · la observabilidad, en el c16</Arch>
 
 </Recap>

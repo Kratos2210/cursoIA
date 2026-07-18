@@ -14,12 +14,12 @@ Antes de entrar a producción, ubícate. LangChain ya no se presenta como "un fr
   <Term>LangChain</Term>
   <Def>El punto de partida: montar agentes rápido con *cualquier* proveedor de modelos. Es lo que usaste hasta aquí.</Def>
   <Term>LangGraph</Term>
-  <Def>Cuando necesitas **control de bajo nivel** para agentes fiables: ciclos, ramas, pausas, estado (Módulo 13). Elígelo cuando el agente "de fábrica" ya no te alcanza.</Def>
+  <Def>Cuando necesitas **control de bajo nivel** para agentes fiables: ciclos, ramas, pausas, estado (Concepto 13). Elígelo cuando el agente "de fábrica" ya no te alcanza.</Def>
   <Term>Deep Agents</Term>
   <Def>Para agentes **de larga duración** que resuelven tareas complejas (planifican, investigan por horas). La escala más ambiciosa.</Def>
 </DefList>
 
-Y por encima de los tres, **LangSmith** es la plataforma que cubre el resto del ciclo: *Observability*, *Evaluation* y *Deployment* (Módulos 16–17). Regla simple: empieza en LangChain, baja a LangGraph cuando necesites control, sube a Deep Agents para tareas largas — y en los tres casos observa y evalúa con LangSmith.
+Y por encima de los tres, **LangSmith** es la plataforma que cubre el resto del ciclo: *Observability*, *Evaluation* y *Deployment* (Conceptos 16–17). Regla simple: empieza en LangChain, baja a LangGraph cuando necesites control, sube a Deep Agents para tareas largas — y en los tres casos observa y evalúa con LangSmith.
 
 </Box>
 
@@ -116,7 +116,7 @@ if __name__ == "__main__":
     mcp.run(transport="stdio")         # habla por entrada/salida estándar
 ```
 
-Nota lo familiar: `@mcp.tool()` funciona igual que el `@tool` del Módulo 07 — el docstring y los tipos son el contrato que lee el modelo. La diferencia es que ahora la herramienta vive en un **proceso aparte**, con su propio control de acceso, y *cualquier* agente compatible con MCP puede usarla. `transport="stdio"` significa que cliente y servidor conversan por la entrada/salida estándar del proceso (local); para servidores remotos se usa HTTP.
+Nota lo familiar: `@mcp.tool()` funciona igual que el `@tool` del Concepto 07 — el docstring y los tipos son el contrato que lee el modelo. La diferencia es que ahora la herramienta vive en un **proceso aparte**, con su propio control de acceso, y *cualquier* agente compatible con MCP puede usarla. `transport="stdio"` significa que cliente y servidor conversan por la entrada/salida estándar del proceso (local); para servidores remotos se usa HTTP.
 
 ### Conectar el servidor a tu agente
 
@@ -138,7 +138,7 @@ agente = create_react_agent(llm, tools=herramientas_mcp)
 
 <Box kind="warn" label="▲ Ese await no va suelto">
 
-Como en el Módulo 03, ese `await client.get_tools()` **no puede ir a nivel de módulo** en un script. En el archivo real vive dentro de una función `async def main()` que se arranca con `asyncio.run(main())` — así es como `14_mcp_servidor_cliente.py` lo ejecuta de verdad.
+Como en el Concepto 03, ese `await client.get_tools()` **no puede ir a nivel de concepto** en un script. En el archivo real vive dentro de una función `async def main()` que se arranca con `asyncio.run(main())` — así es como `14_mcp_servidor_cliente.py` lo ejecuta de verdad.
 
 </Box>
 
@@ -172,7 +172,7 @@ Darle herramientas a un agente es darle poder — y MCP existe justamente para q
 | Ejecución insegura | El servidor valida y acota lo que hace (lista blanca de operaciones); nunca ejecuta texto arbitrario del modelo. Lo delicado corre en sandbox. |
 | Exfiltración de datos | El servidor decide qué contexto sale: expone *resources* de solo lectura, filtra campos sensibles y no devuelve más de lo pedido. |
 | Servidor malicioso | Instala solo servidores de fuentes confiables — un servidor MCP es código que corre en tu máquina con tus permisos. |
-| Acción irreversible | Las tools que escriben/borran exigen aprobación humana antes de ejecutarse (el `interrupt` del Módulo 13 encaja aquí). |
+| Acción irreversible | Las tools que escriben/borran exigen aprobación humana antes de ejecutarse (el `interrupt` del Concepto 13 encaja aquí). |
 | Permisos excesivos | Principio de mínimo privilegio: cada servidor recibe credenciales propias y acotadas, nunca "la llave maestra" del sistema. |
 
 <Box kind="warn" label="▲ La regla de oro">
@@ -183,13 +183,13 @@ Trata cada tool MCP como tratarías a un practicante nuevo: acceso de **lectura*
 
 <Box kind="def" label="◈ Su primo A2A · MCP conecta agente↔herramienta; A2A, agente↔agente">
 
-MCP resuelve el "M×N" de conectar un agente a **herramientas y datos**. Hay un protocolo hermano para el otro eje: **A2A (Agent-to-Agent)**, impulsado por Google, que estandariza cómo un agente **descubre y delega en otro agente** —posiblemente de otra empresa y escrito en otro framework— publicando una "agent card" con lo que sabe hacer. En una frase: **MCP le da manos a un agente; A2A le da colegas.** En este curso no lo usamos (nuestro multiagente del [m15](/modulo/15-multiagente-supervisor) coordina agentes *dentro* del mismo proceso), pero es el estándar a mirar cuando los agentes viven en sistemas distintos y tienen que hablarse.
+MCP resuelve el "M×N" de conectar un agente a **herramientas y datos**. Hay un protocolo hermano para el otro eje: **A2A (Agent-to-Agent)**, impulsado por Google, que estandariza cómo un agente **descubre y delega en otro agente** —posiblemente de otra empresa y escrito en otro framework— publicando una "agent card" con lo que sabe hacer. En una frase: **MCP le da manos a un agente; A2A le da colegas.** En este curso no lo usamos (nuestro multiagente del [c15](/concepto/15-multiagente-supervisor) coordina agentes *dentro* del mismo proceso), pero es el estándar a mirar cuando los agentes viven en sistemas distintos y tienen que hablarse.
 
 </Box>
 
 <Avoid label="⛔ Cuándo NO usar esto">
 
-- No expongas por MCP lo que es una función local que solo tú vas a llamar: el `@tool` del Módulo 07 basta. MCP añade un proceso aparte, un protocolo y un transporte que ahí no necesitas.
+- No expongas por MCP lo que es una función local que solo tú vas a llamar: el `@tool` del Concepto 07 basta. MCP añade un proceso aparte, un protocolo y un transporte que ahí no necesitas.
 - No montes un servidor para un único cliente y una única tool: MCP paga cuando varios agentes comparten varias herramientas (M+N en vez de M×N), no en un 1×1.
 - No instales servidores MCP de fuentes que no controlas "solo para probar": un servidor MCP es código que corre en tu máquina con tus permisos.
 
@@ -211,11 +211,11 @@ Reto extra: añádele una tercera tool `@mcp.tool()` (por ejemplo `listar_reglas
 
 <Box kind="def" label="◈ Cuando no hay API: computer use (el agente opera la pantalla)">
 
-MCP y las tools del [m07](/modulo/07-herramientas) asumen que existe una **API** o un protocolo al que llamar. ¿Y cuándo no lo hay —una web sin API pública, un ERP legacy, un panel interno hecho a mano—? Ahí entra **computer use** (o *browser use*): en vez de llamar a una función, el modelo **ve una captura de pantalla** y emite **acciones de humano** (mover el ratón, hacer clic, teclear, hacer scroll). Claude, OpenAI y otros exponen esta capacidad; frameworks como `browser-use` la envuelven para la web.
+MCP y las tools del [c07](/concepto/07-herramientas) asumen que existe una **API** o un protocolo al que llamar. ¿Y cuándo no lo hay —una web sin API pública, un ERP legacy, un panel interno hecho a mano—? Ahí entra **computer use** (o *browser use*): en vez de llamar a una función, el modelo **ve una captura de pantalla** y emite **acciones de humano** (mover el ratón, hacer clic, teclear, hacer scroll). Claude, OpenAI y otros exponen esta capacidad; frameworks como `browser-use` la envuelven para la web.
 
 <Box kind="warn" label="▲ Es el último recurso, no el primero">
 
-Operar una GUI es **lento** (cada paso es una captura + una decisión del modelo), **frágil** (si la interfaz cambia de sitio un botón, se rompe) y **peligroso** (un agente que puede hacer clic en cualquier cosa puede borrar, comprar o enviar lo que no debía). Reglas: córrelo en un **sandbox** aislado, con **aprobación humana** para acciones irreversibles (el [HITL del m13](/modulo/13-langgraph-a-fondo)) y límites de alcance. Si existe una API o un servidor MCP, **siempre** es preferible: computer use es el puente para lo que no tiene puerta de entrada programática.
+Operar una GUI es **lento** (cada paso es una captura + una decisión del modelo), **frágil** (si la interfaz cambia de sitio un botón, se rompe) y **peligroso** (un agente que puede hacer clic en cualquier cosa puede borrar, comprar o enviar lo que no debía). Reglas: córrelo en un **sandbox** aislado, con **aprobación humana** para acciones irreversibles (el [HITL del c13](/concepto/13-langgraph-a-fondo)) y límites de alcance. Si existe una API o un servidor MCP, **siempre** es preferible: computer use es el puente para lo que no tiene puerta de entrada programática.
 
 </Box>
 
@@ -229,6 +229,42 @@ Operar una GUI es **lento** (cada paso es una captura + una decisión del modelo
 - Decir por qué el intercambio es controlado: el permiso lo das tú (lectura sí, escritura con aprobación), no el modelo.
 
 </Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 14">
+
+<Question>
+  <Prompt>1 · ¿Qué tres cosas puede exponer un servidor MCP?</Prompt>
+  <Option>Modelos, embeddings y vector stores</Option>
+  <Option ok>`tools` (acciones), `resources` (datos de solo lectura) y `prompts` (plantillas)</Option>
+  <Option>Endpoints REST, colas y webhooks</Option>
+  <Feedback>Cuando evalúes un servidor ajeno, pregúntate cuáles de las tres necesitas de verdad: las `tools` son las más comunes y las más delicadas (Concepto 14).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · Un servidor MCP expone una tool que **borra** registros. ¿Cómo la controlas?</Prompt>
+  <Option>Escribiendo un docstring que diga cuándo no usarla</Option>
+  <Option>Bajando la temperatura del modelo a 0</Option>
+  <Option ok>Exigiendo aprobación humana antes de ejecutarla — el `interrupt()` del [c13](/concepto/13-langgraph-a-fondo)</Option>
+  <Feedback>Trata cada tool como a un practicante nuevo: lectura desde el día uno, escritura solo con supervisión, y nunca las credenciales del administrador (Concepto 14).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Tienes una función local que solo llama tu propio script. ¿La expones por MCP?</Prompt>
+  <Option>Sí: así queda lista por si mañana la usa otro agente</Option>
+  <Option ok>No: el `@tool` del [c07](/concepto/07-herramientas) basta; MCP añade un proceso, un protocolo y un transporte que ahí sobran</Option>
+  <Option>Sí, porque MCP valida los argumentos y `@tool` no</Option>
+  <Feedback>MCP paga cuando varios agentes comparten varias herramientas (M+N en vez de M×N). En un 1×1 solo añades piezas móviles (Concepto 14).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · El sistema con el que necesitas integrarte no tiene API: es un panel interno hecho a mano. ¿Qué te queda?</Prompt>
+  <Option>Un servidor MCP: para eso existe el protocolo</Option>
+  <Option ok>*Computer use*: el modelo ve capturas y emite clics y teclas — lento, frágil y el último recurso</Option>
+  <Option>Fine-tuning del modelo con capturas del panel</Option>
+  <Feedback>Si existe una API o un servidor MCP, **siempre** es preferible. Cuando no hay puerta de entrada programática, computer use es el puente — en sandbox y con aprobación humana (Concepto 14).</Feedback>
+</Question>
+
+</Quiz>
 
 <Recap level={4} label="↺ En una frase">
 

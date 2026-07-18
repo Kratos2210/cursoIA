@@ -4,7 +4,7 @@ Acabas de recorrer el curso entero. Última pregunta: ¿cómo se construye una p
 
 </LevelBanner>
 
-Todo el curso te enseñó a *escribir* IA. Este módulo cierra con la pregunta que casi nadie se hace hasta que duele: ¿cómo decides **qué** vas a construir, antes de escribir la primera línea? La costumbre es abrir el editor y teclear; la especificación, si aparece, se escribe *después* — cuando ya nadie recuerda por qué el código quedó así. **Spec-Driven Development invierte ese orden.** Y no es teoría: el verificador que protege la coherencia de este mismo material nació exactamente así, y sus artefactos están en el repo para que los leas.
+Todo el curso te enseñó a *escribir* IA. Este concepto cierra con la pregunta que casi nadie se hace hasta que duele: ¿cómo decides **qué** vas a construir, antes de escribir la primera línea? La costumbre es abrir el editor y teclear; la especificación, si aparece, se escribe *después* — cuando ya nadie recuerda por qué el código quedó así. **Spec-Driven Development invierte ese orden.** Y no es teoría: el verificador que protege la coherencia de este mismo material nació exactamente así, y sus artefactos están en el repo para que los leas.
 
 <Box kind="def" label="◈ Definición · Spec-Driven Development (SDD)">
 
@@ -67,19 +67,19 @@ El spec no es un documento que firmas y congelas. **Vive**: cuando cambia el req
 
 ### Por qué esto importa aún más con agentes de IA
 
-Este es un curso de IA, así que cerremos donde más muerde. Un agente con un **spec claro** produce código *alineado*: sabe qué comportamiento se espera y contra qué se le va a medir. Un agente **sin spec** produce código *plausible pero desalineado* — compila, se ve razonable, y sin embargo resuelve un problema ligeramente distinto al que tenías. Y revisar código plausible-pero-equivocado cuesta más que escribirlo desde cero, porque primero tienes que *descubrir* en qué se desvió. El spec es el **contrato que hace revisable** el trabajo del agente: sin él no estás revisando, estás adivinando. Es la misma disciplina de [testear lo que no es el modelo](/modulo/18-capstone-final) que viste en el capstone, subida un nivel: aquí fijas la intención antes de que el modelo — o el agente — escriba nada.
+Este es un curso de IA, así que cerremos donde más muerde. Un agente con un **spec claro** produce código *alineado*: sabe qué comportamiento se espera y contra qué se le va a medir. Un agente **sin spec** produce código *plausible pero desalineado* — compila, se ve razonable, y sin embargo resuelve un problema ligeramente distinto al que tenías. Y revisar código plausible-pero-equivocado cuesta más que escribirlo desde cero, porque primero tienes que *descubrir* en qué se desvió. El spec es el **contrato que hace revisable** el trabajo del agente: sin él no estás revisando, estás adivinando. Es la misma disciplina de [testear lo que no es el modelo](/concepto/18-capstone-final) que viste en el capstone, subida un nivel: aquí fijas la intención antes de que el modelo — o el agente — escriba nada.
 
 <Box kind="def" label="◈ El ciclo de trabajo con un asistente de IA (lo que acabas de aprender, con nombre)">
 
-Este módulo te enseñó, sin decirlo, el **ciclo de trabajo colaborativo** que define al AI Engineer de hoy: **la IA teclea, tú diriges**. Y dirigir son dos trabajos concretos. Uno, la **arquitectura**: las decisiones que el asistente no debe tomar solo — qué piezas hay, qué contratos las unen, qué es no-negociable (eso es la *constitución* y el *spec*). Dos, el **contexto**: un asistente rinde lo que rinde el contexto que le das — el spec que fija la intención, los archivos correctos a la vista, las convenciones del repo escritas donde las lea. Con esos dos resueltos, el ciclo diario es: especificas → la IA propone/implementa → **revisas el diff como revisarías el PR de un colega** (contra el spec, no contra "se ve bien") → los tests y la CI del [m17b](/modulo/17b-tests-y-ci) hacen de árbitro. Fíjate en que ninguna pieza es nueva: spec (este módulo), tests como definición de "listo" (m17b), revisión contra contrato. La habilidad del rol no es escribir código más rápido que la IA — es **hacer revisable y verificable** lo que la IA escribe.
+Este concepto te enseñó, sin decirlo, el **ciclo de trabajo colaborativo** que define al AI Engineer de hoy: **la IA teclea, tú diriges**. Y dirigir son dos trabajos concretos. Uno, la **arquitectura**: las decisiones que el asistente no debe tomar solo — qué piezas hay, qué contratos las unen, qué es no-negociable (eso es la *constitución* y el *spec*). Dos, el **contexto**: un asistente rinde lo que rinde el contexto que le das — el spec que fija la intención, los archivos correctos a la vista, las convenciones del repo escritas donde las lea. Con esos dos resueltos, el ciclo diario es: especificas → la IA propone/implementa → **revisas el diff como revisarías el PR de un colega** (contra el spec, no contra "se ve bien") → los tests y la CI del [c17b](/concepto/17b-tests-y-ci) hacen de árbitro. Fíjate en que ninguna pieza es nueva: spec (este concepto), tests como definición de "listo" (c17b), revisión contra contrato. La habilidad del rol no es escribir código más rápido que la IA — es **hacer revisable y verificable** lo que la IA escribe.
 
 </Box>
 
 <Box kind="analogy" label="🌐 Skills: conocimiento empaquetado para tu asistente">
 
-El stack de quien trabaja en serio con asistentes de código tiene **tres pilares**, y ya conoces dos: **SDD** (este módulo — fija la *intención*) y **MCP** ([m14](/modulo/14-mcp) — le da *herramientas y datos*). El tercero son los **skills**: paquetes reutilizables de instrucciones + contexto + criterio que el asistente **carga cuando la tarea lo pide**, en vez de que se los repitas en cada sesión. "Cómo se revisa un PR en este equipo", "cómo se despliega este repo", "qué convenciones sigue nuestro SQL" — conocimiento operativo que hoy vive en la cabeza de alguien y que un skill vuelve **versionable en el repo**.
+El stack de quien trabaja en serio con asistentes de código tiene **tres pilares**, y ya conoces dos: **SDD** (este concepto — fija la *intención*) y **MCP** ([c14](/concepto/14-mcp) — le da *herramientas y datos*). El tercero son los **skills**: paquetes reutilizables de instrucciones + contexto + criterio que el asistente **carga cuando la tarea lo pide**, en vez de que se los repitas en cada sesión. "Cómo se revisa un PR en este equipo", "cómo se despliega este repo", "qué convenciones sigue nuestro SQL" — conocimiento operativo que hoy vive en la cabeza de alguien y que un skill vuelve **versionable en el repo**.
 
-La diferencia con MCP es la que aclara para qué sirve cada uno: **MCP le da al agente *capacidades*** (a qué sistemas puede tocar), un **skill le da *procedimiento*** (cómo se hace bien *aquí*). Un MCP conecta tu base de datos; un skill explica cómo tu equipo escribe migraciones sin romper producción. Los dos convierten conocimiento tribal —lo que "todos saben" pero nadie escribió— en algo que el asistente lee, aplica y tú revisas. Es la misma idea de este módulo, un nivel más arriba: no solo especificas *esta* tarea, empaquetas el *criterio* con el que se hace bien cualquier tarea de ese tipo.
+La diferencia con MCP es la que aclara para qué sirve cada uno: **MCP le da al agente *capacidades*** (a qué sistemas puede tocar), un **skill le da *procedimiento*** (cómo se hace bien *aquí*). Un MCP conecta tu base de datos; un skill explica cómo tu equipo escribe migraciones sin romper producción. Los dos convierten conocimiento tribal —lo que "todos saben" pero nadie escribió— en algo que el asistente lee, aplica y tú revisas. Es la misma idea de este concepto, un nivel más arriba: no solo especificas *esta* tarea, empaquetas el *criterio* con el que se hace bien cualquier tarea de ese tipo.
 
 </Box>
 
@@ -109,6 +109,42 @@ La diferencia con MCP es la que aclara para qué sirve cada uno: **MCP le da al 
 - Justificar por qué SDD ayuda *especialmente* cuando quien escribe el código es un agente de IA.
 
 </Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 19">
+
+<Question>
+  <Prompt>1 · Un test destapó que el extractor contaba la fila de cabecera como fila de datos. ¿Cuál fue la decisión correcta?</Prompt>
+  <Option>Relajar la comprobación hasta que el test dejara de quejarse</Option>
+  <Option ok>Corregir el verificador, porque el spec decía qué comportamiento se esperaba</Option>
+  <Option>Editar el material del curso para que encajara con lo que el verificador contaba</Option>
+  <Feedback>El spec dice quién tiene razón. Ajustar al guardián para que se calle lo vuelve cómplice; y el material es de solo lectura por constitución.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Qué separa al **spec** del **plan**?</Prompt>
+  <Option>El spec lo escribe el humano y el plan lo genera el agente de IA</Option>
+  <Option ok>El spec fija el QUÉ y el POR QUÉ con escenarios; el plan resuelve el CÓMO técnico que el spec dejó abierto</Option>
+  <Option>El spec es el borrador y el plan es su versión ya aprobada y congelada</Option>
+  <Feedback>"Detectar enlaces internos rotos" es spec; "usar `html.parser` en vez de traer BeautifulSoup" es plan. Mezclarlos cierra decisiones técnicas antes de tiempo.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · ¿Por qué SDD muerde *más* cuando quien teclea el código es un agente de IA?</Prompt>
+  <Option>Porque los agentes no saben leer el código que ya existe en el repo</Option>
+  <Option ok>Porque sin spec el agente produce código plausible pero desalineado, y revisar eso cuesta más que escribirlo de cero</Option>
+  <Option>Porque los agentes escriben más lento si no reciben instrucciones muy detalladas</Option>
+  <Feedback>El spec es el contrato que hace **revisable** el trabajo del agente. Sin él no estás revisando: estás adivinando en qué se desvió.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · ¿Cuándo NO montarle un spec a algo?</Prompt>
+  <Option>Cuando el equipo es de una sola persona y nadie más va a leerlo</Option>
+  <Option>Cuando la feature toca varios servicios y aún no sabes cuáles</Option>
+  <Option ok>Cuando la decisión es trivial y no hay nada que razonar antes de teclear</Option>
+  <Feedback>SDD es para lo que vale la pena razonar antes, donde una decisión olvidada cuesta cara. Un README de una línea con spec es justo la burocracia que SDD evita.</Feedback>
+</Question>
+
+</Quiz>
 
 <Recap level={5} label="↺ En una frase">
 

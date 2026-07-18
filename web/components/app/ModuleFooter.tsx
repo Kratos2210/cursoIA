@@ -19,7 +19,7 @@ export function ModuleFooter({
   return (
     <div className="mod-foot">
       <button className={`complete-btn${done ? " done" : ""}`} onClick={() => toggleComplete(id)}>
-        {done ? "✓ Módulo completado — desmarcar" : "Marcar módulo como completado"}
+        {done ? "✓ Concepto completado — desmarcar" : "Marcar concepto como completado"}
       </button>
 
       {!next ? (

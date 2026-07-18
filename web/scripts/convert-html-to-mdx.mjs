@@ -97,7 +97,7 @@ function sectionSlug(id) {
 }
 function sectionRoute(id) {
   if (isExtra(id)) return EXTRA_ROUTE[id];
-  return `/modulo/${sectionSlug(id)}`;
+  return `/concepto/${sectionSlug(id)}`;
 }
 
 // Map every element id in the document to the id of its enclosing <section>,

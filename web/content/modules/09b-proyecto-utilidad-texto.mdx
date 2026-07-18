@@ -1,11 +1,14 @@
-Hasta aquí aprendiste las piezas **por separado**. Este módulo no enseña nada nuevo: las **cose**. Vas a construir tu primer sistema completo — una utilidad que recibe una consulta de soporte y devuelve un **dato**, no un párrafo:
+Hasta aquí aprendiste las piezas **por separado**. Este concepto no enseña nada nuevo: las **cose**. Vas a construir tu primer sistema completo — una utilidad que recibe una consulta de soporte y devuelve un **dato**, no un párrafo:
 
 ```text title="El pipeline completo"
-consulta ─▶ filtro (m23 lite) ─▶ prompt (m02) ─▶ modelo ─▶ JSON validado (m05)
-                                                              │
-                                   métricas (m16 lite) ◀──────┤
-                                   reintento + fallback (m09) ┘
+consulta ─▶ filtro de entrada ─▶ prompt ─▶ modelo ─▶ JSON validado
+            (versión simple)     (c02)               (c05)
+                                                        │
+       estimación de coste (regla de servilleta) ◀─────┤
+       reintento + fallback (c09) ──────────────────────┘
 ```
+
+Las dos piezas sin código propio —el **filtro de entrada** y la **estimación de coste**— son versiones de juguete; las serias llegan más adelante, en [seguridad en capas](/concepto/23-seguridad-red-teaming) y [observabilidad y costo](/concepto/16-observabilidad-y-costo). Los códigos entre paréntesis solo señalan de qué lección salió cada pieza que **ya viste**.
 
 <Box kind="def" label="◈ La idea que lo sostiene todo: el contrato">
 
@@ -39,11 +42,11 @@ for intento in range(1, intentos + 1):
             metricas["uso_fallback"] = True
 ```
 
-Reintentar aquí **sí** tiene sentido (m09): el fallo típico es que el modelo devuelva mal el formato *esta vez* — es transitorio, no un bug tuyo. Pero reintentar no es infinito: cuando se agota, la respuesta segura dice *"te contactará un agente"* y marca `requiere_humano=True`. **Fallar hacia el humano, no hacia el silencio.**
+Reintentar aquí **sí** tiene sentido (c09): el fallo típico es que el modelo devuelva mal el formato *esta vez* — es transitorio, no un bug tuyo. Pero reintentar no es infinito: cuando se agota, la respuesta segura dice *"te contactará un agente"* y marca `requiere_humano=True`. **Fallar hacia el humano, no hacia el silencio.**
 
 <Box kind="warn" label="▲ El filtro de entrada de aquí es un juguete, y hay que decirlo">
 
-`filtro_entrada()` es una **lista negra de tres patrones**. Sirve para que veas *dónde* va la primera capa en el pipeline (antes del modelo: lo que se bloquea no se paga). Pero una lista negra se rodea parafraseando, y por eso el [m23](/modulo/23-seguridad-red-teaming) enseña la versión seria: seguridad **en capas**, separar datos de instrucciones y mínimo privilegio. No te lleves de aquí "con esto ya estoy protegido".
+`filtro_entrada()` es una **lista negra de tres patrones**. Sirve para que veas *dónde* va la primera capa en el pipeline (antes del modelo: lo que se bloquea no se paga). Pero una lista negra se rodea parafraseando, y por eso el [c23](/concepto/23-seguridad-red-teaming) enseña la versión seria: seguridad **en capas**, separar datos de instrucciones y mínimo privilegio. No te lleves de aquí "con esto ya estoy protegido".
 
 </Box>
 
@@ -83,7 +86,7 @@ Fíjate en la última línea: cuando el modelo devuelve texto suelto en vez de J
 
 1. **Añade una tarea más**: un campo `idioma` al contrato y haz que el filtro no lo rompa. ¿Qué test falla primero?
 2. **Rompe el contrato a propósito**: haz que `modelo_demo` devuelva `urgencia: 0` y comprueba que el sistema escala en vez de aceptarlo.
-3. **Mide de verdad**: sustituye `estimar_tokens` por el `usage_metadata` real cuando tengas llave ([m16](/modulo/16-observabilidad-y-costo)) y compara cuánto se desviaba la regla de servilleta.
+3. **Mide de verdad**: sustituye `estimar_tokens` por el `usage_metadata` real cuando tengas llave ([c16](/concepto/16-observabilidad-y-costo)) y compara cuánto se desviaba la regla de servilleta.
 
 <Solution summary="Ver pistas para los tres retos">
 
@@ -110,7 +113,7 @@ assert salida["metricas"]["uso_fallback"] is True     # el contrato lo salvó
 # 3) Con un modelo real, el número exacto viene en el mensaje, no de la regla de 4:
 #    resp = llm.invoke(prompt)        # resp es un AIMessage
 #    resp.usage_metadata              # {'input_tokens': .., 'output_tokens': ..}
-#    …usas esos valores en vez de estimar_tokens() (m16).
+#    …usas esos valores en vez de estimar_tokens() (c16).
 ```
 
 </Solution>
@@ -120,7 +123,7 @@ assert salida["metricas"]["uso_fallback"] is True     # el contrato lo salvó
 <Avoid label="⛔ Cuándo NO montar todo este andamiaje">
 
 - **Para una consulta suelta y manual.** Si vas a leer tú la respuesta, no necesitas contrato ni fallback: pide texto y ya. Esto se justifica cuando **otro código** consume la salida.
-- **Confiando en el reintento para arreglar un mal prompt.** Reintentar cura fallos *transitorios* de formato. Si el modelo se equivoca siempre igual, el problema es tu prompt o tu contrato — reintentar solo te cobra tres veces el mismo error (m09).
+- **Confiando en el reintento para arreglar un mal prompt.** Reintentar cura fallos *transitorios* de formato. Si el modelo se equivoca siempre igual, el problema es tu prompt o tu contrato — reintentar solo te cobra tres veces el mismo error (c09).
 - **Estimando costes con la regla de 4 caracteres.** Sirve para intuir la magnitud, no para presupuestar. El número real lo da el proveedor.
 
 </Avoid>
@@ -129,10 +132,46 @@ assert salida["metricas"]["uso_fallback"] is True     # el contrato lo salvó
 
 - Explicar qué es un **contrato** y por qué validar no es opcional cuando otro código consume la salida.
 - Decir qué hace el sistema cuando el modelo devuelve algo inválido, y por qué el fallback marca `requiere_humano`.
-- Señalar por qué el filtro va **antes** del modelo y por qué el de este módulo no basta.
+- Señalar por qué el filtro va **antes** del modelo y por qué el de este concepto no basta.
 - Justificar por qué el modelo entra por parámetro y qué te compra eso en los tests.
 
 </Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 09b">
+
+<Question>
+  <Prompt>1 · El modelo devuelve `{"categoria": "otro", "urgencia": 99, …}`. Es JSON perfectamente válido. ¿Lo aceptas?</Prompt>
+  <Option>Sí: si el JSON parsea, el contrato se cumplió</Option>
+  <Option ok>No: el contrato no es "que sea JSON", es que respete el molde — `Field(ge=1, le=5)` lo rechaza</Option>
+  <Option>Sí, pero recortando el valor a 5 antes de guardarlo</Option>
+  <Feedback>Recortar en silencio esconde el fallo. Pydantic lo rechaza, `procesar()` reintenta y, si insiste, escala a un humano (Concepto 09b).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · Se agotan los reintentos y el modelo sigue devolviendo basura. ¿Qué devuelve el sistema?</Prompt>
+  <Option>Lanza una excepción para que el llamador decida</Option>
+  <Option>La última respuesta del modelo, aunque no valide</Option>
+  <Option ok>Una respuesta segura con `requiere_humano=True`, y marca `uso_fallback` en las métricas</Option>
+  <Feedback>Fallar hacia el humano, no hacia el silencio. Y la métrica queda registrada para que sepas cuántas veces pasó (Concepto 09b).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · ¿Por qué `procesar(consulta, modelo)` recibe el modelo por parámetro en vez de crearlo dentro?</Prompt>
+  <Option>Porque así se reutiliza la conexión y gastas menos cuota</Option>
+  <Option ok>Porque puedes inyectar un doble que recita un guion: tests repetibles, sin llave y sin red</Option>
+  <Option>Porque LangChain no permite instanciar modelos dentro de una función</Option>
+  <Feedback>La inyección de dependencias no es ceremonia: es lo que te deja probar la lógica sin pagar tokens. Es la misma disciplina del [c17b](/concepto/17b-tests-y-ci) y del capstone.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · El `filtro_entrada()` va antes del modelo. ¿Te deja protegido?</Prompt>
+  <Option>Sí: lo que se bloquea antes del modelo no puede hacer daño</Option>
+  <Option ok>No: es una lista negra de tres patrones, y una lista negra se rodea parafraseando</Option>
+  <Option>Sí, mientras subas el filtro a la salida también</Option>
+  <Feedback>El sitio es correcto (antes del modelo: lo que se bloquea no se paga), pero la técnica es de juguete. La versión seria —capas, separar datos de instrucciones, mínimo privilegio— está en el [c23](/concepto/23-seguridad-red-teaming).</Feedback>
+</Question>
+
+</Quiz>
 
 <Recap level={2} label="↺ En una frase">
 

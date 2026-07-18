@@ -32,11 +32,11 @@ El orquestador: agentes que piensan en ciclo (pensar → actuar → observar), r
 
 ### Cómo estudiar este curso (plan sugerido)
 
-El curso está pensado para **13 sesiones de ~90 minutos** + el proyecto final. La regla de oro: cada módulo se estudia *corriendo su ejemplo*, no solo leyéndolo — y no avances de nivel sin pasar su **quiz de autoevaluación**. Marca cada módulo completado (el botón al final de cada uno): tu avance se guarda en este navegador.
+El curso está pensado para **13 sesiones de ~90 minutos** + el proyecto final. La regla de oro: cada concepto se estudia *corriendo su ejemplo*, no solo leyéndolo — y no avances de nivel sin pasar su **quiz de autoevaluación**. Marca cada concepto completado (el botón al final de cada uno): tu avance se guarda en este navegador.
 
 Y cuando termines un nivel, haz sus [ejercicios](/recurso/ejercicios): leer código no enseña a escribirlo. Cada uno trae pistas progresivas y un criterio de aceptación que puedes verificar tú mismo.
 
-| Sesión | Módulos | Qué logras |
+| Sesión | Conceptos | Qué logras |
 | --- | --- | --- |
 | 1 | 00 + 0b | Entorno instalado y el Python mínimo para leer todo lo demás. |
 | 2 | 01 · 02 | Hablas con el modelo y armas tu primera cadena LCEL. |
@@ -51,7 +51,7 @@ Y cuando termines un nivel, haz sus [ejercicios](/recurso/ejercicios): leer cód
 | 10 | 18b · 19 · 20 | Elegir modelo/proveedor con criterio, Spec-Driven Development + verificador, y RAG avanzado (multi-query + RAG-Fusion). |
 | 11 | 21 · 22 · 23 | Fine-tuning vs RAG, entrada multimodal (texto + imagen) y blindar el prompt (guardrails / red-teaming OWASP). |
 | 12 | 24 · 24b · 25 · 26 · 26b | Vector DBs en producción, feedback + A/B de prompts, chat por SSE, el mapa del ecosistema y prompt engineering medible. |
-| 13 | 27 · 28 · 29 + entrevista | Abres la caja del LLM (tokens, atención, RLHF/DPO, inferencia), entiendes por qué alucina, cierras con el [caso real de retail](/modulo/29-caso-real-2-retail) (asistente de compras sobre un catálogo vivo) y practicas el [banco de preguntas y los casos de system design](/recurso/entrevista) de AI Engineer. |
+| 13 | 27 · 28 · 29 + entrevista | Abres la caja del LLM (tokens, atención, RLHF/DPO, inferencia), entiendes por qué alucina, cierras con el [caso real de retail](/concepto/29-caso-real-2-retail) (asistente de compras sobre un catálogo vivo) y practicas el [banco de preguntas y los casos de system design](/recurso/entrevista) de AI Engineer. |
 
 ### Antes de empezar: prepara tu computadora
 
@@ -198,7 +198,7 @@ La cuota gratuita de Gemini se agota en una tarde de práctica: verás un `429 R
 
 </Box>
 
-Para empezar, con Gemini o Groq te basta. Pero el conmutador entiende **más proveedores** — `openai`, `anthropic` (Claude), `openrouter` y `deepseek`, además de `ollama` en tu máquina — todos con la misma línea del `.env`. Cuándo y por qué elegir cada uno (pago vs. open weights, precios reales, dónde corre) lo ves en el [Módulo 18b · Elegir modelo y proveedor](/modulo/18b-elegir-modelo-y-proveedor).
+Para empezar, con Gemini o Groq te basta. Pero el conmutador entiende **más proveedores** — `openai`, `anthropic` (Claude), `openrouter` y `deepseek`, además de `ollama` en tu máquina — todos con la misma línea del `.env`. Cuándo y por qué elegir cada uno (pago vs. open weights, precios reales, dónde corre) lo ves en el [Concepto 18b · Elegir modelo y proveedor](/concepto/18b-elegir-modelo-y-proveedor).
 
 #### Opción A · Gemini
 
@@ -261,7 +261,7 @@ No es que LangChain tenga un adaptador por proveedor: es que **el mercado conver
 
 **1. El bloque `<think>`.** `qwen/qwen3-32b` es un **modelo de razonamiento**: antes de responder escribe su cadena de pensamiento, y Groq la devuelve *dentro* del contenido, envuelta en `<think>…</think>`. Sin tratarlo, todas las salidas del curso saldrían con ese ruido delante. `crear_llm()` envía `reasoning_format: "hidden"` y Groq lo descarta.
 
-**2. La salida estructurada.** Por defecto, `with_structured_output()` pide `response_format: json_schema`. OpenAI lo soporta; **Groq solo en algunos modelos**, y `qwen3-32b` no está entre ellos: devolvía un `400` y el [Módulo 05](/modulo/05-salida-estructurada) se caía en seco. `crear_llm()` usa `method="function_calling"`, que consigue lo mismo declarando una herramienta con la forma del esquema.
+**2. La salida estructurada.** Por defecto, `with_structured_output()` pide `response_format: json_schema`. OpenAI lo soporta; **Groq solo en algunos modelos**, y `qwen3-32b` no está entre ellos: devolvía un `400` y el [Concepto 05](/concepto/05-salida-estructurada) se caía en seco. `crear_llm()` usa `method="function_calling"`, que consigue lo mismo declarando una herramienta con la forma del esquema.
 
 Los dos parches son **específicos de Groq** y condicionales: `reasoning_format` solo se manda a modelos de razonamiento, porque a `llama-3.3-70b` le provoca un `400`. Esto es exactamente el trabajo invisible que ahorra una fábrica de modelos: si cada ejemplo instanciara el suyo, tendrías que recordar los dos parches diecinueve veces.
 
@@ -269,7 +269,7 @@ Los dos parches son **específicos de Groq** y condicionales: `reasoning_format`
 
 #### El RAG no se salva: los embeddings y `fastembed`
 
-Esto no lo vas a entender del todo hasta el [Módulo 11](/modulo/11-rag-profesional), y no pasa nada: **déjalo puesto en el `.env` y sigue**. Allí se explica qué es `fastembed` y por qué existe. Lo mínimo que necesitas saber ahora:
+Esto no lo vas a entender del todo hasta el [Concepto 11](/concepto/11-rag-profesional), y no pasa nada: **déjalo puesto en el `.env` y sigue**. Allí se explica qué es `fastembed` y por qué existe. Lo mínimo que necesitas saber ahora:
 
 Además del modelo que *conversa*, el RAG usa un segundo modelo que convierte texto en números (**embeddings**) para poder buscar por significado. Ese segundo modelo **no** se cambia con `LLM_PROVIDER`, por dos razones:
 
@@ -337,19 +337,19 @@ Si el último comando dice `No module named 'dotenv'`, no es tu código: te falt
 
 ### 📋 Los ejemplos de referencia
 
-Cada módulo trae su código completo en la propia guía, y además existe una versión **autónoma y comentada línea por línea** publicada en el repositorio del curso. Verás el aviso *"📋 Copia y ejecuta"* en cada módulo con el nombre de su archivo: [github.com/Kratos2210/cursoIA](https://github.com/Kratos2210/cursoIA/tree/main/curso_ejemplos).
+Cada concepto trae su código completo en la propia guía, y además existe una versión **autónoma y comentada línea por línea** publicada en el repositorio del curso. Verás el aviso *"📋 Copia y ejecuta"* en cada concepto con el nombre de su archivo: [github.com/Kratos2210/cursoIA](https://github.com/Kratos2210/cursoIA/tree/main/curso_ejemplos).
 
 <Box kind="warn" label="▲ Todo el curso se hace en mi-curso-ia/">
 
-No tienes que clonar nada ni cambiar de carpeta. **Desde aquí hasta el último módulo trabajas en la carpeta que creaste en el paso anterior**, escribiendo tú cada archivo. Cada módulo enlaza su ejemplo ejecutable para que lo *leas* cuando te atasques o compares tu solución con la de referencia — nunca para reemplazar el rato que pasas escribiendo el código.
+No tienes que clonar nada ni cambiar de carpeta. **Desde aquí hasta el último concepto trabajas en la carpeta que creaste en el paso anterior**, escribiendo tú cada archivo. Cada concepto enlaza su ejemplo ejecutable para que lo *leas* cuando te atasques o compares tu solución con la de referencia — nunca para reemplazar el rato que pasas escribiendo el código.
 
-Tu único comando de trabajo, siempre el mismo — cambia el nombre del archivo según el módulo:
+Tu único comando de trabajo, siempre el mismo — cambia el nombre del archivo según el concepto:
 
 ```bash title="terminal · el bucle de todo el curso"
 cd mi-curso-ia              # ya estás aquí desde el paso anterior
 uv run python main.py      # el archivo que uv init te creó
 
-# Y a partir del Módulo 01, el archivo que escribas tú:
+# Y a partir del Concepto 01, el archivo que escribas tú:
 # uv run python llmodel.py
 ```
 
@@ -363,7 +363,7 @@ El código correcto lo vas a tener igual — está a un clic. Lo que no vuelve e
 
 ### Los 7 ejemplos que corren sin llave (y sin cuota)
 
-El plan gratuito de Gemini se agota (el famoso `429`). Por eso siete temas del curso están diseñados para correr **completamente offline**: `07`, `12`, `13b`, `14`, `15`, `16` y `16b`. No es un premio de consolación: los módulos 12 y 13b, los dos más densos en ingeniería de RAG y agentes, están entre ellos. Si te quedaste sin cuota, ese es tu camino.
+El plan gratuito de Gemini se agota (el famoso `429`). Por eso siete temas del curso están diseñados para correr **completamente offline**: `07`, `12`, `13b`, `14`, `15`, `16` y `16b`. No es un premio de consolación: los conceptos 12 y 13b, los dos más densos en ingeniería de RAG y agentes, están entre ellos. Si te quedaste sin cuota, ese es tu camino.
 
 ### Las librerías que usaremos (y para qué sirve cada una)
 
@@ -383,6 +383,42 @@ El plan gratuito de Gemini se agota (el famoso `429`). Por eso siete temas del c
 | `langgraph.prebuilt` | Agentes listos: `create_react_agent`, `ToolNode`. |
 | `langgraph.graph` | Construir agentes a mano: `StateGraph`, `START`, `END`. |
 | `langgraph.checkpoint.memory` | La memoria del agente (`MemorySaver`), por `thread_id`. |
+
+<Quiz title="✅ Autoevaluación · Concepto 00">
+
+<Question>
+  <Prompt>1 · Corres `uv run python -c "from dotenv import load_dotenv"` y sale `ModuleNotFoundError: No module named 'dotenv'`. ¿Qué pasó?</Prompt>
+  <Option>Tu llave API está mal escrita en el `.env`</Option>
+  <Option ok>No corriste los `uv add`, o estás parado en otra carpeta</Option>
+  <Option>`uv` falló al instalarse y hay que reinstalarlo</Option>
+  <Feedback>`uv run` instala *solo* lo que declara el `pyproject.toml` más cercano hacia arriba. Si la lista de dependencias está vacía, crea el entorno y no pone nada dentro (Concepto 00).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Por qué el `.env` nunca se sube a git?</Prompt>
+  <Option>Porque pesa demasiado para un repositorio</Option>
+  <Option>Porque cada máquina necesita rutas distintas</Option>
+  <Option ok>Porque guarda tu llave API, que se trata como cualquier contraseña</Option>
+  <Feedback>Una llave publicada es una llave comprometida: por eso vive en el `.env` y el `.gitignore` lo deja fuera. Si alguien la ve, revócala (Concepto 00).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Cambias `LLM_PROVIDER=groq` en el `.env`. ¿Tu RAG pasa también a vectorizar con Groq?</Prompt>
+  <Option>Sí: esa variable controla todos los modelos del proyecto</Option>
+  <Option ok>No: los embeddings tienen su propia variable, y Groq ni siquiera los ofrece</Option>
+  <Option>Sí, pero hay que borrar el vector store primero</Option>
+  <Feedback>`EMBEDDINGS_PROVIDER` es una variable aparte justamente porque Groq no tiene endpoint de embeddings — y porque cambiar de motor invalida el índice entero (Concepto 11).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · ¿Qué ganas con que todos los ejemplos llamen a `util.crear_llm()` en vez de instanciar el modelo cada uno?</Prompt>
+  <Option>El modelo responde más rápido porque se reutiliza la conexión</Option>
+  <Option>Se gasta menos cuota porque las respuestas se cachean</Option>
+  <Option ok>Cambias de proveedor con una línea del `.env`, y los parches raros de cada uno viven en un solo sitio</Option>
+  <Feedback>Los dos arreglos de Groq (`reasoning_format` y `method="function_calling"`) están escritos una vez, no diecinueve. Ese es el trabajo invisible que ahorra una fábrica de modelos (Concepto 00).</Feedback>
+</Question>
+
+</Quiz>
 
 <Recap level={1} label="↺ En una frase">
 

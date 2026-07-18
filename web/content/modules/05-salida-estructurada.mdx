@@ -16,7 +16,7 @@ Es la frontera entre una demo y un sistema: un párrafo hay que leerlo; un objet
   <Term>Pydantic</Term>
   <Def>La librería con la que se declara la forma: una clase con campos tipados y descripciones. Esas descripciones **las lee el modelo** — son parte del prompt, no comentarios.</Def>
   <Term>with_structured_output(Modelo)</Term>
-  <Def>Envuelve al LLM para que su respuesta se ajuste al esquema y llegue ya convertida en una instancia de tu clase. Por debajo usa el mismo mecanismo que las herramientas (Módulo 07).</Def>
+  <Def>Envuelve al LLM para que su respuesta se ajuste al esquema y llegue ya convertida en una instancia de tu clase. Por debajo usa el mismo mecanismo que las herramientas (Concepto 07).</Def>
   <Term>tagging / extracción</Term>
   <Def>Los dos usos clásicos. *Tagging*: clasificar en casillas que tú definiste (sentimiento, idioma, severidad). *Extracción*: sacar entidades de un texto (nombres, montos, fechas) a una lista de objetos.</Def>
 </DefList>
@@ -114,6 +114,42 @@ print(extractor.invoke("Sí tenemos la camilla plegable, cuesta 350 soles"))
 - Explicar por qué un campo obligatorio ausente invita a alucinar y cuándo marcarlo `Optional`.
 
 </Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 05">
+
+<Question>
+  <Prompt>1 · Declaras `edad: int` (obligatorio) y el texto no menciona ninguna edad. ¿Qué hace el modelo?</Prompt>
+  <Option>Devuelve el objeto con `edad = 0`</Option>
+  <Option>Lanza un error de validación de Pydantic</Option>
+  <Option ok>Se la inventa: tiene que rellenar el molde igual</Option>
+  <Feedback>Un molde que obliga a rellenar es un molde que invita a alucinar. Marca `Optional` con `default=None` todo lo que *pueda* faltar (Concepto 05).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Qué papel juega el texto de `Field(description="Edad si se menciona")`?</Prompt>
+  <Option>Es un comentario para quien lea tu código</Option>
+  <Option ok>Lo lee el modelo: forma parte del prompt que recibe</Option>
+  <Option>Es el mensaje de error si el campo viene mal</Option>
+  <Feedback>Igual que el docstring de una `@tool` (Concepto 07), esas descripciones son instrucciones, no documentación. Escribirlas vagas es programar mal.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · ¿Cuándo NO conviene forzar salida estructurada?</Prompt>
+  <Option>Cuando el texto de entrada es muy largo</Option>
+  <Option ok>Cuando la respuesta la va a leer un humano: un chat, un resumen, una explicación</Option>
+  <Option>Cuando trabajas con un modelo de Groq</Option>
+  <Feedback>La salida estructurada es para lo que consume *otra pieza de software*: una base de datos, un `if`, otra API. Para prosa, estorba (Concepto 05).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Tu esquema tiene veinte campos y tres niveles de anidamiento, y el modelo falla mucho. ¿Qué haces?</Prompt>
+  <Option>Subes la temperatura para que tenga más margen</Option>
+  <Option ok>Partes la extracción en varios pasos pequeños</Option>
+  <Option>Pides el JSON en el prompt en vez de usar el esquema</Option>
+  <Feedback>Un molde enorme ahoga al modelo. Varias extracciones acotadas aciertan más que una gigante — y cada una se valida por separado (Concepto 05).</Feedback>
+</Question>
+
+</Quiz>
 
 <Recap level={2} label="↺ En una frase">
 

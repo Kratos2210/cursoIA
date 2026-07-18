@@ -1,4 +1,4 @@
-El [m26](/modulo/26-mapa-del-ecosistema) te enseñó el mapa de frameworks y te mostró el **"sabor"** de otras APIs con snippets **que no se ejecutaban**. Este anexo los vuelve **ejecutables**: correr LlamaIndex y CrewAI de verdad fija mucho mejor la lección que solo leerlos. Y la lección no es "cuál es mejor", es **reconocer la misma idea con otra piel**.
+El [c26](/concepto/26-mapa-del-ecosistema) te enseñó el mapa de frameworks y te mostró el **"sabor"** de otras APIs con snippets **que no se ejecutaban**. Este anexo los vuelve **ejecutables**: correr LlamaIndex y CrewAI de verdad fija mucho mejor la lección que solo leerlos. Y la lección no es "cuál es mejor", es **reconocer la misma idea con otra piel**.
 
 <Box kind="warn" label="▲ Anexo opcional, fuera del 'offline-first'">
 
@@ -8,7 +8,7 @@ LlamaIndex y CrewAI son **ecosistemas propios** (no LangChain): muchas dependenc
 
 ### LlamaIndex: el mismo RAG, con menos andamiaje
 
-Lo que en el [m11](/modulo/11-rag-profesional) fueron varias piezas (loader → splitter → embeddings → vector store → recuperar → prompt) LlamaIndex lo resuelve en tres líneas. **"Los datos primero"**:
+Lo que en el [c11](/concepto/11-rag-profesional) fueron varias piezas (loader → splitter → embeddings → vector store → recuperar → prompt) LlamaIndex lo resuelve en tres líneas. **"Los datos primero"**:
 
 ```python title="frameworks/rag_llamaindex.py · el núcleo"
 documentos = SimpleDirectoryReader(input_files=[str(CORPUS)]).load_data()
@@ -17,15 +17,15 @@ motor = indice.as_query_engine(similarity_top_k=3)     # recuperar + prompt + LL
 respuesta = motor.query("¿Cuál es el horario de atención?")
 ```
 
-<Box kind="def" label="◈ ¿Es el mismo RAG del m11? Sí">
+<Box kind="def" label="◈ ¿Es el mismo RAG del c11? Sí">
 
-`as_query_engine` hace **recuperar + montar prompt + llamar al LLM** — exactamente el pipeline del m11. Lo que cambia es cuánto **ves y tocas**: aquí `from_documents` elige el troceado y el índice por ti. Menos código, menos control. El curso usa los **mismos embeddings fastembed locales** (sin cuota) para que el RAG no dependa de que tu proveedor de chat ofrezca embeddings.
+`as_query_engine` hace **recuperar + montar prompt + llamar al LLM** — exactamente el pipeline del c11. Lo que cambia es cuánto **ves y tocas**: aquí `from_documents` elige el troceado y el índice por ti. Menos código, menos control. El curso usa los **mismos embeddings fastembed locales** (sin cuota) para que el RAG no dependa de que tu proveedor de chat ofrezca embeddings.
 
 </Box>
 
 ### CrewAI: describes roles, la "crew" coordina
 
-El [m15](/modulo/15-multiagente-supervisor) armó el patrón supervisor con un `StateGraph` a mano. CrewAI sube el nivel: das **roles y tareas** y él encadena. Sin grafo, sin estado, sin aristas a la vista:
+El [c15](/concepto/15-multiagente-supervisor) armó el patrón supervisor con un `StateGraph` a mano. CrewAI sube el nivel: das **roles y tareas** y él encadena. Sin grafo, sin estado, sin aristas a la vista:
 
 ```python title="frameworks/crew_crewai.py · roles en vez de grafo"
 investigador = Agent(role="Investigador", goal="Reunir 3 datos fiables", llm=llm, ...)
@@ -34,7 +34,7 @@ redactar = Task(description="...", agent=redactor, context=[investigar])  # reci
 Crew(agents=[...], tasks=[...], process=Process.sequential).kickoff()
 ```
 
-<Box kind="analogy" label="◆ Furgoneta manual vs bus con conductor (del m26)">
+<Box kind="analogy" label="◆ Furgoneta manual vs bus con conductor (del c26)">
 
 LangGraph es la *furgoneta con caja manual*: ves cada marcha (nodo, arista, estado) y la metes tú. CrewAI es el *bus con conductor*: subes, dices el destino en roles y él coordina. Cómodo para prototipar rápido una colaboración legible; incómodo el día que necesites **auditar cada transición** — el alto nivel te esconde el volante.
 
@@ -42,23 +42,83 @@ LangGraph es la *furgoneta con caja manual*: ves cada marcha (nodo, arista, esta
 
 <Avoid label="⛔ La trampa de correr otro framework y sacar la conclusión equivocada">
 
-- **Creer que "menos código" es "mejor".** Menos código es menos control. Para una demo, LlamaIndex/CrewAI vuelan; para producción auditable, el m15 en LangGraph te deja ver y testear cada paso.
-- **Olvidar que la disciplina es tuya.** DI, `pytest -m offline` y observabilidad no vienen del framework (m26): los montas tú alrededor de casi cualquiera. No los pierdas al cambiar de piel.
+- **Creer que "menos código" es "mejor".** Menos código es menos control. Para una demo, LlamaIndex/CrewAI vuelan; para producción auditable, el c15 en LangGraph te deja ver y testear cada paso.
+- **Olvidar que la disciplina es tuya.** DI, `pytest -m offline` y observabilidad no vienen del framework (c26): los montas tú alrededor de casi cualquiera. No los pierdas al cambiar de piel.
 - **Migrar por hype.** Cambiar de framework no es gratis: reescribes pegamento, tests y tracing. Corre estos para *entenderlos*, no para saltar sin motivo.
 
 </Avoid>
 
+<Box kind="practice" label="▸ Para practicar">
+
+**Mini-reto** · haz visible lo que `from_documents` decide por ti. Corre `frameworks/rag_llamaindex.py` y `11_rag.py` con la **misma pregunta** sobre `datos_rag.txt`, y levanta una tabla de las decisiones del pipeline RAG marcando en cada framework si son **explícitas** (tú las escribes) u **ocultas** (el framework las eligió). Es lectura si no tienes cuota: la tabla sale del código, no de la ejecución.
+
+**Criterio de aceptación:** identificas al menos cuatro decisiones —troceado, embeddings, cuántos fragmentos se recuperan y el prompt que envuelve el contexto— y para cada una nombras **dónde** se toma en cada framework: la línea del c11 o el default de LlamaIndex que la absorbe. Si una decisión no la encuentras en LlamaIndex, esa es exactamente la respuesta.
+
+<Solution summary="Ver una solución">
+
+| Decisión | En el c11 (LangChain) | En LlamaIndex | ¿Quién manda? |
+| --- | --- | --- | --- |
+| Troceado | `RecursiveCharacterTextSplitter(chunk_size=…, chunk_overlap=…)`, con los números a la vista | Dentro de `from_documents` — hay un default de chunking que no escribiste | Explícito vs **oculto** |
+| Embeddings | El objeto que le pasas al vector store | `Settings.embed_model` (aquí, fastembed local para no depender de cuota) | Explícito en ambos — es config global vs argumento |
+| Cuántos fragmentos | `search_kwargs={"k": 3}` en el retriever | `as_query_engine(similarity_top_k=3)` | Explícito en ambos |
+| El prompt del RAG | Lo escribes tú: el `ChatPromptTemplate` con el contexto | Dentro del query engine — hay una plantilla por defecto que nunca ves | Explícito vs **oculto** |
+| Postprocesado / re-ranking | Lo montas tú (c12) | `node_postprocessors`, opcional y también con defaults | Explícito vs opcional |
+
+Las dos filas que importan son la primera y la cuarta: **el troceado y el prompt son las dos palancas que más mueven la calidad de un RAG**, y son justo las que `from_documents` + `as_query_engine` te esconden. No está mal —para una demo es una ventaja enorme—, pero explica el tradeoff del [c26](/concepto/26-mapa-del-ecosistema) mejor que cualquier tabla comparativa: el día que el RAG responda regular, en el c11 sabes qué tocar; aquí primero tienes que averiguar qué eligió el framework por ti.
+
+Y el corolario honesto: LlamaIndex **también** te deja bajar (`node_parser`, `text_qa_template`). La diferencia no es que no puedas, es que el camino por defecto no te obliga a decidir — y lo que no decides, no lo mides.
+
+</Solution>
+
+</Box>
+
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 
-- Mapear `VectorStoreIndex.from_documents` + `as_query_engine` al pipeline RAG del m11.
-- Explicar qué esconde CrewAI respecto al `StateGraph` del m15 (grafo, estado, transiciones).
-- Enunciar el tradeoff del m26 con un ejemplo que corriste, no de memoria.
+- Mapear `VectorStoreIndex.from_documents` + `as_query_engine` al pipeline RAG del c11.
+- Explicar qué esconde CrewAI respecto al `StateGraph` del c15 (grafo, estado, transiciones).
+- Enunciar el tradeoff del c26 con un ejemplo que corriste, no de memoria.
 - Justificar por qué DI/tests/observabilidad siguen siendo tuyos, no del framework.
 
 </Checkpoint>
 
+<Quiz title="✅ Autoevaluación · Concepto 32">
+
+<Question>
+  <Prompt>1 · ¿Qué hace `indice.as_query_engine(...)` por debajo?</Prompt>
+  <Option>Solo recupera los fragmentos: el prompt y la llamada al LLM las escribes tú</Option>
+  <Option ok>Recuperar + montar el prompt + llamar al LLM — el pipeline entero del c11 en una línea</Option>
+  <Option>Convierte el índice a un formato consultable por SQL</Option>
+  <Feedback>Es el mismo RAG con otra piel. Lo que cambia no es lo que ocurre, sino cuánto ves y puedes tocar de lo que ocurre.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · Frente al `StateGraph` del c15, ¿qué te esconde CrewAI?</Prompt>
+  <Option>Las llamadas al LLM, que pasan por su propio proveedor</Option>
+  <Option ok>El grafo, el estado compartido y las transiciones: describes roles y tareas, y la coordinación queda implícita</Option>
+  <Option>Los prompts de cada agente, que no son configurables</Option>
+  <Feedback>Con `Process.sequential` y `context=[...]` describes *qué* recibe cada tarea, no *cómo* fluye el estado. Cómodo para prototipar, incómodo el día que toque auditar cada transición.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Migras un servicio en producción de LangGraph a CrewAI porque son cinco veces menos líneas. ¿Cuál es el riesgo principal?</Prompt>
+  <Option>Que CrewAI no soporte los modelos que ya usas</Option>
+  <Option ok>Que menos código sea menos control: pierdes visibilidad sobre los pasos que necesitas auditar y testear</Option>
+  <Option>Que el rendimiento caiga porque el alto nivel añade latencia</Option>
+  <Feedback>Y no es gratis además: reescribes pegamento, tests y tracing. Corre estos frameworks para entenderlos; migra solo con un motivo que no sea el hype.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Cambias de framework. ¿Qué se viene contigo?</Prompt>
+  <Option>Nada: cada framework trae su propia forma de hacer todo eso</Option>
+  <Option ok>La inyección de dependencias, los tests offline y la observabilidad — son disciplina tuya, no features del framework</Option>
+  <Option>Solo los prompts, que son texto plano y portable</Option>
+  <Feedback>Es la tesis del c26: la ergonomía la pone el framework, la ingeniería la pones tú. Lo fácil al cambiar de piel es perder esas tres cosas sin darte cuenta.</Feedback>
+</Question>
+
+</Quiz>
+
 <Recap level={4} label="↺ En una frase">
 
-Correr LlamaIndex (el RAG del m11 en tres líneas) y CrewAI (el supervisor del m15 en roles) te deja **sentir** el tradeoff del m26: cada framework decide la ergonomía del flujo, pero la disciplina de ingeniería —y la elección de cuándo abrir el capó— la pones tú. Anexo opcional, fuera del gate.<Arch>artefactos: `frameworks/rag_llamaindex.py` · `frameworks/crew_crewai.py` · extras `llamaindex`/`crewai` · ADR-0006</Arch>
+Correr LlamaIndex (el RAG del c11 en tres líneas) y CrewAI (el supervisor del c15 en roles) te deja **sentir** el tradeoff del c26: cada framework decide la ergonomía del flujo, pero la disciplina de ingeniería —y la elección de cuándo abrir el capó— la pones tú. Anexo opcional, fuera del gate.<Arch>artefactos: `frameworks/rag_llamaindex.py` · `frameworks/crew_crewai.py` · extras `llamaindex`/`crewai` · ADR-0006</Arch>
 
 </Recap>

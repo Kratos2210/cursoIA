@@ -1,7 +1,7 @@
 Cada concepto tiene un archivo donde practicarlo, un ejercicio que te obliga a
  escribirlo y — la columna que de verdad importa — **un test que lo defiende**.
  Esa última columna es lo que convierte esto en material de estudio y no en un montón de
- scripts: si rompes un concepto, algo se pone rojo y te dice dónde (Módulo 17b).
+ scripts: si rompes un concepto, algo se pone rojo y te dice dónde (Concepto 17b).
 
 | Concepto | Ejemplo | Ejercicio | Test que lo protege |
 | --- | --- | --- | --- |
@@ -11,11 +11,11 @@ Cada concepto tiene un archivo donde practicarlo, un ejercicio que te obliga a
 | Runnables / LCEL | `06` | — | `test_offline.py::TestTema06Runnables` |
 | Herramientas (`@tool`) | `07` · `08` | [07](/recurso/ejercicios) | `test_offline.py::TestTema07Herramientas` |
 | Resiliencia (429, retry) | `09` | — | `test_util.py::TestEsErrorCuota` |
-| 🏗 Proyecto: contrato JSON + filtro + métricas + fallback | `09b` | [09b](/modulo/09b-proyecto-utilidad-texto) | `test_offline.py::TestTema09bProyectoTexto` (6 tests) |
+| 🏗 Proyecto: contrato JSON + filtro + métricas + fallback | `09b` | [09b](/concepto/09b-proyecto-utilidad-texto) | `test_offline.py::TestTema09bProyectoTexto` (6 tests) |
 | Agente ReAct | `10` | — | `test_agente.py::TestAgenteCompleto` |
 | RAG: trocear y unir | `11` | [11](/recurso/ejercicios) | `test_offline.py::TestTema11Rag` |
 | BM25 · coseno · RRF · re-rank | `12` | [12](/recurso/ejercicios) | `test_offline.py::TestTema12*` (25 tests) |
-| Re-ranker REAL (cross-encoder ONNX, sin torch) | `rerank/rerank_real.py` | [12](/modulo/12-recuperar-re-rankear) | — (companion, fuera del gate, ADR-0008) |
+| Re-ranker REAL (cross-encoder ONNX, sin torch) | `rerank/rerank_real.py` | [12](/concepto/12-recuperar-re-rankear) | — (companion, fuera del gate, ADR-0008) |
 | `StateGraph` (nodos y aristas) | `13` | — | `test_offline.py::TestTema13bHumanInTheLoop` |
 | Human-in-the-loop | `13b` | [13](/recurso/ejercicios) | `test_offline.py::TestTema13bHumanInTheLoop` |
 | MCP (servidor + cliente) | `14` | [14](/recurso/ejercicios) | `test_offline.py::TestTema14Mcp` |
@@ -23,33 +23,33 @@ Cada concepto tiene un archivo donde practicarlo, un ejercicio que te obliga a
 | Evaluación con dataset | `16` | [16](/recurso/ejercicios) | *el propio ejemplo es la métrica* |
 | Tokens, coste y tracing | `16b` | [16b](/recurso/ejercicios) | `test_offline.py::TestTema16bObservabilidad` |
 | Servir por HTTP | `17` | [17](/recurso/ejercicios) | `test_imports.py` |
-| Elegir modelo y proveedor | `util.py` | [18b](/modulo/18b-elegir-modelo-y-proveedor) | `test_util.py::TestProveedoresNuevos` |
+| Elegir modelo y proveedor | `util.py` | [18b](/concepto/18b-elegir-modelo-y-proveedor) | `test_util.py::TestProveedoresNuevos` |
 | Auditoría / trazabilidad | `proyecto_final/audit.py` | [🏆](/recurso/ejercicios) | `proyecto_final/tests/test_audit.py` |
 | Inyección de dependencias | `proyecto_final/graph_builder.py` | [🏆](/recurso/ejercicios) | `proyecto_final/tests/test_agente.py` |
-| Spec-Driven Development (verificador) | `verificar_curso.py` | [19](/modulo/19-spec-driven-development) | `tests/test_verificar_curso.py` |
-| Multi-query y RAG-Fusion | `20` | [20](/modulo/20-rag-avanzado) | `test_offline.py::TestTema20*` |
-| Fine-tuning vs RAG | `21` | [21](/modulo/21-fine-tuning-vs-rag) | `test_offline.py::TestTema21*` |
-| Fine-tuning hands-on (LoRA/QLoRA en Colab) | `docs/notebooks/21b_lora_colab.ipynb` | [21b](/modulo/21b-fine-tuning-hands-on) | — (fuera del gate, ADR-0003) |
-| Multimodal (texto + imagen) | `22` | [22](/modulo/22-multimodal) | `test_offline.py::TestTema22*` |
-| Voz: audio de entrada y síntesis (TTS) | `22b` | [22](/modulo/22-multimodal) | `test_offline.py::TestTema22bVoz*` |
-| Agente de voz en tiempo real (Deepgram STT→LLM→TTS) | `voz/agente_voz_realtime.py` | [33](/modulo/33-agente-voz-realtime) | — (anexo, fuera del gate, ADR-0007) |
-| Seguridad y red-teaming (OWASP LLM) | `23` | [23](/modulo/23-seguridad-red-teaming) | `test_redteam.py` |
-| Vector DBs en producción (dedup · IVFFlat) | `24` | [24](/modulo/24-vector-dbs-en-produccion) | `test_offline.py::TestTema24*` |
-| DB vectorial REAL (Qdrant · HNSW · upsert idempotente) | `vectordb/qdrant_companion.py` | [24](/modulo/24-vector-dbs-en-produccion) | — (companion, fuera del gate, ADR-0009) |
-| Caché exacta vs semántica (TTL, llave por rol, hit rate) | `proyecto_llmops/cache/` | [16](/modulo/16-observabilidad-y-costo) | `proyecto_llmops/tests/test_cache.py` |
-| Feedback 👍/👎 y A/B de prompts | `proyecto_llmops/observability/feedback.py` | [24b](/modulo/24b-feedback-a-b) | `proyecto_llmops/tests` |
-| Frontend de chat con SSE (streaming) | `proyecto_llmops/app/static/chat.html` | [25](/modulo/25-frontend-chat-sse) | — |
-| Canal WhatsApp (webhook + EvolutionAPI) | `canales/whatsapp/webhook.py` | [31](/modulo/31-canal-whatsapp) | — (anexo, fuera del gate, ADR-0004) |
-| Orquestación low-code con n8n | `canales/n8n/agente_rag_whatsapp.json` | [31b](/modulo/31b-n8n-orquestacion) | — (anexo, fuera del gate, ADR-0005) |
-| Mapa del ecosistema (LangChain vs LlamaIndex · CrewAI · OpenAI Agents SDK) | — | [26](/modulo/26-mapa-del-ecosistema) | — |
-| Correr LlamaIndex y CrewAI (mismo RAG/supervisor, otra piel) | `frameworks/rag_llamaindex.py` · `frameworks/crew_crewai.py` | [32](/modulo/32-frameworks-llamaindex-crewai) | — (anexo, fuera del gate, ADR-0006) |
-| Prompt engineering (few-shot · CoT · self-consistency) | `26b` | [26b](/modulo/26b-prompt-engineering) | `test_offline.py::TestTema26b*` |
-| Mecánica del LLM (tokenización · softmax · muestreo · perplejidad) | `27` | [27](/modulo/27-fundamentos-del-llm) | `test_offline.py::TestTema27*` |
-| Arquitecturas e historia (transformer · encoder/decoder · RLHF · MoE) | — | [27b](/modulo/27b-arquitecturas-e-historia) | — |
-| Desafíos: alucinaciones y detección (SelfCheckGPT) | `28` | [28](/modulo/28-desafios-y-alucinaciones) | `test_offline.py::TestTema28*` |
-| Caso real 2: asistente de compras retail (ETL · grounding · eval) | `29` | [29](/modulo/29-caso-real-2-retail) | `test_offline.py::TestTema29*` |
-| Caso retail en producción (proyecto LLMOps) | `proyecto_retail/` | [29](/modulo/29-caso-real-2-retail#m29-proyecto) | `proyecto_retail/tests` |
-| Memoria de largo plazo (recordar entre conversaciones) | `30` | [30](/modulo/30-memoria-de-largo-plazo) | `test_offline.py::TestTema30*` |
+| Spec-Driven Development (verificador) | `verificar_curso.py` | [19](/concepto/19-spec-driven-development) | `tests/test_verificar_curso.py` |
+| Multi-query y RAG-Fusion | `20` | [20](/concepto/20-rag-avanzado) | `test_offline.py::TestTema20*` |
+| Fine-tuning vs RAG | `21` | [21](/concepto/21-fine-tuning-vs-rag) | `test_offline.py::TestTema21*` |
+| Fine-tuning hands-on (LoRA/QLoRA en Colab) | `docs/notebooks/21b_lora_colab.ipynb` | [21b](/concepto/21b-fine-tuning-hands-on) | — (fuera del gate, ADR-0003) |
+| Multimodal (texto + imagen) | `22` | [22](/concepto/22-multimodal) | `test_offline.py::TestTema22*` |
+| Voz: audio de entrada y síntesis (TTS) | `22b` | [22](/concepto/22-multimodal) | `test_offline.py::TestTema22bVoz*` |
+| Agente de voz en tiempo real (Deepgram STT→LLM→TTS) | `voz/agente_voz_realtime.py` | [33](/concepto/33-agente-voz-realtime) | — (anexo, fuera del gate, ADR-0007) |
+| Seguridad y red-teaming (OWASP LLM) | `23` | [23](/concepto/23-seguridad-red-teaming) | `test_redteam.py` |
+| Vector DBs en producción (dedup · IVFFlat) | `24` | [24](/concepto/24-vector-dbs-en-produccion) | `test_offline.py::TestTema24*` |
+| DB vectorial REAL (Qdrant · HNSW · upsert idempotente) | `vectordb/qdrant_companion.py` | [24](/concepto/24-vector-dbs-en-produccion) | — (companion, fuera del gate, ADR-0009) |
+| Caché exacta vs semántica (TTL, llave por rol, hit rate) | `proyecto_llmops/cache/` | [16](/concepto/16-observabilidad-y-costo) | `proyecto_llmops/tests/test_cache.py` |
+| Feedback 👍/👎 y A/B de prompts | `proyecto_llmops/observability/feedback.py` | [24b](/concepto/24b-feedback-a-b) | `proyecto_llmops/tests` |
+| Frontend de chat con SSE (streaming) | `proyecto_llmops/app/static/chat.html` | [25](/concepto/25-frontend-chat-sse) | — |
+| Canal WhatsApp (webhook + EvolutionAPI) | `canales/whatsapp/webhook.py` | [31](/concepto/31-canal-whatsapp) | — (anexo, fuera del gate, ADR-0004) |
+| Orquestación low-code con n8n | `canales/n8n/agente_rag_whatsapp.json` | [31b](/concepto/31b-n8n-orquestacion) | — (anexo, fuera del gate, ADR-0005) |
+| Mapa del ecosistema (LangChain vs LlamaIndex · CrewAI · OpenAI Agents SDK) | — | [26](/concepto/26-mapa-del-ecosistema) | — |
+| Correr LlamaIndex y CrewAI (mismo RAG/supervisor, otra piel) | `frameworks/rag_llamaindex.py` · `frameworks/crew_crewai.py` | [32](/concepto/32-frameworks-llamaindex-crewai) | — (anexo, fuera del gate, ADR-0006) |
+| Prompt engineering (few-shot · CoT · self-consistency) | `26b` | [26b](/concepto/26b-prompt-engineering) | `test_offline.py::TestTema26b*` |
+| Mecánica del LLM (tokenización · softmax · muestreo · perplejidad) | `27` | [27](/concepto/27-fundamentos-del-llm) | `test_offline.py::TestTema27*` |
+| Arquitecturas e historia (transformer · encoder/decoder · RLHF · MoE) | — | [27b](/concepto/27b-arquitecturas-e-historia) | — |
+| Desafíos: alucinaciones y detección (SelfCheckGPT) | `28` | [28](/concepto/28-desafios-y-alucinaciones) | `test_offline.py::TestTema28*` |
+| Caso real 2: asistente de compras retail (ETL · grounding · eval) | `29` | [29](/concepto/29-caso-real-2-retail) | `test_offline.py::TestTema29*` |
+| Caso retail en producción (proyecto LLMOps) | `proyecto_retail/` | [29](/concepto/29-caso-real-2-retail#c29-proyecto) | `proyecto_retail/tests` |
+| Memoria de largo plazo (recordar entre conversaciones) | `30` | [30](/concepto/30-memoria-de-largo-plazo) | `test_offline.py::TestTema30*` |
 
 <Box kind="analogy" label="◆ ¿Y tus experimentos previos?">
 
@@ -92,9 +92,9 @@ Los notebooks y scripts con los que empezaste (`lcel.ipynb`, `interfazunificada.
 | fastembed | Librería que ejecuta modelos de embeddings *en tu máquina*, sin API ni cuota. Usa ONNX Runtime en vez de PyTorch: ~70 MB en lugar de ~800 MB. |
 | ONNX | *Open Neural Network Exchange*: formato estándar para guardar un modelo ya entrenado, independiente de la librería que lo entrenó. El "PDF de los modelos". |
 | Inferencia | Usar un modelo ya entrenado para producir una salida. Lo contrario de *entrenamiento* (ajustar sus pesos). Casi todo lo que escribirás hace inferencia. |
-| Open weights | Modelo cuyos pesos se descargan y puedes ejecutar tú (Llama, Qwen, DeepSeek). No es lo mismo que "open source": suele publicarse el modelo entrenado, no los datos ni el código de entrenamiento. Ver [Módulo 18b](/modulo/18b-elegir-modelo-y-proveedor). |
+| Open weights | Modelo cuyos pesos se descargan y puedes ejecutar tú (Llama, Qwen, DeepSeek). No es lo mismo que "open source": suele publicarse el modelo entrenado, no los datos ni el código de entrenamiento. Ver [Concepto 18b](/concepto/18b-elegir-modelo-y-proveedor). |
 | Licencia de modelo | El contrato que dice qué puedes hacer con esos pesos. *Apache 2.0* (Qwen, DeepSeek) permite uso comercial libre; la *Llama Community License* pone restricciones. Revísala antes de construir un producto encima. |
-| AWS Bedrock | Servicio que da acceso a modelos de varios proveedores *desde dentro de tu cuenta de AWS*: IAM y factura unificadas, y los datos no salen de tu VPC. Equivalentes: Vertex (GCP), Azure AI Foundry. Ver [Módulo 18b](/modulo/18b-elegir-modelo-y-proveedor). |
+| AWS Bedrock | Servicio que da acceso a modelos de varios proveedores *desde dentro de tu cuenta de AWS*: IAM y factura unificadas, y los datos no salen de tu VPC. Equivalentes: Vertex (GCP), Azure AI Foundry. Ver [Concepto 18b](/concepto/18b-elegir-modelo-y-proveedor). |
 | vLLM | Servidor de inferencia para **producción** on-premise: con *continuous batching* exprime el throughput de una GPU para servir a muchos usuarios a la vez. Para desarrollo local, la herramienta cómoda es Ollama. |
 | On-premise | Correr los pesos en *tu* hardware (portátil, servidor o datacenter): nada sale de tu red. Gana en privacidad y control; el coste no desaparece, se transforma en GPUs y operación. |
 | OpenRouter | Agregador: UNA llave y un único endpoint hacia cientos de modelos de muchos proveedores, con variantes `:free` para prototipar. Habla el dialecto de OpenAI, así que en el curso es una `base_url` distinta. |
@@ -146,7 +146,7 @@ Los notebooks y scripts con los que empezaste (`lcel.ipynb`, `interfazunificada.
 | Ciclo de vida del agente | Las cuatro etapas por las que pasa un agente en producción: Build → Test → Deploy → Monitor. |
 | Deep Agents | Framework open source de LangChain para agentes de larga duración que resuelven tareas complejas (planifican e investigan por horas). |
 | Agente ambiental | Agente que corre en segundo plano, disparado por eventos, y pide aprobación humana (`interrupt`) antes de una acción irreversible. Caso estrella: el asistente de correo. |
-| Spec-Driven Development (SDD) | Escribir la especificación (QUÉ y POR QUÉ) antes del código; el spec es la fuente de verdad. Ver [Módulo 19](/modulo/19-spec-driven-development). |
+| Spec-Driven Development (SDD) | Escribir la especificación (QUÉ y POR QUÉ) antes del código; el spec es la fuente de verdad. Ver [Concepto 19](/concepto/19-spec-driven-development). |
 | spec-kit | La herramienta que estructura el SDD en cinco pasos: constitution → /specify → /plan → /tasks → /implement. |
 | Constitución (del proyecto) | Los principios no negociables del proyecto (aquí: español didáctico, `uv`, tests offline) que condicionan cada spec. |
 
@@ -165,6 +165,6 @@ Los notebooks y scripts con los que empezaste (`lcel.ipynb`, `interfazunificada.
 
 Cuando termines este curso, la fuente oficial y **gratuita** para profundizar es **LangChain Academy**. Este curso te dio la base con Gemini y un capstone real; la Academy amplía cada pieza con la voz del propio equipo de LangChain y proyectos más grandes:
 
-- [Academy · colección Foundation](https://academy.langchain.com/collections/foundation) — los fundamentos, curso por curso: Intro to LangChain, Intro to LangGraph, Building Reliable Agents, Intro to Agent Observability & Evaluations, Monitoring Production Agents e Intro to LangSmith Deployment. Es el mismo recorrido de este curso (Módulos 10–17), contado por sus autores.
-- [Academy · colección Project](https://academy.langchain.com/collections/project) — proyectos completos que van más allá del capstone: *Ambient Agents with LangGraph* (un asistente de correo con human-in-the-loop — el Módulo 13 a escala real) y *Deep Research with LangGraph* (multiagente que planifica, busca en paralelo y sintetiza — el patrón del Módulo 15).
+- [Academy · colección Foundation](https://academy.langchain.com/collections/foundation) — los fundamentos, curso por curso: Intro to LangChain, Intro to LangGraph, Building Reliable Agents, Intro to Agent Observability & Evaluations, Monitoring Production Agents e Intro to LangSmith Deployment. Es el mismo recorrido de este curso (Conceptos 10–17), contado por sus autores.
+- [Academy · colección Project](https://academy.langchain.com/collections/project) — proyectos completos que van más allá del capstone: *Ambient Agents with LangGraph* (un asistente de correo con human-in-the-loop — el Concepto 13 a escala real) y *Deep Research with LangGraph* (multiagente que planifica, busca en paralelo y sintetiza — el patrón del Concepto 15).
 - [docs.langchain.com](https://docs.langchain.com) — la documentación oficial siempre al día: la referencia a la que volver cuando una API cambie o necesites el detalle exacto.

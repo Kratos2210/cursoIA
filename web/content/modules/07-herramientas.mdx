@@ -66,14 +66,14 @@ El **docstring no es documentación: es programación**. El modelo decide *cuán
 <Avoid label="⛔ Cuándo NO darle una herramienta al modelo">
 
 - **Cuando la acción debe correr siempre.** Si un paso es obligatorio y determinista (guardar el pedido, cobrar), llámalo *tú* en el código. No lo dejes a criterio del modelo, que puede decidir no usarlo.
-- **Cuando la acción es peligrosa sin control.** Borrar datos, mover dinero, mandar correos: exponerlas como tool sin una aprobación humana ([human-in-the-loop, m13](/modulo/13-langgraph-a-fondo)) es entregarle las llaves a algo que *pide* pero no entiende consecuencias.
+- **Cuando la acción es peligrosa sin control.** Borrar datos, mover dinero, mandar correos: exponerlas como tool sin una aprobación humana ([human-in-the-loop, c13](/concepto/13-langgraph-a-fondo)) es entregarle las llaves a algo que *pide* pero no entiende consecuencias.
 - **Cuando hay demasiadas.** Una tool por cada capricho satura la elección: el modelo se confunde entre veinte casi-iguales. Menos herramientas, bien descritas, eligen mejor.
 
 </Avoid>
 
 <Box kind="practice" label="▸ Para practicar">
 
-Crea `convertir_moneda(soles: float) -> float` con un tipo de cambio fijo. Escribe dos docstrings (uno vago, uno claro); en el Módulo 08 verás cuál elige mejor el modelo.
+Crea `convertir_moneda(soles: float) -> float` con un tipo de cambio fijo. Escribe dos docstrings (uno vago, uno claro); en el Concepto 08 verás cuál elige mejor el modelo.
 
 <Solution summary="Ver una solución">
 
@@ -110,14 +110,14 @@ El decorador `@tool` no ejecuta nada: **describe** una función para que el mode
 
 </Recap>
 
-<Quiz title="✅ Check rápido · módulos 05–07">
+<Quiz title="✅ Check rápido · conceptos 05–07">
 
 <Question>
   <Prompt>1 · ¿Qué garantiza `with_structured_output(MiMolde)`?</Prompt>
   <Option>Que el modelo nunca se equivoca en los valores</Option>
   <Option ok>Que la respuesta llega como un objeto que respeta el molde Pydantic</Option>
   <Option>Que la respuesta ocupa menos tokens</Option>
-  <Feedback>Fuerza la *forma* (campos y tipos), no la verdad del contenido: recibes un objeto tipado en vez de texto que hay que parsear (Módulo 05).</Feedback>
+  <Feedback>Fuerza la *forma* (campos y tipos), no la verdad del contenido: recibes un objeto tipado en vez de texto que hay que parsear (Concepto 05).</Feedback>
 </Question>
 
 <Question>
@@ -125,7 +125,7 @@ El decorador `@tool` no ejecuta nada: **describe** una función para que el mode
   <Option>Para reintentar la misma llamada si falla</Option>
   <Option>Para acelerar el modelo usando varias GPUs</Option>
   <Option ok>Para ejecutar varias ramas sobre la misma entrada y juntar sus resultados</Option>
-  <Feedback>Corre varios runnables a la vez sobre el mismo input y devuelve un diccionario con cada resultado. Ideal para armar el contexto de un prompt (Módulo 06).</Feedback>
+  <Feedback>Corre varios runnables a la vez sobre el mismo input y devuelve un diccionario con cada resultado. Ideal para armar el contexto de un prompt (Concepto 06).</Feedback>
 </Question>
 
 <Question>
@@ -133,7 +133,7 @@ El decorador `@tool` no ejecuta nada: **describe** una función para que el mode
   <Option>Sí: el modelo la corre y te devuelve el resultado</Option>
   <Option ok>No: es solo una petición; tu código decide si la ejecuta</Option>
   <Option>Solo si el docstring lo autoriza</Option>
-  <Feedback>El modelo *pide* (nombre + argumentos); ejecutar es cosa de tu código. Ese matiz es la clave de seguridad de todo el curso (Módulo 07).</Feedback>
+  <Feedback>El modelo *pide* (nombre + argumentos); ejecutar es cosa de tu código. Ese matiz es la clave de seguridad de todo el curso (Concepto 07).</Feedback>
 </Question>
 
 </Quiz>

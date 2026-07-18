@@ -1,4 +1,4 @@
-"Prompt engineering" suena a superstición: dile que es un experto, ponle POR FAVOR en mayúsculas, prométele propina. Nada de eso es disciplina. La disciplina es un puñado de técnicas **con nombre, con motivo y con forma de medirse**. Aquí van cuatro que se sostienen con evidencia —y los prompts del propio curso (el del m05, el del agente del proyecto) son el caso de estudio: no se ajustan a ojo, se ajustan y se **miden**.
+"Prompt engineering" suena a superstición: dile que es un experto, ponle POR FAVOR en mayúsculas, prométele propina. Nada de eso es disciplina. La disciplina es un puñado de técnicas **con nombre, con motivo y con forma de medirse**. Aquí van cuatro que se sostienen con evidencia —y los prompts del propio curso (el del c05, el del agente del proyecto) son el caso de estudio: no se ajustan a ojo, se ajustan y se **miden**.
 
 <Box kind="def" label="◈ Definición · las cuatro técnicas, una frase cada una">
 
@@ -62,11 +62,11 @@ def self_consistency(respuestas):
       mide 'en serio' con un dataset y la tríada RAG, no a ojo.
 ```
 
-Ese último bloque es el corazón del módulo: un mini-dataset fijo y una métrica **determinista** (exact-match) que demuestran, sin gastar un token, que estructurar la tarea sube el acierto. Es el eco offline de lo que en el [m16c](/modulo/16c-evaluacion) se mide "en serio" con la tríada RAG.
+Ese último bloque es el corazón del concepto: un mini-dataset fijo y una métrica **determinista** (exact-match) que demuestran, sin gastar un token, que estructurar la tarea sube el acierto. Es el eco offline de lo que en el [c16c](/concepto/16c-evaluacion) se mide "en serio" con la tríada RAG.
 
 <Box kind="warn" label="▲ Más ejemplos ≠ siempre mejor; CoT no inventa datos">
 
-Cada demostración few-shot **gasta contexto y tokens**: veinte ejemplos "por si acaso" encarecen cada llamada y pueden empujar fuera de la ventana lo que de verdad importa. Y **CoT no arregla un modelo que no sabe el dato**: razonar paso a paso ordena lo que el modelo *ya* sabe; si le falta el hecho, lo que necesitas es RAG ([m11](/modulo/11-rag-profesional)), no más "pensemos paso a paso".
+Cada demostración few-shot **gasta contexto y tokens**: veinte ejemplos "por si acaso" encarecen cada llamada y pueden empujar fuera de la ventana lo que de verdad importa. Y **CoT no arregla un modelo que no sabe el dato**: razonar paso a paso ordena lo que el modelo *ya* sabe; si le falta el hecho, lo que necesitas es RAG ([c11](/concepto/11-rag-profesional)), no más "pensemos paso a paso".
 
 </Box>
 
@@ -80,7 +80,49 @@ Cada demostración few-shot **gasta contexto y tokens**: veinte ejemplos "por si
 
 <Box kind="practice" label="▸ Para practicar">
 
-Toma un prompt real del proyecto (el del sistema del agente, o el del m05) y crea una **segunda variante** con CoT o con 2–3 ejemplos few-shot. Mídelas con un mini-dataset como el de este módulo —exact-match o coincidencia de palabra clave— y quédate con la que gane *de verdad*. Cuando quieras hacerlo con evals serios, es el [m16c](/modulo/16c-evaluacion); y si te suena a artesanía repetitiva, mira **DSPy**: trata el prompt como parámetros a **optimizar** contra una métrica y un set de ejemplos —prompt engineering hecho búsqueda sistemática (solo lectura, no se instala aquí).
+Toma un prompt real del proyecto (el del sistema del agente, o el del c05) y crea una **segunda variante** con CoT o con 2–3 ejemplos few-shot. Mídelas con un mini-dataset como el de este concepto —exact-match o coincidencia de palabra clave— y quédate con la que gane *de verdad*. Cuando quieras hacerlo con evals serios, es el [c16c](/concepto/16c-evaluacion); y si te suena a artesanía repetitiva, mira **DSPy**: trata el prompt como parámetros a **optimizar** contra una métrica y un set de ejemplos —prompt engineering hecho búsqueda sistemática (solo lectura, no se instala aquí).
+
+**Segundo reto: rompe tu propio harness.** Añade al `DATASET` tres problemas de **multiplicación** ("Cada caja trae 6 galletas y hay 4 cajas") y comprueba que `resolver_cot` deja de acertar el 100%. Luego arréglalo como se arregla en serio: amplía la detección de operación y **vuelve a medir**.
+
+**Criterio de aceptación:** imprimes el número **antes** y **después**. `evaluar(resolver_cot, AMPLIADO)` cae por debajo del 100% al añadir los casos nuevos, y tu versión arreglada vuelve a 100% **sin romper los cinco casos originales** — que es lo único que distingue un arreglo de un parche.
+
+<Solution summary="Ver una solución">
+
+```python title="solución · ampliar el dataset y re-medir (nunca 'a ojo')"
+_PALABRAS_MULT = ("cada", "por caja", "veces", "docenas")
+
+def resolver_cot_v2(pregunta: str) -> str:
+    nums = _numeros(pregunta)
+    if len(nums) < 2:
+        return str(nums[0]) if nums else ""
+    a, b = nums[0], nums[1]
+    bajo = pregunta.lower()
+    # La rama nueva va PRIMERO: "cada X … y hay N" no es una suma por mucho que
+    # tenga una 'y' en medio. El orden de las reglas ES parte de la lógica.
+    if any(p in bajo for p in _PALABRAS_MULT):
+        return str(a * b)
+    if any(p in bajo for p in _PALABRAS_RESTA):
+        return str(a - b)
+    return str(a + b)
+
+NUEVOS = [
+    {"pregunta": "Cada caja trae 6 galletas y hay 4 cajas. ¿Cuántas galletas hay?", "respuesta": "24"},
+    {"pregunta": "Cada estante tiene 8 libros y hay 5 estantes. ¿Cuántos libros hay?", "respuesta": "40"},
+    {"pregunta": "Cada bolsa lleva 3 kilos y compras 7 bolsas. ¿Cuántos kilos llevas?", "respuesta": "21"},
+]
+AMPLIADO = DATASET + NUEVOS
+
+print(f"directo (control)         : {evaluar(resolver_directo, AMPLIADO):.0%}")   #   0%
+print(f"cot original, set ampliado: {evaluar(resolver_cot,     AMPLIADO):.0%}")   #  62%
+print(f"cot v2,       set ampliado: {evaluar(resolver_cot_v2,  AMPLIADO):.0%}")   # 100%
+print(f"cot v2,       set original: {evaluar(resolver_cot_v2,  DATASET):.0%}")    # 100% ← no rompiste nada
+```
+
+La lección no es la regla de multiplicar: es que **el dataset creció y la métrica te lo dijo**. Sin volver a medir habrías "mejorado" el resolutor a ciegas, y esa última línea —el set original, todavía al 100%— es la que separa un arreglo de una regresión disfrazada de mejora.
+
+Y es exactamente lo que pasa con un prompt real: cada caso nuevo que descubres en producción entra al dataset, y cada cambio se valida contra **todo** el dataset, no solo contra el caso que te acaba de doler. Eso, hecho en serio y con LLM de por medio, es el [c16c](/concepto/16c-evaluacion).
+
+</Solution>
 
 </Box>
 
@@ -94,14 +136,14 @@ Few-shot, CoT, self-consistency y descomposición son el pan de cada día. Hay u
   <Term>Graph-of-Thought (GoT)</Term>
   <Def>Generaliza el árbol a un **grafo**: ideas que se combinan y se refuerzan entre sí, no solo se ramifican. Sirve cuando los sub-razonamientos deben fusionarse, no elegirse.</Def>
   <Term>Chain-of-Verification (CoVe)</Term>
-  <Def>El modelo responde, luego **se genera preguntas de verificación** sobre su propia respuesta, las contesta y corrige. Reduce alucinaciones — es el mismo espíritu del detector del [m28](/modulo/28-desafios-y-alucinaciones), pero dentro del propio prompt.</Def>
+  <Def>El modelo responde, luego **se genera preguntas de verificación** sobre su propia respuesta, las contesta y corrige. Reduce alucinaciones — es el mismo espíritu del detector del [c28](/concepto/28-desafios-y-alucinaciones), pero dentro del propio prompt.</Def>
   <Term>APE (Automatic Prompt Engineer)</Term>
   <Def>Le pides al **LLM que redacte y optimice sus propios prompts** contra una métrica, en vez de escribirlos tú a mano. Es la idea de DSPy llevada al prompt: prompt engineering como búsqueda automática.</Def>
   <Term>Active Prompting</Term>
   <Def>Elegir con criterio **qué ejemplos etiquetar** para el few-shot: se marcan los casos donde el modelo duda más, porque son los que más enseñan. Sirve cuando etiquetar cuesta y quieres el máximo por ejemplo.</Def>
 </DefList>
 
-Regla práctica: **CoT + self-consistency (este módulo) cubren la mayoría de casos reales**. ToT, GoT y compañía pagan solo cuando el problema es genuinamente de búsqueda o razonamiento multi-paso — y siempre se justifican *midiendo* (m16c), nunca por moda.
+Regla práctica: **CoT + self-consistency (este concepto) cubren la mayoría de casos reales**. ToT, GoT y compañía pagan solo cuando el problema es genuinamente de búsqueda o razonamiento multi-paso — y siempre se justifican *midiendo* (c16c), nunca por moda.
 
 </Box>
 
@@ -114,8 +156,44 @@ Regla práctica: **CoT + self-consistency (este módulo) cubren la mayoría de c
 
 </Checkpoint>
 
+<Quiz title="✅ Autoevaluación · Concepto 26b">
+
+<Question>
+  <Prompt>1 · En `construir_prompt_fewshot`, las demostraciones van antes y la pregunta real queda al final, sin responder. ¿Por qué ese orden?</Prompt>
+  <Option>Porque el modelo lee el prompt de abajo arriba y así ve primero la pregunta</Option>
+  <Option ok>Porque el modelo **continúa el texto**: lo último que ve es una pregunta abierta y su trabajo es cerrarla imitando el patrón</Option>
+  <Option>Porque las demostraciones al final se saldrían de la ventana de contexto</Option>
+  <Feedback>Es demostración, no descripción. Si la pregunta quedara en medio, el modelo tendería a seguir generando más ejemplos en vez de responderte.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · Tu modelo se equivoca en la política de devoluciones de tu empresa. Le añades "pensemos paso a paso". ¿Qué esperas?</Prompt>
+  <Option>Que al razonar recupere el dato correcto de su entrenamiento</Option>
+  <Option ok>Nada: CoT ordena lo que el modelo **ya** sabe; si le falta el hecho, lo que necesitas es RAG</Option>
+  <Option>Que al menos baje la temperatura efectiva y por tanto falle menos</Option>
+  <Feedback>CoT ataca el salto directo a la conclusión, no la ausencia de conocimiento. Confundir las dos cosas hace perder semanas ajustando prompts.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Tienes una tarea de extracción de un campo, a temperatura 0. ¿Vale la pena self-consistency?</Prompt>
+  <Option>Sí: votar entre varias muestras siempre sube el acierto</Option>
+  <Option ok>No: si a temperatura 0 sale igual siempre, muestrear N veces multiplica el coste sin ganar nada</Option>
+  <Option>Sí, pero solo con N impar para que no haya empates</Option>
+  <Feedback>Self-consistency cancela **ruido aleatorio**. Sin aleatoriedad no hay ruido que cancelar: resérvalo para razonamiento difícil.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · El concepto compara dos estrategias con exact-match sobre 5 problemas y sin llamar al LLM. ¿Qué demuestra eso exactamente?</Prompt>
+  <Option>Que un modelo afinado acierta más que el modelo base</Option>
+  <Option ok>Que estructurar la tarea sube el acierto, con una métrica determinista y reproducible: el eco offline de medir en serio</Option>
+  <Option>Que cinco casos bastan para decidir qué prompt va a producción</Option>
+  <Feedback>Es un harness didáctico: enseña la **forma** de medir sin gastar un token. Quien decide en serio es un dataset real con la tríada RAG del c16c.</Feedback>
+</Question>
+
+</Quiz>
+
 <Recap level={5} label="↺ En una frase">
 
-Prompt engineering en serio son cuatro técnicas medibles: **few-shot** (muestra, no describas), **CoT** (razona paso a paso), **self-consistency** (vota la moda de N muestras) y **descomposición** (parte la tarea) —y ninguna vale hasta que la **mides** con un dataset y una métrica, como en el m16c; DSPy lleva ese ajuste a la optimización automática.<Arch>archivos: `curso_ejemplos/26b_prompt_engineering.py`</Arch>
+Prompt engineering en serio son cuatro técnicas medibles: **few-shot** (muestra, no describas), **CoT** (razona paso a paso), **self-consistency** (vota la moda de N muestras) y **descomposición** (parte la tarea) —y ninguna vale hasta que la **mides** con un dataset y una métrica, como en el c16c; DSPy lleva ese ajuste a la optimización automática.<Arch>archivos: `curso_ejemplos/26b_prompt_engineering.py`</Arch>
 
 </Recap>

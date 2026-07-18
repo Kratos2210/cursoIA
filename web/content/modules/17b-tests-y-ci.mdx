@@ -1,4 +1,4 @@
-Todo el nivel de producción se apoya en una idea silenciosa: **puedes cambiar el código porque algo te avisa si lo rompes**. Sin eso, cada refactor es una apuesta y cada actualización de librería, una noche larga. Este módulo enseña cómo está tejida esa red — la del propio curso, que puedes correr ahora mismo.
+Todo el nivel de producción se apoya en una idea silenciosa: **puedes cambiar el código porque algo te avisa si lo rompes**. Sin eso, cada refactor es una apuesta y cada actualización de librería, una noche larga. Este concepto enseña cómo está tejida esa red — la del propio curso, que puedes correr ahora mismo.
 
 <Box kind="def" label="◈ Definición · Test, doble de prueba y CI">
 
@@ -36,7 +36,7 @@ Separa **lo que decide el modelo** de **lo que decide tu código**, y testea lo 
 
 ### El truco del capstone: un modelo que recita un guion
 
-¿Cómo se testea un agente entero sin LLM? Se le pasa uno falso. La regla que lo hace posible es la que venimos aplicando: `construir_agente()` recibe el modelo **por parámetro** y nunca lo crea por dentro — por eso puedes sustituirlo en un test (y es la misma disciplina que el [m18](/modulo/18-capstone-final) llevará hasta el capstone). Entonces en los tests le entregas un `ModeloFalso` que, en vez de pensar, va devolviendo respuestas de una lista preparada:
+¿Cómo se testea un agente entero sin LLM? Se le pasa uno falso. La regla que lo hace posible es la que venimos aplicando: `construir_agente()` recibe el modelo **por parámetro** y nunca lo crea por dentro — por eso puedes sustituirlo en un test (y es la misma disciplina que el [c18](/concepto/18-capstone-final) llevará hasta el capstone). Entonces en los tests le entregas un `ModeloFalso` que, en vez de pensar, va devolviendo respuestas de una lista preparada:
 
 ```python title="proyecto_final/tests/conftest.py · el modelo falso"
 class ModeloFalso(BaseChatModel):
@@ -55,7 +55,7 @@ Con eso puedes escribir un test que dice: *"si el modelo decide llamar a `evalua
 
 <Box kind="warn" label="▲ Lo que un test con modelo falso NO te dice">
 
-No te dice si el agente elige bien la herramienta, ni si la respuesta es buena. Eso **no es un test: es una evaluación**, y vive en el [m16c](/modulo/16c-evaluacion) (dataset + LLM-as-judge + puntaje). Los dos hacen falta y miden cosas distintas: los tests protegen tu *lógica*; la evaluación protege tu *calidad*. Confundirlos es la razón por la que tanta gente tiene una suite verde y un agente que alucina.
+No te dice si el agente elige bien la herramienta, ni si la respuesta es buena. Eso **no es un test: es una evaluación**, y vive en el [c16c](/concepto/16c-evaluacion) (dataset + LLM-as-judge + puntaje). Los dos hacen falta y miden cosas distintas: los tests protegen tu *lógica*; la evaluación protege tu *calidad*. Confundirlos es la razón por la que tanta gente tiene una suite verde y un agente que alucina.
 
 </Box>
 
@@ -157,11 +157,47 @@ Y al invertir `es_error_cuota()` deberías ver fallar `tests/test_util.py` en ro
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 
 - Explicar por qué un test de IA no debe llamar al LLM (lento, cuesta y falla por un 429 ajeno a tu código).
-- Distinguir un test (protege tu *lógica*) de una evaluación (protege tu *calidad*, m16c).
+- Distinguir un test (protege tu *lógica*) de una evaluación (protege tu *calidad*, c16c).
 - Decir cómo se testea un agente entero sin API: un doble (`ModeloFalso`) que recita un guion, inyectado por parámetro.
 - Reconocer para qué sirven el marcador `-m offline` con `--strict-markers` y una CI que no tiene la llave.
 
 </Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 17b">
+
+<Question>
+  <Prompt>1 · ¿Qué evita la bandera `--strict-markers` de pytest?</Prompt>
+  <Option>Que un test tarde más de lo permitido</Option>
+  <Option ok>Que un marcador mal escrito (`@pytest.mark.ofline`) deje el test fuera **en silencio**</Option>
+  <Option>Que dos tests usen el mismo nombre de función</Option>
+  <Feedback>Sin la bandera, tu suite sigue verde con un test menos y nadie se entera nunca. Es la peor clase de bug: el silencioso (Concepto 17b).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · Tienes 642 tests en verde y el agente sigue alucinando en producción. ¿Qué te falta?</Prompt>
+  <Option>Más tests, con casos reales de usuarios</Option>
+  <Option ok>Una **evaluación**: los tests protegen tu lógica, la calidad se mide con dataset y juez</Option>
+  <Option>Tests que sí llamen al LLM real, para cubrir ese hueco</Option>
+  <Feedback>Confundir test con evaluación es exactamente la razón de esa foto. Los dos hacen falta y miden cosas distintas ([c16c](/concepto/16c-evaluacion)).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · ¿Qué partes de tu sistema de IA se pueden testear sin llamar ni una vez al modelo?</Prompt>
+  <Option>Ninguna: todo pasa por el LLM de alguna forma</Option>
+  <Option ok>Casi todas las tuyas: la fusión RRF, el troceado, la política del supervisor, el validador, el cálculo de coste</Option>
+  <Option>Solo los imports y la sintaxis de los archivos</Option>
+  <Feedback>Separa lo que decide el modelo de lo que decide tu código, y testea lo segundo: es determinista, y es donde de verdad viven tus bugs (Concepto 17b).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Escribes un test que repite dentro los mismos cálculos que hace la función. ¿Qué problema tiene?</Prompt>
+  <Option>Que es más lento de correr en la CI</Option>
+  <Option ok>Que pasa siempre, incluso cuando la función y el test están mal igual</Option>
+  <Option>Que no se puede marcar como `offline`</Option>
+  <Feedback>Un test debe probar el *comportamiento* observable, no copiar el *cómo*. Si duplica la implementación, no protege nada (Concepto 17b).</Feedback>
+</Question>
+
+</Quiz>
 
 <Recap level={4} label="↺ En una frase">
 

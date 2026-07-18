@@ -80,6 +80,34 @@ print((prompt | llm | StrOutputParser()).invoke({"review": "El producto llegó t
 
 </Checkpoint>
 
+<Quiz title="✅ Autoevaluación · Concepto 02">
+
+<Question>
+  <Prompt>1 · ¿Qué ganas con un `ChatPromptTemplate` frente a armar el texto con una f-string cada vez?</Prompt>
+  <Option>El modelo procesa la plantilla más rápido</Option>
+  <Option ok>Un molde reutilizable: cambias la entrada sin reescribir las instrucciones</Option>
+  <Option>Las variables `{}` se validan contra un esquema Pydantic</Option>
+  <Feedback>La plantilla separa *las instrucciones* (fijas, en un solo sitio) de *los datos* (variables). Validar con Pydantic es otra cosa: eso llega en el Concepto 05.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · LCEL es "declarativo". ¿Qué te regala eso en la práctica?</Prompt>
+  <Option>Que el modelo entiende mejor el prompt porque va estructurado</Option>
+  <Option ok>Que LangChain conoce la cadena entera antes de correrla, y de ahí salen gratis el paralelismo, el streaming y las versiones async</Option>
+  <Option>Que la cadena se guarda en disco y no hay que reconstruirla</Option>
+  <Feedback>Declaras el *orden*, no el *cómo*. Al conocer la forma completa, LangChain puede optimizarla — por eso el Concepto 03 te da `batch` y `stream` sin escribir nada.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Quieres que además de clasificar el sentimiento, la cadena traduzca la reseña al inglés. ¿Qué tocas?</Prompt>
+  <Option>Añades un segundo `llm` a la cadena con otro `|`</Option>
+  <Option ok>Solo el molde del prompt: `prompt | llm | parser` no cambia</Option>
+  <Option>Cambias el parser por uno que soporte dos salidas</Option>
+  <Feedback>Ese es todo el argumento de LCEL: la topología es una cosa y las instrucciones son otra. Casi siempre lo que cambia es el molde (Concepto 02).</Feedback>
+</Question>
+
+</Quiz>
+
 <Recap level={1} label="↺ En una frase">
 
 Un prompt es una **plantilla reutilizable**, no un texto fijo. Y el operador `|` encadena prompt → modelo → parser en un solo objeto invocable.<Arch>archivo: `02_prompts_lcel.py`</Arch>

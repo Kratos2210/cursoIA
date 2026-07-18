@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 type Kids = { children?: ReactNode };
 
-// Level / kind tag above a title, e.g. "Nivel 1 · Fundamentos · Módulo 00".
+// Level / kind tag above a title, e.g. "Nivel 1 · Fundamentos · Concepto 00".
 export function KindTag({ colorVar = "--accent", children }: Kids & { colorVar?: string }) {
   return (
     <p className="kind-tag" style={{ color: `var(${colorVar})` }}>

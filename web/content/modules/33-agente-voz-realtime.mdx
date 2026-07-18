@@ -1,8 +1,8 @@
-El [m22b](/modulo/22-multimodal) te enseñó el pipeline de voz en tiempo real como un **generador determinista**: STT parcial → LLM token a token → TTS por frases, todo **de mentira** para poder **testearlo**. Este anexo cambia las mentiras por **servicios reales** (Deepgram) **sin cambiar la forma** del flujo — que es justo por qué el m22b lo enseñó así.
+El [c22b](/concepto/22-multimodal) te enseñó el pipeline de voz en tiempo real como un **generador determinista**: STT parcial → LLM token a token → TTS por frases, todo **de mentira** para poder **testearlo**. Este anexo cambia las mentiras por **servicios reales** (Deepgram) **sin cambiar la forma** del flujo — que es justo por qué el c22b lo enseñó así.
 
 <Box kind="warn" label="▲ Anexo opcional, fuera del 'offline-first'">
 
-Un agente de voz real rompe las tres reglas del curso a la vez: **micrófono** (hardware), **APIs con cuota** (Deepgram STT/TTS + un LLM) y **websockets async**. Por eso vive en `voz/` con un extra opcional (`uv sync --extra voice`) y **fuera** del gate offline — la CI no lo instala ni lo testea (`docs/adr/0007-voz-realtime-fuera-del-gate.md`). La versión **testeable** sigue siendo el m22b.
+Un agente de voz real rompe las tres reglas del curso a la vez: **micrófono** (hardware), **APIs con cuota** (Deepgram STT/TTS + un LLM) y **websockets async**. Por eso vive en `voz/` con un extra opcional (`uv sync --extra voice`) y **fuera** del gate offline — la CI no lo instala ni lo testea (`docs/adr/0007-voz-realtime-fuera-del-gate.md`). La versión **testeable** sigue siendo el c22b.
 
 </Box>
 
@@ -10,20 +10,20 @@ Un agente de voz real rompe las tres reglas del curso a la vez: **micrófono** (
 
 <Box kind="def" label="◈ Por qué baja la latencia percibida">
 
-En **batch**, mandas todo el audio y esperas toda la respuesta: el usuario oye **silencio** hasta el final. En **tiempo real**, el audio llega por trozos, el STT transcribe parcial, el LLM **empieza a responder antes de que termines de hablar**, y el TTS sintetiza **cada frase en cuanto cierra** (`.`, `!`, `?`). La respuesta "empieza" casi al toque. Es exactamente el orden de eventos del m22b: `parcial → final_stt → token → audio`.
+En **batch**, mandas todo el audio y esperas toda la respuesta: el usuario oye **silencio** hasta el final. En **tiempo real**, el audio llega por trozos, el STT transcribe parcial, el LLM **empieza a responder antes de que termines de hablar**, y el TTS sintetiza **cada frase en cuanto cierra** (`.`, `!`, `?`). La respuesta "empieza" casi al toque. Es exactamente el orden de eventos del c22b: `parcial → final_stt → token → audio`.
 
 </Box>
 
 ### Cambiar las mentiras por servicios reales
 
-El m22b inyectaba `responder` (un LLM falso) y audio de juguete. Aquí:
+El c22b inyectaba `responder` (un LLM falso) y audio de juguete. Aquí:
 
 - **STT real**: Deepgram *live transcription* entrega transcripción **parcial** por websocket.
 - **Cerebro real**: `util.crear_llm(...).stream(...)` — el **mismo** LLM del curso, token a token.
 - **TTS real**: Deepgram sintetiza **cada frase** en cuanto está completa.
 
-```python title="voz/agente_voz_realtime.py · reutiliza el troceo del m22b"
-# El archivo del m22b empieza por dígito → se carga por ruta (como los tests).
+```python title="voz/agente_voz_realtime.py · reutiliza el troceo del c22b"
+# El archivo del c22b empieza por dígito → se carga por ruta (como los tests).
 _m22b = _cargar("22b_voz.py")
 dividir_en_frases = _m22b._dividir_en_frases   # el MISMO criterio, sin duplicar
 
@@ -34,31 +34,127 @@ for token in responder_stream(transcripcion):   # LLM real, en streaming
         audio = await sintetizar(frase)          # Deepgram TTS, frase a frase
 ```
 
-<Box kind="analogy" label="◆ El m22b es el plano; esto es la casa construida">
+<Box kind="analogy" label="◆ El c22b es el plano; esto es la casa construida">
 
-El m22b probó que el **plano** (el orden de eventos) es correcto, con materiales de mentira que puedes medir en un test. El anexo levanta la **casa** con materiales reales. Si la casa falla, sabes que no es el plano —eso está testeado— sino el cableado (una API key, un id de modelo, el micrófono). Separar plano de construcción es lo que te deja depurar rápido.
+El c22b probó que el **plano** (el orden de eventos) es correcto, con materiales de mentira que puedes medir en un test. El anexo levanta la **casa** con materiales reales. Si la casa falla, sabes que no es el plano —eso está testeado— sino el cableado (una API key, un id de modelo, el micrófono). Separar plano de construcción es lo que te deja depurar rápido.
 
 </Box>
 
 <Avoid label="⛔ Los tres tropiezos del tiempo real">
 
-- **Esperar la respuesta completa antes de hablar.** Mata la sensación de "tiempo real". Sintetiza por frase (el `_dividir_en_frases` del m22b), no al final.
-- **Testear contra servicios reales.** Deepgram y el LLM son no deterministas y cuestan cuota. Lo testeable es el **orden** (m22b, con dobles); el cableado real va fuera del gate.
+- **Esperar la respuesta completa antes de hablar.** Mata la sensación de "tiempo real". Sintetiza por frase (el `_dividir_en_frases` del c22b), no al final.
+- **Testear contra servicios reales.** Deepgram y el LLM son no deterministas y cuestan cuota. Lo testeable es el **orden** (c22b, con dobles); el cableado real va fuera del gate.
 - **Hardcodear el id del modelo de voz.** Los ids de Deepgram (STT/TTS) cambian; el archivo los deja como **placeholders verificables** en variables de entorno.
 
 </Avoid>
 
+<Box kind="practice" label="▸ Para practicar">
+
+La pieza que decide si el tiempo real *se siente* real es `_partir_incremental(buffer)`: separa lo que ya se puede mandar al TTS de lo que aún está a medio escribir. Y como es una **función pura de strings**, se testea sin micrófono, sin Deepgram y sin cuota — dentro del gate offline, aunque el anexo esté fuera.
+
+**Mini-reto** · impleméntala sobre `dividir_en_frases` del [c22b](/concepto/22-multimodal), con el contrato que ya usa el bucle: devuelve una lista donde el **último elemento es siempre el resto sin cerrar** (posiblemente vacío) y los anteriores son frases completas, listas para sintetizar.
+
+**Criterio de aceptación:** `"Hola. Qué ta"` deja `["Hola."]` como completas y `"Qué ta"` de resto; `"Hola. Adiós."` deja las dos completas y resto **vacío**; `"Hola"` (nada cerrado aún) no deja ninguna completa; y `""` no revienta. Y la invariante que las cubre todas: **concatenar el resultado nunca pierde ni duplica texto**.
+
+<Solution summary="Ver una solución">
+
+```python title="voz/agente_voz_realtime.py · el troceo incremental"
+dividir_en_frases = _m22b._dividir_en_frases      # el MISMO criterio del c22b
+
+def _partir_incremental(texto):
+    """[frases completas..., resto_sin_cerrar]. El último SIEMPRE es el buffer."""
+    trozos = list(dividir_en_frases(texto))
+    if not trozos:
+        return [""]                    # buffer vacío: nada que sintetizar
+    if texto.rstrip()[-1:] not in ".!?":
+        return trozos                  # el último trozo aún está a medias → es el resto
+    return trozos + [""]               # todo cerrado: no queda resto
+```
+
+```python title="cómo lo consume el bucle (por qué el contrato es así)"
+for token in responder_stream(transcripcion):
+    buffer += token
+    *completas, buffer = _partir_incremental(buffer)   # el desempaquetado exige
+    for frase in completas:                            # que el último sea el resto
+        audio = await sintetizar(frase)
+```
+
+```python title="tests · sin micrófono, sin Deepgram, sin cuota"
+def _partir(texto):
+    *completas, resto = _partir_incremental(texto)
+    return completas, resto
+
+def test_frase_a_medias():
+    assert _partir("Hola. Qué ta") == (["Hola."], "Qué ta")
+
+def test_todo_cerrado():
+    assert _partir("Hola. Adiós.") == (["Hola.", "Adiós."], "")
+
+def test_nada_cerrado_aun():
+    assert _partir("Hola") == ([], "Hola")
+
+def test_buffer_vacio():
+    assert _partir("") == ([], "")
+
+def test_no_pierde_texto():
+    # La invariante que de verdad importa: nada se pierde ni se duplica.
+    completas, resto = _partir("Uno. Dos! Tres a medi")
+    assert "".join(completas) + resto == "Uno.Dos!Tres a medi"
+```
+
+El caso que se escapa siempre es el tercero. Si tratas cualquier último trozo como frase completa, mandas `"Hola"` al TTS y luego `" qué tal?"` por separado: el usuario oye la respuesta **partida en mitad de la frase**, con entonación rota. Ese bug no lo detecta ningún test de integración con audio real — lo detecta este assert de tres líneas. Es exactamente por eso que el c22b enseña el plano antes de que existan los materiales.
+
+</Solution>
+
+</Box>
+
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 
 - Explicar por qué sintetizar por frase baja la latencia percibida (no esperas a toda la respuesta).
-- Nombrar qué pieza real sustituye a cada mentira del m22b (STT, `responder`, TTS).
-- Justificar por qué la lógica clave se testea en el m22b y el cableado real va fuera del gate.
+- Nombrar qué pieza real sustituye a cada mentira del c22b (STT, `responder`, TTS).
+- Justificar por qué la lógica clave se testea en el c22b y el cableado real va fuera del gate.
 - Reconocer que la **forma** del flujo (orden de eventos) es idéntica en la versión simulada y en la real.
 
 </Checkpoint>
 
+<Quiz title="✅ Autoevaluación · Concepto 33">
+
+<Question>
+  <Prompt>1 · ¿Por qué se sintetiza frase a frase en vez de esperar la respuesta completa?</Prompt>
+  <Option>Porque el TTS cobra por llamada y los textos cortos salen más baratos</Option>
+  <Option ok>Porque la voz empieza a sonar en cuanto cierra la primera frase, en vez de dejar al usuario en silencio hasta el final</Option>
+  <Option>Porque el TTS tiene un límite de caracteres por petición</Option>
+  <Feedback>Es latencia *percibida*: el tiempo total no baja mucho, pero el tiempo hasta el primer audio se desploma. Ese es el orden de eventos del c22b: `parcial → final_stt → token → audio`.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Qué sustituye cada "mentira" del c22b en la versión real?</Prompt>
+  <Option>El pipeline entero se reemplaza por el SDK de Deepgram, que ya trae la orquestación</Option>
+  <Option ok>STT → Deepgram live; `responder` falso → `crear_llm().stream()`, el mismo LLM del curso; audio de juguete → Deepgram TTS por frase</Option>
+  <Option>Solo cambia el STT; el LLM y el TTS del c22b ya eran reales</Option>
+  <Feedback>Cambian los materiales, no la forma del flujo — y `_dividir_en_frases` se importa del c22b en vez de duplicarse, justo para que el criterio de corte sea el mismo.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · El agente de voz falla en tu máquina. ¿Por dónde empiezas a depurar y por qué?</Prompt>
+  <Option>Por el orden de eventos: es la parte más compleja y donde suele estar el bug</Option>
+  <Option ok>Por el cableado —API key, id de modelo, micrófono—, porque el orden de eventos ya está testeado en el c22b</Option>
+  <Option>Por el troceado en frases, que es lo único no determinista del pipeline</Option>
+  <Feedback>Separar el plano de la construcción es lo que te da esa ventaja: si el plano está probado con dobles, lo que queda por revisar es el cableado real.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · ¿Por qué este anexo vive fuera del gate offline y el c22b no?</Prompt>
+  <Option>Porque el código del anexo es demasiado largo para la CI</Option>
+  <Option>Porque los tests de audio necesitan tarjeta de sonido en el runner</Option>
+  <Option ok>Porque depende de hardware y de servicios no deterministas con cuota; lo testeable es el orden, y eso se testea en el c22b con dobles</Option>
+  <Feedback>Testear contra servicios reales da tests lentos, caros y que fallan por motivos ajenos a tu código. Se testea el contrato, no al proveedor.</Feedback>
+</Question>
+
+</Quiz>
+
 <Recap level={5} label="↺ En una frase">
 
-Un agente de voz real es el pipeline del m22b con los materiales cambiados: Deepgram escucha en streaming, el LLM del curso responde token a token y Deepgram sintetiza cada frase en cuanto cierra — misma forma, latencia baja de verdad. El plano (el orden) sigue testeado en el m22b; aquí solo se añade el cableado, fuera del gate.<Arch>artefacto: `voz/agente_voz_realtime.py` · extra `voice` · reutiliza `22b_voz.py:_dividir_en_frases` · ADR-0007</Arch>
+Un agente de voz real es el pipeline del c22b con los materiales cambiados: Deepgram escucha en streaming, el LLM del curso responde token a token y Deepgram sintetiza cada frase en cuanto cierra — misma forma, latencia baja de verdad. El plano (el orden) sigue testeado en el c22b; aquí solo se añade el cableado, fuera del gate.<Arch>artefacto: `voz/agente_voz_realtime.py` · extra `voice` · reutiliza `22b_voz.py:_dividir_en_frases` · ADR-0007</Arch>
 
 </Recap>

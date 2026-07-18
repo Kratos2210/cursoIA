@@ -1,10 +1,10 @@
 <LevelBanner level={5} title="AI Engineer · La memoria que sobrevive a la conversación">
 
-Tu agente ya recuerda lo dicho en un hilo (el checkpointer del m10/m13). Pero abre otra conversación y no sabe quién eres. Esto es lo que le falta para recordarte mañana.
+Tu agente ya recuerda lo dicho en un hilo (el checkpointer del c10/c13). Pero abre otra conversación y no sabe quién eres. Esto es lo que le falta para recordarte mañana.
 
 </LevelBanner>
 
-El [checkpointer](/modulo/10-agentes-prebuilt) te dio memoria **conversacional**: dentro de un mismo `thread_id`, el agente recuerda lo que se dijo tres turnos atrás. Pero esa memoria está **atada al hilo**. Cierra la conversación, abre otra mañana (otro `thread_id`) y el agente vuelve a preguntarte cómo te llamas. Para un asistente que atiende al mismo usuario muchas veces, eso es inaceptable: necesita **memoria de largo plazo**, hechos sobre el usuario que sobreviven a la conversación.
+El [checkpointer](/concepto/10-agentes-prebuilt) te dio memoria **conversacional**: dentro de un mismo `thread_id`, el agente recuerda lo que se dijo tres turnos atrás. Pero esa memoria está **atada al hilo**. Cierra la conversación, abre otra mañana (otro `thread_id`) y el agente vuelve a preguntarte cómo te llamas. Para un asistente que atiende al mismo usuario muchas veces, eso es inaceptable: necesita **memoria de largo plazo**, hechos sobre el usuario que sobreviven a la conversación.
 
 <Box kind="def" label="◈ Definición · checkpointer vs store">
 
@@ -50,7 +50,7 @@ def recuperar_hechos(store, user_id):
 
 ### Decidir qué vale la pena recordar
 
-La regla de oro: **no guardes la conversación entera, guarda el hecho destilado**. Aquí la extracción es determinista (regex, testeable byte a byte); en producción suele hacerla el propio LLM con [salida estructurada (m05)](/modulo/05-salida-estructurada), pero la idea es la misma.
+La regla de oro: **no guardes la conversación entera, guarda el hecho destilado**. Aquí la extracción es determinista (regex, testeable byte a byte); en producción suele hacerla el propio LLM con [salida estructurada (c05)](/concepto/05-salida-estructurada), pero la idea es la misma.
 
 ```python title="de una frase del usuario a un hecho memorable (o a nada)"
 extraer_preferencia("hola, me llamo Ana")         # -> ("nombre", "Ana")
@@ -88,8 +88,8 @@ agente = create_react_agent(
 <Avoid label="⛔ Cuándo NO usar memoria de largo plazo">
 
 - **No metas TODO en la ficha.** Guardar cada mensaje ensucia la memoria, sube el coste (más contexto en cada prompt) y esconde lo importante. Guarda hechos destilados y estables, no el historial.
-- **Datos que cambian rápido** (el saldo de una cuenta, el stock) NO son memoria: se consultan a la fuente en cada turno, como en el [m29](/modulo/29-caso-real-2-retail). La memoria es para lo que *define* al usuario, no para hechos volátiles.
-- **PII sin consentimiento.** Recordar "es alérgica al maní" es dato de salud: aplica el [m23](/modulo/23-seguridad-red-teaming) (consentimiento, minimización, borrado a pedido). Una memoria que no se puede borrar es un problema legal, no una feature.
+- **Datos que cambian rápido** (el saldo de una cuenta, el stock) NO son memoria: se consultan a la fuente en cada turno, como en el [c29](/concepto/29-caso-real-2-retail). La memoria es para lo que *define* al usuario, no para hechos volátiles.
+- **PII sin consentimiento.** Recordar "es alérgica al maní" es dato de salud: aplica el [c23](/concepto/23-seguridad-red-teaming) (consentimiento, minimización, borrado a pedido). Una memoria que no se puede borrar es un problema legal, no una feature.
 
 </Avoid>
 
@@ -115,6 +115,42 @@ agente = create_react_agent(
 - Decir qué NO debe ir a la memoria (datos volátiles, ruido, PII sin consentimiento).
 
 </Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 30">
+
+<Question>
+  <Prompt>1 · Tu agente recuerda perfectamente dentro de una conversación, pero mañana no sabe quién eres. ¿Qué le falta?</Prompt>
+  <Option>Ampliar la ventana de contexto para que quepan más turnos</Option>
+  <Option>Reutilizar el mismo `thread_id` para todas las conversaciones del usuario</Option>
+  <Option ok>Un store: memoria indexada por namespace, independiente del hilo</Option>
+  <Feedback>El checkpointer está atado al `thread_id` y así debe ser. Reutilizar el hilo para siempre haría crecer el estado sin límite y mezclaría conversaciones distintas.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Por qué el namespace es la tupla `("memorias", user_id)` y no solo el `user_id`?</Prompt>
+  <Option>Porque el store solo acepta tuplas por una restricción de la API</Option>
+  <Option ok>Porque agrupa como carpetas: puedes tener otros tipos de dato del mismo usuario sin que se pisen</Option>
+  <Option>Porque el primer elemento se usa como clave de cifrado de la memoria</Option>
+  <Feedback>El namespace es jerárquico. `("memorias", user_id)` y `("episodios", user_id)` conviven aislados, y un `search` sobre uno no arrastra el otro.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · ¿Cuál de estos datos NO debe ir al store?</Prompt>
+  <Option>"Prefiere respuestas cortas"</Option>
+  <Option ok>El saldo actual de su cuenta</Option>
+  <Option>"Se llama Ana"</Option>
+  <Feedback>El saldo cambia solo y sin avisar: se consulta a la fuente en cada turno, como el catálogo del c29. La memoria es para lo que *define* al usuario, no para hechos volátiles que quedarían obsoletos y falsos.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Escribes `store.put(...)` con `InMemoryStore`, reinicias el proceso y la memoria se fue. ¿Qué cambias?</Prompt>
+  <Option>El código de las tools: `get_store()` no persiste, hay que instanciar el store dentro de cada tool</Option>
+  <Option ok>Solo el backend: `PostgresStore` o Redis, porque la interfaz `put`/`get`/`search` es la misma</Option>
+  <Option>Nada: hay que volcar los hechos al checkpointer, que sí persiste entre procesos</Option>
+  <Feedback>`InMemoryStore` vive en RAM, perfecto para aprender y testear. Cambias dónde vive la memoria, no cómo la usas — el resto del agente no se entera.</Feedback>
+</Question>
+
+</Quiz>
 
 <Recap level={5} label="↺ En una frase">
 

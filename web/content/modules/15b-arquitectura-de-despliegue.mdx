@@ -2,7 +2,7 @@ El patrón supervisor repartió el *razonamiento* entre especialistas. La misma 
 
 <Box kind="def" label="◈ Glosario exprés de operaciones · para no perderte en la jerga">
 
-Este módulo usa siglas de infraestructura que quizá no has visto. Aquí las tienes en una línea cada una; vuelve si alguna te frena:
+Este concepto usa siglas de infraestructura que quizá no has visto. Aquí las tienes en una línea cada una; vuelve si alguna te frena:
 
 <DefList>
   <Term>stateless</Term>
@@ -41,7 +41,7 @@ Detrás de todos ellos · **el estado compartido**
   <Step n="estado" title="Log de auditoría">Append-only. Sobrevive a cualquier reinicio.</Step>
 </Flow>
 
-Fíjate en dónde está la línea: **arriba nada recuerda, abajo todo recuerda**. Esa separación es lo que permite matar y recrear cualquier caja de la fila de arriba sin perder una conversación. Si el `MemorySaver` del Módulo 13 viviera dentro de svc 3, el balanceador tendría que mandar siempre al mismo usuario a la misma copia — y ya no podrías escalar.
+Fíjate en dónde está la línea: **arriba nada recuerda, abajo todo recuerda**. Esa separación es lo que permite matar y recrear cualquier caja de la fila de arriba sin perder una conversación. Si el `MemorySaver` del Concepto 13 viviera dentro de svc 3, el balanceador tendría que mandar siempre al mismo usuario a la misma copia — y ya no podrías escalar.
 
 | Tema | Qué resuelve en tu sistema de IA |
 | --- | --- |
@@ -85,7 +85,7 @@ El recepcionista: recibe todas las llamadas y las reparte entre las copias vivas
 
 ### La regla del estado: servicios sin memoria propia
 
-Para que un servicio pueda escalar (tener 3, 10, 50 copias) debe ser **stateless**: ninguna copia guarda nada importante en su propia memoria. ¿Por qué? Si la copia 2 recuerda tu conversación y la siguiente petición cae en la copia 3, la conversación "desaparece". La solución: **todo el estado vive afuera** — el historial del agente en un checkpointer Postgres/Redis (Módulo 13), los vectores en el vector store, los archivos en un almacén de objetos. Las copias son intercambiables y desechables.
+Para que un servicio pueda escalar (tener 3, 10, 50 copias) debe ser **stateless**: ninguna copia guarda nada importante en su propia memoria. ¿Por qué? Si la copia 2 recuerda tu conversación y la siguiente petición cae en la copia 3, la conversación "desaparece". La solución: **todo el estado vive afuera** — el historial del agente en un checkpointer Postgres/Redis (Concepto 13), los vectores en el vector store, los archivos en un almacén de objetos. Las copias son intercambiables y desechables.
 
 <Box kind="analogy" label="◆ Analogía">
 
@@ -155,7 +155,7 @@ Los sistemas reales **mezclan**: el camino de consulta (latencia crítica, tráf
 
 <Box kind="practice" label="▸ Para practicar">
 
-Toma tu RAG y dibuja qué partes serían cada servicio. ¿Cuál escala más bajo carga? (Pista: ranking e inferencia.) Luego decide para cada uno: ¿K8s o serverless? Justifica con la tabla — ese razonamiento escrito ya es tu primer ADR (Módulo 17).
+Toma tu RAG y dibuja qué partes serían cada servicio. ¿Cuál escala más bajo carga? (Pista: ranking e inferencia.) Luego decide para cada uno: ¿K8s o serverless? Justifica con la tabla — ese razonamiento escrito ya es tu primer ADR (Concepto 17).
 
 <Solution summary="Ver una solución">
 
@@ -177,12 +177,12 @@ El `Deployment` + `Service` de arriba *levanta* tu agente, pero un despliegue de
   <Term>autoescalado (HPA)</Term>
   <Def>El `HorizontalPodAutoscaler` sube y baja réplicas según CPU o latencia. Es lo que convierte el "2 réplicas fijas" en "2 cuando hay calma, 20 en el pico".</Def>
   <Term>secrets (no en el YAML)</Term>
-  <Def>La `API key` jamás va en el manifiesto: va en un `Secret` (o un gestor externo tipo Vault) y se inyecta como variable de entorno. El [m23](/modulo/23-seguridad-red-teaming) te lo desarrollará más adelante (nivel AI Engineer): una llave en texto plano es una fuga esperando pasar.</Def>
+  <Def>La `API key` jamás va en el manifiesto: va en un `Secret` (o un gestor externo tipo Vault) y se inyecta como variable de entorno. El [c23](/concepto/23-seguridad-red-teaming) te lo desarrollará más adelante (nivel AI Engineer): una llave en texto plano es una fuga esperando pasar.</Def>
   <Term>ingress + límites de recursos</Term>
   <Def>El `Ingress` expone el `Service` al mundo con TLS y enrutado por ruta/host; los *requests/limits* de CPU y memoria dejan que el scheduler ubique bien los pods y evitan que uno se coma el nodo (o que lo maten por OOM).</Def>
 </DefList>
 
-No hace falta que lo escribas hoy —tu proveedor gestionado ([m18b](/modulo/18b-elegir-modelo-y-proveedor)) o un Helm chart traen buenos defaults—, pero sí reconocer qué falta: sin probes, secrets, HPA e ingress, el YAML de ejemplo es una demo, no un servicio.
+No hace falta que lo escribas hoy —tu proveedor gestionado ([c18b](/concepto/18b-elegir-modelo-y-proveedor)) o un Helm chart traen buenos defaults—, pero sí reconocer qué falta: sin probes, secrets, HPA e ingress, el YAML de ejemplo es una demo, no un servicio.
 
 </Box>
 
@@ -194,6 +194,42 @@ No hace falta que lo escribas hoy —tu proveedor gestionado ([m18b](/modulo/18b
 - Decidir, por componente, entre Kubernetes y serverless justificándolo.
 
 </Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 15b">
+
+<Question>
+  <Prompt>1 · En el manifiesto, ¿qué papel juega el `Service` frente al `Deployment`?</Prompt>
+  <Option>El `Service` arranca los contenedores y el `Deployment` los vigila</Option>
+  <Option ok>El `Deployment` mantiene vivas las réplicas; el `Service` les da una dirección única y balancea el tráfico</Option>
+  <Option>El `Service` es la versión serverless del `Deployment`</Option>
+  <Feedback>Dos objetos, dos papeles. Y con un tercero (`HorizontalPodAutoscaler`) K8s además sube y baja réplicas según la carga (Concepto 15b).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · Un usuario sube 200 PDFs para indexar. ¿Qué patrón de comunicación usas?</Prompt>
+  <Option>Síncrono (REST): el usuario espera a que terminen de indexarse</Option>
+  <Option ok>Asíncrono (una cola): dejas el encargo y los workers indexan a su ritmo</Option>
+  <Option>Da igual: la latencia de ingesta no la nota nadie</Option>
+  <Feedback>Síncrono para el camino de consulta (el usuario está esperando); colas para la ingesta (nadie espera en línea). Es la misma línea que separa K8s de serverless (Concepto 15b).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Tu pod tarda 40 segundos en cargar el modelo al arrancar y sin `readiness probe` los usuarios ven errores. ¿Por qué?</Prompt>
+  <Option>Porque el `Deployment` reinicia el pod al no responder</Option>
+  <Option ok>Porque K8s le manda tráfico en cuanto arranca, sin saber que todavía no está listo</Option>
+  <Option>Porque el balanceador reparte por turnos y no mira la salud</Option>
+  <Feedback>La *readiness* dice "ya puedo recibir tráfico"; la *liveness*, "sigo vivo, no me reinicies". Sin ellas mandas peticiones a un pod que aún carga, o dejas vivo uno colgado (Concepto 15b).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · ¿Dónde va la `API key` de tu proveedor de modelos?</Prompt>
+  <Option>En el `Deployment`, como variable de entorno en el YAML</Option>
+  <Option ok>En un `Secret` (o un gestor externo), inyectado como variable de entorno al pod</Option>
+  <Option>En la imagen del contenedor, para que viaje con el código</Option>
+  <Feedback>Una llave en texto plano —en el manifiesto o en la imagen— es una fuga esperando pasar. El manifiesto se versiona en git; el secreto no ([c23](/concepto/23-seguridad-red-teaming)).</Feedback>
+</Question>
+
+</Quiz>
 
 <Recap level={4} label="↺ En una frase">
 

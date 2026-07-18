@@ -5,6 +5,13 @@ import { join } from "node:path";
 const nextConfig: NextConfig = {
   // Allow .mdx as a first-class page/route extension alongside TS.
   pageExtensions: ["ts", "tsx", "mdx"],
+  // The lesson route moved from /modulo/[slug] to /concepto/[slug]. Keep any
+  // external links (shared URLs, indexed pages) alive with a permanent 301.
+  async redirects() {
+    return [
+      { source: "/modulo/:slug", destination: "/concepto/:slug", permanent: true },
+    ];
+  },
 };
 
 // @next/mdx resolves plugin-path strings with require.resolve relative to the

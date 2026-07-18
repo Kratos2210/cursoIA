@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { MODULE_ITEMS, moduleBySlug, neighbors } from "@/lib/roadmap";
 import { ModuleFooter } from "@/components/app/ModuleFooter";
@@ -59,8 +60,15 @@ export default async function ModulePage({
       <div className="view mod-view">
       <div className="mod-main">
         <article className="article">
+          <nav className="crumbs" aria-label="Ruta de navegación">
+            <Link href="/">Inicio</Link>
+            <span aria-hidden="true">›</span>
+            <Link href="/#roadmap">{item.levelShort}</Link>
+            <span aria-hidden="true">›</span>
+            <span aria-current="page">Concepto {item.num}</span>
+          </nav>
           <KindTag colorVar={item.colorVar}>
-            {item.levelName} · Módulo {item.num}
+            {item.levelName} · Concepto {item.num}
           </KindTag>
           <h1>{item.title}</h1>
           {item.pyFile ? <FileRef file={item.pyFile} tested={item.tested} /> : null}
