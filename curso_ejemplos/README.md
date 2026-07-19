@@ -3,7 +3,7 @@
 Cada archivo es **autónomo**: lo abres en VS Code, lo corres y funciona solo.
 Están comentados **sección por sección** para que entiendas cada línea.
 
-Y todo está **verificado por 864 tests** que corren sin gastar un solo token
+Y todo está **verificado por 859 tests** que corren sin gastar un solo token
 (ver [§6](#6-cómo-se-verifica-que-esto-funciona)).
 
 ## 1) Requisitos (una sola vez)
@@ -91,14 +91,14 @@ Gobierno de Datos, repartido en 8 módulos y con 44 tests propios.
 **Proyecto retail:** [`proyecto_retail/`](proyecto_retail/) — el caso del m29
 (asistente de compras Sifrah) llevado a un proyecto LLMOps organizado: el LLM
 cableado de verdad (m05), guardrail de precios, caché semántico, A/B de prompts,
-evals con CI gate, serving FastAPI/SSE y ADRs. 61 tests, 100% offline.
+evals con CI gate, serving FastAPI/SSE y ADRs. 127 tests, 100% offline.
 
 ## 4) Ejercicios
 
-Leer código no enseña a escribirlo. En [`ejercicios/`](ejercicios/) hay 12
+Leer código no enseña a escribirlo. En [`ejercicios/`](ejercicios/) hay 18
 ejercicios con enunciado, **pistas progresivas**, criterio de aceptación
 verificable y solución aparte —incluidos los de temas avanzados (MCP, patrón
-supervisor, evaluación, coste y servir el agente por HTTP).
+supervisor, evaluación, coste, multimodal, alucinaciones y el caso retail).
 
 Los que no puedes saltarte —y no gastan cuota— son
 [`ejercicio_12_rerank.md`](ejercicios/ejercicio_12_rerank.md) (predice el ranking
@@ -123,38 +123,52 @@ montón de scripts: **cada concepto tiene una prueba que lo defiende**.
 | Runnables / LCEL | `06` | — | `test_offline.py::TestTema06Runnables` |
 | Herramientas (`@tool`) | `07` · `08` | [07](ejercicios/ejercicio_07_tools.md) | `test_offline.py::TestTema07Herramientas` |
 | Resiliencia (429, retry) | `09` | — | `test_util.py::TestEsErrorCuota` |
+| 🏗 Proyecto: contrato JSON + filtro + métricas + fallback | `09b` | — | `test_offline.py::TestTema09bProyectoTexto` (6 tests) |
 | Agente ReAct | `10` | — | `test_agente.py::TestAgenteCompleto` |
 | RAG: trocear y unir | `11` | [11](ejercicios/ejercicio_11_rag.md) | `test_offline.py::TestTema11Rag` |
 | BM25 · coseno · RRF · re-rank | `12` | [12](ejercicios/ejercicio_12_rerank.md) | `test_offline.py::TestTema12*` (25 tests) |
+| Re-ranker REAL (cross-encoder ONNX, sin torch) | `rerank/rerank_real.py` | [12](ejercicios/ejercicio_12_rerank.md) | — (companion, fuera del gate, ADR-0008) |
 | `StateGraph` (nodos y aristas) | `13` | — | `test_offline.py::TestTema13bHumanInTheLoop` |
 | Human-in-the-loop | `13b` | [13](ejercicios/ejercicio_13_hitl.md) | `test_offline.py::TestTema13bHumanInTheLoop` |
 | MCP (servidor + cliente) | `14` | [14](ejercicios/ejercicio_14_mcp.md) | `test_offline.py::TestTema14Mcp` |
 | Patrón supervisor | `15` | [15](ejercicios/ejercicio_15_supervisor.md) | `test_offline.py::TestTema15Supervisor` |
-| Evaluación con dataset | `16` | [16](ejercicios/ejercicio_16_evaluacion.md) | *(el propio ejemplo es la métrica)* |
+| Evaluación con dataset | `16` | [16](ejercicios/ejercicio_16_evaluacion.md) | *el propio ejemplo es la métrica* |
 | Tokens, coste y tracing | `16b` | [16b](ejercicios/ejercicio_16b_costes.md) | `test_offline.py::TestTema16bObservabilidad` |
 | Servir por HTTP | `17` | [17](ejercicios/ejercicio_17_api.md) | `test_imports.py` |
-| Elegir modelo y proveedor | `util.py` | [18b](curso-langchain.html#m18b) | `test_util.py::TestProveedoresNuevos` |
+| Elegir modelo y proveedor | `util.py` | — | `test_util.py::TestProveedoresNuevos` |
 | Auditoría / trazabilidad | `proyecto_final/audit.py` | [🏆](ejercicios/ejercicio_proyecto.md) | `proyecto_final/tests/test_audit.py` |
 | Inyección de dependencias | `proyecto_final/graph_builder.py` | [🏆](ejercicios/ejercicio_proyecto.md) | `proyecto_final/tests/test_agente.py` |
-| Spec-Driven Development (verificador) | `verificar_curso.py` | [19](curso-langchain.html#m19) | `tests/test_verificar_curso.py` |
-| Multi-query y RAG-Fusion | `20` | [20](curso-langchain.html#m20) | `test_offline.py::TestTema20*` |
-| Fine-tuning vs RAG | `21` | [21](curso-langchain.html#m21) | `test_offline.py::TestTema21*` |
-| Multimodal (texto + imagen) | `22` | [22](curso-langchain.html#m22) | `test_offline.py::TestTema22*` |
-| Voz: audio de entrada y síntesis (TTS) | `22b` | [22](curso-langchain.html#m22) | `test_offline.py::TestTema22bVoz*` |
-| Seguridad y red-teaming (OWASP LLM) | `23` | [23](curso-langchain.html#m23) | `test_redteam.py` |
-| Vector DBs en producción (dedup · IVFFlat) | `24` | [24](curso-langchain.html#m24) | `test_offline.py::TestTema24*` |
-| Prompt engineering (few-shot · CoT · self-consistency) | `26b` | [26b](curso-langchain.html#m26b) | `test_offline.py::TestTema26b*` |
-| Fundamentos del LLM (tokenización · softmax · muestreo · perplejidad) | `27` | [27](curso-langchain.html#m27) | `test_offline.py::TestTema27*` |
-| Desafíos: alucinaciones y detección (SelfCheckGPT) | `28` | [28](curso-langchain.html#m28) | `test_offline.py::TestTema28*` |
-| Caso real 2: asistente de compras retail (ETL · grounding · eval) | `29` | [29](curso-langchain.html#m29) | `test_offline.py::TestTema29*` |
-| Caso retail en producción (proyecto LLMOps) | `proyecto_retail/` | [29](curso-langchain.html#m29-proyecto) | `proyecto_retail/tests` |
-| Memoria de largo plazo (recordar entre conversaciones) | `30` | [30](curso-langchain.html#m30) | `test_offline.py::TestTema30*` |
+| Spec-Driven Development (verificador) | `verificar_curso.py` | — | `tests/test_verificar_curso.py` |
+| Multi-query y RAG-Fusion | `20` | [20](ejercicios/ejercicio_20_rag_avanzado.md) | `test_offline.py::TestTema20*` |
+| Fine-tuning vs RAG | `21` | — | `test_offline.py::TestTema21*` |
+| Fine-tuning hands-on (LoRA/QLoRA en Colab) | `docs/notebooks/21b_lora_colab.ipynb` | — | — (fuera del gate, ADR-0003) |
+| Multimodal (texto + imagen) | `22` | [22](ejercicios/ejercicio_22_multimodal.md) | `test_offline.py::TestTema22*` |
+| Voz: audio de entrada y síntesis (TTS) | `22b` | [22](ejercicios/ejercicio_22_multimodal.md) | `test_offline.py::TestTema22bVoz*` |
+| Agente de voz en tiempo real (Deepgram STT→LLM→TTS) | `voz/agente_voz_realtime.py` | — | — (anexo, fuera del gate, ADR-0007) |
+| Seguridad y red-teaming (OWASP LLM) | `23` | [23](ejercicios/ejercicio_23_seguridad.md) | `test_redteam.py` |
+| Vector DBs en producción (dedup · IVFFlat) | `24` | — | `test_offline.py::TestTema24*` |
+| DB vectorial REAL (Qdrant · HNSW · upsert idempotente) | `vectordb/qdrant_companion.py` | — | — (companion, fuera del gate, ADR-0009) |
+| Caché exacta vs semántica (TTL, llave por rol, hit rate) | `proyecto_llmops/cache/` | — | `proyecto_llmops/tests/test_cache.py` |
+| Feedback 👍/👎 y A/B de prompts | `proyecto_llmops/observability/feedback.py` | — | `proyecto_llmops/tests` |
+| Frontend de chat con SSE (streaming) | `proyecto_llmops/app/static/chat.html` | — | — |
+| Canal WhatsApp (webhook + EvolutionAPI) | `canales/whatsapp/webhook.py` | — | — (anexo, fuera del gate, ADR-0004) |
+| Orquestación low-code con n8n | `canales/n8n/agente_rag_whatsapp.json` | — | — (anexo, fuera del gate, ADR-0005) |
+| Mapa del ecosistema (LangChain vs LlamaIndex · CrewAI · OpenAI Agents SDK) | — | — | — |
+| Correr LlamaIndex y CrewAI (mismo RAG/supervisor, otra piel) | `frameworks/rag_llamaindex.py` · `frameworks/crew_crewai.py` | — | — (anexo, fuera del gate, ADR-0006) |
+| Discovery de procesos (AS-IS/TO-BE · escalera de autonomía · matriz) | — | — | — |
+| Prompt engineering (few-shot · CoT · self-consistency) | `26b` | — | `test_offline.py::TestTema26b*` |
+| Mecánica del LLM (tokenización · softmax · muestreo · perplejidad) | `27` | [27](ejercicios/ejercicio_27_fundamentos.md) | `test_offline.py::TestTema27*` |
+| Arquitecturas e historia (transformer · encoder/decoder · RLHF · MoE) | — | — | — |
+| Desafíos: alucinaciones y detección (SelfCheckGPT) | `28` | [28](ejercicios/ejercicio_28_alucinaciones.md) | `test_offline.py::TestTema28*` |
+| Caso real 2: asistente de compras retail (ETL · grounding · eval) | `29` | [29](ejercicios/ejercicio_29_retail.md) | `test_offline.py::TestTema29*` |
+| Caso retail en producción (proyecto LLMOps) | `proyecto_retail/` | — | `proyecto_retail/tests` |
+| Memoria de largo plazo (recordar entre conversaciones) | `30` | — | `test_offline.py::TestTema30*` |
 
 ## 6) Cómo se verifica que esto funciona
 
 ```bash
 cd curso_ejemplos
-uv run pytest -m offline        # 864 tests, ~30 s, CERO llamadas a la API
+uv run pytest -m offline        # 859 tests, ~30 s, CERO llamadas a la API
 ```
 
 Qué cubren:
@@ -224,7 +238,7 @@ Ningún archivo del curso instancia un modelo a mano. Todos llaman a
 `util.crear_llm()` y a `util.crear_embeddings()`, que leen el `.env`. Cambiar de
 proveedor es cambiar una línea, nunca el código. **Cuál elegir** para una
 solución real (pago vs. open weights, precios, dónde corre) se explica en el
-Módulo 18b (`curso-langchain.html#m18b`).
+Concepto 18b de la web (`web/content/modules/18b-elegir-modelo-y-proveedor.mdx`).
 
 | Quiero… | En el `.env` | Instalar |
 |---------|--------------|----------|

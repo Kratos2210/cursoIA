@@ -65,3 +65,8 @@ jobs:
       - name: Verificar que ningún ejemplo tiene errores de sintaxis
         # Barato y complementario: compila TODOS los .py del curso.
         run: uv run python -m compileall -q . && echo "✅ Todos los .py compilan"
+
+      - name: Verificar la coherencia del material (web + README + util)
+        # El guardián del curso: cheat sheet == util, mapa de la web == README §5,
+        # manifest sano, enlaces internos con destino, niveles y pauta pedagógica.
+        run: uv run python verificar_curso.py

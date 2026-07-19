@@ -66,10 +66,11 @@ mantener. Para parsear HTML o comparar tablas, la stdlib (`html.parser`, `re`, `
 alcanza; meter una librería externa sería enseñar a matar moscas a cañonazos.
 
 ### V. El material del curso es la fuente de verdad (solo lectura)
-`curso-langchain.html`, `README.md` y `util.py` son la **versión canónica** del curso.
-Una feature de verificación los **lee y contrasta**, pero **no los edita**. Si el verificador
-detecta una discrepancia real, se **reporta** como hallazgo; no se "arregla" tocando el
-material para que el test pase.
+La web Next.js (`web/content/`: manifest + MDX), `README.md` y `util.py` son la **versión
+canónica** del curso (enmienda 2026-07-19: `curso-langchain.html` fue retirado; la web es la
+única fuente de verdad del alumno). Una feature de verificación los **lee y contrasta**, pero
+**no los edita**. Si el verificador detecta una discrepancia real, se **reporta** como
+hallazgo; no se "arregla" tocando el material para que el test pase.
 **Rationale:** el verificador existe justamente para proteger esos archivos. Si pudiera
 editarlos para acallar un fallo, dejaría de ser un guardián y pasaría a ser cómplice.
 
