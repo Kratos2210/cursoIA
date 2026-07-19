@@ -83,7 +83,7 @@ El camino de cada cambio · **automático, en cada push**
 <Flow>
   <Step n="1" title="Commit + push">Subes tu cambio al repositorio.</Step>
   <Step n="2" title="GitHub Actions">Arranca solo, sin que nadie se lo pida.</Step>
-  <Step n="3" title="pytest -m offline">Los 859 tests, sin llave ni cuota.</Step>
+  <Step n="3" title="pytest -m offline">Los 860 tests, sin llave ni cuota.</Step>
   <Step n="✅ / ❌" title="Verde o rojo">Verde → se mergea. Rojo → se corrige antes de integrar.</Step>
 </Flow>
 
@@ -176,7 +176,7 @@ Con esto la CI te dice que el commit está sano. Lo que todavía no hace nadie e
 </Question>
 
 <Question>
-  <Prompt>2 · Tienes 859 tests en verde y el agente sigue alucinando en producción. ¿Qué te falta?</Prompt>
+  <Prompt>2 · Tienes 860 tests en verde y el agente sigue alucinando en producción. ¿Qué te falta?</Prompt>
   <Option>Más tests, con casos reales de usuarios</Option>
   <Option ok>Una **evaluación**: los tests protegen tu lógica, la calidad se mide con dataset y juez</Option>
   <Option>Tests que sí llamen al LLM real, para cubrir ese hueco</Option>
@@ -203,6 +203,6 @@ Con esto la CI te dice que el commit está sano. Lo que todavía no hace nadie e
 
 <Recap level={6} label="↺ En una frase">
 
-Testear IA consiste en fijar todo lo que *no* es el modelo y sustituir el modelo por un guion. Por eso la CI puede correr los 859 tests sin tener tu llave.<Arch>archivos: `tests/` · `.github/workflows/ci.yml`</Arch>
+Testear IA consiste en fijar todo lo que *no* es el modelo y sustituir el modelo por un guion. Por eso la CI puede correr los 860 tests sin tener tu llave.<Arch>archivos: `tests/` · `.github/workflows/ci.yml`</Arch>
 
 </Recap>

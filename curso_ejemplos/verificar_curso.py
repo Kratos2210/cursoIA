@@ -221,6 +221,11 @@ def verificar_manifest(manifest: dict, slugs_modulos_disco: set[str],
             detalles.append(
                 f"'{modulo.get('slug')}': order={modulo.get('order')} pero ocupa la posición {indice}."
             )
+        # videoUrl es opcional, pero si está debe ser de YouTube (VideoEmbed
+        # solo sabe armar el lite-embed de youtube-nocookie).
+        video = modulo.get("videoUrl")
+        if video and not re.search(r"(?:youtube(?:-nocookie)?\.com/|youtu\.be/)", video):
+            detalles.append(f"'{modulo.get('slug')}': videoUrl no parece de YouTube: {video}")
 
     slugs_manifest = {m["slug"] for m in modulos}
     slugs_extras = {e["slug"] for e in extras}

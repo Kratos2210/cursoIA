@@ -163,6 +163,15 @@ class TestVerificarManifest:
         assert resultado.ok is False
         assert any("02-b" in d and "order=7" in d for d in resultado.detalles)
 
+    def test_videourl_que_no_es_youtube_falla(self):
+        # El campo es opcional, pero si está debe ser de YouTube: VideoEmbed
+        # solo sabe armar ese lite-embed.
+        manifest = _manifest_mini()
+        manifest["modules"][0]["videoUrl"] = "https://vimeo.com/12345"
+        resultado = verificar_curso.verificar_manifest(manifest, {"01-a", "02-b"}, {"faq"})
+        assert resultado.ok is False
+        assert any("videoUrl" in d for d in resultado.detalles)
+
     def test_mdx_huerfano_y_faltante_fallan(self):
         # '03-c.mdx' sobra en disco y '02-b' no tiene archivo: dos fallos distintos.
         resultado = verificar_curso.verificar_manifest(
