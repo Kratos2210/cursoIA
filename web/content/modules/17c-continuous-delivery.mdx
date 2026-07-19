@@ -1,4 +1,4 @@
-La CI del [c17b](/concepto/17b-tests-y-ci) te dice, en cada push, que **el código está bien**. Pero verde no es lo mismo que *desplegado*: alguien todavía tiene que entrar al servidor y arrancar la versión nueva. Mientras ese paso lo dé una persona a mano, es el eslabón donde se cuela el error de las 11 de la noche — el `git pull` en la carpeta equivocada, el `.env` que no se copió, la imagen que nadie reconstruyó. Este concepto automatiza el tramo que va **del commit en verde al servicio corriendo**.
+La CI del [c17b](/concepto/17b-tests-y-ci) te dice, en cada push, que **el código está bien**. Pero verde no es lo mismo que *desplegado*: alguien todavía tiene que entrar al servidor —el VPS que dejaste listo en el [c15c](/concepto/15c-donde-vive-tu-agente)— y arrancar la versión nueva. Mientras ese paso lo dé una persona a mano, es el eslabón donde se cuela el error de las 11 de la noche — el `git pull` en la carpeta equivocada, el `.env` que no se copió, la imagen que nadie reconstruyó. Este concepto automatiza el tramo que va **del commit en verde al servicio corriendo**.
 
 <Box kind="def" label="◈ Definición · CI, Delivery y Deployment (la diferencia es quién aprieta el botón)">
 
@@ -120,7 +120,7 @@ jobs:
             docker compose pull && docker compose up -d
 ```
 
-El `test_smoke_despliegue.py` del paso 5 no es inventado: existe en el repo del proyecto LLMOps. Le pega a `/health`, cruza que `/metrics` respete la auth que `/health` anuncia, y hace un round-trip de `/feedback`. Es la capa que caza los fallos que solo aparecen *al desplegar* — los que un test unitario, por definición, no ve.
+Los tres secrets del job `deploy` (`VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`) y ese `/srv/gobdata` no son decorado: son exactamente lo que montaste en el paso 7 del [c15c](/concepto/15c-donde-vive-tu-agente) — la IP de tu VM, el usuario `deploy` y la llave creada para el pipeline. El `test_smoke_despliegue.py` del paso 5 tampoco es inventado: existe en el repo del proyecto LLMOps. Le pega a `/health`, cruza que `/metrics` respete la auth que `/health` anuncia, y hace un round-trip de `/feedback`. Es la capa que caza los fallos que solo aparecen *al desplegar* — los que un test unitario, por definición, no ve.
 
 <Box kind="warn" label="▲ Por qué un smoke test post-deploy no es opcional">
 

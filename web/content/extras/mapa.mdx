@@ -122,6 +122,12 @@ Los notebooks y scripts con los que empezaste (`lcel.ipynb`, `interfazunificada.
 | Doble de prueba | Objeto que sustituye al modelo en los tests (ver *Modelo falso*). |
 | Observabilidad | Ver qué hace el sistema en vivo (prompts, tools, tokens, tiempos) sin añadir código. |
 | Microservicio | Componente independiente y desplegable por separado. |
+| Monolito modular | Un solo proceso con fronteras internas por paquete y dependencias en una dirección; lo que corre `proyecto_llmops`. Ver [Concepto 15a](/concepto/15a-arquitectura-de-software). |
+| Contrato de API | El acuerdo estable entre frontend y backend: endpoints, formas de datos y errores. Mientras no cambie, cada lado evoluciona libre. Ver [Concepto 15a](/concepto/15a-arquitectura-de-software). |
+| VPS | Máquina virtual alquilada con IP pública y acceso root; el SO y su seguridad son tuyos. Ver [Concepto 15c](/concepto/15c-donde-vive-tu-agente). |
+| Reverse proxy | El portero HTTP (Caddy, nginx): recibe el 443, termina el TLS y reenvía a la app por la red interna. Ver [Concepto 15c](/concepto/15c-donde-vive-tu-agente). |
+| Registro A (DNS) | La entrada que apunta tu dominio a la IP del servidor; va antes que el TLS porque Let's Encrypt valida resolviéndolo. |
+| TLS / Let's Encrypt | El candado de HTTPS y la autoridad que emite los certificados gratis. |
 | Contenedor | Paquete con tu código + sus dependencias, que corre igual en cualquier máquina. |
 | Kubernetes | Orquestador declarativo: mantiene vivas N copias de cada servicio. |
 | Balanceador de carga | Reparte el tráfico entre las copias vivas de un servicio. |

@@ -89,8 +89,8 @@ La media de latencia la aplasta el caso feliz: con 95 requests de 200 ms y 5 de 
 ### F4 · Empaquetado y despliegue
 
 **Objetivo:** que la versión nueva llegue al servidor sola, y vuelva atrás sola si algo falla.
-**Construyes:** un Dockerfile multi-stage, un compose, un pipeline de CD (build → deploy → smoke test → rollback) y un despliegue en VPS o Kubernetes.
-**Te lo enseñan:** [c17 repo productivo](/concepto/17-repo-productivo) · [c15b arquitectura de despliegue](/concepto/15b-arquitectura-de-despliegue) · [c17c Continuous Delivery](/concepto/17c-continuous-delivery).
+**Construyes:** un Dockerfile multi-stage, un compose, un pipeline de CD (build → deploy → smoke test → rollback) y un VPS aprovisionado de cero (firewall, Docker, dominio, TLS).
+**Te lo enseñan:** [c17 repo productivo](/concepto/17-repo-productivo) · [c15a arquitectura de software](/concepto/15a-arquitectura-de-software) · [c15b arquitectura de despliegue](/concepto/15b-arquitectura-de-despliegue) · [c15c dónde vive tu agente](/concepto/15c-donde-vive-tu-agente) · [c17c Continuous Delivery](/concepto/17c-continuous-delivery).
 **Checklist:** el artefacto es una **imagen con tag inmutable**, no un `git pull` · los servicios son **stateless** (el estado vive en Postgres/Redis, no en el proceso) · hay un **smoke test post-deploy** que arranca el contenedor y le pega por HTTP · los secrets viven en el pipeline, nunca en la imagen.
 
 <Box kind="warn" label="▲ La trampa de F4: la config que solo se evalúa al desplegar">
@@ -121,7 +121,7 @@ Un A/B con feedback en memoria y poco tráfico te tienta a declarar ganador a la
 | "Un usuario pidió datos que no debía ver y los recibió" | **F2** — guardrails y RBAC |
 | "Llegó una factura de tokens que no esperaba" | **F3** — coste por request y rate limiting |
 | "Va lento a veces y no sé cuándo ni por qué" | **F3** — p95 y tracing |
-| "Desplegar es entrar por SSH y rezar" | **F4** — Docker y CD con smoke test |
+| "Desplegar es entrar por SSH y rezar" | **F4** — un servidor bien montado (c15c) y CD con smoke test |
 | "Se rompió en producción y no sé cómo volver atrás" | **F4** — tags inmutables y rollback |
 | "No sé si a los usuarios les sirve lo que responde" | **F5** — feedback y A/B |
 
