@@ -43,3 +43,6 @@ next-env.d.ts
 # course migration artifacts
 /content/external/
 /content/conversion-report.json
+
+# generated at build by scripts/build-search-index.mjs
+/public/search-index.json

@@ -4,6 +4,7 @@ import "./globals.css";
 import { AppProvider } from "@/components/app/AppProvider";
 import { Sidebar } from "@/components/app/Sidebar";
 import { MobileBar } from "@/components/app/MobileBar";
+import { SearchPalette } from "@/components/app/SearchPalette";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -43,6 +44,7 @@ export default function RootLayout({
           Saltar al contenido
         </a>
         <AppProvider>
+          <SearchPalette />
           <div className="app">
             <Sidebar />
             <main className="main" data-main>

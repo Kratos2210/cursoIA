@@ -23,9 +23,14 @@ export function ModuleFooter({
       </button>
 
       {!next ? (
-        <Link href="/recurso/examen" className="mod-finish">
-          🎓 Terminaste el temario — sigue con el <b>examen final</b> →
-        </Link>
+        <>
+          <Link href="/recurso/examen" className="mod-finish">
+            🎓 Terminaste el temario — sigue con el <b>examen final</b> →
+          </Link>
+          <Link href="/constancia" className="mod-finish">
+            📜 Y al llegar al 100%, genera tu <b>constancia</b> →
+          </Link>
+        </>
       ) : null}
 
       <div className="pager">

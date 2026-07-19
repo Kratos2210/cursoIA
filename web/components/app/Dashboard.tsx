@@ -140,6 +140,11 @@ export function Dashboard() {
             AI Engineer{" "}
             <span>— con proyectos reales en tu portafolio y el examen final aprobado.</span>
           </p>
+          <p style={{ marginTop: 6 }}>
+            <Link href="/constancia">
+              {pct === 100 ? "🎓 Genera tu constancia →" : `Tu constancia se desbloquea al 100% (vas en ${pct}%) →`}
+            </Link>
+          </p>
         </div>
       </div>
 
