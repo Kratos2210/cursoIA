@@ -60,6 +60,11 @@ Cada extra cubre un tramo del curso. Instala solo el que necesites.
 
 Con pip puedes combinarlos: `pip install -e ".[dev,emb]"`.
 
+Cada carpeta de anexo trae su propio README con el detalle (qué es, cómo se
+corre y el ADR que lo respalda): [frameworks/](frameworks/README.md) ·
+[canales/](canales/README.md) · [voz/](voz/README.md) ·
+[rerank/](rerank/README.md) · [vectordb/](vectordb/README.md).
+
 ---
 
 ## Proveedores de modelo

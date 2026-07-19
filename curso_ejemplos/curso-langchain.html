@@ -2925,7 +2925,7 @@ vector store servido (el retriever se cambia sin tocar la cadena).</code></pre><
     <section id="m17b"><div class="col">
       <p class="modtag l4"><span class="bar"></span>Nivel Producción · Módulo 17b</p>
       <h2>Tests y CI: la red que te deja cambiar cosas sin miedo</h2>
-      <div class="fileref">📋 Existe de verdad: <b>curso_ejemplos/tests/</b> · <b>proyecto_final/tests/</b> · <b>proyecto_llmops/tests/</b> · <b>proyecto_retail/tests/</b> · <b>.github/workflows/ci.yml</b> — 642 tests, ninguno gasta cuota</div>
+      <div class="fileref">📋 Existe de verdad: <b>curso_ejemplos/tests/</b> · <b>proyecto_final/tests/</b> · <b>proyecto_llmops/tests/</b> · <b>proyecto_retail/tests/</b> · <b>.github/workflows/ci.yml</b> — 852 tests, ninguno gasta cuota</div>
       <p class="modmeta"><span>🎯 <b>Al terminar sabrás:</b> testear IA sin gastar cuota (modelo falso, marcador <code class="k">offline</code>) y montar CI.</span><span>✅ <b>Necesitas:</b> Módulo 17.</span><span>⏱️ <b>~45 min</b></span></p>
       <p>Todo el nivel de producción se apoya en una idea silenciosa: <strong>puedes cambiar el código porque algo te avisa si lo rompes</strong>. Sin eso, cada refactor es una apuesta y cada actualización de librería, una noche larga. Este módulo enseña cómo está tejida esa red — la del propio curso, que puedes correr ahora mismo.</p>
       <div class="box def"><div class="lab">◈ Definición · Test, doble de prueba y CI</div>
@@ -2981,7 +2981,7 @@ vector store servido (el retriever se cambia sin tocar la cadena).</code></pre><
       <div class="flow" role="img" aria-label="Flujo de CI: haces commit y push, GitHub Actions corre pytest en modo offline; si sale verde el cambio se puede mergear, si sale rojo se corrige antes de integrar.">
         <div class="step"><div class="num">1</div><div class="ti">Commit + push</div><div class="de">Subes tu cambio al repositorio.</div></div><div class="arw">→</div>
         <div class="step hl"><div class="num">2</div><div class="ti">GitHub Actions</div><div class="de">Arranca solo, sin que nadie se lo pida.</div></div><div class="arw">→</div>
-        <div class="step"><div class="num">3</div><div class="ti"><code>pytest -m offline</code></div><div class="de">Los 642 tests, sin llave ni cuota.</div></div><div class="arw">→</div>
+        <div class="step"><div class="num">3</div><div class="ti"><code>pytest -m offline</code></div><div class="de">Los 852 tests, sin llave ni cuota.</div></div><div class="arw">→</div>
         <div class="step"><div class="num">✅ / ❌</div><div class="ti">Verde o rojo</div><div class="de">Verde → se mergea. Rojo → se corrige antes de integrar.</div></div>
       </div>
       <figure class="code"><figcaption><span class="d"></span>.github/workflows/ci.yml · el corazón del workflow</figcaption><pre><code>strategy:
@@ -3032,7 +3032,7 @@ def test_la_linea_lleva_la_severidad():
         </ul></div>
           <div class="recap l4">
         <div class="lab">↺ En una frase</div>
-        <p>Testear IA consiste en fijar todo lo que <em>no</em> es el modelo y sustituir el modelo por un guion. Por eso la CI puede correr los 642 tests sin tener tu llave.<span class="arch">archivos: <code>tests/</code> · <code>.github/workflows/ci.yml</code></span></p>
+        <p>Testear IA consiste en fijar todo lo que <em>no</em> es el modelo y sustituir el modelo por un guion. Por eso la CI puede correr los 852 tests sin tener tu llave.<span class="arch">archivos: <code>tests/</code> · <code>.github/workflows/ci.yml</code></span></p>
       </div>
     </div></section>
 
@@ -3328,7 +3328,7 @@ OPENAI_API_KEY=sk-...      # openai      (default gpt-5.4-mini)
       <div class="lvbanner" style="--lvc:var(--l5)"><div class="k">LLMOps · De prototipo a producto</div><p>El capstone funciona en tu portátil. Esto es lo que le falta para funcionar en una financiera, con usuarios, con auditores y con una factura.</p></div>
       <p class="modtag l5"><span class="bar"></span>Proyecto · LLMOps</p>
       <h2>El ciclo de vida LLMOps: gobernanza, coste, observabilidad y evaluación</h2>
-      <div class="fileref">📋 Proyecto ejecutable: <b>curso_ejemplos/proyecto_llmops/</b> — servicio FastAPI + Postgres/pgvector + Redis + Langfuse.<span class="tested">✓ 232 tests, sin API ni servicios</span></div>
+      <div class="fileref">📋 Proyecto ejecutable: <b>curso_ejemplos/proyecto_llmops/</b> — servicio FastAPI + Postgres/pgvector + Redis + Langfuse.<span class="tested">✓ 366 tests, sin API ni servicios</span></div>
       <p class="modmeta"><span>🎯 <b>Al terminar sabrás:</b> qué separa un prototipo que funciona de un producto que se puede operar.</span><span>✅ <b>Necesitas:</b> el Módulo 18.</span><span>⏱️ <b>~120 min</b></span></p>
 
       <p>El <a class="inline" href="#m18">capstone</a> responde bien. Le falta todo lo demás: nadie sabe cuánto cuesta, nadie ve por qué respondió lo que respondió, un usuario puede convencerlo de ignorar sus instrucciones, y cuando alguien cambie el prompt <em>no habrá forma de saber si empeoró</em>. <strong>La respuesta a eso no es cambiar de modelo cada semana. Es LLMOps.</strong></p>
@@ -3506,7 +3506,7 @@ def test_la_segunda_pregunta_igual_no_llama_al_agente(self, cliente):
       <p>Ese «nunca llega al agente» es la parte que importa: es lo que ahorra dinero y lo que evita el riesgo. Y solo se puede <em>afirmar</em> contando las invocaciones del doble.</p>
 
       <div class="box analogy"><div class="lab">◆ Los dos workflows de CI, y por qué son dos</div>
-        <p><code class="k">ci.yml</code> corre en <strong>cada push</strong>: 642 tests offline, gratis, nunca llama a la API. <code class="k">eval-gate.yml</code> corre <strong>a mano o antes de una release</strong>: sí gasta cuota y sí puede vetar el deploy. Confundirlos es el error clásico — o pagas una evaluación completa por cada commit de un README, o no evalúas nunca porque «la CI ya pasa».</p></div>
+        <p><code class="k">ci.yml</code> corre en <strong>cada push</strong>: 852 tests offline, gratis, nunca llama a la API. <code class="k">eval-gate.yml</code> corre <strong>a mano o antes de una release</strong>: sí gasta cuota y sí puede vetar el deploy. Confundirlos es el error clásico — o pagas una evaluación completa por cada commit de un README, o no evalúas nunca porque «la CI ya pasa».</p></div>
 
       <div class="checkpoint"><div class="lab">✔ Si llegaste aquí deberías poder…</div>
         <ul>
@@ -5628,7 +5628,7 @@ llm = ChatOpenAI(model="qwen/qwen3-32b",
 
     <footer><div class="col">
       <p>Curso generado a partir de tu código en <code class="k">spec-sdd/studylangchain</code> y <code class="k">studylangchainnivelinter</code>. Estudia nivel por nivel y practica cada bloque en su archivo.</p>
-      <p>Tú escribes el código en <code class="k">mi-curso-ia/</code>. La versión de referencia de cada tema, comentada línea por línea y cubierta por <strong>642 tests que no gastan cuota</strong>, está publicada en <a class="inline" href="https://github.com/Kratos2210/cursoIA/tree/main/curso_ejemplos">github.com/Kratos2210/cursoIA</a> — consúltala <em>después</em> de intentarlo.</p>
+      <p>Tú escribes el código en <code class="k">mi-curso-ia/</code>. La versión de referencia de cada tema, comentada línea por línea y cubierta por <strong>852 tests que no gastan cuota</strong>, está publicada en <a class="inline" href="https://github.com/Kratos2210/cursoIA/tree/main/curso_ejemplos">github.com/Kratos2210/cursoIA</a> — consúltala <em>después</em> de intentarlo.</p>
       <p>Si algo falla, empieza por la <a class="inline" href="#faq">FAQ de errores</a>.</p>
       <p>Datawith.AI · Alberto Ruiz — Lima, Perú</p>
     </div></footer>

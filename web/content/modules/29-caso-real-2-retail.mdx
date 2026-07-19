@@ -178,7 +178,7 @@ Este pipeline se monta tal cual sobre el stack del [proyecto_llmops](/recurso/ll
 
 ### Paso 8 · El build organizado: de la maqueta al proyecto
 
-📁 El proyecto entero: **curso_ejemplos/proyecto_retail/** — corre 100% offline; su README trae el diagrama y el mapa "quiero X → miro Y"✓ 61 tests
+📁 El proyecto entero: **curso_ejemplos/proyecto_retail/** — corre 100% offline; su README trae el diagrama y el mapa "quiero X → miro Y"✓ 127 tests
 
 Todo lo anterior vive, además, como un **proyecto con estructura de producción** —la misma relación que el [proyecto_llmops](/recurso/llmops) tiene con los conceptos sueltos—. Ahí el LLM está cableado de verdad: la intención ya no es un regex sino `llm.with_structured_output(FiltrosCompra)` (el [c05](/concepto/05-salida-estructurada)), y la respuesta la redacta el modelo con tono de vendedora. Lo que **no** cambia es la interfaz: *petición → filtros → productos → texto*. Por eso subir el eslabón no reescribe el pipeline —y el guardrail de precios sigue vigilando igual, con el mismo `respuesta_es_fiel`—.
 
