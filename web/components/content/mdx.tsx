@@ -47,6 +47,8 @@ export function Avoid({ label, children }: Kids & { label?: string }) {
   );
 }
 
+export { Diagrama } from "./Diagrama";
+
 export function Flow({ children }: Kids) {
   return <div className="flow">{children}</div>;
 }
