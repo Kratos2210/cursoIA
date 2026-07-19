@@ -17,6 +17,10 @@ El `deploy.yml` del [c17c](/concepto/17c-continuous-delivery) termina haciendo S
   <Def>El candado de HTTPS. Let's Encrypt emite los certificados gratis, con una condición: demostrar que el dominio resuelve hacia tu servidor.</Def>
   <Term>firewall</Term>
   <Def>La lista de puertos que aceptan conexiones del exterior. Todo lo no listado, cerrado. En Ubuntu, `ufw`.</Def>
+  <Term>nube grande (hyperscaler)</Term>
+  <Def>AWS, Google Cloud, Azure: venden los cuatro caminos de esta tabla — y cientos de servicios más — bajo una misma cuenta, un mismo IAM y una misma factura.</Def>
+  <Term>responsabilidad compartida</Term>
+  <Def>El reparto de la seguridad en la nube: el proveedor asegura la nube (hardware, red, datacenter); **tú aseguras lo que configuras en ella** (accesos, buckets, secrets). La brecha típica no es del proveedor: es una credencial o un bucket mal configurados del cliente.</Def>
 </DefList>
 
 </Box>
@@ -41,6 +45,27 @@ Dos aclaraciones para leerla bien. Primera: esta tabla **no es** la del [c18b](/
 Un VPS es alquilar un local **en obra gris**: cuatro paredes, una acometida eléctrica y las llaves. Instalas tú la luz, el agua y la alarma — y por eso pagas poco y decides todo. Un PaaS es la oficina con recepción y limpieza incluidas: entras con tu portátil y a trabajar, pero el precio crece con cada extra, y las paredes las mueve otro. Ninguna opción es "la profesional": depende de cuánto quieras operar tú.
 
 </Box>
+
+### ¿Y las nubes grandes? AWS, Google Cloud y Azure
+
+La tabla del mapa clasifica **qué** alquilas; falta el **a quién**. Los cuatro caminos existen en dos mundos: los proveedores especializados — Hetzner vende VPS, Railway vende PaaS, y hacen esa única cosa bien — y las **nubes grandes** (AWS, Google Cloud, Azure), que venden los cuatro caminos bajo el mismo techo: misma cuenta, mismo IAM, misma factura, y cientos de servicios más alrededor. Tu app puede vivir en cualquiera de ellas por cualquiera de los cuatro caminos:
+
+| Camino | AWS | Google Cloud | Azure |
+| --- | --- | --- | --- |
+| VPS (máquina virtual) | EC2 / Lightsail | Compute Engine | Virtual Machines |
+| PaaS | Elastic Beanstalk / App Runner | App Engine | App Service |
+| Contenedor gestionado | ECS Fargate | Cloud Run | Container Apps |
+| Serverless (funciones) | Lambda | Cloud Functions | Azure Functions |
+
+Entonces, ¿especializado o nube grande? La respuesta honesta mira tres cosas — ventajas, **riesgos** y quién suele elegir cada camino:
+
+| Opción | Ventajas | Riesgos (los de verdad) | Cuándo · quién la usa |
+| --- | --- | --- | --- |
+| **VPS** (Hetzner, DO, EC2 suelto) | El coste fijo más bajo, control total, y aprendes todas las piezas | **Tú eres el equipo de seguridad**: un parche olvidado es una puerta abierta (los bots escanean internet a diario) · si la VM muere, el servicio muere hasta el restore · el "servidor mascota" que solo una persona entiende | Side projects, consultores y pymes con tráfico estable y alguien que opere — la ruta de este curso |
+| **PaaS** (Railway, Render, Fly.io) | Cero operación: HTTPS, dominio y deploy en minutos | El precio **escala con tu éxito** · los límites de la plataforma aparecen justo cuando creces · y la plataforma puede cambiar las reglas: Heroku eliminó su plan gratuito en 2022 y media internet tuvo que migrar de un mes para otro | MVPs y startups sin nadie de infra; pymes sin equipo de TI |
+| **Nube grande** (AWS, GCP, Azure) | Todo bajo el mismo techo: IAM, VPC, colas, backups gestionados · certificaciones de compliance (ISO 27001, SOC 2, PCI-DSS) · escala sin techo práctico · programas de créditos para startups | La **factura sorpresa**: pago por uso sin techo por defecto — un bucle o un egress inesperado se cobra igual · la **mala configuración**: un bucket público o una credencial filtrada (la causa típica de brechas en nube no es el proveedor, es la configuración del cliente) · lock-in profundo si construyes sobre servicios propietarios · una curva de aprendizaje que es una profesión entera | Startups en crecimiento (créditos + gestionado) y el mundo corporativo y regulado — banca, salud, seguros, retail grande: la financiera del [c18](/concepto/18-capstone-final) o una cadena de 90 tiendas como la del [c29](/concepto/29-caso-real-2-retail) no van a un VPS de 4 € — van a la nube cuyas certificaciones reconoce su auditor |
+
+Dos ideas cierran esta tabla. La primera es el modelo de **responsabilidad compartida**: la nube grande asegura lo *de* la nube (hardware, red, datacenter — con los papeles que lo certifican); tú sigues asegurando lo que montas *en* ella (accesos, buckets, secrets). "Estar en AWS" no te hace seguro: mueve la frontera de qué te toca, no la elimina. La segunda es la regla de bolsillo que conecta con el [c17c](/concepto/17c-continuous-delivery): **empieza en el camino más simple que aguante tu caso** — migrar el andén es barato (la cinta sobrevive, como verás al final), operar de más desde el día 1 no. Y ojo con no confundir esta decisión con la del [c34](/concepto/34-desplegar-en-bedrock-y-vertex): aquel anexo decide dónde vive el *modelo* dentro de la nube corporativa; este módulo, dónde vive tu *app* — y son independientes: una app en Cloud Run puede hablar con Bedrock, y una en un VPS con Vertex.
 
 ### La ruta VPS, paso a paso
 
@@ -156,6 +181,7 @@ La honestidad final: si mañana migras a Railway o a Cloud Run, los pasos 1–6 
 - **Quedarse en root con password.** La combinación exacta que los bots prueban a millones por día. Llave SSH + `PermitRootLogin no` es el paso 2, no el paso 20.
 - **El estado dentro del contenedor.** Postgres sin volumen sobrevive hasta el primer `docker compose down`. Es la regla del [c15b](/concepto/15b-arquitectura-de-despliegue) — el estado vive fuera del proceso — en su versión de infraestructura.
 - **Alquilar un Kubernetes gestionado para 10 usuarios.** El K8s del [c15b](/concepto/15b-arquitectura-de-despliegue) resuelve problemas de escala que aún no tienes, cobrando desde el día 1. Un VPS con compose aguanta más de lo que crees; el propio 15b te dijo que "un contenedor único puede bastar meses".
+- **Darle la tarjeta a la nube grande sin alarma de presupuesto.** El pago por uso no tiene techo por defecto: un bucle que llama a la API o un egress inesperado se factura igual. La alarma de billing se configura el día 0, no cuando llega el susto.
 
 </Avoid>
 
@@ -176,6 +202,7 @@ Y la versión con manos (opcional, ~1 €): un VPS se factura **por horas** (~0,
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 
 - Elegir entre VPS, PaaS, contenedor gestionado y serverless para un caso concreto, con el criterio de quién opera el sustrato y qué forma tiene el tráfico.
+- Situar a AWS, Google Cloud y Azure en el mapa (venden los cuatro caminos bajo el mismo techo), enumerar el riesgo característico de cada opción — parche olvidado (VPS), precio que escala (PaaS), factura sorpresa y misconfiguración (nube grande) — y decir qué tipo de empresa elige cada una y por qué.
 - Recitar los 7 pasos que llevan una VM vacía hasta `/srv/gobdata` — y en qué orden y por qué (el DNS antes que el TLS, el firewall antes que la app).
 - Explicar por qué la única superficie expuesta es el 443, y dónde viven los secrets (el `.env` del servidor y GitHub Secrets — jamás la imagen).
 - Decir qué tres secrets espera el `deploy.yml` del c17c y qué hay al otro lado de cada uno.
@@ -215,6 +242,14 @@ Y la versión con manos (opcional, ~1 €): un VPS se factura **por horas** (~0,
   <Option>Solo el build de la imagen; los tests ya no hacen falta porque la nube es fiable</Option>
   <Option ok>Casi todas: tag inmutable, eval-gate, smoke test y rollback; solo el paso `deploy` cambia de `ssh-action` a `gcloud run deploy`</Option>
   <Feedback>El hosting es el andén, no la cinta. La disciplina — artefacto inmutable, veto por calidad, verificación post-deploy, vuelta atrás barata — viaja contigo a cualquier destino (Conceptos 15c y 17c).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>5 · Una financiera regulada va a desplegar su agente de créditos. ¿Por qué su equipo insistirá en AWS o Azure antes que en un VPS de 4 €?</Prompt>
+  <Option>Porque un VPS no puede ejecutar contenedores Docker con la seguridad necesaria</Option>
+  <Option ok>Porque el auditor exige controles que la nube grande trae certificados — ISO 27001, SOC 2, PCI-DSS — más IAM fino y aislamiento de red; el coste suele ser mayor, no menor</Option>
+  <Option>Porque la nube grande siempre sale más barata a esa escala</Option>
+  <Feedback>La nube grande no es "mejor": es la que trae los papeles y los controles que un regulador reconoce. Y la responsabilidad compartida sigue aplicando: AWS certifica su datacenter, pero el bucket mal configurado sigue siendo tuyo (Concepto 15c).</Feedback>
 </Question>
 
 </Quiz>
