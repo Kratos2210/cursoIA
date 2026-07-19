@@ -163,7 +163,7 @@ def construir_retriever_pgvector(ruta=None, tabla="normativa", k=3, rol=None):
     fragmentos = trocear_con_metadata(leer_normativa(ruta))
     vectorstore = PGVector(
         embeddings=crear_embeddings(),
-        connection=settings.pg_dsn,
+        connection=settings.pg_dsn_sqlalchemy,
         collection_name=tabla,
         use_jsonb=True,
     )

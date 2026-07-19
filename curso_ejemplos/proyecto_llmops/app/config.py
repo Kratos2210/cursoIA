@@ -103,9 +103,27 @@ class Settings(BaseSettings):
 
     @property
     def pg_dsn(self) -> str:
-        """El connection string que espera psycopg/langchain-postgres."""
+        """El connection string que espera psycopg (el driver, a pelo)."""
         return (f"postgresql://{self.pg_user}:{self.pg_password}"
                 f"@{self.pg_host}:{self.pg_port}/{self.pg_db}")
+
+    @property
+    def pg_dsn_sqlalchemy(self) -> str:
+        """El MISMO destino, pero nombrando el driver. Para langchain-postgres.
+
+        ⚠️ No es un capricho de formato. langchain-postgres no habla con psycopg
+           directamente: construye un engine de SQLAlchemy, y SQLAlchemy elige el
+           driver a partir del ESQUEMA de la URL. 'postgresql://' a secas
+           significa psycopg2 — la versión 2, que este proyecto NO instala (solo
+           `psycopg[binary]`, que es la 3). Resultado: un ModuleNotFoundError de
+           'psycopg2' al construir el retriever, con Postgres perfectamente vivo.
+
+           'postgresql+psycopg://' es lo que pide la v3. El DSN de arriba se
+           queda como está porque `psycopg.connect()` (metrics_backends) no
+           entiende el sufijo del dialecto: son dos consumidores distintos con
+           dos formatos distintos, y por eso son dos propiedades y no una.
+        """
+        return self.pg_dsn.replace("postgresql://", "postgresql+psycopg://", 1)
 
     # ---- REDIS ----
     redis_host: str = "localhost"
