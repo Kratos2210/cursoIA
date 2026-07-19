@@ -43,6 +43,7 @@ Cada concepto tiene un archivo donde practicarlo, un ejercicio que te obliga a
 | Orquestación low-code con n8n | `canales/n8n/agente_rag_whatsapp.json` | [31b](/concepto/31b-n8n-orquestacion) | — (anexo, fuera del gate, ADR-0005) |
 | Mapa del ecosistema (LangChain vs LlamaIndex · CrewAI · OpenAI Agents SDK) | — | [26](/concepto/26-mapa-del-ecosistema) | — |
 | Correr LlamaIndex y CrewAI (mismo RAG/supervisor, otra piel) | `frameworks/rag_llamaindex.py` · `frameworks/crew_crewai.py` | [32](/concepto/32-frameworks-llamaindex-crewai) | — (anexo, fuera del gate, ADR-0006) |
+| Discovery de procesos (AS-IS/TO-BE · escalera de autonomía · matriz) | — | [35](/concepto/35-discovery-de-procesos) | — |
 | Prompt engineering (few-shot · CoT · self-consistency) | `26b` | [26b](/concepto/26b-prompt-engineering) | `test_offline.py::TestTema26b*` |
 | Mecánica del LLM (tokenización · softmax · muestreo · perplejidad) | `27` | [27](/concepto/27-fundamentos-del-llm) | `test_offline.py::TestTema27*` |
 | Arquitecturas e historia (transformer · encoder/decoder · RLHF · MoE) | — | [27b](/concepto/27b-arquitecturas-e-historia) | — |
@@ -152,6 +153,12 @@ Los notebooks y scripts con los que empezaste (`lcel.ipynb`, `interfazunificada.
 | Ciclo de vida del agente | Las cuatro etapas por las que pasa un agente en producción: Build → Test → Deploy → Monitor. |
 | Deep Agents | Framework open source de LangChain para agentes de larga duración que resuelven tareas complejas (planifican e investigan por horas). |
 | Agente ambiental | Agente que corre en segundo plano, disparado por eventos, y pide aprobación humana (`interrupt`) antes de una acción irreversible. Caso estrella: el asistente de correo. |
+| Discovery (de procesos) | La fase consultiva previa a construir: mapear procesos, elegir el peldaño de autonomía y priorizar qué se hace primero. Ver [Concepto 35](/concepto/35-discovery-de-procesos). |
+| AS-IS / TO-BE | El proceso como es hoy (tiempos, volúmenes y errores reales) vs el proceso rediseñado (qué absorbe la tecnología, dónde queda el humano, qué no cambia). |
+| Copiloto | La IA propone, el humano decide y firma: se automatiza la preparación, no la responsabilidad. |
+| Sistema agéntico | Varios agentes orquestados cubriendo un proceso de punta a punta; el peldaño más alto de la escalera de autonomía. |
+| Matriz impacto × viabilidad | La herramienta de priorización del discovery: cuánto vale resolverlo contra qué tan realista es lograrlo hoy. |
+| Payback | Meses hasta que el ahorro acumulado paga la construcción: construir / (ahorro mensual − costo de operar). |
 | Spec-Driven Development (SDD) | Escribir la especificación (QUÉ y POR QUÉ) antes del código; el spec es la fuente de verdad. Ver [Concepto 19](/concepto/19-spec-driven-development). |
 | spec-kit | La herramienta que estructura el SDD en cinco pasos: constitution → /specify → /plan → /tasks → /implement. |
 | Constitución (del proyecto) | Los principios no negociables del proyecto (aquí: español didáctico, `uv`, tests offline) que condicionan cada spec. |

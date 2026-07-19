@@ -2,7 +2,7 @@ El primer caso del curso (el capstone del [c18](/concepto/18-capstone-final)) fu
 
 <Box kind="def" label="◈ Cinco soluciones sobre la mesa (y por qué ganó la primera)">
 
-Un consultor no llega con "un chatbot": llega con un **menú de casos**, cada uno con su dato y su retorno. Para una cadena así, los cinco naturales:
+Un consultor no llega con "un chatbot": llega con un **menú de casos**, cada uno con su dato y su retorno — el método que produce ese menú es el discovery del [c35](/concepto/35-discovery-de-procesos). Para una cadena así, los cinco naturales:
 
 1. **Asistente de compras conversacional** — "quiero aretes dorados por menos de S/25" → recomendación con precios reales del catálogo. Dato: el catálogo (público). Retorno: conversión.
 2. **Búsqueda semántica en el e-commerce** — que "aros" encuentre "aretes" (multi-query del c20 + embeddings del c11). Dato: el mismo catálogo. Retorno: menos búsquedas vacías.
@@ -10,7 +10,7 @@ Un consultor no llega con "un chatbot": llega con un **menú de casos**, cada un
 4. **Enriquecimiento automático del catálogo** — miles de SKUs importados por temporada; salida estructurada (c05) + visión (c22) para generar categorías, materiales y descripciones. Retorno: tiempo de catalogación.
 5. **Clasificación de reclamos y postventa** — sentimiento + enrutamiento de quejas (cambios, delivery) antes de que escalen. Retorno: riesgo reputacional.
 
-**Ganó la 1** por tres criterios que valen para cualquier proyecto: el **dato ya existe y es accesible** (no hay que esperar a un área de sistemas), el caso **integra lo que ya sabes** (estructurada + RAG + guardrails + evals: c05·c11·c16c·c23), y el **riesgo de equivocarse es medible** (un precio inventado se detecta con un guardrail determinista). Las otras cuatro son variaciones del mismo esqueleto — la 2 es el paso 3 de este concepto con embeddings, la 3 es este mismo pipeline sobre otra fuente.
+**Ganó la 1** por tres criterios que valen para cualquier proyecto (la matriz del [c35](/concepto/35-discovery-de-procesos), formalizada): el **dato ya existe y es accesible** (no hay que esperar a un área de sistemas), el caso **integra lo que ya sabes** (estructurada + RAG + guardrails + evals: c05·c11·c16c·c23), y el **riesgo de equivocarse es medible** (un precio inventado se detecta con un guardrail determinista). Las otras cuatro son variaciones del mismo esqueleto — la 2 es el paso 3 de este concepto con embeddings, la 3 es este mismo pipeline sobre otra fuente.
 
 </Box>
 
