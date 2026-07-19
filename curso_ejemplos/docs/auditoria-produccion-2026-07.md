@@ -87,6 +87,13 @@ Checklist contra el que se midió cada proyecto (target Docker + VPS):
 - Gestor de secretos (Vault/SSM) en lugar de `.env`.
 - Dataset de evals más grande y balanceado por categoría (hoy: 5 de 12 son `recuperacion_directa`).
 
+### ✗ Críticos añadidos el 2026-07-19 (L7, L8, L9)
+
+Aparecieron al verificar contra Postgres y al arrancar el contenedor por primera
+vez, no en la revisión de código. **L7 (el retriever de pgvector nunca funcionó)
+es crítico**; L8 y L9 son importantes. Los tres están descritos y ya cerrados en
+**§7b**.
+
 ### Integridad documental
 
 - El README dice **232 tests** y pytest colecta **232** — correcto. El error estaba en **ADR-0004, que decía 652** (`docs/adr/0004-langfuse.md:55`) y no cuadra con nada. **[Corregido en Fase 0; tras cerrar L4 el conteo es 240 en README y ADR.]** (El conteo válido es `pytest --collect-only`; `grep "def test"` da 229 por no contar la parametrización.)
@@ -189,7 +196,47 @@ Esfuerzo: **S** = horas · **M** = 1–3 días · **L** = 1 semana+. Orden = val
 
 ---
 
-## 7b · Deuda de verificación (2026-07-18)
+## 7b · Deuda de verificación — ✅ CERRADA (2026-07-19)
+
+Con Docker recuperado, la deuda de abajo se cerró entera. Y la moraleja resultó
+ser mejor que el plan: **verificar de verdad destapó tres fallos que ninguna
+suite de tests unitarios podía ver**. Los tres viven en la frontera entre el
+código y su despliegue, que es justo donde nadie miraba.
+
+| Hallazgo | Síntoma | Causa |
+|---|---|---|
+| **L7 · el retriever de pgvector nunca funcionó** | `ModuleNotFoundError: psycopg2` con Postgres vivo | `langchain-postgres` monta un engine de SQLAlchemy, y SQLAlchemy elige driver por el ESQUEMA de la URL. `postgresql://` significa psycopg2 —la v2, que el proyecto no instala: solo trae `psycopg[binary]`, la v3. Hacía falta `postgresql+psycopg://` |
+| **L8 · `/health` mentía sobre el tracing** | `"tracing": true` sin Langfuse corriendo | El compose traía `${LANGFUSE_PUBLIC_KEY:-pk-lf-local-demo}`, y `:-` sustituye también con la variable VACÍA —como la deja `.env.example`. Llaves de mentira dadas por buenas; trazas al suelo |
+| **L9 · las métricas no persistían en contenedor** | `METRICAS_BACKEND=memoria` pese al `:-postgres` del compose | Lo definido en el `.env` gana sobre el default del compose, y `.env.example` definía `METRICAS_BACKEND=memoria`. La intención del autor quedaba anulada en silencio |
+
+L7 es el más grave: la función principal del RAG en producción era
+**inejecutable**, y 815 tests en verde no lo notaban. Es el argumento más
+limpio de todo este informe a favor de los tests de integración —
+y material didáctico de primera para el curso.
+
+Cerrado en `9d7732d` (L7), `dd39f78` (los dos tests de integración que
+faltaban, 9 en total) y `b51412f` (L8 y L9). Suite: **824 con base de datos,
+808 + 16 saltados sin ella** — la CI offline sigue verde.
+
+**Primer arranque real de los contenedores** (nunca se había hecho): imagen de
+retail construida, ambos stacks levantados y `healthy`. Retail en 25s; llmops
+en 80s la primera vez —descarga los ~220 MB de fastembed— y en 20s las
+siguientes, gracias al volumen que los cachea. El `start_period: 180s` está
+**bien dimensionado**. Lo que sigue sin probarse en contenedor es `/chat`: hace
+falta una llave real del proveedor.
+
+### Lo que esto dice del método
+
+Los tres hallazgos comparten forma: **configuración que solo se evalúa en el
+momento de desplegar**. Un test unitario no los ve porque no hay nada que
+testear —el código es correcto; lo que está mal es el valor que recibe. Es el
+mismo género que L1–L6, y sugiere que la próxima capa de defensa no son más
+tests unitarios sino un *smoke test de despliegue*: levantar el contenedor,
+pegarle a `/health` y afirmar sobre lo que responde.
+
+---
+
+## 7b-bis · La deuda original, tal como se documentó (2026-07-18)
 
 Tres items de la Fase 2 tienen el código escrito y la **lógica pura probada**,
 pero su afirmación central sigue sin demostrarse porque requiere Postgres, y el
