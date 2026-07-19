@@ -1,0 +1,149 @@
+El [c18b](/concepto/18b-elegir-modelo-y-proveedor) ya te presentó la nube gestionada como el "camino ③": modelos de terceros servidos *dentro* de tu cuenta de AWS o GCP. Aquel módulo respondía **¿qué modelo y proveedor elijo?**. Este anexo responde la pregunta siguiente, la que aparece cuando la decisión ya está tomada y toca desplegar de verdad: **¿qué cambia en mi despliegue cuando el modelo vive dentro de AWS o GCP, y no detrás de una API key?** No repetimos precios ni la tabla de proveedores del c18b — aquí se trata de la *mecánica de operarlo*.
+
+<Box kind="def" label="◈ Definición · Qué te da la nube gestionada que una API key no">
+
+Con una API key (Groq, OpenAI, Gemini), tu agente habla con un servidor *fuera* de tu infraestructura y la única credencial es una cadena en el `.env`. La nube gestionada mueve el modelo *dentro* de tu perímetro y con ello cambian cuatro cosas de operación:
+
+<DefList>
+  <Term>Identidad, no llaves</Term>
+  <Def>El acceso al modelo se concede por **rol** (IAM en AWS, service account en GCP), el mismo mecanismo con que ya permisas tu base de datos o tu bucket. No hay una API key que rotar ni que se filtre en un log.</Def>
+  <Term>Los datos no salen de tu red</Term>
+  <Def>La llamada al modelo se queda en tu VPC/proyecto y en tu región. Para un banco o una clínica, esa frontera es lo que hace *aprobable* el proyecto.</Def>
+  <Term>Facturación y compliance unificados</Term>
+  <Def>El modelo se factura y se audita como cualquier otro servicio de la nube: heredas SOC 2 / HIPAA sin una consola aparte por proveedor.</Def>
+  <Term>Cuotas y throughput gestionados</Term>
+  <Def>El límite de peticiones no lo pone el proveedor del modelo, lo pones tú (on-demand con cuota, o capacidad reservada). El rate limiting deja de ser una sorpresa.</Def>
+</DefList>
+
+</Box>
+
+### El código apenas cambia: es una rama más de `crear_modelo()`
+
+Aquí está la tesis del anexo, y es tranquilizadora: **todo lo que aprendiste sigue igual**. El grafo de LangGraph, los guardrails del [c23](/concepto/23-seguridad-red-teaming), la tríada RAG, el caché semántico, el checkpointer — nada de eso sabe ni le importa de dónde sale el modelo. Lo único que cambia es la fábrica del LLM: una rama nueva en la misma `crear_modelo()` del proyecto, junto a las de Google y OpenAI.
+
+```python title="app/llm.py · una rama más, mismo patrón inyectable"
+def crear_modelo(nombre_modelo: str):
+    if settings.llm_provider == "bedrock":
+        # uv add langchain-aws — Anthropic, Llama, Mistral… dentro de tu cuenta AWS.
+        from langchain_aws import ChatBedrockConverse
+        return ChatBedrockConverse(
+            model_id=nombre_modelo,        # p. ej. "us.anthropic.claude-haiku-4-5-..."
+            region_name=settings.aws_region,
+            # ⭐ Ninguna credencial aquí: boto3 la descubre del entorno (rol IAM).
+        )
+
+    if settings.llm_provider == "vertex":
+        # uv add langchain-google-vertexai — Gemini dentro de tu proyecto GCP.
+        from langchain_google_vertexai import ChatVertexAI
+        return ChatVertexAI(
+            model=nombre_modelo,           # p. ej. "gemini-2.5-flash"
+            project=settings.gcp_project,
+            location=settings.gcp_region,
+            # ⭐ Tampoco hay llave: google.auth descubre las credenciales del entorno.
+        )
+
+    # … las ramas de Google (API) y OpenAI-compatible que ya existían.
+```
+
+<Box kind="warn" label="▲ Los ids de modelo caducan — y aquí llevan prefijo">
+
+Los ids de arriba son ejemplos consultados en 2026-07; **cámbialos por los de la consola** el día que despliegues (igual que la tabla de precios del c18b caduca). Dos detalles que sí son estructurales: en **Bedrock** el id lleva prefijo del proveedor y a veces de región (`us.anthropic.claude-…`), y hay que **habilitar el modelo** en tu cuenta antes de poder invocarlo (*model access*, por región). En **Vertex**, el modelo se elige del *Model Garden* de tu proyecto. No es "pon la cadena y ya": el modelo tiene que estar *encendido* en tu nube primero.
+
+</Box>
+
+### La diferencia real está en la operación, no en el `import`
+
+Cambiar dos líneas de Python es lo fácil. Lo que de verdad distingue un despliegue en nube gestionada es todo lo que rodea a esas líneas. Bedrock y Vertex resuelven los mismos problemas con piezas equivalentes:
+
+| Dimensión | AWS Bedrock | GCP Vertex AI |
+| --- | --- | --- |
+| **Autenticación** | Rol **IAM** adjunto al cómputo; boto3 lo descubre solo | **Service account** / Workload Identity; `google.auth` lo descubre solo |
+| **Encender el modelo** | *Model access* por región (habilitar antes de invocar) | *Model Garden* del proyecto |
+| **Red privada** | VPC endpoint (PrivateLink): la llamada no sale a internet | Private Service Connect |
+| **Guardrails nativos** | Bedrock Guardrails (filtros de contenido, PII, temas vetados) | Filtros de seguridad configurables de Vertex |
+| **Observabilidad** | CloudWatch (métricas, logs) | Cloud Logging / Cloud Monitoring |
+| **Modo de pago** | On-demand (por token) o *Provisioned Throughput* (capacidad reservada) | On-demand o *Provisioned Throughput* |
+| **Dónde corre tu contenedor** | ECS / Fargate / EKS | Cloud Run / GKE |
+
+<Box kind="analogy" label="◆ Los guardrails nativos no reemplazan a los tuyos: se apilan">
+
+Bedrock Guardrails y los filtros de Vertex son una **capa más**, no un sustituto de los guardrails del [c23](/concepto/23-seguridad-red-teaming). El proveedor filtra lo genérico (toxicidad, PII estándar) a nivel de plataforma; tu `output_guard` sigue haciendo falta para lo que *solo tu dominio* sabe que es sensible —los anexos restringidos, los canarios de nivel, tu política de negocio—. Defensa en profundidad: la del proveedor y la tuya, cada una tapando lo que la otra no ve.
+
+</Box>
+
+### Checklist de consideraciones antes de desplegar
+
+Esto es lo que tienes que decidir *antes* de mover un agente a Bedrock o Vertex — vale para los dos:
+
+<Box kind="practice" label="✎ Lo que hay que resolver para un despliegue productivo">
+
+- **Identidad del cómputo.** Adjunta un rol (IAM) o service account al contenedor (ECS task role, Cloud Run service account, o Workload Identity en K8s). **Cero llaves en el `.env`**: si hay una `AWS_SECRET_ACCESS_KEY` horneada, hiciste API key con pasos extra.
+- **Región y residencia de datos.** Elige la región por dónde deben quedarse los datos (¿la ley te obliga a `sa-east-1` / `southamerica-east1`?). El modelo debe estar disponible *en esa región*: no todos lo están.
+- **Model access.** Habilita el modelo en la cuenta/proyecto antes de desplegar. Un agente que arranca y falla en la primera llamada porque el modelo no está encendido es un incidente evitable.
+- **Cuotas y throughput.** Mira el límite de peticiones por minuto de tu cuenta. Si tu tráfico es constante y alto, *provisioned throughput* sale más barato y predecible que on-demand; si es esporádico, al revés.
+- **Embeddings.** Decisión aparte del chat: ¿usas los embeddings nativos del proveedor (Titan en Bedrock, `text-embedding` en Vertex) o mantienes `fastembed` local? Cambiar de modelo de embeddings **obliga a reindexar** todo tu vector store ([c24](/concepto/24-vector-dbs-en-produccion)) — no es gratis, y a veces mantener el local es lo correcto.
+- **Dónde corre el contenedor.** La imagen del [c17c](/concepto/17c-continuous-delivery) es la misma; solo cambia el orquestador (ECS/Fargate/EKS o Cloud Run/GKE) y que el rol de ese cómputo tenga permiso sobre el modelo. Ahí se cierra el círculo con el [c15b](/concepto/15b-arquitectura-de-despliegue).
+
+</Box>
+
+<Box kind="warn" label="▲ El lock-in, y por qué el patrón inyectable del curso lo amortigua">
+
+Atar tu agente a Bedrock o Vertex es lock-in real: la identidad, la red y la factura pasan a ser de esa nube. Lo que lo hace *reversible* es exactamente la disciplina del curso — el modelo entra por `crear_modelo()`, no se construye por dentro. El día que quieras volver a una API directa o cambiar de nube, tocas **una rama de una función**, no cien sitios. El lock-in de infraestructura (VPC, IAM) sigue ahí; el de *código* lo pagaste barato desde el c1.
+
+</Box>
+
+### Sin cuenta cloud, ¿qué puedes hacer?
+
+Casi todo lo que importa de este anexo es **diseño**, no ejecución. Aunque no tengas cuenta de AWS ni GCP con billing, puedes: dibujar el diagrama de identidad y red (qué rol, qué VPC endpoint, qué región), decidir on-demand vs provisioned para un tráfico dado, y razonar cómo se apilan los guardrails nativos con los tuyos. Ejecutar las dos líneas de Python requiere cuenta; **entender el despliegue, no**. Por eso este módulo es lectura fuera del gate: el conocimiento es transferible aunque el `uv run` no se pueda correr.
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar qué gana un despliegue al mover el modelo dentro de AWS/GCP: identidad en vez de llaves, datos en tu red, compliance y cuotas gestionadas.
+- Ver que el código apenas cambia — una rama de `crear_modelo()` — y que el grafo, los guardrails y las evals no se enteran.
+- Mapear las piezas equivalentes de Bedrock y Vertex (auth, model access, red privada, guardrails, pago, cómputo).
+- Recorrer el checklist de consideraciones: identidad del cómputo, región, model access, cuotas, embeddings, orquestador.
+- Argumentar por qué el patrón inyectable del curso amortigua el lock-in de código.
+
+</Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 34">
+
+<Question>
+  <Prompt>1 · Despliegas en Bedrock y horneas una `AWS_SECRET_ACCESS_KEY` en el `.env` del contenedor. ¿Qué tiene de malo si funciona?</Prompt>
+  <Option>Nada: la credencial es de AWS, así que el modelo sigue dentro de tu cuenta</Option>
+  <Option ok>Que tiraste la ventaja principal: volviste a tener una llave que rotar y que se filtra en un log, en vez de identidad</Option>
+  <Option>Que boto3 no admite credenciales por variable de entorno</Option>
+  <Feedback>La nube gestionada se paga por *identidad*: un rol IAM o service account adjunto al cómputo, que boto3 y `google.auth` descubren solos. Con una llave horneada hiciste una API key con pasos extra (Concepto 34).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · Tu agente arranca `healthy` en ECS y falla en la primera consulta real contra Bedrock. ¿Cuál es la causa típica?</Prompt>
+  <Option>El grafo de LangGraph necesita adaptarse a Bedrock</Option>
+  <Option ok>El *model access*: el modelo no está habilitado en esa cuenta y región, aunque el id sea correcto</Option>
+  <Option>Los guardrails del c23 bloquean las llamadas salientes</Option>
+  <Feedback>No es "pon la cadena y ya": el modelo tiene que estar *encendido* en tu nube, por región, antes de poder invocarlo. Un `/health` en verde no lo comprueba (Concepto 34).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Activas Bedrock Guardrails. ¿Puedes retirar tu `output_guard` del c23?</Prompt>
+  <Option>Sí: los filtros del proveedor son un superconjunto de los tuyos</Option>
+  <Option ok>No: el proveedor filtra lo genérico (toxicidad, PII estándar); lo que solo tu dominio sabe que es sensible sigue siendo tuyo</Option>
+  <Option>No, pero solo porque los de Bedrock no cubren PII</Option>
+  <Feedback>Se apilan, no se sustituyen: defensa en profundidad. Tus anexos restringidos, tus canarios de nivel y tu política de negocio no los conoce ninguna plataforma (Concepto 34).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Decides pasar de `fastembed` local a los embeddings nativos del proveedor. ¿Qué arrastra esa decisión?</Prompt>
+  <Option>Nada: los embeddings se cambian igual que el modelo de chat, por `.env`</Option>
+  <Option ok>Reindexar todo el vector store: los vectores viejos y los nuevos no viven en el mismo espacio</Option>
+  <Option>Que hay que volver a evaluar los guardrails de entrada</Option>
+  <Feedback>Cambiar de modelo de embeddings invalida el índice entero (c24). Es una decisión aparte de la del chat, y a veces mantener el local es lo correcto (Concepto 34).</Feedback>
+</Question>
+
+</Quiz>
+
+<Recap level={6} label="↺ En una frase">
+
+Desplegar en Bedrock o Vertex cambia dos líneas de Python (una rama más de `crear_modelo()`) pero mucha operación: el modelo se permisa por identidad, corre en tu red y tu región, y hay que encenderlo, cuotar y decidir dónde vive el contenedor — el resto del stack del curso sigue intacto.<Arch>lectura · fuera del gate (ADR-0010) · paquetes de referencia: `langchain-aws`, `langchain-google-vertexai`</Arch>
+
+</Recap>

@@ -73,6 +73,8 @@ llm = ChatBedrockConverse(
 
 En GCP el equivalente es **Vertex AI** y en Azure, **Azure AI Foundry**: la misma idea — modelos de terceros servidos dentro de tu nube, con la identidad, la red y la factura de la nube que ya usas.
 
+Aquí estás *eligiendo* ese camino. **Operarlo** —pedir acceso al modelo, darle identidad IAM al contenedor, la red privada, las cuotas y los guardarraíles nativos— es otro oficio, y está en el anexo opcional [c34](/concepto/34-desplegar-en-bedrock-y-vertex).
+
 #### ④ On-premise — de tu portátil a tu datacenter
 
 Los pesos corren en *tu* hardware. Para **desarrollo**, `Ollama` es imbatible: lo instalas, descargas `qwen3:8b` y ya tienes un modelo local sin llave ni cuota (en el curso es literalmente `LLM_PROVIDER=ollama`). Para **producción**, la herramienta es **vLLM**: un servidor de inferencia con *continuous batching* (agrupa peticiones en vuelo) que exprime el throughput de una GPU mucho mejor que Ollama, pensado para servir a muchos usuarios a la vez.

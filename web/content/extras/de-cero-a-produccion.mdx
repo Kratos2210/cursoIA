@@ -1,0 +1,147 @@
+Este curso se llama "de cero a producción". Pero *producción* no es un módulo: es un **orden**. La diferencia entre un notebook que impresiona en una demo y un servicio que aguanta usuarios reales no está en un truco final — está en haber recorrido seis fases, en el orden correcto, sin saltarse ninguna. Esta guía es ese mapa: qué construyes en cada fase, qué módulo del curso te lo enseña, y la trampa en la que casi todo el mundo cae ahí.
+
+No re-explica los conceptos (para la teoría de cada pilar está el [recurso LLMOps](/recurso/llmops)); es la **ruta**, no el temario. Úsala como checklist: ¿en qué fase está tu agente hoy, y cuál es el siguiente paso honesto?
+
+<Box kind="def" label="◈ Definición · Las seis fases, y por qué en este orden">
+
+Cada fase asume la anterior. Optimizar sin medir, poner features antes que guardrails, o desplegar sin observabilidad no es "ir rápido": es acumular deuda que explota en producción.
+
+<DefList>
+  <Term>F0 · Responde</Term>
+  <Def>Un agente que hace algo útil. El prototipo.</Def>
+  <Term>F1 · Se puede confiar</Term>
+  <Def>Tests y evaluación: sabes si funciona, y sabes si lo rompiste.</Def>
+  <Term>F2 · Está blindado</Term>
+  <Def>Guardrails y auth: aguanta a un usuario hostil, no solo a uno amable.</Def>
+  <Term>F3 · Se puede ver</Term>
+  <Def>Observabilidad y coste: sabes qué hace en vivo y cuánto cuesta.</Def>
+  <Term>F4 · Se puede desplegar</Term>
+  <Def>Empaquetado, despliegue y CD: llega solo al servidor, y vuelve atrás si falla.</Def>
+  <Term>F5 · Se puede mejorar</Term>
+  <Def>Feedback, A/B y operación: aprende de los datos, no de las opiniones.</Def>
+</DefList>
+
+</Box>
+
+De un notebook a un servicio operable · **cada fase asume la anterior**
+
+<Flow>
+  <Step n="F0" title="Responde">LLM + tools + memoria</Step>
+  <Step n="F1" title="Confianza">tests + evals con veto</Step>
+  <Step n="F2" title="Blindaje">guardrails + auth</Step>
+  <Step n="F3" title="Visibilidad">tracing + coste</Step>
+  <Step n="F4" title="Despliegue">Docker + CD + smoke</Step>
+  <Step n="F5" title="Mejora">feedback + A/B + operación</Step>
+</Flow>
+
+### F0 · Un agente que responde
+
+**Objetivo:** algo que reciba una pregunta y devuelva una respuesta útil, con herramientas y memoria de conversación.
+**Construyes:** un grafo con un LLM que decide, tools que ejecuta, y un checkpointer que recuerda el hilo.
+**Te lo enseñan:** [c1](/concepto/01-tu-primer-modelo) · [c04 memoria](/concepto/04-memoria) · [c07 herramientas](/concepto/07-herramientas) · [c10 agentes](/concepto/10-agentes-prebuilt) · [c13 LangGraph](/concepto/13-langgraph-a-fondo).
+**Checklist:** el modelo entra **por parámetro** (no se crea por dentro — es lo que hace testeable todo lo demás) · las tools hacen una cosa cada una · el estado cuelga de un `thread_id`.
+
+<Box kind="warn" label="▲ La trampa de F0: llamarlo producto">
+
+Un agente que funciona en tu terminal el 90% de las veces se siente terminado. No lo está: no sabes cuándo falla el otro 10%, no resiste a nadie que quiera romperlo, y no puedes desplegarlo sin miedo. F0 es el 20% del trabajo. Las cinco fases siguientes son el 80% que separa la demo del producto.
+
+</Box>
+
+### F1 · Confianza: tests y evaluación
+
+**Objetivo:** saber, sin abrir la app, si el agente funciona — y enterarte al instante si un cambio lo rompió.
+**Construyes:** tests con dobles (modelo falso), un dataset de evaluación versionado, un juez LLM y un **gate con poder de veto**.
+**Te lo enseñan:** [c17b tests y CI](/concepto/17b-tests-y-ci) · [c16c evaluación](/concepto/16c-evaluacion) · [recurso LLMOps](/recurso/llmops).
+**Checklist:** los tests **no llaman al LLM** (dobles + marcador offline) · la evaluación sí lo llama, pero con dataset fijo · el gate puede devolver rojo y parar un merge/deploy · distingues test (protege tu *lógica*) de eval (protege tu *calidad*).
+
+<Box kind="warn" label="▲ La trampa de F1: optimizar sin medir">
+
+Sin un dataset y un juez, "mejoré el prompt" es una corazonada. Cambias algo, la demo se ve mejor, y no tienes ni idea de si empeoró en los diez casos que no probaste. La evaluación es la báscula: sin ella, toda dieta funciona.
+
+</Box>
+
+### F2 · Blindaje: guardrails y auth
+
+**Objetivo:** que aguante a un usuario **hostil**, no solo a uno colaborador.
+**Construyes:** guardrail de entrada (inyección, PII), guardrail de salida (fuga de datos), RBAC, auth por credencial y rate limiting.
+**Te lo enseñan:** [c23 seguridad y red-teaming](/concepto/23-seguridad-red-teaming) · [recurso LLMOps](/recurso/llmops).
+**Checklist:** el guardrail de entrada va **antes** de gastar un token · el rol sale de la **credencial**, nunca del body · el RBAC filtra en el `WHERE`, no en Python después · hay un límite de peticiones (cada llamada cuesta dinero real).
+
+<Box kind="warn" label="▲ La trampa de F2: confiar en el rol que manda el cliente">
+
+Si tu agente lee el `rol` del cuerpo de la petición, cualquiera se declara `admin` y tu RBAC es decorativo. El rol tiene que derivarse de *quién demostró ser* (la credencial), no de *lo que dice ser* (el body). Es el error de seguridad número uno en agentes.
+
+</Box>
+
+### F3 · Visibilidad: observabilidad y coste
+
+**Objetivo:** ver qué hace el agente en vivo y cuánto te cuesta — antes de que te lo diga la factura.
+**Construyes:** tracing de cada request, métricas (latencia p95, TTFT, tokens), y coste en dólares por request.
+**Te lo enseñan:** [c16 observabilidad y costo](/concepto/16-observabilidad-y-costo) · [recurso LLMOps](/recurso/llmops).
+**Checklist:** mides **p95, no la media** · mides el TTFT aparte (con streaming, es lo que el usuario percibe) · el coste sale de `usage_metadata` real, no de un `0` que finge ser gratis · las métricas persisten (sobreviven a un reinicio).
+
+<Box kind="warn" label="▲ La trampa de F3: mirar la media">
+
+La media de latencia la aplasta el caso feliz: con 95 requests de 200 ms y 5 de 10 s, la media dice "690 ms, todo bien" mientras 1 de cada 20 usuarios sufre 10 segundos. **La media esconde precisamente a la gente que se va.** El p95 la muestra.
+
+</Box>
+
+### F4 · Empaquetado y despliegue
+
+**Objetivo:** que la versión nueva llegue al servidor sola, y vuelva atrás sola si algo falla.
+**Construyes:** un Dockerfile multi-stage, un compose, un pipeline de CD (build → deploy → smoke test → rollback) y un despliegue en VPS o Kubernetes.
+**Te lo enseñan:** [c17 repo productivo](/concepto/17-repo-productivo) · [c15b arquitectura de despliegue](/concepto/15b-arquitectura-de-despliegue) · [c17c Continuous Delivery](/concepto/17c-continuous-delivery).
+**Checklist:** el artefacto es una **imagen con tag inmutable**, no un `git pull` · los servicios son **stateless** (el estado vive en Postgres/Redis, no en el proceso) · hay un **smoke test post-deploy** que arranca el contenedor y le pega por HTTP · los secrets viven en el pipeline, nunca en la imagen.
+
+<Box kind="warn" label="▲ La trampa de F4: la config que solo se evalúa al desplegar">
+
+Este mismo proyecto tenía **824 tests en verde** y tres bugs que ninguno veía: un retriever roto por un esquema de URL, un `/health` que mentía sobre el tracing, y unas métricas que no persistían en el contenedor. Los tres eran *configuración que solo se evalúa al arrancar de verdad*. El código estaba bien; el valor que recibía al desplegar, no. Solo un smoke test que arranca el contenedor los caza. Un test unitario, por definición, nunca los verá.
+
+</Box>
+
+### F5 · Operación y mejora continua
+
+**Objetivo:** que el agente mejore con el uso — y que puedas operarlo cuando algo se tuerce a las 3 a.m.
+**Construyes:** feedback 👍/👎 persistido, A/B de prompts, memoria de largo plazo, un runbook, y (opcional) canales reales y nube gestionada.
+**Te lo enseñan:** [c24b feedback y A/B](/concepto/24b-feedback-a-b) · [c30 memoria de largo plazo](/concepto/30-memoria-de-largo-plazo) · anexos [WhatsApp](/concepto/31-canal-whatsapp) · [n8n](/concepto/31b-n8n-orquestacion) · [nube gestionada](/concepto/34-desplegar-en-bedrock-y-vertex).
+**Checklist:** el voto se persiste y se **agrega por variante** (no vive en la RAM de un worker) · el A/B es **pegajoso** (un usuario ve siempre la misma variante) · decides el ganador con **significancia**, no con tres votos · tienes un runbook con los fallos conocidos y su arreglo.
+
+<Box kind="warn" label="▲ La trampa de F5: decidir el A/B con tres votos">
+
+Un A/B con feedback en memoria y poco tráfico te tienta a declarar ganador a la variante que va 3-1. Eso no es un resultado, es ruido. Persiste los votos, acumula volumen, y decide con significancia estadística — o estarás optimizando hacia el azar.
+
+</Box>
+
+### ¿En qué fase estás? · síntoma → lo que te falta
+
+| Si te pasa esto… | te falta la fase |
+| --- | --- |
+| "Funciona en mi terminal, pero no sé si aguanta" | **F1** — tests y evaluación |
+| "Cambié el prompt y no sé si lo mejoré o lo empeoré" | **F1** — un dataset y un juez |
+| "Un usuario pidió datos que no debía ver y los recibió" | **F2** — guardrails y RBAC |
+| "Llegó una factura de tokens que no esperaba" | **F3** — coste por request y rate limiting |
+| "Va lento a veces y no sé cuándo ni por qué" | **F3** — p95 y tracing |
+| "Desplegar es entrar por SSH y rezar" | **F4** — Docker y CD con smoke test |
+| "Se rompió en producción y no sé cómo volver atrás" | **F4** — tags inmutables y rollback |
+| "No sé si a los usuarios les sirve lo que responde" | **F5** — feedback y A/B |
+
+<Box kind="warn" label="▲ El orden importa más que la velocidad">
+
+La tentación es hacer lo divertido primero: más features, más tools, un modelo más nuevo. Pero **guardrails antes que features** (una feature sobre una base insegura es superficie de ataque nueva) y **evals antes que optimizar** (optimizar sin medir es adivinar). Saltarte una fase no te ahorra el trabajo: lo aplaza, con intereses, hasta que explota en producción — que es el peor sitio y el peor momento para descubrir que faltaba.
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Nombrar las seis fases y por qué cada una asume la anterior.
+- Ubicar tu propio agente en una fase y decir cuál es el siguiente paso honesto.
+- Explicar la trampa característica de cada fase (llamarlo producto, optimizar sin medir, confiar en el rol del body, mirar la media, la config del deploy, decidir el A/B con tres votos).
+- Usar la tabla síntoma → fase para diagnosticar qué le falta a un proyecto real.
+
+</Checkpoint>
+
+<Recap level={6} label="↺ En una frase">
+
+De cero a producción no es un truco final, es un orden: responde (F0) → se puede confiar (F1) → está blindado (F2) → se puede ver (F3) → se puede desplegar (F4) → se puede mejorar (F5), y saltarse una fase solo aplaza el trabajo hasta que explota en producción.<Arch>mapa transversal · enlaza c1–c34 y el recurso LLMOps</Arch>
+
+</Recap>
