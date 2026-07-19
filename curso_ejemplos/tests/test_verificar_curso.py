@@ -165,3 +165,122 @@ class TestVerificarTablasModulos:
             "<tr><td>RAG</td><td>11_rag</td><td>TAMBIEN-OTRO</td><td>test_rag</td></tr>"
         )
         assert verificar_curso.verificar_tablas_modulos(html, _README_ESPEJADO).ok is True
+
+
+# ------------------------------------------------------------------
+# Chequeos de la WEB: fixtures mínimas en memoria, sin tocar web/ real
+# ------------------------------------------------------------------
+# Un manifest de juguete con 2 rutas y 1 extra: suficiente para ejercitar
+# order/total/disco, niveles y banners sin depender del contenido real.
+def _manifest_mini() -> dict:
+    return {
+        "total": 3,
+        "modules": [
+            {"slug": "01-a", "order": 0, "level": 1, "levelName": "Uno", "pyFile": "01_a.py"},
+            {"slug": "02-b", "order": 1, "level": 2, "levelName": "Dos", "pyFile": None},
+        ],
+        "extras": [{"slug": "faq"}],
+    }
+
+
+_MDX_COMPLETO = (
+    "<LevelBanner level={1} title=\"Ruta 1\">abre</LevelBanner>\n"
+    "prosa con [enlace](/concepto/02-b) y [otro](/recurso/faq#seccion)\n"
+    "<Box kind=\"practice\">práctica</Box>\n"
+    "<Checkpoint>listo</Checkpoint>\n"
+    "<Quiz title=\"q\">…</Quiz>\n"
+    "<Recap level={1}>cierre</Recap>\n"
+)
+_MDX_COMPLETO_2 = _MDX_COMPLETO.replace("level={1}", "level={2}")
+
+
+@pytest.mark.offline
+class TestVerificarManifest:
+    def test_manifest_coherente_pasa(self):
+        resultado = verificar_curso.verificar_manifest(
+            _manifest_mini(), {"01-a", "02-b"}, {"faq"})
+        assert resultado.ok is True
+
+    def test_order_desincronizado_falla_y_nombra_el_slug(self):
+        manifest = _manifest_mini()
+        manifest["modules"][1]["order"] = 7  # la posición real es 1
+        resultado = verificar_curso.verificar_manifest(manifest, {"01-a", "02-b"}, {"faq"})
+        assert resultado.ok is False
+        assert any("02-b" in d and "order=7" in d for d in resultado.detalles)
+
+    def test_mdx_huerfano_y_faltante_fallan(self):
+        # '03-c.mdx' sobra en disco y '02-b' no tiene archivo: dos fallos distintos.
+        resultado = verificar_curso.verificar_manifest(
+            _manifest_mini(), {"01-a", "03-c"}, {"faq"})
+        assert resultado.ok is False
+        assert any("02-b" in d for d in resultado.detalles)
+        assert any("03-c" in d for d in resultado.detalles)
+
+
+@pytest.mark.offline
+class TestVerificarPyfiles:
+    def test_pyfile_inexistente_falla(self):
+        resultado = verificar_curso.verificar_pyfiles(
+            _manifest_mini(), existe=lambda ruta: False)
+        assert resultado.ok is False
+        assert any("01_a.py" in d for d in resultado.detalles)
+
+    def test_pyfile_null_no_se_exige(self):
+        # Solo '01-a' referencia archivo; si existe, el chequeo pasa aunque
+        # '02-b' tenga pyFile null (los módulos de lectura no prometen script).
+        resultado = verificar_curso.verificar_pyfiles(
+            _manifest_mini(), existe=lambda ruta: ruta == "01_a.py")
+        assert resultado.ok is True
+
+
+@pytest.mark.offline
+class TestVerificarEnlacesWeb:
+    def test_enlace_con_fragmento_resuelve_y_el_roto_falla(self):
+        mdx = {"01-a": "ver [b](/concepto/02-b#anclado) y [x](/concepto/no-existe)"}
+        resultado = verificar_curso.verificar_enlaces_web(mdx, {"01-a", "02-b"}, {"faq"})
+        assert resultado.ok is False
+        # El fragmento #anclado no rompe la resolución; el slug inventado sí.
+        assert len(resultado.detalles) == 1
+        assert "no-existe" in resultado.detalles[0]
+
+
+@pytest.mark.offline
+class TestVerificarNiveles:
+    def test_niveles_correctos_pasan(self):
+        mdx = {"01-a": _MDX_COMPLETO, "02-b": _MDX_COMPLETO_2}
+        assert verificar_curso.verificar_niveles(_manifest_mini(), mdx).ok is True
+
+    def test_recap_desincronizado_falla(self):
+        mdx = {"01-a": _MDX_COMPLETO,
+               "02-b": _MDX_COMPLETO_2.replace("<Recap level={2}", "<Recap level={5}")}
+        resultado = verificar_curso.verificar_niveles(_manifest_mini(), mdx)
+        assert resultado.ok is False
+        assert any("Recap" in d and "5" in d for d in resultado.detalles)
+
+    def test_ruta_sin_banner_de_apertura_falla(self):
+        mdx = {"01-a": _MDX_COMPLETO,
+               "02-b": _MDX_COMPLETO_2.replace("<LevelBanner level={2}", "<div ")}
+        resultado = verificar_curso.verificar_niveles(_manifest_mini(), mdx)
+        assert resultado.ok is False
+        assert any("abre la ruta" in d for d in resultado.detalles)
+
+
+@pytest.mark.offline
+class TestVerificarMdx:
+    def test_pauta_completa_y_trampa_en_codigo_no_cuentan(self):
+        # El '<1.24' vive en un fence y el '`<5 s`' en inline code: ambos son
+        # legales; solo el texto suelto puede romper el build.
+        mdx = {"01-a": _MDX_COMPLETO + "```toml\nonnxruntime<1.24\n```\ntarda `<5 s` en frío\n"}
+        assert verificar_curso.verificar_mdx(mdx).ok is True
+
+    def test_trampa_fuera_de_codigo_falla_con_linea(self):
+        mdx = {"01-a": _MDX_COMPLETO + "responde en <5 segundos\n"}
+        resultado = verificar_curso.verificar_mdx(mdx)
+        assert resultado.ok is False
+        assert any("línea 7" in d for d in resultado.detalles)
+
+    def test_modulo_sin_quiz_falla(self):
+        mdx = {"01-a": _MDX_COMPLETO.replace("<Quiz", "<div")}
+        resultado = verificar_curso.verificar_mdx(mdx)
+        assert resultado.ok is False
+        assert any("Quiz" in d for d in resultado.detalles)

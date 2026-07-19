@@ -3,7 +3,7 @@
 Cada archivo es **autónomo**: lo abres en VS Code, lo corres y funciona solo.
 Están comentados **sección por sección** para que entiendas cada línea.
 
-Y todo está **verificado por 852 tests** que corren sin gastar un solo token
+Y todo está **verificado por 864 tests** que corren sin gastar un solo token
 (ver [§6](#6-cómo-se-verifica-que-esto-funciona)).
 
 ## 1) Requisitos (una sola vez)
@@ -154,7 +154,7 @@ montón de scripts: **cada concepto tiene una prueba que lo defiende**.
 
 ```bash
 cd curso_ejemplos
-uv run pytest -m offline        # 852 tests, ~30 s, CERO llamadas a la API
+uv run pytest -m offline        # 864 tests, ~30 s, CERO llamadas a la API
 ```
 
 Qué cubren:
