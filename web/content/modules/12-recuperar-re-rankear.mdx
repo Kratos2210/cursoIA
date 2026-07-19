@@ -247,6 +247,12 @@ Re-rankeado: [6, 5, 4]     <- el 6 (Formas de pago). Correcto.
 
 ¿Por qué este concepto implementa BM25 y el re-ranker a mano en vez de instalar `rank_bm25` y un cross-encoder? La decisión está razonada, con sus alternativas y sus consecuencias, en un ADR real del repo: `docs/adr/0002-re-ranker.md` (Concepto 17).
 
+### 🎛 Tócalo tú mismo
+
+El re-ranker didáctico de este concepto (cobertura de palabras + bono de frase, el mismo código) contra un cross-encoder, sobre los mismos chunks. Cambia de pregunta y mira cuál de los dos se rompe con un sinónimo:
+
+<PlaygroundRerank />
+
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 
 - Explicar por qué se recupera ancho y barato y se reordena poco y caro (recuperar es rápido y tonto; re-rankear, lento y listo).
