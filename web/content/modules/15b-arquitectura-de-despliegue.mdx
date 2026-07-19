@@ -1,4 +1,4 @@
-El patrón supervisor repartió el *razonamiento* entre especialistas. La misma idea —**divide y acota**— sube una escala y reparte el *sistema*: un script único que lo hace todo no escala ni se mantiene, y la cura es partirlo en componentes independientes, cada uno desplegable y escalable por separado.
+El patrón supervisor repartió el *razonamiento* entre especialistas. La misma idea —**divide y acota**— sube una escala y reparte el *sistema*: un script único que lo hace todo no escala ni se mantiene, y la cura es partirlo en componentes independientes, cada uno desplegable y escalable por separado. Lo que aquí se reparte es el monolito modular que leíste en el [c15a](/concepto/15a-arquitectura-de-software) — sus fronteras internas son las líneas de corte —, y el sustrato donde todo esto correrá lo aprovisiona el [c15c](/concepto/15c-donde-vive-tu-agente).
 
 <Box kind="def" label="◈ Glosario exprés de operaciones · para no perderte en la jerga">
 
@@ -147,7 +147,7 @@ Los sistemas reales **mezclan**: el camino de consulta (latencia crítica, tráf
 
 <Avoid label="⛔ Cuándo NO partir en microservicios (ni tocar K8s)">
 
-- **En un prototipo o con poco tráfico.** Un solo proceso bien hecho es más fácil de desplegar, depurar y operar que cinco servicios y un clúster. Parte cuando una pieza concreta necesite escalar sola, no antes.
+- **En un prototipo o con poco tráfico.** Un solo proceso bien hecho —el monolito modular del [c15a](/concepto/15a-arquitectura-de-software)— es más fácil de desplegar, depurar y operar que cinco servicios y un clúster. Parte cuando una pieza concreta necesite escalar sola, no antes.
 - **Por currículo.** Adoptar Kubernetes "porque se ve profesional" te regala una carga de operación (probes, HPA, ingress, secrets) que quizá no necesitas: un servicio gestionado o un contenedor único puede bastar meses.
 - **Para procesos largos y pesados en serverless.** El *cold start* y el tiempo máximo por ejecución hacen de serverless una mala opción para inferencia constante o trabajos de minutos; eso va a K8s.
 
@@ -231,7 +231,7 @@ No hace falta que lo escribas hoy —tu proveedor gestionado ([c18b](/concepto/1
 
 </Quiz>
 
-<Recap level={4} label="↺ En una frase">
+<Recap level={6} label="↺ En una frase">
 
 Reparte el sistema en servicios **stateless**: arriba nada recuerda, abajo el estado vive en Postgres/Chroma/log. Así puedes matar y recrear cualquier copia sin perder una conversación.<Arch>K8s para lo constante y pesado · serverless para lo esporádico</Arch>
 

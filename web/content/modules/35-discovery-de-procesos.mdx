@@ -1,0 +1,222 @@
+<LevelBanner level={7} title="Empieza la Ruta 7 · Proyectos y casos reales">
+
+Acabas de recorrer todas las piezas: agentes, RAG, guardrails, despliegue. Esta ruta las convierte en proyectos — y arranca donde arranca todo proyecto de verdad: decidiendo QUÉ construir, con método. Discovery → spec → capstone → caso real.
+
+</LevelBanner>
+
+Hay una escena que se repite en todas las empresas desde 2023: alguien de dirección entra a la reunión y dice *"tenemos que tener IA"*. Y el error clásico del consultor novato es responder con una solución — "hagamos un chatbot" — antes de haber mirado un solo proceso. Eso es una solución buscando problema, y termina en la demo que impresiona en la reunión y muere en el cajón. En el [c29](/concepto/29-caso-real-2-retail) viste el resultado correcto: el consultor llega con un **menú de casos, cada uno con su dato y su retorno**, y uno gana por criterios que se pueden defender. Este módulo es lo que el c29 no mostró: **el método que produce ese menú**. Se llama *discovery*, ocurre antes de escribir la primera línea (y antes de la spec del [c19](/concepto/19-spec-driven-development)), y responde tres preguntas: qué procesos tiene la empresa (**AS-IS**), qué nivel de solución pide cada uno (¿automatización, copiloto, agente?) y **cuál se construye primero**.
+
+<Box kind="def" label="◈ Glosario exprés del discovery">
+
+<DefList>
+  <Term>proceso de negocio</Term>
+  <Def>Una secuencia repetible con **entrada, pasos, salida y un dueño**: "catalogar la temporada", "responder la consulta de stock". La unidad de análisis del discovery — no "la empresa", no "el área": el proceso.</Def>
+  <Term>AS-IS</Term>
+  <Def>El proceso **como es hoy**, con sus tiempos, volúmenes y errores reales — no como el organigrama dice que debería ser.</Def>
+  <Term>TO-BE</Term>
+  <Def>El proceso **rediseñado**: qué pasos absorbe la tecnología, dónde queda el humano, qué no cambia.</Def>
+  <Term>automatización determinista</Term>
+  <Def>Reglas fijas sin juicio: el `if`, el cron, el workflow de n8n, el RPA. Entrada conocida → salida conocida, siempre.</Def>
+  <Term>copiloto</Term>
+  <Def>La IA **propone**, el humano **decide y firma**. La responsabilidad no se mueve de silla; se mueve el tiempo que cuesta ejercerla.</Def>
+  <Term>agente</Term>
+  <Def>La IA decide los pasos dentro de un objetivo acotado ([c10](/concepto/10-agentes-prebuilt)). El humano define el marco, no cada paso.</Def>
+  <Term>sistema agéntico</Term>
+  <Def>Varios agentes orquestados ([c15](/concepto/15-multiagente-supervisor)) atendiendo un proceso completo de punta a punta.</Def>
+  <Term>HITL (human-in-the-loop)</Term>
+  <Def>Un checkpoint humano **dentro** del flujo automatizado: la máquina prepara, la persona aprueba lo irreversible.</Def>
+  <Term>matriz impacto × viabilidad</Term>
+  <Def>La herramienta de priorización: cuánto vale resolverlo (impacto) contra qué tan realista es lograrlo ya (viabilidad).</Def>
+  <Term>payback</Term>
+  <Def>Meses hasta que el ahorro acumulado paga lo que costó construir. La cifra que un gerente entiende sin traducción.</Def>
+</DefList>
+
+</Box>
+
+<Box kind="analogy" label="◆ El doctor que receta antes de auscultar">
+
+Nadie confía en un médico que entra al consultorio recetando. Primero ausculta, pregunta, mide — y *después* decide el tratamiento. El discovery es la auscultación de la empresa: primero el proceso, después la medicina. Y la mitad de las veces la medicina honesta no es un agente: es un `if`, un cron o un formulario mejor. Recetar IA sin auscultar no te hace innovador; te hace el doctor del que la gente huye.
+
+</Box>
+
+### La escalera de autonomía: cuatro peldaños, no uno
+
+Cada proceso pide un **nivel** de solución distinto. Pensarlo como escalera evita el error de tratar "IA" como una sola cosa:
+
+<Flow>
+  <Step n="1" title="Reglas / RPA">Automatización determinista: `if`, cron, workflows de [n8n](/concepto/31b-n8n-orquestacion). Cero juicio, cero sorpresas, coste marginal ~0.</Step>
+  <Step n="2" title="Copiloto">La IA redacta, resume, sugiere — el humano decide y firma. El juicio sigue siendo humano; lo que se automatiza es la preparación.</Step>
+  <Step n="3" title="Agente">La IA elige los pasos (buscar, filtrar, responder) dentro de un objetivo y con guardrails ([c23](/concepto/23-seguridad-red-teaming)). El humano supervisa por excepción.</Step>
+  <Step n="4" title="Sistema agéntico">Varios agentes + orquestación cubren el proceso completo. Máxima autonomía, máxima superficie de fallo.</Step>
+</Flow>
+
+Cada peldaño, aterrizado — con la señal de negocio que te dice que ese es el tuyo:
+
+| Peldaño | Ejemplos reales | Impleméntalo cuando… |
+| --- | --- | --- |
+| **1 · Reglas / RPA** | El reporte regulatorio de la financiera del c18 (mismos datos, mismo formato, cada mes) · un flujo n8n que pasa el pedido de Shopify al courier y avisa por WhatsApp · la alerta de stock bajo cuando el POS cruza un umbral | La regla se puede escribir **completa** antes de empezar: entrada de formato fijo, cero interpretación. Si puedes dibujar el diagrama de flujo sin ningún "depende", no necesitas IA — meterla solo añade coste y azar. |
+| **2 · Copiloto** | El copiloto de tienda de Sifrah (la vendedora pregunta, el sistema propone, ella decide qué prometer) · GitHub Copilot escribiendo código que el programador revisa · el borrador de respuesta a cada reclamo que soporte edita y firma | La entrada llega en lenguaje libre o exige juicio, pero el **coste del error es alto, difícil de revertir o está regulado**: la IA prepara el trabajo, el humano pone la firma. Es también el peldaño para ganar confianza (y datos) antes de soltar un agente. |
+| **3 · Agente** | El asistente de compras del c29: entiende "aretes dorados baratos", decide si busca, filtra por precio y responde — con el guardrail de precios vigilando · un agente de soporte que consulta el estado del pedido y resuelve cambios de bajo monto | Los pasos **varían en cada caso** (no hay dos consultas iguales), el error es barato o reversible y un guardrail lo detecta, y el volumen hace imposible que un humano revise cada respuesta: supervisas por excepción, no por transacción. |
+| **4 · Sistema agéntico** | La postventa punta a punta: un agente clasifica el reclamo, otro consulta el pedido, otro propone la solución, y un supervisor decide quién actúa o cuándo escalar a un humano (el patrón del c15) · los agentes de investigación profunda que planifican, buscan y sintetizan por horas | El proceso completo tiene **subtareas de naturaleza distinta** que un solo agente hace mal, ya probaste el peldaño 3 en las piezas por separado, y tienes evals y observabilidad maduras (c16/c16c). Casi nunca es el punto de partida: es el peldaño al que se **llega**. |
+
+¿Y qué decide el peldaño? Cinco criterios de negocio — nota que ninguno menciona tecnología:
+
+| Criterio | Te deja abajo (1–2) | Te empuja arriba (3–4) |
+| --- | --- | --- |
+| **Variabilidad de la entrada** | Formatos fijos, campos conocidos | Lenguaje libre, casos imprevistos |
+| **Necesidad de juicio** | La regla se puede escribir completa | Hay que *interpretar* cada caso |
+| **Coste del error** | Barato, se detecta rápido | Caro o invisible — ⚠️ y esto **baja** el peldaño o exige HITL, por muy capaz que sea el modelo |
+| **Reversibilidad** | Se deshace con un clic | Compromete dinero, datos o reputación |
+| **Volumen** | Esporádico (no justifica construir) | Diario y masivo (cada minuto ahorrado se multiplica) |
+
+Y la regla de oro, que vale ella sola el módulo: **el peldaño más bajo que resuelva el problema.** Cada peldaño que subes paga un peaje — latencia, tokens, no-determinismo, evaluación, guardrails. La versión *técnica* de esta decisión ya la conoces: es el "workflow determinista vs agente" del [c13](/concepto/13-langgraph-a-fondo) y el "cuándo NO usar un agente" del [c10](/concepto/10-agentes-prebuilt). Esta es la versión de *negocio*, y añade una dimensión que la técnica no ve: el peldaño no es solo cuestión de **capacidad**, sino de **permiso** — hay decisiones que no se automatizan aunque el modelo pueda ([c23](/concepto/23-seguridad-red-teaming)), porque el coste del error o la regulación exigen una firma humana.
+
+Míralo aplicado al menú del c29: la **búsqueda semántica** (caso 2) ni siquiera necesita un LLM en runtime — embeddings + retrieval, peldaño 1–2. El **enriquecimiento de catálogo** (caso 4) usa un LLM, pero dentro de un batch con pasos fijos: es un *workflow* con un paso inteligente, no un agente. Etiquetar todo eso como "el chatbot" es no haber hecho el discovery.
+
+### AS-IS: levantar el proceso como es, no como lo cuentan
+
+El AS-IS se levanta **entrevistando al dueño del proceso** — la persona que lo ejecuta, no su gerente. El gerente describe el proceso como *debería* ser; la vendedora, la catalogadora o el analista lo describen como *es*, con los atajos, las esperas y el Excel paralelo que nadie admite en el organigrama. Las preguntas son concretas: ¿qué llega y por dónde? ¿qué pasos das y qué sistemas tocas? ¿cuántas veces al día? ¿cuánto tarda cada una? ¿dónde se equivocan, y qué pasa cuando se equivocan? ¿qué es lo que más duele?
+
+Las respuestas se condensan en el artefacto central del discovery — la **ficha de proceso**:
+
+| Campo | Qué captura |
+| --- | --- |
+| Proceso / Dueño | Nombre y quién lo ejecuta de verdad |
+| Disparador | Qué lo inicia (una clienta pregunta, llega la temporada) |
+| Pasos y sistemas | La secuencia real y qué toca (POS, Excel, WhatsApp) |
+| Volumen | Veces por día/mes — el multiplicador de todo lo demás |
+| Tiempo por unidad | Minutos u horas de una ejecución |
+| Tasa de error y su coste | Qué % sale mal y qué pasa cuando sale mal |
+| Dolor | La frase textual del dueño ("pierdo la venta mientras averiguo") |
+
+Dos fichas de Sifrah, la retail del c29 *(cifras ilustrativas del ejercicio, no datos de la empresa)*:
+
+| | **Consulta de precio/stock en tienda** | **Catalogación de temporada** |
+| --- | --- | --- |
+| Dueño | Vendedora de piso | Equipo de catálogo (2 personas) |
+| Disparador | Clienta pregunta por producto/promo | Llegan los SKUs de la nueva colección |
+| Pasos | Llamar al almacén o buscar en el POS con la clienta esperando | Escribir categoría, material y descripción por SKU |
+| Volumen | 90+ tiendas × ~10 consultas/día | Miles de SKUs por colección |
+| Tiempo/unidad | ~4 min (≈ **1.100 h/mes** de piso de venta) | 2 personas × 2 semanas por colección |
+| Error y coste | Prometer stock que no hay → clienta perdida | La mochila etiquetada "Joyería" — el error **real** que viste en el c29 |
+| Dolor | "Pierdo la venta mientras averiguo" | "Cada temporada es un mes de digitación" |
+
+Fíjate en el poder del campo *volumen*: 4 minutos parecen nada, hasta que los multiplicas por 90 tiendas y 22 días. El AS-IS convierte anécdotas en números — y los números son los que después priorizan.
+
+### TO-BE: rediseñar, no espolvorear
+
+El error de novato es escribir el TO-BE como "el AS-IS + un chatbot". El TO-BE es el proceso **rediseñado** con el peldaño elegido, y tiene tres partes: qué pasos absorbe la tecnología, **dónde queda el humano** y **qué no cambia**. Para la consulta de tienda: peldaño 2, copiloto por WhatsApp — la vendedora pregunta en lenguaje libre, el sistema responde con precio, stock y promo en segundos, y **la vendedora decide qué decirle a la clienta** (checkpoint HITL: nadie promete stock sin que un humano lo confirme). Y lo que no cambia: **el POS sigue siendo la fuente de verdad** de precios e inventario — el copiloto lo consulta, jamás lo contradice. ¿Te suena? Es la regla de oro del c29 ("el LLM pone la comprensión, el catálogo pone los hechos") — nació aquí, en el TO-BE, antes de que existiera una línea de código.
+
+<Box kind="warn" label="▲ Automatizar un proceso roto = automatizar el error, más rápido">
+
+Si el AS-IS revela que el proceso está mal diseñado — la catalogadora etiqueta "Joyería" a todo porque *el formulario tiene ese valor por defecto* —, automatizarlo tal cual produce el mismo error a escala industrial. Primero se arregla el proceso (quitar el default, derivar la categoría del título), después se sube el peldaño. La tecnología amplifica el proceso que encuentra: bueno o roto.
+
+</Box>
+
+### Priorización: la matriz y el payback de servilleta
+
+Con las fichas sobre la mesa, toca decidir **qué se construye primero**. Dos ejes. **Impacto**: horas/mes ahorradas × costo por hora, o ingreso incremental (conversión, ventas recuperadas). **Viabilidad**: los tres criterios que el c29 usó sin nombrarlos, aquí formalizados — ① el **dato ya existe y es accesible** (sin esperar a sistemas), ② la solución **integra tecnología conocida** (no un frente nuevo de I+D), ③ el **riesgo de error es medible y acotable** (un guardrail lo detecta). Y el número que cierra la conversación con gerencia:
+
+```text title="el payback de servilleta"
+payback (meses) = costo de construir / (ahorro mensual − costo de operar)
+
+  ahorro mensual  = horas/mes ahorradas × S/ por hora  (o ingreso incremental)
+  costo de operar = tokens (c16) + infraestructura (c15c: un VPS ≈ S/20 al mes)
+```
+
+El menú completo del c29 pasado por la matriz *(impactos y veredictos ilustrativos)*:
+
+| Caso del menú | Impacto | Viabilidad | Veredicto |
+| --- | --- | --- | --- |
+| 1 · Asistente de compras | Alto (conversión del e-commerce) | **Alta**: catálogo público hoy, stack conocido, guardrail determinista para precios | ✅ **Gana — quick win demostrable en semanas** |
+| 2 · Búsqueda semántica | Medio | Alta (el mismo catálogo) | Es un **componente** del caso 1, no un proyecto aparte |
+| 3 · Copiloto de tienda | Alto (~1.100 h/mes de piso) | ❌ el dato es **inventario interno** — depende del área de sistemas | **Segundo**: entra cuando haya API del POS |
+| 4 · Enriquecimiento de catálogo | Medio (un mes de digitación/temporada) | Alta | Peldaño 1: **workflow con un paso LLM** → [n8n](/concepto/31b-n8n-orquestacion), no un agente |
+| 5 · Clasificación de reclamos | Medio | ❌ **riesgo reputacional**, error difícil de medir | Al final, con guardrails maduros y HITL |
+
+Y así el "ganó la 1" del c29 deja de ser magia: gana **no por ser el más vistoso, sino por ser el de mejor dato** — su ROI se demuestra en semanas sin pedirle nada a nadie. El de más impacto absoluto (el copiloto, con sus 1.100 horas) queda segundo por una razón que ningún entusiasmo arregla: el dato no está disponible *hoy*. Un payback de ejemplo para el ganador: construir ≈ S/12.000, operar ≈ S/300/mes, retorno ≈ S/2.500/mes → **12.000 / (2.500 − 300) ≈ 5,5 meses**. Con esa servilleta, la reunión con gerencia cambia de "queremos IA" a "esto se paga solo antes de fin de año".
+
+### Del discovery a la spec: el output es el input
+
+El entregable del discovery no es un PowerPoint: es un paquete concreto — **el proceso elegido + su ficha AS-IS + el TO-BE con sus checkpoints HITL + criterios de éxito medibles** ("el asistente responde con precio real en menos de 5 s; cero precios inventados"). Y ese paquete es exactamente el **input** de la spec del [c19](/concepto/19-spec-driven-development): la spec formaliza como contrato el QUÉ que aquí se decidió. Con esto se cierra la fila "Requisitos" del ciclo de vida que viste en el [c15a](/concepto/15a-arquitectura-de-software) — y el lazo completo del curso queda a la vista:
+
+<Flow>
+  <Step n="1" title="Discovery">Este módulo: proceso, peldaño, prioridad.</Step>
+  <Step n="2" title="Spec">El c19 lo vuelve contrato con escenarios de aceptación.</Step>
+  <Step n="3" title="Build">El c29 lo construye (y por eso construye ESE caso).</Step>
+  <Step n="4" title="Operación">c16/c24b: coste real y feedback… que alimentan el próximo discovery.</Step>
+</Flow>
+
+<Avoid label="⛔ Errores clásicos del discovery">
+
+- **Empezar por la tecnología.** "Tenemos que tener IA" no es un requisito: es un síntoma. El discovery empieza por el proceso y a veces concluye que la IA no hace falta — esa conclusión también es un entregable.
+- **Agentizar lo que un `if` resuelve.** Pagas latencia, tokens y no-determinismo por un problema que el peldaño 1 resolvía gratis ([c10](/concepto/10-agentes-prebuilt), [c13](/concepto/13-langgraph-a-fondo)). El agente es la herramienta cara: gánatela.
+- **Elegir el caso vistoso sobre el de mejor dato.** El caso espectacular con el dato encerrado en un sistema sin API es un proyecto estancado con buena prensa. El dato accesible gana al aplauso.
+- **Automatizar un proceso roto.** Primero arregla el proceso, después súbelo de peldaño — o industrializas el error.
+- **Saltarse al dueño del proceso.** Si solo entrevistas al gerente, tu AS-IS describe un proceso que no existe. La ficha se llena en el piso, no en la sala de reuniones.
+
+</Avoid>
+
+<Box kind="practice" label="✎ Para practicar">
+
+La financiera del [c18](/concepto/18-capstone-final) te pasa tres procesos. Para cada uno: ficha mínima (volumen/juicio/coste del error), peldaño de la escalera, y al final el orden de prioridad con un payback de servilleta. **(a)** Responder consultas del personal sobre la normativa interna (cientos por semana, respuesta hoy: buscar en PDFs). **(b)** Aprobar o rechazar solicitudes de crédito. **(c)** Generar el reporte regulatorio mensual (mismos datos, mismo formato, cada mes).
+
+<Solution summary="Ver una clasificación razonada">
+
+**(c) Reporte regulatorio → peldaño 1, y primero en prioridad.** Entradas fijas, reglas conocidas, formato idéntico cada mes: un workflow determinista lo resuelve entero (un LLM solo aportaría, quizá, redactar el párrafo de resumen — un paso, no el proceso). Payback inmediato, riesgo ~0. **(a) Consultas de normativa → peldaño 2–3, segundo.** Lenguaje libre (sube), dato accesible y juicio bajo con cita a la fuente: es literalmente el capstone del c18 — copiloto RAG con grounding. **(b) Créditos → la decisión NO se automatiza.** Coste del error alto e irreversible + regulación: por capaz que sea el modelo, el peldaño lo fija el *permiso* ([c23](/concepto/23-seguridad-red-teaming)). Lo honesto: un copiloto que **prepara el expediente** (resume historial, señala inconsistencias) con la decisión y la firma siempre humanas — HITL obligatorio, no opcional. Si tu orden fue c → a → b con esos argumentos, hiciste un discovery.
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Levantar la ficha AS-IS de un proceso entrevistando a su dueño: disparador, pasos, sistemas, volumen, tiempo, error y dolor.
+- Ubicar un proceso en la escalera de autonomía con los cinco criterios — y defender la regla del peldaño más bajo que resuelva.
+- Escribir un TO-BE que rediseña (checkpoints HITL, qué no cambia) en vez de espolvorear un chatbot.
+- Priorizar un menú de casos con impacto × viabilidad y un payback de servilleta — y explicar por qué en Sifrah ganó el asistente de compras y no el copiloto de más horas.
+- Entregar el paquete que la spec del c19 recibe como input.
+
+</Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 35">
+
+<Question>
+  <Prompt>1 · Un proceso recibe solicitudes en lenguaje libre, y equivocarse compromete dinero del cliente de forma difícil de revertir. ¿Qué peldaño?</Prompt>
+  <Option>Agente: las entradas variables piden autonomía</Option>
+  <Option ok>Copiloto con HITL: la entrada libre pide IA, pero el coste del error exige que un humano decida y firme</Option>
+  <Option>Reglas deterministas: el riesgo alto pide determinismo</Option>
+  <Feedback>La entrada variable dice qué *puede* hacer la IA; el coste del error dice qué *permiso* tiene. Capacidad y permiso son ejes distintos — y las reglas no cubren lenguaje libre (Concepto 35).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · Un proceso mensual con entradas fijas y reglas 100% conocidas. ¿Qué construyes?</Prompt>
+  <Option>Un agente, para que se adapte si el proceso cambia en el futuro</Option>
+  <Option>Un copiloto: siempre conviene tener un humano en el flujo</Option>
+  <Option ok>Un workflow determinista (peldaño 1): la regla se puede escribir completa, y cada peldaño extra es un peaje sin retorno</Option>
+  <Feedback>El agente "por si acaso" paga latencia, tokens y no-determinismo hoy por una flexibilidad que quizá nunca uses. Y un humano revisando lo que una regla resuelve no es control: es costo (Concepto 35).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Compiten dos casos: uno espectacular cuyo dato vive en un sistema interno sin API, y uno modesto con el dato público y accesible hoy. ¿Cuál priorizas?</Prompt>
+  <Option>El espectacular: asegura el patrocinio de gerencia para todo lo demás</Option>
+  <Option ok>El del dato accesible: su ROI se demuestra en semanas sin depender de nadie — el otro entra al portfolio para cuando el dato exista</Option>
+  <Option>Ambos en paralelo, para repartir el riesgo</Option>
+  <Feedback>Es exactamente por qué en Sifrah ganó el asistente (catálogo público) sobre el copiloto de tienda (inventario interno) pese a sus 1.100 h/mes. Y en paralelo divides el foco y duplicas el payback de ambos (Concepto 35).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Construir cuesta S/12.000, operar S/300/mes y el ahorro es S/2.500/mes. ¿Payback?</Prompt>
+  <Option>~4,8 meses: 12.000 / 2.500</Option>
+  <Option ok>~5,5 meses: 12.000 / (2.500 − 300) — el ahorro neto descuenta lo que cuesta operar</Option>
+  <Option>No se puede estimar sin medir primero el consumo real de tokens</Option>
+  <Feedback>Dividir solo por el ahorro bruto olvida que el sistema cuesta cada mes. Y el discovery estima con órdenes de magnitud a propósito: la medición fina llega después, con el c16 en producción (Concepto 35).</Feedback>
+</Question>
+
+</Quiz>
+
+<Recap level={7} label="↺ En una frase">
+
+El discovery convierte "queremos IA" en un portfolio: procesos mapeados con su ficha (**AS-IS**), rediseñados con el peldaño de autonomía **más bajo que resuelva** (**TO-BE**, con sus checkpoints HITL) y priorizados por **impacto × viabilidad** con un payback de servilleta — el ganador entra a la spec del c19 y se construye como viste en el c29.<Arch>artefactos: ficha de proceso · escalera de autonomía · matriz impacto×viabilidad · portfolio priorizado — sin código: el output del discovery es el input de la spec</Arch>
+
+</Recap>

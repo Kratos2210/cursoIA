@@ -13,18 +13,28 @@ FINALIDAD:
 
 LÓGICA:
   - Voto            : el registro inmutable de UN voto (es un hecho pasado).
-  - ColectorFeedback: acumula votos en memoria y los agrega por variante.
+  - ColectorFeedback: registra votos y los agrega por variante. DÓNDE los guarda
+                      lo decide el backend (memoria o Postgres), igual que
+                      `ColectorMetricas`.
 
-⚠️ EN MEMORIA, POR PROCESO — el mismo aviso que `ColectorMetricas`. Con varios
-   workers de uvicorn, cada uno acumula LOS SUYOS y ninguno ve el total. Sirve
-   para un dashboard local y para los tests. En producción el voto va a una
-   TABLA (o a Langfuse), donde persiste entre despliegues y se puede decidir el
-   ganador con SIGNIFICANCIA ESTADÍSTICA —no con tres votos y una corazonada.
-   Ver docs/adr/0006-ab-testing-y-feedback.md.
+⚠️ CON EL BACKEND EN MEMORIA (el default) sigue vigente el aviso de siempre: con
+   varios workers de uvicorn, cada uno acumula LOS SUYOS y ninguno ve el total.
+   Sirve para un dashboard local y para los tests. Con `FEEDBACK_BACKEND=postgres`
+   el voto va a una TABLA compartida, persiste entre despliegues y se puede
+   decidir el ganador con SIGNIFICANCIA ESTADÍSTICA —no con tres votos y una
+   corazonada—. Ver observability/feedback_backends.py y
+   docs/adr/0006-ab-testing-y-feedback.md.
 """
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+
+
+def _backend_por_defecto():
+    """El backend configurado. Import diferido para no crear un ciclo:
+    `feedback_backends` importa `Voto`, que se define en este módulo."""
+    from observability.feedback_backends import crear_backend
+    return crear_backend()
 
 
 @dataclass(frozen=True)
@@ -43,12 +53,23 @@ class Voto:
 
 @dataclass
 class ColectorFeedback:
-    """Acumula Votos y los agrega por variante. En memoria, por proceso.
+    """Registra Votos y los agrega por variante. Dónde los guarda lo decide el
+    backend: en memoria (default) o en Postgres (`FEEDBACK_BACKEND=postgres`).
 
     Se inyecta en la app igual que `ColectorMetricas`: por parámetro, para poder
     darle uno limpio en cada test y no arrastrar estado entre ellos.
     """
-    votos: list[Voto] = field(default_factory=list)
+    backend: object = field(default_factory=lambda: _backend_por_defecto())
+
+    @property
+    def votos(self) -> list[Voto]:
+        """Los votos vigentes, vengan de donde vengan.
+
+        Es una property y no una lista para que el colector no dependa de dónde
+        estén guardados: la agregación de `resumen()` se escribe igual con
+        memoria o con Postgres.
+        """
+        return list(self.backend.leer())
 
     def registrar(
         self,
@@ -59,7 +80,7 @@ class ColectorFeedback:
     ) -> Voto:
         """Anota un voto y lo devuelve. `util=True` es 👍; `util=False`, 👎."""
         voto = Voto(variante=variante, util=util, thread_id=thread_id, comentario=comentario)
-        self.votos.append(voto)
+        self.backend.registrar(voto)
         return voto
 
     def resumen(self) -> dict:

@@ -189,20 +189,26 @@ def _piezas_caras(usar_pgvector: bool = True):
     return llm, retriever, evaluador
 
 
-def construir_agente_real(rol: str | None = None, usar_pgvector: bool = True):
+def construir_agente_real(rol: str | None = None, usar_pgvector: bool = True,
+                          checkpointer=None):
     """El agente de verdad (variante A): cascada de modelos + pgvector + memoria.
 
     Lo usan las evaluaciones (`evals/`), donde no hay A/B: un solo agente basta.
     El servicio HTTP construye uno POR variante con `construir_agentes_por_variante`.
+
+    `checkpointer=None` deja el default del prototipo (MemorySaver): en evals no
+    hay conversación que persistir entre procesos.
     """
     llm, retriever, evaluador = _piezas_caras(usar_pgvector)
+    extra = {"checkpointer": checkpointer} if checkpointer is not None else {}
     return construir_agente(
-        llm, retriever, evaluador, rol=rol or settings.app_rol_por_defecto
+        llm, retriever, evaluador, rol=rol or settings.app_rol_por_defecto, **extra
     )
 
 
 def construir_agentes_por_variante(variantes, rol: str | None = None,
-                                   usar_pgvector: bool = True) -> dict:
+                                   usar_pgvector: bool = True,
+                                   checkpointer=None) -> dict:
     """Un agente por variante del A/B, compartiendo las piezas caras.
 
     ⭐ CIERRA EL LAZO A/B (ADR-0006). El prompt se hornea al construir el grafo
@@ -213,14 +219,22 @@ def construir_agentes_por_variante(variantes, rol: str | None = None,
        variante fija el prompt que el usuario ve de verdad: por fin medimos el
        EFECTO del prompt, no solo repartimos a ciegas.
 
+    ⭐ TODAS las variantes COMPARTEN el checkpointer: el `thread_id` fija la
+       variante de forma pegajosa, así que dos threads distintos nunca chocan
+       en el mismo estado. Un único pool de Postgres (o un único MemorySaver)
+       sirve a las dos ramas del A/B.
+
     Devuelve {variante: agente}. El servicio enruta por la variante pegajosa.
     """
     llm, retriever, evaluador = _piezas_caras(usar_pgvector)
     rol = rol or settings.app_rol_por_defecto
+    # Solo se pasa si viene: así un doble de test que reemplaza `construir_agente`
+    # sin el parámetro `checkpointer` (ver test_ab_feedback) sigue funcionando.
+    extra = {"checkpointer": checkpointer} if checkpointer is not None else {}
     return {
         variante: construir_agente(
             llm, retriever, evaluador, rol=rol,
-            prompt=prompt_de_variante(variante, rol),
+            prompt=prompt_de_variante(variante, rol), **extra,
         )
         for variante in variantes
     }

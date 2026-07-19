@@ -1,0 +1,202 @@
+Llevas medio curso construyendo piezas: un agente, un RAG, guardrails, un caché, tests. La pregunta que este concepto responde es otra: ¿qué **forma** tiene el programa completo? ¿Dónde termina el frontend y empieza el backend? ¿Eso que corres es un monolito o son microservicios? ¿Y en qué momento del ciclo de vida del software estás parado? La buena noticia: la respuesta no hay que imaginarla. Lleva semanas corriendo en tu máquina — se llama `proyecto_llmops`. Este concepto no añade ni una línea de código: te enseña a **leer el que ya tienes** con el vocabulario de la ingeniería de software.
+
+<Box kind="def" label="◈ Glosario exprés de arquitectura">
+
+<DefList>
+  <Term>arquitectura de software</Term>
+  <Def>El conjunto de decisiones **caras de cambiar**: cómo se parte el sistema, quién habla con quién y por dónde. Renombrar una función es barato; mover la frontera entre frontend y backend, no. La arquitectura es la lista de lo segundo.</Def>
+  <Term>capa</Term>
+  <Def>Un grupo de código con **una responsabilidad** y una regla sobre a quién puede llamar. "Presentación", "dominio", "infraestructura" son capas clásicas; en tu servicio se llaman `guardrails/`, `app/agent.py`, `observability/`.</Def>
+  <Term>frontera / contrato</Term>
+  <Def>El punto donde dos partes se tocan y el **acuerdo** sobre cómo: qué endpoints, qué formas de datos, qué errores. Mientras el contrato no cambie, cada lado evoluciona libre.</Def>
+  <Term>monolito</Term>
+  <Def>Todo el sistema en **un proceso** que se despliega como una unidad. No es un insulto: es una topología.</Def>
+  <Term>monolito modular</Term>
+  <Def>Un monolito con **fronteras internas marcadas**: paquetes con responsabilidad clara y dependencias en una dirección. Un proceso por fuera, varias piezas por dentro.</Def>
+  <Term>microservicio</Term>
+  <Def>Una pieza que corre en **su propio proceso** y habla con las demás por red. Lo que era una llamada de función pasa a ser una petición HTTP.</Def>
+  <Term>big ball of mud</Term>
+  <Def>El anti-patrón: un sistema donde todo importa a todo y ninguna frontera significa nada. Un monolito puede serlo. Un sistema de microservicios, también.</Def>
+</DefList>
+
+</Box>
+
+### Frontend, backend y el contrato que los separa
+
+La frontera más importante de tu servicio ya la cruzaste sin mirarla. El chat del [c25](/concepto/25-frontend-chat-sse) — `app/static/chat.html` — **no importa ni una línea de Python**. No conoce a LangGraph, ni a los guardrails, ni al caché. Habla con el servidor exclusivamente por HTTP: manda un `POST /chat` y lee eventos SSE. Eso es el frontend: la parte que corre en la máquina del usuario. Todo lo demás — FastAPI, el agente, Postgres — es el backend: la parte que corre en tu servidor.
+
+Lo que une (y separa) a los dos es el **contrato de API**:
+
+<Flow>
+  <Step n="1" title="El navegador pide">`POST /chat` con `{mensaje, rol, thread_id}` — la forma exacta que valida `PeticionChat` en `main.py`. Un campo mal tipado ni entra: 422.</Step>
+  <Step n="2" title="El backend trabaja">Guardrails, caché, agente. El navegador no ve nada de esto ni le importa: para él es una caja detrás de una URL.</Step>
+  <Step n="3" title="La respuesta fluye">Eventos SSE con formas conocidas: `{token}`, el evento `fin` con `{variante, cache_hit}`, el evento `bloqueado`. Eso también es contrato.</Step>
+  <Step n="4" title="Cada lado evoluciona solo">Puedes reescribir el agente entero, o cambiar el HTML por una app React — mientras el contrato no cambie, el otro lado **ni se entera**.</Step>
+</Flow>
+
+El contrato no es solo "los endpoints": son los endpoints, **las formas de los datos** que entran y salen (los modelos Pydantic los hacen explícitos y los validan), y **los errores posibles** (401, 422, 429, el evento `bloqueado`). Por eso el c25 podía decir tan tranquilo que "para producción harías un front de verdad en React o Vue": el front nuevo se enchufa al mismo contrato, y el backend no se toca.
+
+<Box kind="analogy" label="◆ El enchufe de la pared">
+
+La lámpara no sabe si detrás del enchufe hay una presa hidroeléctrica, un panel solar o un generador diésel. Solo conoce el **contrato del enchufe**: la forma de las clavijas y el voltaje. Puedes cambiar la central entera sin tocar la lámpara — y cambiar de lámpara sin avisar a la central. Un buen contrato de API es exactamente eso: la razón por la que los dos lados pueden ignorarse mutuamente con elegancia.
+
+</Box>
+
+### Las capas del monolito modular: tour por `proyecto_llmops`
+
+Ahora la caja por dentro. `proyecto_llmops` es **un solo proceso** — un `uvicorn` que expone una API — pero por dentro está partido en paquetes, y cada paquete es una capa con una responsabilidad que ya conoces:
+
+| Paquete | Responsabilidad | Lo aprendiste en |
+| --- | --- | --- |
+| `app/main.py` | **Composition root**: no implementa ninguna capa — las **ordena** y las expone por HTTP | [c17](/concepto/17-repo-productivo) |
+| `app/agent.py` · `app/rag.py` · `app/llm.py` | **Dominio**: el cerebro — el grafo, el retriever, la fábrica del modelo | [c10](/concepto/10-agentes-prebuilt)–[c13](/concepto/13-langgraph-a-fondo) |
+| `app/auth.py` · `app/rate_limit.py` | **Borde**: quién entra, con qué rol y cuántas veces por minuto | 🚀 [LLMOps](/recurso/llmops) |
+| `app/persistence.py` · `app/streaming.py` · `app/frontend.py` | **Infraestructura de entrega**: el checkpointer, el SSE, la página del chat | [c13](/concepto/13-langgraph-a-fondo) · [c25](/concepto/25-frontend-chat-sse) |
+| `guardrails/` | **Política**: qué entra y qué sale, PII, RBAC | [c23](/concepto/23-seguridad-red-teaming) |
+| `observability/` | **Visibilidad**: trazas, métricas, coste, logs, feedback | [c16](/concepto/16-observabilidad-y-costo) · [c24b](/concepto/24b-feedback-a-b) |
+| `cache/` | **Ahorro**: no pagar dos veces la misma pregunta | 🚀 [LLMOps](/recurso/llmops) |
+| `prompts/` · `evals/` | El prompt como **artefacto versionado**, y su juez con poder de veto | [c24b](/concepto/24b-feedback-a-b) · [c16c](/concepto/16c-evaluacion) |
+| `tests/` | La red de seguridad que corre sin API | [c17b](/concepto/17b-tests-y-ci) |
+
+Y aquí está el detalle que separa "modular" de "amontonado": **las dependencias apuntan en una dirección**. Míralo en los imports reales:
+
+```python title="la dirección de las flechas (imports reales de main.py)"
+# main.py — el composition root importa a TODOS: su trabajo es componer.
+from app import auth, frontend, persistence, rate_limit, streaming
+from guardrails import input_guard
+from observability import logs, metrics, tracing
+from prompts import experimentos
+
+# guardrails/ — no importa NADA de app/: la política es pura.
+#   Puede opinar sobre un texto sin saber que existe FastAPI.
+from guardrails import pii, policy, rbac       # solo se importa a sí mismo
+
+# observability/, cache/, prompts/ — tocan una sola cosa de app/:
+from app.config import settings                # la config es transversal
+
+# evals/ — la excepción CON MOTIVO: importa el dominio (app.agent, app.rag)
+#   porque su oficio es JUZGAR al agente real. Un juez tiene que ver al reo.
+```
+
+El patrón: `main` conoce a todos (componer es su única responsabilidad), `guardrails` no conoce a nadie (política pura, testeable en aislamiento total), y el resto solo comparte `settings` — la configuración es la única pieza legítimamente transversal. Nadie más importa hacia adentro de `app/`. Esa disciplina, junto con la inyección de dependencias que ya conoces (`crear_app(agente, cache, colector, ...)` recibe todo por parámetro), es la razón por la que `test_smoke_api.py` puede levantar la API entera con un agente falso: sin Gemini, sin Postgres, sin Redis.
+
+<Box kind="warn" label="▲ Monolito sin fronteras = big ball of mud">
+
+Lo que hace productivo a este monolito **no es ser un monolito**: es tener las costuras marcadas. Si `guardrails` importara del agente, y el agente del caché, y el caché de los guardrails, tendrías el mismo proceso único — pero cada cambio se propagaría a todas partes y ningún test podría aislar nada. Y hay un premio extra por la disciplina: esas costuras son **exactamente los puntos por donde el [c15b](/concepto/15b-arquitectura-de-despliegue) podría partir el sistema mañana**. La frontera de paquete de hoy es el contrato de red de mañana.
+
+</Box>
+
+### Monolito vs microservicios: una decisión, no una jerarquía
+
+Toca decir en voz alta algo que quizá notaste: el [c15b](/concepto/15b-arquitectura-de-despliegue) te enseña a dibujar el RAG como cuatro microservicios en Kubernetes… y lo que el curso te da para correr es un monolito modular. **No es una contradicción: es la secuencia correcta.** El 15b te enseña la topología a la que *podrías* llegar; este concepto te enseña la forma en la que *deberías* empezar.
+
+| Dimensión | Monolito modular | Microservicios |
+| --- | --- | --- |
+| Desplegar | **Una** imagen, **un** `compose up` | N imágenes, N pipelines, orquestador |
+| Depurar un fallo | Un stack trace de un proceso | Una traza distribuida entre procesos ([c16](/concepto/16-observabilidad-y-costo) se vuelve obligatorio) |
+| Módulo llama a módulo | Llamada de función: nanosegundos, no falla | Petición de red: milisegundos, **puede fallar** — cada llamada necesita timeout y reintento |
+| Coste operativo | Un servidor pequeño | Orquestador + N servicios + la persona que lo cuida |
+| Escalar | Todo junto (copias del proceso entero) | **Cada pieza por separado** — la ventaja real |
+| Equipos | Un equipo, un repo | Varios equipos desplegando sin pisarse — la otra ventaja real |
+
+La regla honesta: **parte el monolito cuando una pieza concreta lo pida** — porque necesita escalar sola (la inferencia satura y el resto no), desplegarse sola (el equipo del retriever quiere publicar sin esperar a nadie) o fallar sola. "Porque es lo profesional" no está en la lista; el propio 15b te lo advirtió en su *cuándo NO*. Y cuando ese día llegue, el monolito modular es el que mejor se parte: sus fronteras internas ya son los contratos que los futuros servicios firmarán por red. Es la misma idea que ya viste a otra escala en el [c15](/concepto/15-multiagente-supervisor): dividir en piezas con responsabilidad acotada — solo que allí eran agentes y aquí son procesos.
+
+### El ciclo de vida: dónde encaja cada módulo del curso
+
+El producto final de todo esto **es software**, y el software tiene un ciclo de vida (SDLC, *software development life cycle*). El curso te lo hizo recorrer sin nombrarlo — ahora el mapa:
+
+| Fase | Qué se decide | Dónde lo viviste |
+| --- | --- | --- |
+| **Requisitos** | Qué debe hacer y qué no (el alcance) | El discovery del [c35](/concepto/35-discovery-de-procesos) + la spec del [c19](/concepto/19-spec-driven-development) |
+| **Diseño** | La forma: capas, contratos, topología | **Este concepto** + [c15b](/concepto/15b-arquitectura-de-despliegue) |
+| **Implementación** | El código, con las fronteras respetadas | Los niveles 1–5 enteros |
+| **Pruebas** | La lógica ([c17b](/concepto/17b-tests-y-ci)) y la calidad ([c16c](/concepto/16c-evaluacion)) — no son lo mismo | Nivel 6 |
+| **Despliegue** | Dónde vive ([c15c](/concepto/15c-donde-vive-tu-agente)) y cómo llega ([c17c](/concepto/17c-continuous-delivery)) | Nivel 6 |
+| **Operación** | Medirlo, costearlo, mejorarlo con feedback | [c16](/concepto/16-observabilidad-y-costo) · [c24b](/concepto/24b-feedback-a-b) |
+
+No es una cascada que se recorre una vez: es un lazo. El feedback de operación (c24b) alimenta los requisitos de la siguiente vuelta. Y la variante moderna del lazo — donde la spec es el artefacto central y la IA teclea mientras tú diriges — es exactamente el [c19](/concepto/19-spec-driven-development).
+
+<Avoid label="⛔ Errores clásicos de arquitectura">
+
+- **Microservicios el día 1 "porque es lo profesional".** Pagas red, orquestación y trazas distribuidas antes de tener un solo problema que lo justifique. Empieza monolito modular; parte cuando una pieza lo pida.
+- **Monolito sin fronteras internas.** "Ya lo ordenaré cuando crezca" — no: cuando crezca, todo importará a todo y ordenar costará una reescritura. Las fronteras se ponen el día 1, que es cuando son gratis.
+- **El frontend importando lógica del backend.** Si el HTML "sabe" cómo funciona el agente por dentro (parsea sus formatos internos, duplica sus reglas), ya no hay contrato: hay dos códigos acoplados que se romperán juntos.
+- **Confundir "monolito" con "legado".** Monolito es una topología, no una edad ni una calidad. Hay monolitos modulares impecables sirviendo millones de peticiones — y bolas de barro distribuidas en 40 microservicios.
+
+</Avoid>
+
+<Box kind="practice" label="✎ Para practicar">
+
+Sigue una petición real por las capas. Abre `proyecto_llmops/app/main.py` y traza el viaje completo de un `POST /chat` — desde que entra hasta que el último evento SSE sale — anotando **qué paquete** toca en cada paso. Después dibuja el diagrama de dependencias: una flecha por import entre paquetes. Comprueba las dos afirmaciones de este módulo: que `main` importa a todos, y que `guardrails` no importa a nadie.
+
+<Solution summary="Ver el recorrido">
+
+El orden vive en `_flujo()` (y no es casual — cada posición ahorra dinero o riesgo):
+
+1. **Borde** — el middleware corre primero: `rate_limit.revisar()` frena antes de gastar, y el `request_id` queda fijado para coser los logs.
+2. **Borde** — en el endpoint, `auth.resolver_rol()`: el rol sale de la credencial, no del body.
+3. **`prompts/`** — `EXPERIMENTO_PROMPT.variante_de(thread_id)` decide qué agente (variante A/B) responde.
+4. **`guardrails/`** — `input_guard.revisar_entrada()`: ¿ataque? corta con **cero** tokens gastados. ¿PII? anonimiza y sigue.
+5. **`cache/`** — `cache.buscar(pregunta, rol=...)`: un HIT responde gratis y aquí se acaba el viaje.
+6. **Dominio** — `streaming.tokens_del_agente(agente, ...)`: el grafo piensa, token a token.
+7. **`guardrails/` otra vez** — `GuardiaDeStream` vigila el stream de salida con un buffer de retención.
+8. **`cache/` otra vez** — se guarda **lo saneado**, nunca lo crudo (o el siguiente HIT serviría texto sin filtrar).
+9. **`observability/`** — el colector registra tokens, coste, TTFT y latencia; `tracing` manda la traza.
+
+El diagrama de dependencias confirma: todas las flechas salen de `main` hacia los paquetes; de los paquetes solo regresa una, fina, hacia `app.config` (settings); y `guardrails` no tiene ninguna flecha de salida. `evals/` es la excepción deliberada: importa el dominio porque su oficio es juzgarlo.
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Señalar la frontera frontend/backend de tu servicio y recitar su contrato: endpoints, formas de datos (Pydantic), eventos SSE y errores.
+- Nombrar las capas del monolito modular (`app/`, `guardrails/`, `observability/`, `cache/`, `prompts/`, `evals/`) y la responsabilidad de cada una.
+- Explicar la regla de dependencias: `main` compone a todos, `guardrails` es puro, el resto solo comparte `settings`.
+- Defender con argumentos cuándo un monolito modular es la decisión correcta — y qué señal concreta justifica partirlo.
+- Ubicar cualquier módulo del curso en su fase del SDLC.
+
+</Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 15a">
+
+<Question>
+  <Prompt>1 · ¿Qué es el contrato de API entre el frontend y el backend?</Prompt>
+  <Option>El código que ambos comparten para no duplicar lógica</Option>
+  <Option ok>El acuerdo estable — endpoints, formas de datos, errores — que permite cambiar cada lado sin romper el otro</Option>
+  <Option>La documentación Swagger que genera FastAPI</Option>
+  <Feedback>Compartir código es justo lo contrario: acoplarse. El contrato es el acuerdo sobre la frontera — por eso el chat HTML del c25 podría cambiarse por una app React sin tocar una línea del backend (Concepto 15a).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · `proyecto_llmops` corre con FastAPI, Postgres y Redis. ¿Monolito o microservicios?</Prompt>
+  <Option>Microservicios: son tres contenedores distintos en el compose</Option>
+  <Option ok>Monolito modular: TU código es un solo proceso con fronteras internas por paquete; Postgres y Redis son estado externo, no servicios tuyos</Option>
+  <Option>Monolito clásico: todo el código vive en un solo archivo</Option>
+  <Feedback>La topología se cuenta por procesos de TU aplicación, no por contenedores del compose. Un proceso, nueve paquetes con dependencias en una dirección: monolito modular (Concepto 15a).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · ¿Cuál de estas es una razón válida para partir el monolito en microservicios?</Prompt>
+  <Option>Es lo que usan las empresas grandes, y da mejor imagen en la arquitectura</Option>
+  <Option>El repositorio ya supera las 10 000 líneas</Option>
+  <Option ok>La inferencia satura con el tráfico y necesita escalar sola, sin multiplicar también el retriever y el resto</Option>
+  <Feedback>Se parte cuando una pieza concreta necesita escalar, desplegarse o fallar por separado. El tamaño del repo se arregla con módulos; la moda no se arregla con nada (Conceptos 15a y 15b).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · ¿Qué gana un monolito por tener fronteras internas estrictas, además del orden?</Prompt>
+  <Option>Corre más rápido, porque los imports en una dirección optimizan el intérprete</Option>
+  <Option ok>Que partirlo mañana es barato: cada frontera de paquete ya es el contrato que un futuro servicio firmaría por red</Option>
+  <Option>Que ya no necesita tests de integración</Option>
+  <Feedback>Las costuras marcadas son los puntos de corte. Si `guardrails` no importa nada de `app`, convertirlo en servicio es cambiar llamadas de función por HTTP — el contrato ya existía (Concepto 15a).</Feedback>
+</Question>
+
+</Quiz>
+
+<Recap level={6} label="↺ En una frase">
+
+Tu servicio ya tiene arquitectura: un **monolito modular** — un proceso, capas por paquete, dependencias en una dirección — separado del frontend por un **contrato de API**; los microservicios del c15b no son "la versión buena", son la topología a la que migras cuando una pieza concreta lo pida, cortando por las costuras que dejaste marcadas.<Arch>archivos: `proyecto_llmops/app/` · `guardrails/` · `observability/` · `cache/` · `prompts/` · `evals/`</Arch>
+
+</Recap>

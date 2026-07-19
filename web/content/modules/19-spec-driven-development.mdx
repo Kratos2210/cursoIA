@@ -1,10 +1,10 @@
-<LevelBanner level={5} title="Método · Cómo se construye esto">
+<LevelBanner level={7} title="Método · Cómo se construye esto">
 
-Acabas de recorrer el curso entero. Última pregunta: ¿cómo se construye una pieza de software — como el propio verificador que mantiene todo este material coherente — sin llenarla de bugs y de decisiones que nadie recuerda? Escribiendo la especificación ANTES que el código.
+El discovery ya eligió QUÉ construir. Siguiente pregunta: ¿cómo se construye esa pieza — como el propio verificador que mantiene todo este material coherente — sin llenarla de bugs y de decisiones que nadie recuerda? Escribiendo la especificación ANTES que el código.
 
 </LevelBanner>
 
-Todo el curso te enseñó a *escribir* IA. Este concepto cierra con la pregunta que casi nadie se hace hasta que duele: ¿cómo decides **qué** vas a construir, antes de escribir la primera línea? La costumbre es abrir el editor y teclear; la especificación, si aparece, se escribe *después* — cuando ya nadie recuerda por qué el código quedó así. **Spec-Driven Development invierte ese orden.** Y no es teoría: el verificador que protege la coherencia de este mismo material nació exactamente así, y sus artefactos están en el repo para que los leas.
+Todo el curso te enseñó a *escribir* IA. Este concepto cierra con la pregunta que casi nadie se hace hasta que duele: ¿cómo decides **qué** vas a construir, antes de escribir la primera línea? La costumbre es abrir el editor y teclear; la especificación, si aparece, se escribe *después* — cuando ya nadie recuerda por qué el código quedó así. **Spec-Driven Development invierte ese orden.** Y no es teoría: el verificador que protege la coherencia de este mismo material nació exactamente así, y sus artefactos están en el repo para que los leas. Una precisión de alcance: la mitad de *negocio* del "qué construir" — qué proceso, qué peldaño de autonomía, por qué este caso y no otro — la respondió el discovery del [c35](/concepto/35-discovery-de-procesos); la spec empieza donde el discovery termina.
 
 <Box kind="def" label="◈ Definición · Spec-Driven Development (SDD)">
 
@@ -146,7 +146,7 @@ La diferencia con MCP es la que aclara para qué sirve cada uno: **MCP le da al 
 
 </Quiz>
 
-<Recap level={5} label="↺ En una frase">
+<Recap level={7} label="↺ En una frase">
 
 SDD = escribir **QUÉ** y **POR QUÉ** antes del **CÓMO**; con spec-kit son cinco pasos y el **spec es la fuente de verdad** — si el código discrepa, se corrige el código.<Arch>archivos: `specs/001-verificador-curso/` · `verificar_curso.py`</Arch>
 

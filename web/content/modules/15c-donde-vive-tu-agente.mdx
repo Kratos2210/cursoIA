@@ -1,0 +1,261 @@
+El `deploy.yml` del [c17c](/concepto/17c-continuous-delivery) termina haciendo SSH a `secrets.VPS_HOST` y ejecutando `cd /srv/gobdata && docker compose pull`. Todo muy razonable — salvo por un detalle que ningún módulo te ha contado: **¿de dónde salió ese servidor?** ¿Quién creó `/srv/gobdata`, quién instaló Docker, quién apuntó `gobdata.example.com` a esa máquina y quién puso el candado TLS? Este concepto llena ese hueco: del cero absoluto — sin servidor, sin dominio — al directorio esperando su primer tag. Aviso honesto, en la línea del [c17c](/concepto/17c-continuous-delivery): aquí no hay script que copiar del repo; los comandos van como **listados comentados**, porque ejecutarlos de verdad requiere alquilar un VPS (~4–5 €/mes). Es opcional — y aún leyéndolo sin ejecutar, vas a entender por fin qué hay al otro lado del SSH.
+
+<Box kind="def" label="◈ Glosario exprés de hosting">
+
+<DefList>
+  <Term>VPS (Virtual Private Server)</Term>
+  <Def>Una máquina virtual alquilada con IP pública y acceso root. El proveedor pone el hardware; **todo lo demás — SO, parches, seguridad — es tuyo**.</Def>
+  <Term>PaaS (Platform as a Service)</Term>
+  <Def>Le das tu código o tu imagen y la plataforma pone servidor, dominio, TLS y reinicios. Operas menos a cambio de controlar menos (y de precios que crecen con el uso).</Def>
+  <Term>contenedor gestionado</Term>
+  <Def>El punto medio de las nubes grandes (Cloud Run, Fargate): tú das la imagen, la nube da el cómputo por segundos. Sin servidor que administrar, escala a cero.</Def>
+  <Term>reverse proxy</Term>
+  <Def>El portero HTTP: recibe todo el tráfico del exterior en el 443, termina el TLS y lo reenvía a tu app por la red interna. Caddy y nginx son los clásicos.</Def>
+  <Term>DNS / registro A</Term>
+  <Def>La entrada en el sistema de nombres que dice "`gobdata.example.com` → `203.0.113.10`". Sin ella, tu servicio solo existe como IP.</Def>
+  <Term>TLS / Let's Encrypt</Term>
+  <Def>El candado de HTTPS. Let's Encrypt emite los certificados gratis, con una condición: demostrar que el dominio resuelve hacia tu servidor.</Def>
+  <Term>firewall</Term>
+  <Def>La lista de puertos que aceptan conexiones del exterior. Todo lo no listado, cerrado. En Ubuntu, `ufw`.</Def>
+  <Term>nube grande (hyperscaler)</Term>
+  <Def>AWS, Google Cloud, Azure: venden los cuatro caminos de esta tabla — y cientos de servicios más — bajo una misma cuenta, un mismo IAM y una misma factura.</Def>
+  <Term>responsabilidad compartida</Term>
+  <Def>El reparto de la seguridad en la nube: el proveedor asegura la nube (hardware, red, datacenter); **tú aseguras lo que configuras en ella** (accesos, buckets, secrets). La brecha típica no es del proveedor: es una credencial o un bucket mal configurados del cliente.</Def>
+</DefList>
+
+</Box>
+
+### El mapa de decisión: cuatro sitios donde puede vivir tu agente (consultado: 2026-07)
+
+Antes de teclear un solo comando, la decisión. Los precios son de julio de 2026 y **caducan** — igual que la tabla del [c18b](/concepto/18b-elegir-modelo-y-proveedor); verifica en la página del proveedor el día que elijas:
+
+| Camino | Ejemplos y precio de arranque | Quién parchea el SO | Control | ¿Encaja con el `deploy.yml` del c17c? |
+| --- | --- | --- | --- | --- |
+| **VPS** | Hetzner CX22 (2 vCPU/4 GB) ~4,35 €/mes · DigitalOcean desde $4 (512 MB; para este stack, más) · EC2 t3.small ~$15 | **tú** | total | **Tal cual**: es literalmente su destino SSH |
+| **PaaS** | Railway $5/mes + uso · Render $7/servicio · Fly.io ~$2 el mínimo | la plataforma | medio | Cambia solo el paso `deploy` (sin SSH) |
+| **Contenedor gestionado** | Cloud Run / ECS Fargate — pago por uso, **~$0 en reposo** (Cloud Run regala 2M requests/mes) | la nube | medio-bajo | Cambia el paso `deploy`; escala a cero |
+| **Serverless (funciones)** | Lambda / Cloud Functions | la nube | bajo | **Mal encaje**: cold start + procesos largos, el problema que ya viste en el [c15b](/concepto/15b-arquitectura-de-despliegue) |
+
+Dos aclaraciones para leerla bien. Primera: esta tabla **no es** la del [c18b](/concepto/18b-elegir-modelo-y-proveedor) — aquella decide dónde corre el *modelo*; esta decide dónde corre **tu aplicación**. Son decisiones independientes: puedes tener la app en un VPS de 4 € hablando con Gemini por API, o en Cloud Run hablando con Bedrock ([c34](/concepto/34-desplegar-en-bedrock-y-vertex)). Segunda: no hay un ganador universal — hay un ganador *por caso*, y el criterio central es **quién opera el sustrato**: cada fila hacia abajo pagas más (o cedes más control) para operar menos.
+
+¿Y por qué el curso baja por la ruta VPS? Porque es la única que te enseña **todas las piezas**. En un PaaS el dominio, el TLS y el proxy existen igual — solo que alguien los montó por ti, y el día que algo falle (o que el precio del PaaS se multiplique con tu tráfico) querrás haberlos visto una vez con tus manos.
+
+<Box kind="analogy" label="◆ Local en obra gris vs. oficina con servicios incluidos">
+
+Un VPS es alquilar un local **en obra gris**: cuatro paredes, una acometida eléctrica y las llaves. Instalas tú la luz, el agua y la alarma — y por eso pagas poco y decides todo. Un PaaS es la oficina con recepción y limpieza incluidas: entras con tu portátil y a trabajar, pero el precio crece con cada extra, y las paredes las mueve otro. Ninguna opción es "la profesional": depende de cuánto quieras operar tú.
+
+</Box>
+
+### ¿Y las nubes grandes? AWS, Google Cloud y Azure
+
+La tabla del mapa clasifica **qué** alquilas; falta el **a quién**. Los cuatro caminos existen en dos mundos: los proveedores especializados — Hetzner vende VPS, Railway vende PaaS, y hacen esa única cosa bien — y las **nubes grandes** (AWS, Google Cloud, Azure), que venden los cuatro caminos bajo el mismo techo: misma cuenta, mismo IAM, misma factura, y cientos de servicios más alrededor. Tu app puede vivir en cualquiera de ellas por cualquiera de los cuatro caminos:
+
+| Camino | AWS | Google Cloud | Azure |
+| --- | --- | --- | --- |
+| VPS (máquina virtual) | EC2 / Lightsail | Compute Engine | Virtual Machines |
+| PaaS | Elastic Beanstalk / App Runner | App Engine | App Service |
+| Contenedor gestionado | ECS Fargate | Cloud Run | Container Apps |
+| Serverless (funciones) | Lambda | Cloud Functions | Azure Functions |
+
+Entonces, ¿especializado o nube grande? La respuesta honesta mira tres cosas — ventajas, **riesgos** y quién suele elegir cada camino:
+
+| Opción | Ventajas | Riesgos (los de verdad) | Cuándo · quién la usa |
+| --- | --- | --- | --- |
+| **VPS** (Hetzner, DO, EC2 suelto) | El coste fijo más bajo, control total, y aprendes todas las piezas | **Tú eres el equipo de seguridad**: un parche olvidado es una puerta abierta (los bots escanean internet a diario) · si la VM muere, el servicio muere hasta el restore · el "servidor mascota" que solo una persona entiende | Side projects, consultores y pymes con tráfico estable y alguien que opere — la ruta de este curso |
+| **PaaS** (Railway, Render, Fly.io) | Cero operación: HTTPS, dominio y deploy en minutos | El precio **escala con tu éxito** · los límites de la plataforma aparecen justo cuando creces · y la plataforma puede cambiar las reglas: Heroku eliminó su plan gratuito en 2022 y media internet tuvo que migrar de un mes para otro | MVPs y startups sin nadie de infra; pymes sin equipo de TI |
+| **Nube grande** (AWS, GCP, Azure) | Todo bajo el mismo techo: IAM, VPC, colas, backups gestionados · certificaciones de compliance (ISO 27001, SOC 2, PCI-DSS) · escala sin techo práctico · programas de créditos para startups | La **factura sorpresa**: pago por uso sin techo por defecto — un bucle o un egress inesperado se cobra igual · la **mala configuración**: un bucket público o una credencial filtrada (la causa típica de brechas en nube no es el proveedor, es la configuración del cliente) · lock-in profundo si construyes sobre servicios propietarios · una curva de aprendizaje que es una profesión entera | Startups en crecimiento (créditos + gestionado) y el mundo corporativo y regulado — banca, salud, seguros, retail grande: la financiera del [c18](/concepto/18-capstone-final) o una cadena de 90 tiendas como la del [c29](/concepto/29-caso-real-2-retail) no van a un VPS de 4 € — van a la nube cuyas certificaciones reconoce su auditor |
+
+Dos ideas cierran esta tabla. La primera es el modelo de **responsabilidad compartida**: la nube grande asegura lo *de* la nube (hardware, red, datacenter — con los papeles que lo certifican); tú sigues asegurando lo que montas *en* ella (accesos, buckets, secrets). "Estar en AWS" no te hace seguro: mueve la frontera de qué te toca, no la elimina. La segunda es la regla de bolsillo que conecta con el [c17c](/concepto/17c-continuous-delivery): **empieza en el camino más simple que aguante tu caso** — migrar el andén es barato (la cinta sobrevive, como verás al final), operar de más desde el día 1 no. Y ojo con no confundir esta decisión con la del [c34](/concepto/34-desplegar-en-bedrock-y-vertex): aquel anexo decide dónde vive el *modelo* dentro de la nube corporativa; este módulo, dónde vive tu *app* — y son independientes: una app en Cloud Run puede hablar con Bedrock, y una en un VPS con Vertex.
+
+### La ruta VPS, paso a paso
+
+Siete pasos, del formulario del proveedor al directorio que el `deploy.yml` espera encontrar. Cada listado es la versión mínima honesta — sin florituras, con los porqués:
+
+<Flow>
+  <Step n="1" title="Aprovisionar la VM">Región cerca de tus usuarios; 2 GB de RAM mínimo (app + Postgres + proxy); Ubuntu LTS. Y la llave SSH **se sube al crearla** — password, jamás.</Step>
+  <Step n="2" title="Endurecer el SSH">Usuario propio con sudo, root fuera, passwords fuera. La puerta de entrada solo abre con llave.</Step>
+  <Step n="3" title="Firewall">`ufw`: 22, 80 y 443. **El 8000 no se abre** — la app nunca da la cara directamente.</Step>
+  <Step n="4" title="Docker + compose">El runtime que ejecutará la imagen que el pipeline construye.</Step>
+  <Step n="5" title="Dominio + DNS">~10–15 $/año (2026-07). Un registro A apuntando a la IP de la VM.</Step>
+  <Step n="6" title="TLS con reverse proxy">Caddy: cinco líneas y Let's Encrypt automático. (nginx + certbot es la alternativa clásica.)</Step>
+  <Step n="7" title="/srv/gobdata">El compose de producción, el `.env` escrito a mano en el servidor, y los tres secrets en GitHub → la cinta del c17c ya tiene andén.</Step>
+</Flow>
+
+**Pasos 1–4 — la máquina.** En el panel del proveedor (Hetzner, DigitalOcean, EC2… la mecánica es la misma) creas la VM eligiendo región, tamaño y tu **llave SSH pública**. Lo que sigue, ya dentro:
+
+```bash title="pasos 2–4 · endurecer y equipar (una sola vez, como root)"
+# --- 2) Usuario de despliegue: root no vuelve a entrar ---
+adduser deploy && usermod -aG sudo deploy
+rsync -a ~/.ssh /home/deploy/ && chown -R deploy:deploy /home/deploy/.ssh
+
+# En /etc/ssh/sshd_config, las dos líneas que cierran la puerta:
+#   PasswordAuthentication no     ← sin passwords: solo llave
+#   PermitRootLogin no            ← root ya no existe para el exterior
+systemctl restart ssh
+# ⚠️ Antes de cerrar esta sesión: verifica en OTRA terminal que
+#    `ssh deploy@IP` entra. Si te encierras fuera, toca consola de rescate.
+
+# --- 3) Firewall: tres puertos y ni uno más ---
+ufw allow 22 && ufw allow 80 && ufw allow 443
+ufw enable
+# El 8000 de la app NO se abre: solo el proxy hablará con ella, por dentro.
+
+# --- 4) Docker con el plugin de compose ---
+curl -fsSL https://get.docker.com | sh
+usermod -aG docker deploy        # deploy podrá hacer `docker compose` sin sudo
+```
+
+**Paso 5 — el dominio.** En el registrador (~10–15 $/año un `.com`, 2026-07) creas un registro **A**: `gobdata.example.com → 203.0.113.10` (la IP de tu VM). Se comprueba con `dig +short gobdata.example.com` — hasta que no devuelva tu IP, no sigas: Let's Encrypt validará el dominio **resolviéndolo hacia tu servidor**, así que el DNS va *antes* que el TLS.
+
+**Pasos 6–7 — el portero y el andén.** Todo junto en `/srv/gobdata`, porque el proxy es un contenedor más del compose:
+
+```text title="/srv/gobdata/Caddyfile · TLS automático en 5 líneas"
+gobdata.example.com {
+    # Caddy pide y renueva solo el certificado de Let's Encrypt.
+    # Única condición: que el DNS del paso 5 ya apunte aquí.
+    reverse_proxy app:8000
+}
+```
+
+```yaml title="/srv/gobdata/docker-compose.yml · la app NUNCA publica puertos"
+services:
+  caddy:                                   # el ÚNICO que da la cara
+    image: caddy:2
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data                   # los certificados sobreviven reinicios
+
+  app:
+    image: ghcr.io/tu-usuario/tu-repo:${TAG:-v1.0.0}   # ⭐ el `export TAG` del
+    env_file: .env                                     #    deploy.yml aterriza aquí
+    # SIN `ports:`: solo caddy la alcanza, por la red interna del compose.
+    depends_on: [postgres]
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    env_file: .env
+    volumes:
+      - pg_data:/var/lib/postgresql/data   # sin volumen = adiós conversaciones
+                                           #   en el primer `compose down` (c15b)
+volumes:
+  caddy_data:
+  pg_data:
+```
+
+```bash title="paso 7 · dejar el andén listo (como deploy)"
+sudo mkdir -p /srv/gobdata && sudo chown deploy:deploy /srv/gobdata
+cd /srv/gobdata
+#   → aquí van el Caddyfile y el docker-compose.yml de arriba
+
+# El .env se escribe A MANO en el servidor: nunca viaja por git ni por la
+# imagen (la regla del c17c y del c23). LLM_API_KEY, POSTGRES_PASSWORD…
+nano .env && chmod 600 .env
+
+# Si la imagen es privada, el servidor necesita poder descargarla:
+docker login ghcr.io      # con un token de solo-lectura de paquetes
+
+# Y en GitHub → Settings → Secrets and variables → Actions, los TRES
+# secrets que el deploy.yml del c17c ya nombraba:
+#   VPS_HOST     = la IP (o gobdata.example.com)
+#   VPS_USER     = deploy
+#   VPS_SSH_KEY  = una llave PRIVADA creada solo para el pipeline
+```
+
+Y con eso, la frase que cierra el círculo: **el `deploy.yml` del [c17c](/concepto/17c-continuous-delivery) acaba de ganar destino real.** Su `cd /srv/gobdata` ya existe, su `docker compose pull` tiene compose y credenciales, y su `SMOKE_URL=https://gobdata.example.com` tiene DNS y certificado. Nada del workflow cambió: lo que faltaba era el mundo al que apuntaba.
+
+<Box kind="warn" label="▲ La superficie expuesta es exactamente una: el 443">
+
+Repasa lo que quedó mirando a internet: el 22 (SSH con llave), el 80 (solo para redirigir al 443) y el 443 (Caddy). **Nada más.** Postgres no tiene puerto público — vive en la red interna del compose, donde solo `app` lo alcanza. La app tampoco. Los secrets están en dos sitios y ninguno es la imagen: el `.env` del servidor (con permisos 600) y los GitHub Secrets del pipeline. Cada pieza de esta lista es una lección del [c23](/concepto/23-seguridad-red-teaming) aplicada a infraestructura: minimizar superficie no es paranoia, es no tener que confiar en que cada servicio interno aguante internet.
+
+</Box>
+
+### Qué cambia si eliges PaaS o Cloud Run
+
+La honestidad final: si mañana migras a Railway o a Cloud Run, los pasos 1–6 **desaparecen** — la plataforma te da la máquina parcheada, el subdominio y el TLS sin preguntarte nada. En el pipeline, solo muta el paso `deploy`: donde había `ssh-action`, queda `railway up` o `gcloud run deploy --image ghcr.io/...:${TAG}`. Lo importante es lo que **no** cambia: la imagen con tag inmutable, el eval-gate con veto, el smoke test post-deploy, el rollback a la versión anterior y los secrets fuera de la imagen. La cinta del [c17c](/concepto/17c-continuous-delivery) es la misma de punta a punta — **solo cambia el andén final**. Por eso este módulo va después del pipeline y no antes: el hosting es una elección intercambiable; la disciplina, no. (¿Y el extremo "todo dentro de tu nube corporativa"? Ese es el anexo [c34](/concepto/34-desplegar-en-bedrock-y-vertex).)
+
+<Avoid label="⛔ Errores clásicos al montar tu primer servidor">
+
+- **Exponer el `:8000` "mientras tanto".** El mientras-tanto dura meses y los escáneres de internet encuentran un puerto abierto en horas. La app nace detrás del proxy o nace expuesta para siempre.
+- **Dejar el TLS "para luego".** No es cosmético: sin HTTPS los navegadores bloquean medio mundo moderno (y tu SSE del [c25](/concepto/25-frontend-chat-sse) viaja legible por cualquier red intermedia). Con Caddy cuesta literalmente cinco líneas.
+- **Quedarse en root con password.** La combinación exacta que los bots prueban a millones por día. Llave SSH + `PermitRootLogin no` es el paso 2, no el paso 20.
+- **El estado dentro del contenedor.** Postgres sin volumen sobrevive hasta el primer `docker compose down`. Es la regla del [c15b](/concepto/15b-arquitectura-de-despliegue) — el estado vive fuera del proceso — en su versión de infraestructura.
+- **Alquilar un Kubernetes gestionado para 10 usuarios.** El K8s del [c15b](/concepto/15b-arquitectura-de-despliegue) resuelve problemas de escala que aún no tienes, cobrando desde el día 1. Un VPS con compose aguanta más de lo que crees; el propio 15b te dijo que "un contenedor único puede bastar meses".
+- **Darle la tarjeta a la nube grande sin alarma de presupuesto.** El pago por uso no tiene techo por defecto: un bucle que llama a la API o un egress inesperado se factura igual. La alarma de billing se configura el día 0, no cuando llega el susto.
+
+</Avoid>
+
+<Box kind="practice" label="✎ Para practicar">
+
+Sin gastar un céntimo: (1) escribe el `Caddyfile` y el registro A para un dominio imaginario `agente.tudominio.com` que sirva una app en el puerto interno 8001; (2) con la tabla del mapa de decisión, elige camino — y justifícalo en una frase — para tres escenarios: **a)** una demo interna que se usa dos horas por semana, **b)** un SaaS con clientes 24×7 que no puede permitirse cold starts, **c)** el webhook de WhatsApp del [c31](/concepto/31-canal-whatsapp) para una pyme.
+
+<Solution summary="Ver una solución">
+
+(1) `agente.tudominio.com { reverse_proxy app:8001 }` + un registro A `agente → IP-de-tu-VM`. (2) **a) Cloud Run**: tráfico esporádico → pago por uso ≈ $0 en reposo, y el cold start no molesta en una demo. **b) VPS** (o contenedor gestionado con mínimo de instancias): encendido 24×7 el VPS es el coste fijo más bajo y sin sorpresas; en PaaS ese mismo siempre-encendido se paga más caro. **c) PaaS**: el webhook necesita HTTPS estable ya, el tráfico de una pyme es pequeño, y no hay nadie para operar un servidor — pagar $5–7/mes por no madrugar es exactamente el trato. Si tu respuesta difiere pero tu criterio fue "quién opera el sustrato y cómo es el tráfico", está bien elegida.
+
+Y la versión con manos (opcional, ~1 €): un VPS se factura **por horas** (~0,006 €/h el CX22, 2026-07). Créalo, recorre los 7 pasos con un subdominio real, mira tu `/health` servido con candado… y destrúyelo. El conocimiento queda; la factura, no.
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Elegir entre VPS, PaaS, contenedor gestionado y serverless para un caso concreto, con el criterio de quién opera el sustrato y qué forma tiene el tráfico.
+- Situar a AWS, Google Cloud y Azure en el mapa (venden los cuatro caminos bajo el mismo techo), enumerar el riesgo característico de cada opción — parche olvidado (VPS), precio que escala (PaaS), factura sorpresa y misconfiguración (nube grande) — y decir qué tipo de empresa elige cada una y por qué.
+- Recitar los 7 pasos que llevan una VM vacía hasta `/srv/gobdata` — y en qué orden y por qué (el DNS antes que el TLS, el firewall antes que la app).
+- Explicar por qué la única superficie expuesta es el 443, y dónde viven los secrets (el `.env` del servidor y GitHub Secrets — jamás la imagen).
+- Decir qué tres secrets espera el `deploy.yml` del c17c y qué hay al otro lado de cada uno.
+- Argumentar qué sobrevive del pipeline al migrar de VPS a PaaS o Cloud Run — y por qué eso demuestra que la disciplina importa más que el andén.
+
+</Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 15c">
+
+<Question>
+  <Prompt>1 · ¿Por qué la app corre sin `ports:` en el compose, detrás de un reverse proxy, en vez de exponer su `:8000`?</Prompt>
+  <Option>Porque uvicorn no soporta conexiones directas desde internet</Option>
+  <Option ok>Porque así la única puerta al exterior es el 443 del proxy — que además termina el TLS — y la app y Postgres quedan en la red interna</Option>
+  <Option>Porque el puerto 8000 está reservado para desarrollo local</Option>
+  <Feedback>Minimizar superficie: un solo puerto expuesto, HTTPS terminado en el portero, y los servicios internos sin obligación de aguantar internet. uvicorn *podría* exponerse — justamente por eso hay que no hacerlo (Concepto 15c).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Cuál es la diferencia de fondo entre un VPS y un PaaS?</Prompt>
+  <Option>El VPS es para producción seria; el PaaS, para prototipos</Option>
+  <Option ok>Quién opera el sustrato: en el VPS parcheas, aseguras y montas TLS tú; en el PaaS pagas para que lo haga la plataforma</Option>
+  <Option>El PaaS no puede ejecutar contenedores Docker</Option>
+  <Feedback>Ninguno es "el profesional": hay SaaS enormes en VPS y demos en PaaS. La variable es cuánta operación asumes tú y cuánta compras — y cómo escala el precio con tu tráfico (Concepto 15c).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · ¿Qué hace el registro A, y por qué va *antes* que el TLS?</Prompt>
+  <Option>Activa el HTTPS del dominio; el orden da igual porque Caddy reintenta</Option>
+  <Option ok>Apunta el dominio a la IP de tu VM — y Let's Encrypt solo emite el certificado tras comprobar que el dominio resuelve hacia tu servidor</Option>
+  <Option>Registra el dominio a tu nombre ante el ICANN</Option>
+  <Feedback>DNS primero, candado después: la validación de Let's Encrypt consiste en visitar tu dominio y comprobar que responde tu máquina. Sin el registro A propagado, no hay certificado que emitir (Concepto 15c).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Migras de tu VPS a Cloud Run. ¿Qué piezas del pipeline del c17c sobreviven?</Prompt>
+  <Option>Ninguna: Cloud Run trae su propio modelo de despliegue</Option>
+  <Option>Solo el build de la imagen; los tests ya no hacen falta porque la nube es fiable</Option>
+  <Option ok>Casi todas: tag inmutable, eval-gate, smoke test y rollback; solo el paso `deploy` cambia de `ssh-action` a `gcloud run deploy`</Option>
+  <Feedback>El hosting es el andén, no la cinta. La disciplina — artefacto inmutable, veto por calidad, verificación post-deploy, vuelta atrás barata — viaja contigo a cualquier destino (Conceptos 15c y 17c).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>5 · Una financiera regulada va a desplegar su agente de créditos. ¿Por qué su equipo insistirá en AWS o Azure antes que en un VPS de 4 €?</Prompt>
+  <Option>Porque un VPS no puede ejecutar contenedores Docker con la seguridad necesaria</Option>
+  <Option ok>Porque el auditor exige controles que la nube grande trae certificados — ISO 27001, SOC 2, PCI-DSS — más IAM fino y aislamiento de red; el coste suele ser mayor, no menor</Option>
+  <Option>Porque la nube grande siempre sale más barata a esa escala</Option>
+  <Feedback>La nube grande no es "mejor": es la que trae los papeles y los controles que un regulador reconoce. Y la responsabilidad compartida sigue aplicando: AWS certifica su datacenter, pero el bucket mal configurado sigue siendo tuyo (Concepto 15c).</Feedback>
+</Question>
+
+</Quiz>
+
+<Recap level={6} label="↺ En una frase">
+
+Elegir dónde vive tu agente es decidir **quién opera el sustrato** (VPS: tú · PaaS/nube: otro, por más dinero o menos control); la ruta VPS son 7 pasos — VM, SSH con llave, firewall, Docker, DNS, TLS con Caddy, `/srv/gobdata` — y al terminarla, el `deploy.yml` del c17c por fin apunta a un mundo que existe.<Arch>conceptos: c15b (topología) → c15c (sustrato) → c17c (cinta) · destino: `/srv/gobdata`</Arch>
+
+</Recap>

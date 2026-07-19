@@ -1,0 +1,233 @@
+La CI del [c17b](/concepto/17b-tests-y-ci) te dice, en cada push, que **el código está bien**. Pero verde no es lo mismo que *desplegado*: alguien todavía tiene que entrar al servidor —el VPS que dejaste listo en el [c15c](/concepto/15c-donde-vive-tu-agente)— y arrancar la versión nueva. Mientras ese paso lo dé una persona a mano, es el eslabón donde se cuela el error de las 11 de la noche — el `git pull` en la carpeta equivocada, el `.env` que no se copió, la imagen que nadie reconstruyó. Este concepto automatiza el tramo que va **del commit en verde al servicio corriendo**.
+
+<Box kind="def" label="◈ Definición · CI, Delivery y Deployment (la diferencia es quién aprieta el botón)">
+
+Los tres son la misma cinta transportadora; se diferencian en **dónde termina** y **quién da la orden final**.
+
+<DefList>
+  <Term>CI · Integración continua</Term>
+  <Def>Ya la tienes (c17b): en cada push, el servidor corre los tests. Responde *"¿el código está sano?"*. Termina en verde/rojo, no toca ningún servidor de producción.</Def>
+  <Term>Continuous **Delivery**</Term>
+  <Def>La cinta llega hasta tener un **artefacto listo para desplegar** (una imagen construida y guardada), pero el último paso —soltarlo en producción— lo aprieta un humano. Deploy con **un clic**, cuando tú quieras.</Def>
+  <Term>Continuous **Deployment**</Term>
+  <Def>Igual, pero sin el clic: si todo pasa (tests + evals + smoke test), la versión sale sola a producción. Deploy con **cero clics**. Exige más red de seguridad, porque nadie mira antes de que salga.</Def>
+</DefList>
+
+La sigla "CD" se usa para las dos últimas y por eso confunde. Regla práctica: **Delivery = automatizas hasta la puerta; Deployment = automatizas también la puerta.** La mayoría de los equipos empieza en Delivery y solo pasa a Deployment cuando confía en sus evals y su smoke test.
+
+</Box>
+
+### El artefacto es la imagen, no el código
+
+El error mental más común al desplegar es pensar que "subir la versión nueva" es hacer `git pull` en el servidor. No lo es. Si el servidor construye desde el código, cada máquina puede resolver dependencias distintas, cachear capas distintas, y darte el clásico *"en mi máquina funciona"* al revés: en la tuya sí, en el servidor no.
+
+Lo que viaja a producción es una **imagen de contenedor ya construida**, sellada con un tag inmutable. La imagen `v1.4.2` que corre en tu staging es **byte por byte** la misma que corre en producción. El servidor no compila nada: descarga la imagen y la arranca.
+
+<Box kind="analogy" label="◆ El tag inmutable es el número de lote">
+
+Un medicamento no dice "la fórmula más reciente": dice "lote 4472", y ese lote es siempre idéntico. Si algo sale mal, retiras *ese* lote y vuelves al anterior, que sigue existiendo. Una imagen con tag `v1.4.2` es ese lote. Por eso **`latest` no es un destino de producción**: `latest` cambia bajo tus pies, y cuando necesites volver atrás no sabrás a qué. El tag inmutable es lo que hace posible el rollback.
+
+</Box>
+
+### La cinta completa, de punta a punta
+
+El disparador es un **tag de git** (`git tag v1.4.2 && git push --tags`), no cualquier push: los pushes a una rama corren la CI; publicar una versión es un acto deliberado.
+
+Cada versión, del commit al servicio · **el eval-gate por fin veta algo de verdad**
+
+<Flow>
+  <Step n="1" title="git push --tags">Marcas una versión. La CI normal ya validó el código en su push; ahora empieza la cinta de release.</Step>
+  <Step n="2" title="Tests + eval-gate">Los tests offline del c17b, y además el `eval-gate.yml` que ya existe: la tríada RAG con **poder de veto**. Si la calidad cayó, la cinta se detiene aquí y no se despliega nada.</Step>
+  <Step n="3" title="Build + push de imagen">Se construye la imagen y se sube a un registro (GHCR) etiquetada con el tag. El artefacto queda guardado, inmutable.</Step>
+  <Step n="4" title="Deploy">El servidor descarga esa imagen exacta y la arranca (`compose pull && up -d`). No construye: descarga.</Step>
+  <Step n="5" title="Smoke test">Se le pega al `/health` del contenedor recién arrancado y se afirma sobre la respuesta. La capa que ninguna suite unitaria tiene.</Step>
+  <Step n="✅ / ↩" title="Confirmar o revertir">Smoke verde → la versión queda. Smoke rojo → rollback automático a la imagen anterior, que sigue en el registro.</Step>
+</Flow>
+
+Fíjate en el paso 2. En el c17b montamos el `eval-gate.yml` y dijimos que *"puede vetar un deploy"* — pero no había deploy que vetar. **Aquí es donde por fin lo veta.** El gate de evaluación no protege tu lógica (eso son los tests); protege tu *calidad*, y es lo único capaz de parar una versión que compila, pasa los tests y aun así responde peor que la anterior.
+
+### El workflow, comentado
+
+Es un segundo archivo de GitHub Actions, hermano del `ci.yml` que ya conoces. La diferencia clave está en la primera línea: **se dispara con tags**, no con pushes a una rama.
+
+```yaml title=".github/workflows/deploy.yml · del tag al servidor"
+name: deploy
+on:
+  push:
+    tags: ["v*"]          # ⭐ solo versiones publicadas, no cada push
+
+jobs:
+  # 1) La puerta: no se despliega nada que no pase tests Y evals.
+  gate:
+    uses: ./.github/workflows/eval-gate.yml   # reusa el gate que ya tienes
+    secrets: inherit
+
+  # 2) Construir la imagen UNA vez y guardarla con el tag inmutable.
+  build:
+    needs: gate                                # si el gate veta, no se construye
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write                          # para subir a GHCR
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: proyecto_llmops/Dockerfile
+          push: true
+          # El tag de git ES el tag de la imagen: trazabilidad total.
+          tags: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+
+  # 3) Desplegar por SSH: el servidor DESCARGA la imagen, no la construye.
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Desplegar en el VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}       # ⭐ un secret, nunca en la imagen
+          script: |
+            cd /srv/gobdata
+            export TAG=${{ github.ref_name }}
+            docker compose pull                  # baja la imagen del tag
+            docker compose up -d                 # la arranca (recrea solo lo que cambió)
+
+      - name: Smoke test post-deploy
+        # La misma prueba que en tu máquina, ahora contra el contenedor real.
+        # Si /health no responde bien, este paso falla y dispara el rollback.
+        run: |
+          SMOKE_URL=https://gobdata.example.com \
+            uv run pytest proyecto_llmops/tests/test_smoke_despliegue.py
+
+      - name: Rollback si el smoke falló
+        if: failure()                            # ⭐ solo si algo anterior se rompió
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          script: |
+            cd /srv/gobdata
+            export TAG=$(cat .last_good_tag)      # la última versión que SÍ pasó el smoke
+            docker compose pull && docker compose up -d
+```
+
+Los tres secrets del job `deploy` (`VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY`) y ese `/srv/gobdata` no son decorado: son exactamente lo que montaste en el paso 7 del [c15c](/concepto/15c-donde-vive-tu-agente) — la IP de tu VM, el usuario `deploy` y la llave creada para el pipeline. El `test_smoke_despliegue.py` del paso 5 tampoco es inventado: existe en el repo del proyecto LLMOps. Le pega a `/health`, cruza que `/metrics` respete la auth que `/health` anuncia, y hace un round-trip de `/feedback`. Es la capa que caza los fallos que solo aparecen *al desplegar* — los que un test unitario, por definición, no ve.
+
+<Box kind="warn" label="▲ Por qué un smoke test post-deploy no es opcional">
+
+Este proyecto encontró tres bugs que **824 tests en verde no veían**: un retriever de pgvector que nunca funcionó, un `/health` que mentía diciendo `tracing: true` sin tracing real, y unas métricas que no persistían en el contenedor. Los tres eran *configuración que solo se evalúa al desplegar*: el código estaba bien, el valor que recibía al arrancar no. Un smoke test que arranca el contenedor y le pega por HTTP es la única red que los atrapa antes que un usuario. Sin él, tu pipeline despliega rápido… y despliega roto rápido.
+
+</Box>
+
+### Las tres formas de cambiar la versión sin tirar el servicio
+
+Descargar la imagen nueva está bien, pero *cómo* la pones en el aire decide si el usuario nota el cambio. Tres estrategias, de la más simple a la más segura (se apoyan en el Kubernetes del [c15b](/concepto/15b-arquitectura-de-despliegue), que sabe orquestarlas):
+
+<DefList>
+  <Term>Rolling update</Term>
+  <Def>Reemplazas las réplicas de una en una: mientras la nº1 arranca con la versión nueva, las demás siguen sirviendo la vieja. Cero downtime, pero durante unos segundos conviven las dos versiones. Es el default de Kubernetes.</Def>
+  <Term>Blue-green</Term>
+  <Def>Levantas el entorno nuevo (green) **completo y en paralelo** al viejo (blue), lo pruebas, y cuando está listo mueves *todo* el tráfico de golpe. Rollback = devolver el tráfico a blue, que sigue caliente. Cuesta el doble de recursos un rato, a cambio de un cambio instantáneo y reversible.</Def>
+  <Term>Canary</Term>
+  <Def>Mandas un 5% del tráfico a la versión nueva, miras las métricas (errores, p95, coste) y solo si aguanta subes al 25%, 50%, 100%. Es un A/B, pero el eje no es *"qué prompt gusta más"* sino *"esta versión, ¿se cae?"*.</Def>
+</DefList>
+
+<Box kind="analogy" label="◆ El canary y el A/B de prompts son el mismo mecanismo, distinto propósito">
+
+En el [c24b](/concepto/24b-feedback-a-b) repartiste usuarios entre dos prompts para medir cuál convence más. Un despliegue canary reparte usuarios entre dos *versiones del servicio* para medir cuál **no se rompe**. La plomería es idéntica —enrutado por porcentaje, decisión por datos—; lo que cambia es qué señal miras: satisfacción en el A/B, tasa de error y latencia en el canary.
+
+</Box>
+
+### Rollback: barato porque las imágenes viejas no se borran
+
+Un rollback no es "arreglar y volver a desplegar" — eso son minutos u horas con el servicio roto. Es **volver a arrancar la imagen anterior**, que sigue en el registro con su tag. Segundos. Todo el diseño de arriba existe para que ese botón exista: tags inmutables (sabes exactamente a qué volver), imágenes guardadas (la versión buena no se sobreescribió), y el smoke test como disparador (el pipeline se da cuenta solo de que hay que volver).
+
+<Box kind="warn" label="▲ Los secrets viven en el pipeline, jamás en la imagen">
+
+La imagen se sube a un registro y se descarga en varios sitios: si horneas dentro una llave (`LLM_API_KEY`, la clave SSH del VPS), la estás repartiendo. Los secretos van en **GitHub Secrets** —cifrados, inyectados solo durante el workflow— y llegan al contenedor como variables de entorno *en el arranque*, no en el `build`. Es la misma disciplina del [c23](/concepto/23-seguridad-red-teaming): el secreto y el artefacto se cruzan lo más tarde posible, y nunca en algo que se distribuye.
+
+</Box>
+
+<Avoid label="⛔ Errores clásicos de un pipeline de deploy">
+
+- **Desplegar `latest`.** Cuando necesites el rollback no sabrás a qué versión volver: `latest` ya cambió. Usa tags inmutables (`v1.4.2`).
+- **`git pull` en el servidor.** Construir en cada máquina reintroduce el "en mi máquina funciona". El artefacto es la imagen, sellada una vez.
+- **Deploy sin smoke test.** Un pipeline sin verificación post-deploy no despliega menos errores: los despliega **más rápido**.
+- **Saltar de CI directo a Continuous Deployment (cero clics).** Sin evals sólidos ni smoke test, automatizar la puerta es automatizar el desastre. Empieza en Delivery (un clic) y gánate el paso.
+
+</Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+No necesitas un VPS para entender el corazón del pipeline. Con el proyecto LLMOps corriendo en Docker en tu máquina, ejecuta tú el paso 5 —el smoke test— contra el contenedor, como lo haría el workflow:
+
+```bash title="el smoke test que corre el deploy, en tu máquina"
+docker compose -f proyecto_llmops/docker-compose.yml --profile app up -d --build
+SMOKE_URL=http://localhost:8000 uv run pytest \
+    proyecto_llmops/tests/test_smoke_despliegue.py -v
+```
+
+Ahora rompe algo a propósito: pon una llave de Langfuse falsa en el `.env` para que `/health` anuncie `tracing: true` sin tracing real, y corre el smoke con `SMOKE_EXPECT_TRACING=0`. Debería ponerse **rojo** — que es exactamente lo que impediría que esa versión llegara a producción.
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Distinguir CI de Continuous Delivery de Continuous Deployment por *quién aprieta el botón final*.
+- Explicar por qué el artefacto que se despliega es una imagen con tag inmutable, no el código (`git pull`).
+- Describir la cinta completa: tag → tests + eval-gate → build → deploy → smoke test → rollback.
+- Elegir entre rolling, blue-green y canary, y ver que el canary es el A/B del c24b aplicado a versiones.
+- Justificar por qué el smoke test post-deploy y los secrets fuera de la imagen no son opcionales.
+
+</Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 17c">
+
+<Question>
+  <Prompt>1 · ¿Cuál es la diferencia entre Continuous Delivery y Continuous Deployment?</Prompt>
+  <Option>Delivery usa Docker y Deployment usa Kubernetes</Option>
+  <Option ok>En Delivery el deploy final lo aprieta un humano (un clic); en Deployment sale solo si todo pasa (cero clics)</Option>
+  <Option>Delivery es para staging y Deployment solo para producción</Option>
+  <Feedback>Los dos automatizan la cinta; se diferencian en quién da la orden final. Deployment exige más red de seguridad porque nadie mira antes de que salga (Concepto 17c).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Por qué `latest` no sirve como destino de producción?</Prompt>
+  <Option>Porque las imágenes `latest` son más pesadas</Option>
+  <Option ok>Porque cambia bajo tus pies: cuando necesites el rollback no sabrás a qué versión exacta volver</Option>
+  <Option>Porque GHCR no permite descargar `latest` por SSH</Option>
+  <Feedback>El rollback depende de tags inmutables: `v1.4.2` es siempre la misma imagen, como un número de lote. `latest` ya cambió cuando lo necesitas (Concepto 17c).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · En la cinta de deploy, ¿qué hace el eval-gate que los tests no hacen?</Prompt>
+  <Option>Corre los tests más rápido, en paralelo</Option>
+  <Option ok>Veta la versión si la *calidad* cayó, aunque el código compile y los tests pasen</Option>
+  <Option>Construye la imagen antes de subirla al registro</Option>
+  <Feedback>Los tests protegen tu lógica; el eval-gate (tríada RAG) protege tu calidad. Es lo único capaz de parar una versión que pasa los tests y aun así responde peor (Conceptos 16c y 17c).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Tu pipeline despliega la imagen nueva y el `/health` del contenedor no responde. ¿Qué debería pasar?</Prompt>
+  <Option>El deploy se marca en verde: la imagen ya se subió al registro</Option>
+  <Option>Un humano recibe una alerta y entra a arreglarlo a mano</Option>
+  <Option ok>El smoke test falla y dispara un rollback automático a la imagen anterior, que sigue en el registro</Option>
+  <Feedback>El smoke test post-deploy es el disparador del rollback. Como la imagen buena no se sobreescribió (tag inmutable), volver a ella son segundos (Concepto 17c).</Feedback>
+</Question>
+
+</Quiz>
+
+<Recap level={6} label="↺ En una frase">
+
+Continuous Delivery automatiza el tramo del commit en verde al servicio corriendo: construye una imagen sellada, la despliega, le pega un smoke test y revierte sola si falla — con el eval-gate como puerta que por fin veta un deploy de verdad.<Arch>archivos: `.github/workflows/deploy.yml` (patrón) · `.github/workflows/eval-gate.yml` · `proyecto_llmops/tests/test_smoke_despliegue.py`</Arch>
+
+</Recap>

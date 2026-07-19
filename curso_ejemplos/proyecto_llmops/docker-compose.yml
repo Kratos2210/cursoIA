@@ -168,8 +168,14 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       LANGFUSE_HOST: http://langfuse:3000
-      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-pk-lf-local-demo}
-      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-sk-lf-local-demo}
+      # ⚠️ Vacío se PASA vacío, y con eso el tracing se apaga solo (la app exige
+      #    las dos llaves). Antes había aquí un default 'pk-lf-local-demo', y el
+      #    daño era sutil: `:-` sustituye también cuando la variable está VACÍA,
+      #    que es justo como viene en .env.example. El contenedor arrancaba con
+      #    llaves de mentira, /health anunciaba "tracing": true y las trazas se
+      #    tiraban al suelo. Un tracing apagado se ve; uno que miente, no.
+      LANGFUSE_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-}
+      LANGFUSE_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-}
       # La llave del proveedor NO tiene default: sin ella el servicio no puede
       # responder, y es mejor no arrancar que arrancar roto.
       LLM_API_KEY: ${LLM_API_KEY:?define LLM_API_KEY en tu .env}
@@ -178,6 +184,12 @@ services:
       # varias réplicas posibles. Cada worker escribiendo en su propia lista
       # haría que /metrics informara de una fracción arbitraria del tráfico.
       METRICAS_BACKEND: ${METRICAS_BACKEND:-postgres}
+      # Mismo razonamiento que METRICAS_BACKEND, para los otros dos estados que
+      # un reinicio se llevaba: los votos 👍/👎 del A/B y la conversación del
+      # agente. En el contenedor hay Postgres al lado y puede haber réplicas, así
+      # que ambos persisten y se comparten. El :- también respeta lo que definas.
+      FEEDBACK_BACKEND: ${FEEDBACK_BACKEND:-postgres}
+      CHECKPOINTER_BACKEND: ${CHECKPOINTER_BACKEND:-postgres}
       # Vacío = servicio abierto (la app lo avisa al arrancar y lo publica en
       # /health). Para un despliegue real: API_KEYS=clave:rol,...
       API_KEYS: ${API_KEYS:-}

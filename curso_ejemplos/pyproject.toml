@@ -103,6 +103,14 @@ llmops = [
     "pyyaml>=6.0",
     "langchain-postgres>=0.0.10",   # vector store sobre pgvector (Postgres)
     "psycopg[binary]>=3.1",         # driver Postgres (binario: sin compilar)
+    # Checkpointer de LangGraph sobre Postgres: la conversación sobrevive al
+    # reinicio y la comparten todos los workers (hoy MemorySaver la pierde).
+    "langgraph-checkpoint-postgres==3.1.0",
+    # Pool de conexiones para ese checkpointer. NO es un lujo: el servicio sirve
+    # con `astream` (async) y puede atender varias peticiones a la vez; una sola
+    # conexión psycopg no admite uso concurrente, así que AsyncPostgresSaver va
+    # sobre un AsyncConnectionPool. Ver app/persistence.py.
+    "psycopg-pool>=3.2",
     "numpy>=1.26",                  # similitud coseno del semantic cache
     # Cliente OpenAI-compatible: con él, una sola clase habla con Groq, Ollama,
     # Together u OpenAI. Cambiar de proveedor = cambiar LLM_BASE_URL en el .env.

@@ -163,6 +163,8 @@ Y al invertir `es_error_cuota()` deberías ver fallar `tests/test_util.py` en ro
 
 </Checkpoint>
 
+Con esto la CI te dice que el commit está sano. Lo que todavía no hace nadie es **llevarlo al servidor**: construir la imagen, desplegarla, comprobar que respira y volver atrás si no. Eso es Continuous Delivery, y es el [c17c](/concepto/17c-continuous-delivery).
+
 <Quiz title="✅ Autoevaluación · Concepto 17b">
 
 <Question>
@@ -199,7 +201,7 @@ Y al invertir `es_error_cuota()` deberías ver fallar `tests/test_util.py` en ro
 
 </Quiz>
 
-<Recap level={4} label="↺ En una frase">
+<Recap level={6} label="↺ En una frase">
 
 Testear IA consiste en fijar todo lo que *no* es el modelo y sustituir el modelo por un guion. Por eso la CI puede correr los 642 tests sin tener tu llave.<Arch>archivos: `tests/` · `.github/workflows/ci.yml`</Arch>
 

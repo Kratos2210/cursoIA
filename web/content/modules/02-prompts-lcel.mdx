@@ -1,3 +1,9 @@
+<LevelBanner level={2} title="Empieza la Ruta 2 · Prompts y composición">
+
+Del mensaje suelto a la línea de ensamblaje: prompts con oficio, cadenas LCEL, salida con forma de dato, memoria y apps que no se caen — y un proyecto que lo junta todo.
+
+</LevelBanner>
+
 Un **prompt template** es un molde con huecos `{variables}`. Y aquí aparece la idea central de LangChain moderno: **LCEL**, que conecta pasos con el operador tubería `|`.
 
 <Box kind="def" label="◈ Definición · LCEL">
@@ -108,7 +114,7 @@ print((prompt | llm | StrOutputParser()).invoke({"review": "El producto llegó t
 
 </Quiz>
 
-<Recap level={1} label="↺ En una frase">
+<Recap level={2} label="↺ En una frase">
 
 Un prompt es una **plantilla reutilizable**, no un texto fijo. Y el operador `|` encadena prompt → modelo → parser en un solo objeto invocable.<Arch>archivo: `02_prompts_lcel.py`</Arch>
 

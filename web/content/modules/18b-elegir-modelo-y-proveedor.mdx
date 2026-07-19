@@ -1,6 +1,6 @@
-<LevelBanner level={5} title="Producción · Decisión de arquitectura">
+<LevelBanner level={5} title="Ruta 5 · Qué modelo te mueve y dónde corre">
 
-Ya tienes el capstone funcionando. Antes de ponerlo delante de usuarios reales toca decidir QUÉ modelo lo mueve y DÓNDE corre — sin reescribir una línea.
+Tu sistema ya funciona con el modelo que elegiste casi por inercia. Antes de ponerlo delante de usuarios reales toca decidir QUÉ modelo lo mueve y DÓNDE corre — sin reescribir una línea.
 
 </LevelBanner>
 
@@ -72,6 +72,8 @@ llm = ChatBedrockConverse(
 ```
 
 En GCP el equivalente es **Vertex AI** y en Azure, **Azure AI Foundry**: la misma idea — modelos de terceros servidos dentro de tu nube, con la identidad, la red y la factura de la nube que ya usas.
+
+Aquí estás *eligiendo* ese camino. **Operarlo** —pedir acceso al modelo, darle identidad IAM al contenedor, la red privada, las cuotas y los guardarraíles nativos— es otro oficio, y está en el anexo opcional [c34](/concepto/34-desplegar-en-bedrock-y-vertex).
 
 #### ④ On-premise — de tu portátil a tu datacenter
 
