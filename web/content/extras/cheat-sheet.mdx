@@ -1,0 +1,80 @@
+Las líneas que usarás mil veces, juntas en un solo lugar. Cada una está explicada a fondo en su concepto.
+
+| Quiero… | Escribo… | Mód. |
+| --- | --- | --- |
+| Crear el modelo | `llm = crear_llm(temperature=0)` — o a mano: `ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", temperature=0)` | 01 |
+| Una cadena | `cadena = prompt \| llm \| StrOutputParser()` | 02 |
+| Muchas entradas a la vez | `cadena.batch([entrada1, entrada2, …])` | 03 |
+| Respuesta token a token | `for t in cadena.stream(x): print(t, end="", flush=True)` | 03 |
+| Que recuerde la charla | `MessagesPlaceholder("history")` + reenviar el historial | 04 |
+| Datos con molde (JSON) | `llm.with_structured_output(MiMoldePydantic)` | 05 |
+| Una herramienta | `@tool` sobre la función, con docstring claro | 07 |
+| Que el modelo la use | `llm.bind_tools(herramientas)` + ciclo A→D | 08 |
+| Plan B si falla el modelo | `llm.with_fallbacks([respaldo])` | 09 |
+| Reintentar ante un 429 | `cadena.with_retry(stop_after_attempt=3)` | 09 |
+| Un agente completo | `create_react_agent(llm, tools, checkpointer=MemorySaver())` | 10 |
+| Buscar en mis documentos | `retriever = vs.as_retriever(search_type="mmr", search_kwargs={"k": 4})` | 11 |
+| Recuperar con más precisión | `ContextualCompressionRetriever(reranker, retriever)` + híbrido | 12 |
+| Un agente a mi medida | `StateGraph(Estado)` + `add_node` / `add_conditional_edges` | 13 |
+| Pausar y pedir permiso | `interrupt({…})` → reanudar con `Command(resume=…)` | 13 |
+| Conectar tools externas | `MultiServerMCPClient({…})` + `await client.get_tools()` | 14 |
+| Ver qué hace mi sistema | `LANGSMITH_TRACING=true` en el `.env` | 16 |
+| Medir la calidad | dataset + `evaluate(mi_app, data=…, evaluators=[juez])` | 16 |
+| Repartir el trabajo entre especialistas | `add_conditional_edges("supervisor", hacia_donde, {…})` | 15 |
+| Escalar un servicio y balancearlo | `kind: Deployment` + `replicas: 3` · `kind: Service` (K8s) | 15b |
+| Que alguien lo use de verdad | `@app.post("/chat")` + `thread_id` por usuario | 17 |
+| Cambiar código sin miedo | `uv run pytest -m offline` | 17b |
+| Expandir la pregunta antes de buscar | multi-query + `fusion_rrf([...])` (RAG-Fusion sobre variantes) | 20 |
+| Decidir fine-tuning vs RAG | datos que cambian → RAG; estilo/formato → fine-tuning | 21 |
+| Mandar texto + imagen a un modelo con visión | `HumanMessage(content=[{"type":"text",…},{"type":"image_url",…}])` | 22 |
+| Blindar el prompt (guardrails / red-teaming) | validación en capas: sanear entrada → instrucción → filtrar salida | 23 |
+| Índice vectorial a escala | dedup por hash + `IVFFlat` (ajusta recall ↔ velocidad con `nprobe`) | 24 |
+| Feedback 👍/👎 + A/B de prompts | `sha256(thread_id) % n` (bucketing pegajoso) + `tasa_aprobacion` por variante | 24b |
+| Servir un chat por SSE (frontend) | `fetch("/chat",{method:"POST"})` + `body.getReader()` (no `EventSource`: es POST) | 25 |
+| Elegir framework con criterio | mapa del ecosistema: orquestación, RAG, evals, serving — no todo es LangChain | 26 |
+| Mejorar un prompt con método | few-shot / CoT / `self_consistency([...])` — y **medirlo** | 26b |
+| Controlar el muestreo / entender la tokenización | `softmax_con_temperatura(logits, t)` · `muestrear_top_p(...)` · `calcular_perplejidad(...)` | 27 |
+| Detectar una posible alucinación sin humano | `detectar_inconsistencia([...])` (N muestras → dispersión = señal de alerta) | 28 |
+| Recomendar productos sin inventar precios | filtros duros del catálogo + `respuesta_es_fiel(...)` (grounding determinista) | 29 |
+| Recordar al usuario entre conversaciones | `store.put(("memorias", uid), "nombre", {"dato": "Ana"})` | 30 |
+
+### Cambiar de proveedor (Gemini ↔ Groq ↔ OpenAI ↔ Claude)
+
+**Nada** de lo que aprendiste depende del proveedor. El resto (LCEL, tools, agentes, RAG, grafos) queda intacto. De hecho los ejemplos del repo ya no instancian ningún modelo: llaman a `util.crear_llm()`, que lee `LLM_PROVIDER` del `.env`. Si prefieres el interruptor de LangChain, es `init_chat_model`:
+
+```python title="el interruptor universal"
+from langchain.chat_models import init_chat_model
+
+llm = init_chat_model("gemini-3.1-flash-lite")        # Google (necesita GOOGLE_API_KEY)
+# llm = init_chat_model("gpt-4o-mini")           # OpenAI  (OPENAI_API_KEY)
+# llm = init_chat_model("claude-sonnet-5")       # Anthropic (ANTHROPIC_API_KEY)
+
+# Groq (y Ollama, y Together): NO hace falta una clase por proveedor.
+# Todos hablan el dialecto de OpenAI; solo cambia la base_url.
+from langchain_openai import ChatOpenAI
+llm = ChatOpenAI(model="qwen/qwen3-32b",
+                 base_url="https://api.groq.com/openai/v1",
+                 api_key=os.getenv("GROQ_API_KEY"))
+```
+
+El conmutador de `util.crear_llm()` entiende estos `LLM_PROVIDER`; si no pones `LLM_MODELO`, usa el modelo por defecto de cada uno. Cuál elegir para una solución real (pago vs. open weights, precios, dónde corre) está en el [Concepto 18b](/concepto/18b-elegir-modelo-y-proveedor).
+
+| `LLM_PROVIDER` | Modelo por defecto | Llave (`.env`) |
+| --- | --- | --- |
+| `google` | `gemini-3.1-flash-lite` | `GOOGLE_API_KEY` |
+| `groq` | `qwen/qwen3-32b` | `GROQ_API_KEY` |
+| `ollama` | `qwen3:8b` | — (corre en tu máquina) |
+| `openai` | `gpt-5.4-mini` | `OPENAI_API_KEY` |
+| `anthropic` | `claude-haiku-4-5` | `ANTHROPIC_API_KEY` |
+| `openrouter` | `meta-llama/llama-3.3-70b-instruct:free` | `OPENROUTER_API_KEY` |
+| `deepseek` | `deepseek-v4-flash` | `DEEPSEEK_API_KEY` |
+
+| Qué cambia | Qué NO cambia |
+| --- | --- |
+| La línea que crea el `llm` y la variable de entorno con la llave. | Cadenas LCEL, prompts, memoria, `@tool`, agentes, RAG, StateGraph, fallbacks, evaluación: **todo lo demás del curso**. |
+
+<Box kind="analogy" label="◆ Por qué importa">
+
+Esta es la promesa central de LangChain: la **interfaz unificada** (Concepto 03). Aprendiste una sola forma de trabajar y te sirve con cualquier proveedor — incluso para poner un modelo de respaldo de otra empresa en tus `with_fallbacks`.
+
+</Box>

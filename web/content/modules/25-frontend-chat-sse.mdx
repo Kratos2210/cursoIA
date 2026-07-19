@@ -1,0 +1,192 @@
+El servicio ya hace mucho por dentro —guardrails, caché semántico, tracing, A/B— pero nadie lo ve. Le falta cara. Se la damos con una **sola página** de HTML+CSS+JS, sin build, sin framework, sin CDN, sin una sola dependencia: abre en un navegador aunque no haya internet. El reto no es pintar burbujas: es **consumir el streaming SSE** que emite `/chat`, y ahí la API cómoda del navegador (`EventSource`) no nos sirve.
+
+<Box kind="def" label="◈ Definición · SSE por fetch, y una página que se sirve a sí misma">
+
+<DefList>
+  <Term>SSE con `fetch` + `ReadableStream`</Term>
+  <Def>Leemos `response.body.getReader()`, decodificamos con `TextDecoder`, acumulamos en un buffer y partimos por la línea en blanco (`\n\n`) que separa eventos. El trozo sin cerrar se queda en el buffer para la próxima vuelta.</Def>
+  <Term>Por qué NO `EventSource`</Term>
+  <Def>La API nativa de SSE del navegador **solo hace GET** y no deja mandar cuerpo ni cabeceras. Nuestro `/chat` es **POST** con un JSON (`mensaje`, `rol`, `thread_id`): hay que leer el stream a mano.</Def>
+  <Term>Página autocontenida</Term>
+  <Def>HTML, `<style>` y `<script>` en un mismo archivo. Cero assets externos = cero superficie de red = abre offline. Se lee **una vez** al importar (`frontend.PAGINA_CHAT`) y la ruta `GET /` la envuelve en un `HTMLResponse`.</Def>
+</DefList>
+
+</Box>
+
+<Box kind="analogy" label="◆ El grifo y el vaso">
+
+`EventSource` es un dispensador de agua con un solo botón: pulsas y sale, pero no puedes decirle *qué* quieres. Con `fetch`+`ReadableStream` abres tú el grifo (mandas tu pedido en el POST) y llenas el vaso a sorbos, según cae. El buffer es el vaso: vas juntando gotas (bytes) hasta tener un sorbo completo (un evento terminado en `\n\n`) antes de beberlo.
+
+</Box>
+
+### Paso 1 · La ruta que sirve la página (leída una sola vez)
+
+El HTML no cambia mientras el proceso vive, así que releerlo del disco en cada request sería E/S por nada. Se carga al importar y queda en memoria; el `--reload` de uvicorn re-importa y re-lee al editarlo.
+
+```python title="proyecto_llmops/app/main.py · GET / (dentro de crear_app) + app/frontend.py"
+# app/frontend.py — se lee UNA vez al importar
+PAGINA_CHAT = (Path(__file__).parent / "static" / "chat.html").read_text("utf-8")
+
+# app/main.py — la ruta solo envuelve el string ya cargado
+@app.get("/", response_class=HTMLResponse)
+def pagina_chat():
+    return frontend.PAGINA_CHAT   # cero E/S por request
+```
+
+### Paso 2 · El parser SSE del cliente (fetch + ReadableStream)
+
+```javascript title="proyecto_llmops/app/static/chat.html · el bucle de lectura del stream"
+const resp = await fetch("/chat", {          // POST: por eso no EventSource
+  method: "POST", headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ mensaje, rol, thread_id: THREAD_ID }),
+});
+const lector = resp.body.getReader(), dec = new TextDecoder();
+let buffer = "";
+while (true) {
+  const { value, done } = await lector.read();
+  if (done) break;
+  buffer += dec.decode(value, { stream: true });
+  let corte;
+  while ((corte = buffer.indexOf("\n\n")) !== -1) {   // un evento SSE completo
+    const bloque = buffer.slice(0, corte); buffer = buffer.slice(corte + 2);
+    const evt = parsearBloque(bloque);                // separa event: y data:
+    if (!evt.evento && evt.datos.token !== undefined) append(evt.datos.token);
+    else if (evt.evento === "fin") mostrarVoto(evt.datos.variante);   // 👍/👎
+    else if (evt.evento === "bloqueado" || evt.evento === "error") pintarError(evt.datos.error);
+  }
+}
+```
+
+```text title="▸ lo que viaja por el cable (el formato de app/streaming.py)"
+data: {"token": "Sí, la Regla 1 exige "}
+
+data: {"token": "cifrado AES-256."}
+
+event: fin
+data: {"cache_hit": false, "variante": "agente_gobdata_conciso"}
+```
+
+<Box kind="warn" label="▲ Esto es la demo, no producción">
+
+La página se sirve **abierta** para que el curso sea ejecutable sin montar identidad. En producción va detrás de **auth** y del **mismo origen** (o CORS explícito), y `/metrics` **no** se expone público. El `thread_id` se genera uno por pestaña (`crypto.randomUUID()`) para que el A/B sea **pegajoso**: si cambiara por mensaje, el voto no se podría atribuir a una variante.
+
+</Box>
+
+<Box kind="def" label="◈ ¿Y por qué no Streamlit o Gradio?">
+
+Para prototipar una UI de IA en minutos, **Streamlit** y **Gradio** son la vía rápida: unas líneas de Python y tienes un chat con caja de texto y streaming, sin tocar HTML ni JS. Son excelentes para una **demo interna o un experimento**. Aquí elegimos **HTML vainilla** a propósito, por tres razones: (1) es **transferible** —el patrón `fetch`+`ReadableStream` sobre SSE sirve con cualquier backend y cualquier front, no solo con Python—; (2) **no esconde la mecánica** —ves el troceo del stream por `\n\n`, que es justo lo que este concepto enseña—; y (3) **cero dependencias**. La regla: para *enseñar* cómo viaja el stream, vainilla; para *prototipar rápido* una demo, Streamlit o Gradio; para *producción*, un front de verdad (React/Vue) contra tu API.
+
+</Box>
+
+<Avoid label="⛔ Cuándo NO hacerlo así">
+
+- No uses **`EventSource` para un POST**: solo hace GET. Si tu endpoint necesita cuerpo, es `fetch`+`ReadableStream` (o cambia el endpoint a GET, que aquí no queremos).
+- No metas la **API key** del LLM en el front: el navegador la enseña a cualquiera. La clave vive en el servidor; el front solo habla con *tu* servicio.
+- No confíes en el `rol` que manda el cliente en producción: un rol que elige el cliente vuelve el RBAC decorativo (ya se avisa en `main.py`). Deriva el rol del token de auth.
+
+</Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Levanta el servicio (`uv run uvicorn proyecto_llmops.app.main:app --reload`) y abre `http://localhost:8000/`. Manda una pregunta y mira aparecer la respuesta token a token; cambia el `rol` a `public` y observa cómo cambia lo que el agente puede ver (RBAC). Vota 👍/👎 y consulta `GET /feedback`: tu voto movió la `tasa_aprobacion` de la variante que te tocó.
+
+**Segundo reto: haz visible lo que el evento `fin` ya trae.** Cuando `cache_hit` sea `true`, pinta un distintivo "⚡ cacheada" junto a la burbuja. Y prueba tu troceo por separado: alimenta el parser con el mismo stream cortado en trozos de distintos tamaños —incluido uno que parta un evento por la mitad— y comprueba que entrega siempre los mismos eventos.
+
+**Criterio de aceptación:** repites la MISMA pregunta dos veces en la página: la primera llega token a token y sin distintivo, la segunda aparece marcada como cacheada (y casi instantánea). Y tu prueba del parser imprime el **mismo número de eventos** para todos los tamaños de trozo — si con trozos de 1 byte te salen menos, estás descartando el resto del buffer en vez de guardarlo.
+
+<Solution summary="Ver una solución">
+
+```javascript title="solución · el parser aislado (y testeable) + el distintivo de caché"
+// 1) El mismo buffer del bucle de arriba, pero alimentado a mano: así se puede probar
+//    sin servidor y sin red. Devuelve los bloques COMPLETOS que cerraron con este trozo.
+function crearParser() {
+  let buffer = "";
+  return (trozo) => {
+    buffer += trozo;
+    const eventos = [];
+    let corte;
+    while ((corte = buffer.indexOf("\n\n")) !== -1) {
+      eventos.push(buffer.slice(0, corte));   // un evento SSE entero
+      buffer = buffer.slice(corte + 2);       // lo que sobra ESPERA al próximo trozo
+    }
+    return eventos;                            // puede ser [] si aún no cerró ninguno
+  };
+}
+
+const stream =
+  'data: {"token":"Hola"}\n\ndata: {"token":" mundo"}\n\nevent: fin\ndata: {"cache_hit":true}\n\n';
+
+for (const tam of [1, 7, 23, stream.length]) {
+  const alimentar = crearParser();
+  let total = 0;
+  for (let i = 0; i < stream.length; i += tam) total += alimentar(stream.slice(i, i + tam)).length;
+  console.log(tam, total);      // 3, 3, 3, 3 — dónde caiga el corte NO importa
+}
+
+// 2) El distintivo, en la rama del evento `fin` que ya existía:
+else if (evt.evento === "fin") {
+  if (evt.datos.cache_hit) {
+    burbuja.insertAdjacentHTML("beforeend", ' <span class="badge">⚡ cacheada</span>');
+  }
+  mostrarVoto(evt.datos.variante);
+}
+```
+
+El bucle de tamaños es el ejercicio de verdad, porque reproduce lo único que el navegador **no** te garantiza: que un chunk de TCP respete las fronteras de tus eventos. Con trozos de 1 byte, el parser pasa la mayoría de las llamadas devolviendo `[]` y acumulando — y aun así el total cuadra. Ese es el contrato que hace correcto el `while` del `chat.html`.
+
+Y ojo al `insertAdjacentHTML` con datos del servidor: aquí el distintivo es una cadena literal tuya, pero si alguna vez pintas ahí **contenido del modelo**, vuelve al [c23](/concepto/23-seguridad-red-teaming) — esa es exactamente la puerta de LLM02.
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar por qué `EventSource` no vale para un `/chat` que es POST, y qué lo sustituye.
+- Trocear un stream SSE a mano: buffer, corte por `\n\n` y evento parcial que se guarda para la próxima lectura.
+- Servir una página autocontenida desde FastAPI leyéndola **una vez**, y decir por qué no en cada request.
+- Cerrar el lazo del A/B desde el front: capturar la `variante` del evento `fin` y devolverla en el voto a `/feedback`.
+
+</Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 25">
+
+<Question>
+  <Prompt>1 · ¿Por qué el chat no usa `EventSource`, la API nativa de SSE del navegador?</Prompt>
+  <Option>Porque no sabe reconectar y perderías tokens a mitad de la respuesta</Option>
+  <Option ok>Porque solo hace GET, y `/chat` es un POST con un JSON (`mensaje`, `rol`, `thread_id`)</Option>
+  <Option>Porque no está disponible en todos los navegadores modernos</Option>
+  <Feedback>Con `fetch` + `ReadableStream` mandas el cuerpo y las cabeceras que quieras; el precio es trocear los eventos tú.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · En el bucle de lectura, ¿por qué el trozo que queda tras el último `\n\n` se guarda en el buffer?</Prompt>
+  <Option>Para poder reenviarlo si el servidor pide un reintento</Option>
+  <Option ok>Porque puede ser un evento **incompleto**: un chunk de red no respeta las fronteras de los eventos SSE</Option>
+  <Option>Porque `TextDecoder` necesita ese resto para cerrar la decodificación</Option>
+  <Feedback>El vaso junta gotas hasta tener un sorbo completo. Parsear un bloque a medias produciría un JSON roto en mitad del stream.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · `PAGINA_CHAT` se lee del disco **al importar** y no en cada request. ¿Qué lo justifica?</Prompt>
+  <Option>Que así el HTML puede minificarse una sola vez durante el arranque</Option>
+  <Option ok>Que el archivo no cambia mientras vive el proceso: releerlo por request sería E/S por nada</Option>
+  <Option>Que FastAPI no permite abrir archivos dentro del handler de una ruta</Option>
+  <Feedback>Y en desarrollo tampoco pierdes nada: el `--reload` de uvicorn re-importa el concepto y vuelve a leer el archivo al editarlo.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · En producción, ¿qué hay que corregir del `rol` que manda el cliente?</Prompt>
+  <Option>Nada: viaja en el cuerpo del POST, que va cifrado por HTTPS</Option>
+  <Option ok>Derivarlo del token de auth: un rol que elige el cliente vuelve el RBAC decorativo</Option>
+  <Option>Moverlo del cuerpo a una cabecera para que no se pueda modificar</Option>
+  <Feedback>HTTPS protege el canal, no la veracidad de lo que el cliente afirma sobre sí mismo. Quien pide, no decide sus propios permisos.</Feedback>
+</Question>
+
+</Quiz>
+
+<Recap level={5} label="↺ En una frase">
+
+Para darle cara al servicio: sirve una **SPA vainilla** desde el propio FastAPI (`GET /`, leída una vez) y consume su **SSE** con `fetch`+`ReadableStream` —troceando por `\n\n`— porque `EventSource` no puede hacer POST; luego cierra el A/B votando la `variante` del evento `fin`.<Arch>archivos: `proyecto_llmops/app/frontend.py` · `app/static/chat.html`</Arch>
+
+</Recap>

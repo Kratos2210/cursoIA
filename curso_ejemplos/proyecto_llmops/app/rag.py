@@ -120,11 +120,44 @@ def unir(docs) -> str:
     return "\n\n".join(d.page_content for d in docs)
 
 
-def construir_retriever_pgvector(ruta=None, tabla="normativa", k=3):
+def id_de_fragmento(doc) -> str:
+    """Un id ESTABLE derivado del contenido del fragmento. FUNCIÓN PURA.
+
+    Es lo que hace idempotente la indexación: el mismo texto produce siempre el
+    mismo id, así que reindexar actualiza la fila en vez de añadir otra.
+
+    ⭐ ENTRA TAMBIÉN LA `confidentiality`, y no es un detalle: si solo se
+       hasheara el texto, corregir la etiqueta de un fragmento mal clasificado
+       (de 'public' a 'restricted') generaría el MISMO id y la corrección se
+       perdería... o peor, quedaría la versión antigua marcada como pública.
+       Metiendo el nivel en el hash, cambiar la clasificación produce un id
+       nuevo y la fila se reemplaza de verdad.
+
+    ⚠️ Un cambio de este esquema invalida TODO lo ya indexado: los ids viejos
+       dejan de coincidir y la siguiente indexación insertará duplicados en vez
+       de actualizar. Si lo tocas, vacía la colección (ver runbook §3).
+
+    blake2b y no md5: no es más "seguro" para esto —no hay adversario— pero es
+    más rápido y no arrastra la fama de md5 a una revisión de seguridad.
+    """
+    from hashlib import blake2b
+
+    nivel = doc.metadata.get("confidentiality", "")
+    material = f"{nivel}\x00{doc.page_content}".encode()
+    return blake2b(material, digest_size=16).hexdigest()
+
+
+def construir_retriever_pgvector(ruta=None, tabla="normativa", k=3, rol=None):
     """Vector store PERSISTENTE sobre pgvector. ⚠️ Requiere Postgres levantado.
 
     PGVector crea la tabla y la columna de vectores automáticamente la primera
     vez. Las llamadas siguientes reutilizan el índice ya vectorizado.
+
+    `rol` empuja el RBAC al WHERE de la consulta: los documentos que el rol no
+    puede ver no salen de Postgres. Sin él, el retriever los trae y se descartan
+    en Python — funciona, pero el material restringido ya ha viajado (ver
+    `guardrails/rbac.filtro_sql`). Es None por defecto para no romper a quien
+    construya un retriever genérico y filtre después.
     """
     from langchain_postgres import PGVector
     fragmentos = trocear_con_metadata(leer_normativa(ruta))
@@ -134,11 +167,23 @@ def construir_retriever_pgvector(ruta=None, tabla="normativa", k=3):
         collection_name=tabla,
         use_jsonb=True,
     )
-    # add_documents es idempotente a nivel de contenido en la práctica del curso;
-    # en producción usarías un hash por documento para evitar duplicados.
+    # ⭐ INDEXADO IDEMPOTENTE. Antes esto pasaba `ids=None` y cada arranque
+    #    INSERTABA otra copia de la normativa entera: reindexar duplicaba los
+    #    fragmentos, el retriever devolvía el mismo párrafo tres veces y el
+    #    contexto del prompt se llenaba de repeticiones (ADR-0003 y runbook §3
+    #    ya lo reconocían como deuda).
+    #
+    #    Con un id DERIVADO DEL CONTENIDO, la segunda inserción del mismo
+    #    fragmento choca con el mismo id y actualiza en vez de duplicar. No hace
+    #    falta consultar antes si existe: el id ES la respuesta.
     if fragmentos:
-        vectorstore.add_documents(fragmentos, ids=None)
-    return vectorstore.as_retriever(search_kwargs={"k": k})
+        vectorstore.add_documents(fragmentos, ids=[id_de_fragmento(f) for f in fragmentos])
+
+    busqueda = {"k": k}
+    if rol is not None:
+        from guardrails.rbac import filtro_sql
+        busqueda["filter"] = filtro_sql(rol)
+    return vectorstore.as_retriever(search_kwargs=busqueda)
 
 
 def construir_retriever_memoria(ruta=None, k=3):

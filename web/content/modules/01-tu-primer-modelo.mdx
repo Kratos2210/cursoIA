@@ -1,0 +1,167 @@
+Todo empieza con una llamada al modelo. Un chat model recibe **mensajes** y devuelve una **respuesta**. El método clave es `.invoke()`.
+
+<Box kind="def" label="◈ Definición · Modelo de chat (chat model)">
+
+Un **modelo de chat** es un LLM al que no le hablas con un texto suelto, sino con una **lista de mensajes con rol**, y que te devuelve un mensaje más. Toda la librería está construida sobre esa forma: mensajes entran, mensaje sale.
+
+Esa es la diferencia con "un LLM" a secas. El LLM es el modelo entrenado; el *chat model* es la envoltura de LangChain que le da una interfaz uniforme (`.invoke()`, `.batch()`, `.stream()`) idéntica en Gemini, OpenAI o Claude.
+
+<DefList>
+  <Term>token</Term>
+  <Def>La unidad en la que el modelo lee y escribe: un trozo de palabra (≈ 4 caracteres). No cuentas letras ni palabras, cuentas tokens — porque es lo que te cobran y lo que limita cuánto texto le cabe.</Def>
+  <Term>ventana de contexto</Term>
+  <Def>El máximo de tokens que el modelo puede tener "a la vista" en una llamada: pregunta + historial + documentos + su propia respuesta. Cuando se llena, algo hay que recortar.</Def>
+  <Term>temperature</Term>
+  <Def>Cuánta aleatoriedad se permite al elegir el siguiente token. `0` = la misma respuesta siempre; `0.9` = variada. No es "inteligencia", es dispersión.</Def>
+</DefList>
+
+</Box>
+
+```python title="llmodel.py · primer contacto"
+import os
+from dotenv import load_dotenv
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import HumanMessage
+
+load_dotenv()  # lee el .env y carga tu llave (GOOGLE_API_KEY)
+
+# El "cerebro". temperature=0 -> respuestas precisas y estables.
+llm = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", temperature=0)
+
+respuesta = llm.invoke([HumanMessage(content="Explica qué es un LLM en una frase.")])
+print(respuesta.content)
+```
+
+<Box kind="analogy" label="◆ ¿Solo tienes llave de Groq? Cambia dos líneas">
+
+Groq sirve `qwen/qwen3-32b` con un cupo gratuito mucho más generoso que el de Gemini. El resto del archivo —y del curso entero— es idéntico: `invoke`, los mensajes, las cadenas, los agentes. Solo cambia *quién* está al otro lado del cable.
+
+```python title="llmodel.py · la misma idea, con Groq"
+import os
+from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI          # ← sirve para Groq, no solo para OpenAI
+from langchain_core.messages import HumanMessage
+
+load_dotenv()  # lee el .env y carga GROQ_API_KEY
+
+llm = ChatOpenAI(
+    model="qwen/qwen3-32b",
+    temperature=0,
+    base_url="https://api.groq.com/openai/v1",   # ← lo único específico de Groq
+    api_key=os.getenv("GROQ_API_KEY"),
+    # qwen3 RAZONA antes de responder y Groq devuelve ese razonamiento dentro
+    # del texto, envuelto en <think>…</think>. Esto le dice que lo descarte.
+    extra_body={"reasoning_format": "hidden"},
+)
+
+respuesta = llm.invoke([HumanMessage(content="Explica qué es un LLM en una frase.")])
+print(respuesta.content)
+```
+
+Los ejemplos del repositorio no repiten esto diecinueve veces: llaman a `util.crear_llm()`, que lee `LLM_PROVIDER` del `.env` y devuelve el modelo correcto ya configurado. **Esa función es la razón por la que puedes cambiar de proveedor sin tocar código.**
+
+</Box>
+
+```text title="▸ deberías ver (algo así — el texto exacto varía)"
+Un LLM es un modelo de inteligencia artificial entrenado con enormes
+cantidades de texto para comprender y generar lenguaje natural.
+```
+
+### Los tipos de mensaje
+
+Una conversación es una lista de mensajes con roles distintos. Entenderlos es clave para todo lo que sigue (memoria, tools, agentes):
+
+- **SystemMessage**: las reglas y personalidad ("eres un tutor paciente").
+- **HumanMessage**: lo que dice el usuario.
+- **AIMessage**: lo que responde el modelo (aquí también viajan los `tool_calls`).
+- **ToolMessage**: el resultado de ejecutar una herramienta (Concepto 08).
+
+```python title="roles en acción"
+from langchain_core.messages import SystemMessage, HumanMessage
+
+mensajes = [
+    SystemMessage(content="Eres un tutor paciente. Responde con ejemplos simples."),
+    HumanMessage(content="¿Qué es un vector?"),
+]
+print(llm.invoke(mensajes).content)
+```
+
+<Box kind="analogy" label="◆ Bueno saber">
+
+El parámetro `temperature` controla la creatividad: `0` = preciso y repetible (clasificar, calcular, usar tools); `0.7–1` = variado (redactar, conversar). En LangChain 1.x existe también `init_chat_model("gemini-3.1-flash-lite")` para crear cualquier modelo cambiando solo el nombre.
+
+</Box>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Cambia el `SystemMessage` a "eres un pirata" y observa cómo cambia el tono sin tocar la pregunta. Luego prueba `temperature=0` vs `0.9` repitiendo la misma consulta 3 veces.
+
+<Solution summary="Ver una solución">
+
+```python title="solución"
+mensajes = [
+    SystemMessage(content="Eres un pirata del Callao. Habla como tal."),
+    HumanMessage(content="¿Qué es un vector?"),
+]
+print(llm.invoke(mensajes).content)   # mismo contenido, tono de pirata
+
+creativo = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", temperature=0.9)
+for _ in range(3):
+    print(creativo.invoke("Dame un nombre para una cafetería").content)
+# con 0.9 salen 3 nombres distintos; con temperature=0, casi siempre el mismo
+```
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar qué recibe y qué devuelve `.invoke()` (mensajes entran, un `AIMessage` sale).
+- Nombrar los cuatro tipos de mensaje (`System`, `Human`, `AI`, `Tool`) y para qué sirve cada rol.
+- Decir cómo cambia la respuesta al ajustar `temperature` de `0` a `0.9`.
+- Reconocer por qué `util.crear_llm()` te deja cambiar de proveedor sin tocar el resto del código.
+
+</Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 01">
+
+<Question>
+  <Prompt>1 · `llm.invoke([HumanMessage(...)])` te devuelve…</Prompt>
+  <Option ok>Un `AIMessage`, del que sacas el texto con `.content`</Option>
+  <Option>Un `str` con la respuesta ya lista para imprimir</Option>
+  <Option>Un diccionario con la respuesta y los tokens</Option>
+  <Feedback>Mensajes entran, un mensaje sale. Por eso escribes `.content` — y por eso en el Concepto 02 aparece `StrOutputParser()`, para no repetirlo (Concepto 01).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Qué ocupa la ventana de contexto de una llamada?</Prompt>
+  <Option>Solo la pregunta que escribe el usuario</Option>
+  <Option>La pregunta y el historial, pero no los documentos</Option>
+  <Option ok>Pregunta + historial + documentos + la propia respuesta del modelo</Option>
+  <Feedback>Todo cuenta, incluida la salida. Por eso una conversación larga se encarece y llega un momento en que hay que resumir o recortar (Concepto 04).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · ¿Qué diferencia hay entre "un LLM" y un *chat model* de LangChain?</Prompt>
+  <Option>Ninguna: son dos nombres para lo mismo</Option>
+  <Option ok>El LLM es el modelo entrenado; el chat model es la envoltura que le da la misma interfaz en Gemini, OpenAI o Claude</Option>
+  <Option>El chat model es una versión más pequeña, optimizada para conversar</Option>
+  <Feedback>Esa envoltura es la razón de que `.invoke()`, `.batch()` y `.stream()` funcionen igual con cualquier proveedor (Concepto 03).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Cuando el modelo pide una herramienta, ¿en qué tipo de mensaje viaja esa petición?</Prompt>
+  <Option>En un `ToolMessage`</Option>
+  <Option>En un `SystemMessage` generado automáticamente</Option>
+  <Option ok>En un `AIMessage`, dentro de su campo `tool_calls`</Option>
+  <Feedback>El modelo responde con un `AIMessage` que, en vez de texto, trae `tool_calls`. El `ToolMessage` es lo que **tú** devuelves después, con el resultado (Concepto 08).</Feedback>
+</Question>
+
+</Quiz>
+
+<Recap level={1} label="↺ En una frase">
+
+`invoke()` envía mensajes y devuelve un `AIMessage`. El *rol* de cada mensaje (System, Human, AI) no es decoración: cambia cómo responde el modelo.<Arch>archivo: `01_primer_modelo.py`</Arch>
+
+</Recap>

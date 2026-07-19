@@ -1,0 +1,130 @@
+Un LLM es **amnésico**: cada `.invoke()` es independiente. Para que "recuerde", tú le reenvías el historial en cada turno. La pieza que reserva ese hueco es `MessagesPlaceholder`.
+
+<Box kind="def" label="◈ Definición · Memoria">
+
+**Memoria**, en LangChain, no es que el modelo guarde nada. El modelo no guarda *nada*: es una función sin estado que recibe mensajes y devuelve uno. La memoria es **una estructura tuya** —una lista de mensajes— que reenvías completa en cada llamada para que el modelo "se acuerde".
+
+Entender esto explica dos cosas de golpe: por qué la conversación cuesta más cara turno a turno (reenvías todo el historial cada vez, y pagas por token) y por qué llega un momento en que hay que resumir o recortar (la ventana de contexto se llena).
+
+<DefList>
+  <Term>MessagesPlaceholder</Term>
+  <Def>El **hueco reservado** dentro del prompt donde se inyectará la lista de mensajes anteriores. Sin él, tu plantilla no tendría dónde poner el historial.</Def>
+  <Term>historial</Term>
+  <Def>La lista de `HumanMessage` / `AIMessage` acumulados. Vive en tu programa (una lista, una base de datos, un checkpointer), nunca en el modelo.</Def>
+  <Term>thread_id</Term>
+  <Def>La etiqueta que separa una conversación de otra. Dos usuarios con el mismo agente y distinto `thread_id` no se pisan el historial. Aparece a partir del Concepto 10.</Def>
+</DefList>
+
+</Box>
+
+```python title="memoria.py · historial manual"
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.messages import HumanMessage, AIMessage
+
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "Eres un asistente amable."),
+    MessagesPlaceholder("history"),   # aquí se inyecta lo ya conversado
+    ("human", "{input}"),
+])
+cadena = prompt | llm
+
+historial = []  # la memoria: una simple lista de Python
+
+def chatear(texto):
+    r = cadena.invoke({"input": texto, "history": historial})
+    historial.append(HumanMessage(content=texto))
+    historial.append(AIMessage(content=r.content))
+    return r.content
+
+chatear("Me llamo Beto y me gusta la pizza.")
+print(chatear("¿Recuerdas mi nombre y qué me gusta?"))  # -> sí
+```
+
+```text title="▸ deberías ver (algo así)"
+¡Claro! Te llamas Beto y te gusta la pizza.
+```
+
+<Box kind="analogy" label="◆ Analogía">
+
+Es como un chat de WhatsApp: cada mensaje ve todo el hilo arriba. Aquí tú "subes el hilo" reenviando `history`. En el Concepto 10 verás cómo LangGraph hace esto *automáticamente*.
+
+</Box>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Envuelve `chatear()` en un `while True` con `input()` y comprueba que recuerda datos varios turnos después.
+
+<Solution summary="Ver una solución">
+
+```python title="solución"
+while True:
+    texto = input("Tú: ")
+    if texto.lower() == "salir":
+        break                       # corta el bucle
+    print("IA:", chatear(texto))
+```
+
+Prueba: di tu nombre en el turno 1, pregunta por él en el turno 4.
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar por qué el modelo "olvida": cada `.invoke()` es independiente y no guarda estado.
+- Decir qué es la memoria en LangChain (una lista tuya que reenvías completa en cada turno).
+- Reconocer para qué sirve `MessagesPlaceholder` (el hueco donde se pega el historial).
+- Explicar por qué la conversación se encarece turno a turno y cuándo toca resumir o recortar.
+
+</Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Nivel Básico (conceptos 00–04)">
+
+<Question>
+  <Prompt>1 · ¿Qué hace `StrOutputParser()` al final de una cadena?</Prompt>
+  <Option>Llama al modelo una segunda vez para verificar</Option>
+  <Option ok>Convierte la respuesta del modelo en texto plano</Option>
+  <Option>Corrige la ortografía de la respuesta</Option>
+  <Feedback>Evita escribir `.content` a cada rato: la cadena ya devuelve el texto listo (Concepto 02).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · En LCEL, `prompt | llm | parser` significa que…</Prompt>
+  <Option ok>El dato pasa de estación en estación, como línea de ensamblaje</Option>
+  <Option>Los tres se ejecutan al mismo tiempo</Option>
+  <Option>Es una comparación lógica tipo "o"</Option>
+  <Feedback>El `|` conecta pasos en orden: el prompt arma el mensaje, el modelo responde, el parser limpia (Concepto 02).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · ¿Para qué pones `temperature=0`?</Prompt>
+  <Option>Para que responda más rápido</Option>
+  <Option>Para gastar menos cuota</Option>
+  <Option ok>Para respuestas precisas y repetibles</Option>
+  <Feedback>Temperatura baja = menos creatividad. Ideal para clasificar, calcular o usar tools (Concepto 01).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · ¿Qué mensaje define las reglas y la personalidad del asistente?</Prompt>
+  <Option>HumanMessage</Option>
+  <Option ok>SystemMessage</Option>
+  <Option>ToolMessage</Option>
+  <Feedback>El SystemMessage son las "instrucciones del puesto"; el usuario nunca lo ve (Concepto 01).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>5 · ¿Por qué el modelo "olvida" lo que le dijiste hace dos preguntas?</Prompt>
+  <Option>Porque la llave gratuita no incluye memoria</Option>
+  <Option>Porque el modelo se reinicia cada hora</Option>
+  <Option ok>Porque cada invoke es independiente: hay que reenviar el historial</Option>
+  <Feedback>La "memoria" siempre es reenviar la conversación previa — a mano (Concepto 04) o automática con LangGraph (Concepto 10).</Feedback>
+</Question>
+
+</Quiz>
+
+<Recap level={1} label="↺ En una frase">
+
+El modelo **no recuerda nada**. La memoria consiste en que tú le reenvías el historial en cada llamada — `MessagesPlaceholder` es el hueco donde lo pegas.<Arch>archivo: `04_memoria.py`</Arch>
+
+</Recap>

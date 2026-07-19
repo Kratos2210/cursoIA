@@ -1,0 +1,13 @@
+// dataset.jsonl · Casos de evaluación del asistente de compras (uno por línea).
+// EL DATASET ES CÓDIGO: vive en el repo, se versiona con git y se revisa en los
+// PRs. Cuando el asistente falle un caso nuevo, se añade aquí y queda como test
+// de regresión escrito en lenguaje natural. Los presupuestos son AJUSTADOS a
+// propósito: donde ignorar el tope duele es donde la métrica muerde.
+{"id": "aretes-dorados-25", "peticion": "aretes dorados por menos de 25 soles", "categoria": "aretes"}
+{"id": "collar-hasta-35", "peticion": "un collar hasta S/35", "categoria": "collares"}
+{"id": "pelo-8-soles", "peticion": "algo para el pelo, máximo 8 soles", "categoria": "cabello"}
+{"id": "cartera-80", "peticion": "una cartera hasta S/80", "categoria": "carteras"}
+{"id": "anillo-zircon", "peticion": "un anillo de zircón plateado", "categoria": "anillos"}
+{"id": "pulsera-dorada-25", "peticion": "una pulsera dorada por menos de 25 soles", "categoria": "pulseras"}
+{"id": "aros-baratos", "peticion": "unos aros baratos para regalo", "categoria": "aretes"}
+{"id": "collar-zircon-imposible", "peticion": "un collar de zircón por menos de 10 soles", "categoria": "collares", "sin_resultados": true}

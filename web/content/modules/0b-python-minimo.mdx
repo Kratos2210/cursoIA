@@ -1,0 +1,210 @@
+No necesitas ser programador para hacer este curso — pero sí **leer** Python sin miedo. Estas son las únicas 8 ideas que aparecen una y otra vez en los ejemplos. Si ya programas, salta directo al Concepto 01.
+
+### 1 · Variables: cajas con etiqueta
+
+Una variable guarda un valor y le pone nombre. El `=` no es "igual": es "guarda esto aquí".
+
+```python title="variables y tipos"
+nombre = "Alberto"        # texto (string): siempre entre comillas
+edad = 38                 # número entero (int)
+precio = 49.90            # número con decimales (float)
+activo = True             # verdadero/falso (bool): True o False, con mayúscula
+
+print(nombre)             # print() muestra el valor en pantalla
+```
+
+```text title="▸ deberías ver"
+Alberto
+```
+
+### 2 · f-strings: rellenar textos con valores
+
+Una `f"..."` es un texto con huecos: lo que va entre llaves `{ }` se reemplaza por su valor. Los prompts del curso funcionan con esta misma idea.
+
+```python title="f-strings"
+producto = "camilla"
+precio = 350
+print(f"La {producto} cuesta {precio} soles")
+```
+
+```text title="▸ deberías ver"
+La camilla cuesta 350 soles
+```
+
+### 3 · Listas y diccionarios: colecciones
+
+Una **lista** `[ ]` es una fila ordenada de cosas. Un **diccionario** `{ }` guarda pares *clave: valor*, como una ficha con campos. El curso los usa sin parar: una conversación es una *lista* de mensajes; una entrada al modelo es un *diccionario*.
+
+```python title="listas y diccionarios"
+frutas = ["manzana", "pera", "uva"]      # lista
+print(frutas[0])                         # el primero se cuenta desde CERO
+
+cliente = {"nombre": "Ana", "deuda": 120}   # diccionario
+print(cliente["nombre"])                    # se accede por su clave
+```
+
+```text title="▸ deberías ver"
+manzana
+Ana
+```
+
+### 4 · Funciones: recetas con nombre
+
+`def` define una receta: recibe ingredientes (parámetros), hace algo y `return` devuelve el resultado. Las "herramientas" del Concepto 07 son exactamente esto.
+
+```python title="funciones"
+def aplicar_descuento(precio, porcentaje):
+    """Calcula el precio final tras el descuento."""   # el docstring: qué hace
+    return precio - (precio * porcentaje / 100)
+
+print(aplicar_descuento(3500, 18))
+```
+
+```text title="▸ deberías ver"
+2870.0
+```
+
+### 5 · Decisiones y repeticiones: `if` y `for`
+
+Dos gestos que aparecen en casi todos los ejemplos. `if` **elige** un camino según una condición (y `else` es el "si no"); `for` **repite** una acción para cada elemento de una lista. Fíjate en los 4 espacios: marcan qué está *dentro* de cada bloque (es justo la idea siguiente).
+
+```python title="if y for"
+notas = [18, 11, 20]
+
+for n in notas:              # repite el bloque una vez por cada nota
+    if n >= 13:              # elige un camino según la condición
+        print(n, "aprobado")
+    else:                    # el "si no": cuando la condición es falsa
+        print(n, "jalado")
+```
+
+```text title="▸ deberías ver"
+18 aprobado
+11 jalado
+20 aprobado
+```
+
+### 6 · La indentación ES sintaxis
+
+<Box kind="warn" label="▲ La regla que más rompe código">
+
+En Python, los espacios al inicio de línea no son estética: **definen qué está dentro de qué**. Todo lo que pertenece a una función (o a un `if`, o a un `for`) va desplazado 4 espacios a la derecha. Si copias código y se desalinea, Python protesta con `IndentationError`. Por eso el botón **copiar** de este curso copia el bloque exacto.
+
+</Box>
+
+### 7 · import: traer piezas de otros
+
+Casi ningún programa se escribe desde cero: `import` trae piezas ya hechas (librerías). Las dos formas que verás:
+
+```python title="imports"
+import os                                   # trae TODA la librería os
+from dotenv import load_dotenv              # trae SOLO la pieza load_dotenv
+
+print(os.path.exists(".env"))               # se usa con su apellido: os.algo
+```
+
+### 8 · Leer un traceback (el mensaje de error)
+
+Cuando algo falla, Python imprime un **traceback**. Asusta, pero se lee fácil si sabes el truco: **ve directo a la última línea** (el qué), y la penúltima te dice el dónde.
+
+```python title="un error real, anotado"
+Traceback (most recent call last):          # "esto es un error", ignora esta línea
+  File "01_primer_modelo.py", line 12       # <- DÓNDE: archivo y número de línea
+    print(respuesta.contenido)
+AttributeError: 'AIMessage' object has      # <- QUÉ: el tipo de error y su causa
+no attribute 'contenido'                    #    (era .content, no .contenido)
+```
+
+<Box kind="analogy" label="◆ El hábito">
+
+Error → última línea → si no la entiendes, cópiala completa en un buscador o pégasela a una IA. El 90% de los errores del curso están en la sección [FAQ · errores comunes](/recurso/faq).
+
+</Box>
+
+### La prueba final: ¿puedes leer esto?
+
+Este bloque junta casi todas estas ideas. Si puedes explicar qué hace línea por línea, estás listo para **todo** el curso:
+
+```python title="todo junto"
+from statistics import mean                    # 7: traer una pieza (promedio)
+
+def resumen(cliente):                          # 4: una función
+    notas = cliente["notas"]                   # 3: leer un diccionario
+    return f"{cliente['nombre']}: {mean(notas):.1f}"   # 2: f-string con formato
+
+clientes = [                                   # 3: una lista...
+    {"nombre": "Ana", "notas": [18, 17, 20]},  #    ...de diccionarios
+    {"nombre": "Luis", "notas": [11, 14, 13]},
+]
+
+for c in clientes:                             # 5: recorrer la lista, uno por uno
+    print(resumen(c))                          # 1: mostrar el resultado
+```
+
+```text title="▸ deberías ver"
+Ana: 18.3
+Luis: 12.7
+```
+
+<Box kind="practice" label="▸ Para practicar">
+
+Escribe una función `saludar(nombre, hora)` que devuelva "Buenos días, Ana" si la hora es menor a 12 y "Buenas tardes, Ana" si no. Pruébala con un `for` sobre una lista de dos personas.
+
+<Solution summary="Ver una solución">
+
+```python title="solución"
+def saludar(nombre, hora):
+    if hora < 12:
+        return f"Buenos días, {nombre}"
+    return f"Buenas tardes, {nombre}"
+
+personas = [{"nombre": "Ana", "hora": 9}, {"nombre": "Luis", "hora": 16}]
+for p in personas:
+    print(saludar(p["nombre"], p["hora"]))
+```
+
+</Solution>
+
+</Box>
+
+<Quiz title="✅ Autoevaluación · Concepto 0b">
+
+<Question>
+  <Prompt>1 · Te sale un traceback de veinte líneas. ¿Por dónde empiezas a leer?</Prompt>
+  <Option>Por la primera línea, que dice dónde arrancó todo</Option>
+  <Option ok>Por la última: ahí está el tipo de error y su causa</Option>
+  <Option>Por el medio, donde aparecen las librerías</Option>
+  <Feedback>La última línea es el *qué* y la penúltima el *dónde*. Si no la entiendes, cópiala completa en un buscador o pégasela a una IA (Concepto 0b).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · En Python, los 4 espacios al inicio de una línea son…</Prompt>
+  <Option>Una convención de estilo que hace el código más legible</Option>
+  <Option ok>Sintaxis: definen qué está dentro de qué bloque</Option>
+  <Option>Obligatorios solo dentro de las funciones</Option>
+  <Feedback>Si copias código y se desalinea, Python protesta con `IndentationError`. Por eso el botón *copiar* de este curso copia el bloque exacto (Concepto 0b).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Con `frutas = ["manzana", "pera", "uva"]`, ¿qué imprime `print(frutas[1])`?</Prompt>
+  <Option>manzana</Option>
+  <Option ok>pera</Option>
+  <Option>Da error: las listas se leen por clave, no por número</Option>
+  <Feedback>Las listas se cuentan desde **cero**, así que el `[1]` es el segundo elemento. Leer por clave es cosa de los diccionarios (Concepto 0b).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · ¿Por qué el docstring de una función importa tanto en este curso?</Prompt>
+  <Option>Porque Python lo exige para que la función se pueda llamar</Option>
+  <Option>Porque acelera la ejecución al describir los tipos</Option>
+  <Option ok>Porque a partir del Concepto 07 es lo que **lee el modelo** para decidir si usa esa herramienta</Option>
+  <Feedback>Una función con `def` y un docstring es exactamente el material del que están hechas las tools. Ahí el docstring deja de ser documentación y pasa a ser programación (Concepto 07).</Feedback>
+</Question>
+
+</Quiz>
+
+<Recap level={1} label="↺ En una frase">
+
+Con ocho piezas de Python —variables, f-strings, listas y diccionarios, funciones, condicionales y bucles (`if`/`for`), indentación, `import` y leer un traceback— tienes todo lo que este curso te va a pedir.<Arch>Sin archivo: practícalo en el intérprete, `uv run python`</Arch>
+
+</Recap>

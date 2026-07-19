@@ -1,0 +1,17 @@
+# Qdrant para el companion del m24 (ADR-0009). FUERA del gate offline.
+#
+#   docker compose -f vectordb/docker-compose.yml up -d
+#   uv run --extra qdrant --extra emb python vectordb/qdrant_companion.py
+#
+# Panel web (ver la colección y los puntos con tus ojos): http://localhost:6333/dashboard
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.12.4   # pineado a propósito: 'latest' rompe sin avisar
+    ports:
+      - "6333:6333"                # API REST + dashboard
+      - "6334:6334"                # gRPC
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+volumes:
+  qdrant_data:

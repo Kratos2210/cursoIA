@@ -79,6 +79,34 @@ def extraer_uso(mensaje) -> Uso:
     )
 
 
+class ContadorDeUso:
+    """Suma el consumo de UNA request que hizo VARIAS llamadas al modelo.
+
+    Existe por el streaming. `extraer_uso` lee el consumo de un mensaje suelto,
+    pero en streaming el modelo no devuelve un mensaje: devuelve una lluvia de
+    chunks, y el conteo llega —cuando llega— en el último. Peor: un ciclo ReAct
+    hace varias llamadas (decidir tool → leer resultado → redactar), así que hay
+    varios conteos que sumar, no uno que leer.
+
+    Se le empujan todos los fragmentos del stream y al final se le pide `.uso`.
+    Un total en 0 sigue significando "el proveedor no lo informó", nunca "gratis".
+    """
+
+    def __init__(self) -> None:
+        self._entrada = 0
+        self._salida = 0
+
+    def sumar(self, fragmento) -> None:
+        """Acumula el consumo del fragmento, si es que lo trae. Ignora los que no."""
+        uso = extraer_uso(fragmento)
+        self._entrada += uso.entrada
+        self._salida += uso.salida
+
+    @property
+    def uso(self) -> Uso:
+        return Uso(entrada=self._entrada, salida=self._salida)
+
+
 def precio_de(modelo: str) -> dict[str, float] | None:
     """El precio del modelo, o None si no está en la tabla."""
     return PRECIOS.get(modelo)

@@ -1,0 +1,158 @@
+<LevelBanner level={2} title="Empieza el Nivel Intermedio">
+
+Ahora los datos toman forma: sacas información estructurada, compones flujos y haces que la app resista fallos.
+
+</LevelBanner>
+
+A veces no quieres un párrafo, quieres **datos ordenados** (un JSON, una fila de Excel). Con `with_structured_output` + un molde **Pydantic**, el modelo llena exactamente los campos que defines.
+
+<Box kind="def" label="◈ Definición · Salida estructurada">
+
+**Salida estructurada** es obligar al modelo a responder con un **objeto de forma conocida** en lugar de prosa libre. Tú declaras la forma (qué campos hay, de qué tipo, cuáles son obligatorios) y recibes un objeto de Python ya validado, no un texto que tengas que interpretar con expresiones regulares.
+
+Es la frontera entre una demo y un sistema: un párrafo hay que leerlo; un objeto con `.severidad` y `.tabla` se guarda en una base de datos, dispara una alerta o se compara con el de ayer.
+
+<DefList>
+  <Term>Pydantic</Term>
+  <Def>La librería con la que se declara la forma: una clase con campos tipados y descripciones. Esas descripciones **las lee el modelo** — son parte del prompt, no comentarios.</Def>
+  <Term>with_structured_output(Modelo)</Term>
+  <Def>Envuelve al LLM para que su respuesta se ajuste al esquema y llegue ya convertida en una instancia de tu clase. Por debajo usa el mismo mecanismo que las herramientas (Concepto 07).</Def>
+  <Term>tagging / extracción</Term>
+  <Def>Los dos usos clásicos. *Tagging*: clasificar en casillas que tú definiste (sentimiento, idioma, severidad). *Extracción*: sacar entidades de un texto (nombres, montos, fechas) a una lista de objetos.</Def>
+</DefList>
+
+</Box>
+
+<Box kind="analogy" label="◆ Analogía">
+
+Es ponerle **anteojeras** al modelo: deja de conversar y su única misión es rellenar tu formulario. Pydantic valida los tipos: si dijiste que `edad` es un número, no dejará pasar texto.
+
+</Box>
+
+<Box kind="analogy" label="◆ Primera vez que ves `class`: es un molde">
+
+Hasta aquí usabas funciones (recetas). Una **`class`** es otra cosa: define un **molde** con campos, y con él creas *objetos* que tienen esa forma. `class Persona(BaseModel)` dice "toda Persona tendrá `nombre` y `edad`"; el `(BaseModel)` significa "hereda las reglas de Pydantic", que valida los tipos por ti. No necesitas dominar clases para el curso: léelas como **formularios con campos tipados**.
+
+</Box>
+
+```python title="extraction.ipynb · extraer una lista"
+from pydantic import BaseModel, Field
+from typing import Optional, List
+
+class Persona(BaseModel):
+    """Una persona mencionada en el texto."""
+    nombre: str = Field(description="Nombre de la persona")
+    edad: Optional[int] = Field(default=None, description="Edad si se menciona")
+
+class Extraccion(BaseModel):
+    personas: List[Persona]   # busca TODAS, no solo una
+
+extractor = llm.with_structured_output(Extraccion)
+r = extractor.invoke("Ana tiene 30 años y su hijo Luis, 5.")
+for p in r.personas:
+    print(p.nombre, "->", p.edad)
+```
+
+```text title="▸ deberías ver"
+Ana -> 30
+Luis -> 5
+```
+
+El mismo patrón sirve para **etiquetar/clasificar** (tagging): defines las casillas y el modelo las marca.
+
+```python title="Tagging.ipynb · clasificar"
+class Etiqueta(BaseModel):
+    sentimiento: str = Field(description="positivo | negativo | neutro")
+    idioma: str = Field(description="idioma detectado")
+
+clasificador = llm.with_structured_output(Etiqueta)
+print(clasificador.invoke("I love this new system, it's super fast!"))
+```
+
+<Box kind="warn" label="▲ Un campo obligatorio que no está en el texto → el modelo lo inventa">
+
+Si declaras un campo como obligatorio (sin `Optional`) y el texto **no trae ese dato**, el modelo tiene que llenarlo igual… así que se lo **inventa** para no dejar el molde incompleto. La cura es doble: marca como `Optional` (con `default=None`) todo lo que *pueda* faltar, y **valida a mano lo crítico** después de recibir el objeto. Un molde que obliga a rellenar es un molde que invita a alucinar.
+
+</Box>
+
+<Avoid label="⛔ Cuándo NO forzar salida estructurada">
+
+- **Cuando la respuesta es para un humano.** Un chat, un resumen, una explicación: ahí quieres prosa, no un objeto. La salida estructurada es para lo que va a *otra* pieza de software (una base de datos, un `if`, otra API).
+- **Cuando el molde es enorme y anidado.** Un esquema con veinte campos y tres niveles hace que el modelo se ahogue y falle más. Si te pasa, **parte** la extracción en pasos pequeños en vez de pedir todo de un golpe.
+- **Cuando un `str` simple basta.** No envuelvas en Pydantic algo que es una sola línea de texto: añades ceremonia sin ganar validación útil.
+
+</Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Crea un molde `Producto` (nombre, precio, en_stock: bool) y extráelo de una frase desordenada. Añade un campo `Optional` y prueba con una frase donde ese dato no aparezca.
+
+<Solution summary="Ver una solución">
+
+```python title="solución"
+class Producto(BaseModel):
+    """Un producto mencionado en el texto."""
+    nombre: str = Field(description="Nombre del producto")
+    precio: float = Field(description="Precio en soles")
+    en_stock: bool = Field(description="Si hay stock disponible")
+    color: Optional[str] = Field(default=None, description="Color, si se menciona")
+
+extractor = llm.with_structured_output(Producto)
+print(extractor.invoke("Sí tenemos la camilla plegable, cuesta 350 soles"))
+# color saldrá None: el modelo NO lo inventa porque es Optional
+```
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar qué es la salida estructurada: un objeto de forma conocida en vez de prosa libre.
+- Reconocer para qué sirve `with_structured_output(Modelo)` con una clase Pydantic.
+- Decir por qué las descripciones (`Field(description=…)`) las lee el modelo, no son comentarios.
+- Explicar por qué un campo obligatorio ausente invita a alucinar y cuándo marcarlo `Optional`.
+
+</Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 05">
+
+<Question>
+  <Prompt>1 · Declaras `edad: int` (obligatorio) y el texto no menciona ninguna edad. ¿Qué hace el modelo?</Prompt>
+  <Option>Devuelve el objeto con `edad = 0`</Option>
+  <Option>Lanza un error de validación de Pydantic</Option>
+  <Option ok>Se la inventa: tiene que rellenar el molde igual</Option>
+  <Feedback>Un molde que obliga a rellenar es un molde que invita a alucinar. Marca `Optional` con `default=None` todo lo que *pueda* faltar (Concepto 05).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Qué papel juega el texto de `Field(description="Edad si se menciona")`?</Prompt>
+  <Option>Es un comentario para quien lea tu código</Option>
+  <Option ok>Lo lee el modelo: forma parte del prompt que recibe</Option>
+  <Option>Es el mensaje de error si el campo viene mal</Option>
+  <Feedback>Igual que el docstring de una `@tool` (Concepto 07), esas descripciones son instrucciones, no documentación. Escribirlas vagas es programar mal.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · ¿Cuándo NO conviene forzar salida estructurada?</Prompt>
+  <Option>Cuando el texto de entrada es muy largo</Option>
+  <Option ok>Cuando la respuesta la va a leer un humano: un chat, un resumen, una explicación</Option>
+  <Option>Cuando trabajas con un modelo de Groq</Option>
+  <Feedback>La salida estructurada es para lo que consume *otra pieza de software*: una base de datos, un `if`, otra API. Para prosa, estorba (Concepto 05).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Tu esquema tiene veinte campos y tres niveles de anidamiento, y el modelo falla mucho. ¿Qué haces?</Prompt>
+  <Option>Subes la temperatura para que tenga más margen</Option>
+  <Option ok>Partes la extracción en varios pasos pequeños</Option>
+  <Option>Pides el JSON en el prompt en vez de usar el esquema</Option>
+  <Feedback>Un molde enorme ahoga al modelo. Varias extracciones acotadas aciertan más que una gigante — y cada una se valida por separado (Concepto 05).</Feedback>
+</Question>
+
+</Quiz>
+
+<Recap level={2} label="↺ En una frase">
+
+`with_structured_output` + un modelo Pydantic convierten texto libre en un objeto **validado**. Deja de parsear respuestas con expresiones regulares.<Arch>archivo: `05_salida_estructurada.py`</Arch>
+
+</Recap>

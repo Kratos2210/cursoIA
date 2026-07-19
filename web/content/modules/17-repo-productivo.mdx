@@ -1,0 +1,295 @@
+El código funcional es solo una parte. Un proyecto empresarial necesita una estructura que facilite colaborar, mantener, desplegar y transferir conocimiento.
+
+<Box kind="def" label="◈ Definición · Repositorio productivo">
+
+Un **repositorio productivo** no es uno con más carpetas: es uno del que **otra persona puede hacerse cargo** sin preguntarte nada. Eso exige tres cosas que el código no dice por sí solo: cómo se opera, por qué está hecho así, y qué avisa si lo rompes.
+
+<DefList>
+  <Term>runbook</Term>
+  <Def>El manual de operación. Qué hacer cuando salta un 429, cómo se depura un grafo, cómo se revierte un despliegue. Se escribe *antes* del incidente, porque durante el incidente nadie escribe nada.</Def>
+  <Term>ADR</Term>
+  <Def>*Architecture Decision Record*: una página que registra **una decisión y su porqué** ("elegimos este vector store porque…"). Su valor no es la decisión, es el contexto — dentro de un año explicará por qué NO se hizo de la forma obvia.</Def>
+  <Term>inyección de dependencias</Term>
+  <Def>Pasar las piezas caras (modelo, retriever) **por parámetro** en vez de crearlas al importar el concepto. Es la línea que separa un script de un sistema testeable; el proyecto final lo demuestra.</Def>
+  <Term>nada se ejecuta al importar</Term>
+  <Def>La regla derivada. Si `import config` llama a la API, no puedes ni correr los tests ni abrir el concepto en un notebook.</Def>
+</DefList>
+
+</Box>
+
+```text title="estructura del repo"
+gobierno-datos-ia/
+├── services/
+│   ├── retrieval/       # carga + chunking + vector store
+│   ├── ranking/         # re-ranker (cross-encoder) + híbrido
+│   ├── orchestration/   # agente LangGraph (StateGraph)
+│   └── inference/       # gateway al LLM + fallbacks
+├── mcp_adapters/        # adaptadores MCP + controles de seguridad
+├── observability/       # instrumentación LangSmith / Arize
+├── deploy/
+│   ├── k8s/             # manifiestos Kubernetes
+│   └── serverless/      # funciones + escalado dinámico
+├── docs/adr/            # decisiones de arquitectura (ADR)
+├── tests/               # pruebas por servicio
+└── README.md            # cómo correr y operar el sistema
+```
+
+<Box kind="analogy" label="◆ ¿Qué es un ADR?">
+
+Un **Architecture Decision Record** es una nota corta que documenta una decisión importante: *qué* se decidió, *por qué*, qué alternativas se descartaron y qué consecuencias trae. Así, quien llegue después entiende el *porqué*, no solo el *qué* — y no deshace en marzo una decisión que costó aprender en enero.
+
+</Box>
+
+La plantilla completa cabe en media página. Este es un ADR real de este mismo curso:
+
+```markdown title="docs/adr/0002-re-ranker.md · un ADR completo"
+# ADR 0002 · Añadir re-ranker cross-encoder al retrieval
+
+## Contexto
+La normativa tiene fragmentos casi idénticos; el RAG confunde
+reglas parecidas y responde con la que no era.
+
+## Decisión
+Añadimos un re-ranker cross-encoder (BAAI/bge-reranker-base)
+después del retriever: recupera 20, deja los 3 mejores.
+
+## Alternativas descartadas
+- Subir k a 10: mete más ruido y más costo de tokens.
+- Fine-tuning de embeddings: caro para el tamaño del problema.
+
+## Consecuencias
++180 ms de latencia por consulta (medido).
+Precisión del contexto: de 60% a 85% en el banco de preguntas.
+```
+
+- **Componentes modulares**: cada etapa del pipeline en su carpeta, testeable por separado.
+- **Scripts de despliegue**: K8s + serverless versionados junto al código — el despliegue se lee, se revisa y se repite; no vive en la cabeza de nadie.
+- **Adaptadores MCP**: integraciones externas aisladas y con los controles de seguridad del Concepto 14.
+- **Documentación viva**: ADRs + métricas definidas + un runbook de operación.
+
+### El README como manual de operación (runbook)
+
+El README de un sistema productivo no describe el código: responde las preguntas de quien lo **opera**, sobre todo a las 3 de la mañana. Como mínimo:
+
+- **Cómo arrancarlo**: comandos exactos, variables de entorno necesarias y dónde conseguirlas.
+- **Cómo saber que está sano**: qué métricas mirar (Concepto 16) y sus valores normales.
+- **Qué hacer cuando falla**: los errores conocidos y su primera respuesta ("429 → esperar cuota o activar el fallback"; "respuestas inventadas → revisar qué contexto recuperó la traza").
+- **A quién escalar** cuando la primera respuesta no alcanza.
+
+### Servir el agente: de un script a algo que alguien usa
+
+📋 Copia y ejecuta: **curso_ejemplos/17_servidor_agente.py** — FastAPI sobre el proyecto final (`uv add fastapi uvicorn`)✓ cubierto por tests
+
+<Flow>
+  <Step n="1" title="Cliente">`POST /chat` con un mensaje y un `thread_id`.</Step>
+  <Step n="2" title="FastAPI">Valida el cuerpo con Pydantic. Rechaza lo que no encaje.</Step>
+  <Step n="3" title="Agente">El grafo, construido *una vez* en el arranque.</Step>
+  <Step n="4" title="Tools + RAG">Busca normativa, evalúa reglas, escribe auditoría.</Step>
+  <Step n="5" title="Respuesta">JSON. El 429 de Gemini sale como HTTP 503.</Step>
+</Flow>
+
+Dos decisiones sostienen ese dibujo. El grafo se construye en el `lifespan`, no por petición: indexar el RAG cuesta segundos y llamadas a la API, y hacerlo en cada `POST` sería absurdo. Y el `thread_id` viaja en el cuerpo: es lo único que separa la conversación de Ana de la de Luis, porque el *mismo* grafo atiende a ambos a la vez.
+
+Tu agente vive en una terminal. **Nadie lo usa así.** Ponerlo detrás de una API HTTP es lo que lo convierte en algo que puede consumir una web, una app móvil o un bot de WhatsApp — y en cuanto lo haces aparecen tres problemas que un script nunca tuvo:
+
+<Grid3>
+
+<Card num="" title="Concurrencia">
+
+Varios usuarios a la vez, cada uno con su conversación. Ya sabes resolverlo: el `thread_id` del checkpointer (Concepto 13).
+
+</Card>
+
+<Card num="" title="Arranque caro">
+
+Indexar el RAG tarda. No puede pasar en cada petición: el agente se construye *una vez*, al arrancar el servidor.
+
+</Card>
+
+<Card num="" title="Errores">
+
+Un 429 no puede tumbar el servidor. Se traduce a un `HTTP 503` y el servicio sigue vivo para los demás.
+
+</Card>
+
+</Grid3>
+
+```python title="17_servidor_agente.py · el contrato y el endpoint"
+# El mismo Pydantic del Concepto 05, ahora con TRES trabajos:
+# valida la entrada, serializa la salida y genera la doc de /docs.
+class ConsultaEntrada(BaseModel):
+    pregunta: str = Field(description="La consulta del usuario", min_length=1)
+    # El usuario identifica la conversación: mismo usuario = misma memoria.
+    usuario: str = Field(default="anonimo")
+
+def responder(agente, pregunta: str, usuario: str) -> str:
+    # ⭐ Aquí está TODA la concurrencia: el usuario ES el thread_id.
+    #    Dos personas comparten agente y checkpointer, pero no historial.
+    config = {"configurable": {"thread_id": usuario}}
+    resultado = agente.invoke({"messages": [("user", pregunta)]}, config)
+    return resultado["messages"][-1].content
+
+@app.post("/chat", response_model=RespuestaSalida)
+def chat(consulta: ConsultaEntrada):
+    agente = ESTADO["agente"]
+    if agente is None:                    # aún arrancando (indexando el RAG)
+        raise HTTPException(status_code=503, detail="El agente todavía está arrancando.")
+    try:
+        respuesta = responder(agente, consulta.pregunta, consulta.usuario)
+    except Exception as error:
+        # Un 429 del proveedor NO debe tumbar el servidor ni dar un 500 críptico.
+        if "RESOURCE_EXHAUSTED" in str(error) or "429" in str(error):
+            raise HTTPException(status_code=503,
+                detail="Cuota del modelo agotada (429). Reintenta en unos minutos.")
+        raise HTTPException(status_code=500, detail=f"Error interno: {error}")
+    return RespuestaSalida(respuesta=respuesta, usuario=consulta.usuario)
+```
+
+```text title="▸ deberías ver"
+$ uv run python curso_ejemplos/17_servidor_agente.py
+🚀 Arrancando: indexando la normativa (esto tarda unos segundos)…
+✅ Agente listo. Documentación en http://127.0.0.1:8000/docs
+
+$ curl -X POST http://127.0.0.1:8000/chat -H 'Content-Type: application/json' \
+       -d '{"pregunta": "¿Cuántos años se conservan los registros?", "usuario": "ana"}'
+{"respuesta":"La Regla 2 fija un mínimo de 10 años…","usuario":"ana"}
+```
+
+<Box kind="analogy" label="◆ El detalle que hace testeable este archivo">
+
+Los `import` de FastAPI están **dentro de las funciones**, no arriba. Parece una rareza; es deliberado: así el archivo se puede importar (y testear en la CI) aunque FastAPI no esté instalado. La misma idea del Concepto 15b — el `lifespan` construye el agente al arrancar y lo guarda, porque un servidor *stateless* puede tener estado *de proceso* (el índice) mientras el estado *de conversación* viva afuera, en el checkpointer.
+
+</Box>
+
+Y lo que sale gratis: FastAPI genera la documentación interactiva en `/docs` a partir de esos mismos moldes Pydantic, y un `GET /salud` le dice al balanceador de carga (Concepto 15b) si esta copia sigue viva.
+
+<Box kind="analogy" label="◆ Patrón: agente LangGraph modular + auditoría">
+
+En vez de un archivo gigante, un agente productivo se separa por responsabilidad: `state.py` (el estado), `graph_builder.py` (nodos y aristas), `rag.py`, `persistence.py` (checkpointer), `config.py` y — clave en cumplimiento — `audit.py`, que registra **cada decisión y cada tool ejecutada** en un log de auditoría (lo viste por dentro en el Concepto 13). Para desplegar el grafo, un archivo `langgraph.json` lo publica en **LangGraph Platform** (`langgraph dev` / `deploy`).
+
+</Box>
+
+<Box kind="warn" label="▲ El ciclo que amarra todo">
+
+Con esta estructura, cada cambio recorre el mismo camino automático (CI): tests por servicio → evaluación contra el dataset (¿bajó el puntaje? no pasa) → despliegue con los scripts versionados → observabilidad vigilando las métricas. La **transferencia de conocimiento** deja de depender de personas: el repo se explica solo — estructura + ADRs + runbook.
+
+</Box>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Escribe tu primer ADR (media página, con la plantilla de arriba) para tu RAG: por qué elegiste tu vector store y tu modelo de embeddings. Guárdalo en `docs/adr/0001-vector-store.md`. Extra: convierte el README de tu proyecto en runbook respondiendo las 4 preguntas del checklist.
+
+<Solution summary="Ver una solución">
+
+```markdown title="solución · docs/adr/0001-vector-store.md"
+# ADR 0001 · Vector store: InMemory para aprender, Chroma para el capstone
+
+## Contexto
+El curso indexa documentos pequeños; el capstone necesita persistencia.
+
+## Decisión
+InMemoryVectorStore en los ejemplos (cero instalación) y Chroma
+persistente en el proyecto final (no re-indexa en cada arranque).
+
+## Alternativas descartadas
+- Pinecone/pgvector: costo y complejidad innecesarios a este volumen.
+
+## Consecuencias
+Si el corpus crece o hay varios servicios leyendo, migrar a un
+vector store servido (el retriever se cambia sin tocar la cadena).
+```
+
+</Solution>
+
+</Box>
+
+<Quiz title="✅ Autoevaluación · Nivel Producción (conceptos 14–17b)">
+
+<Question>
+  <Prompt>1 · ¿Para qué sirve MCP?</Prompt>
+  <Option ok>Conectar agentes con herramientas externas de forma estándar y controlada</Option>
+  <Option>Entrenar modelos con tus datos</Option>
+  <Option>Comprimir el contexto para gastar menos tokens</Option>
+  <Feedback>El "USB-C de los agentes": un solo conector, con permisos y bordes claros (Concepto 14).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Por qué un microservicio debe ser stateless?</Prompt>
+  <Option>Porque usa menos memoria RAM</Option>
+  <Option ok>Para que sus copias sean intercambiables y pueda escalar</Option>
+  <Option>Porque lo exige Kubernetes</Option>
+  <Feedback>Si una copia "recuerda" algo propio, la siguiente petición puede caer en otra copia y perderlo. El estado vive afuera (Concepto 15b).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · ¿Cuándo conviene serverless en vez de Kubernetes?</Prompt>
+  <Option>Siempre: es más moderno</Option>
+  <Option ok>Con tráfico esporádico o de picos: pagas solo por ejecución</Option>
+  <Option>Cuando el proceso es pesado y constante</Option>
+  <Feedback>Tráfico constante y pesado → K8s. Ingesta ocasional o webhooks → serverless. Se decide por componente (Concepto 15b).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · ¿Qué es una regresión?</Prompt>
+  <Option>Un error 429 repetido</Option>
+  <Option>Cuando el modelo responde más lento</Option>
+  <Option ok>Algo que funcionaba se rompe tras un cambio</Option>
+  <Feedback>Se detecta corriendo la MISMA evaluación antes y después del cambio: si el puntaje baja, no pasa (Concepto 16).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>5 · Un ADR documenta…</Prompt>
+  <Option>La lista de bugs pendientes</Option>
+  <Option ok>Una decisión de arquitectura, su porqué y sus consecuencias</Option>
+  <Option>Las credenciales del sistema</Option>
+  <Feedback>Para que quien llegue después entienda el *porqué* — y no deshaga en marzo lo aprendido en enero (Concepto 17).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>6 · ¿Por qué el `ModeloFalso` permite testear el agente sin llamar a la API?</Prompt>
+  <Option>Porque cachea las respuestas reales de Gemini en disco</Option>
+  <Option ok>Porque recita un guion fijo: se ejercita tu lógica alrededor del LLM, no el LLM</Option>
+  <Option>Porque usa un modelo local más pequeño en vez de Gemini</Option>
+  <Feedback>El LLM no es tuyo; lo que testeas es el grafo, las tools y la auditoría. Un doble que devuelve respuestas fijas basta — y no gasta cuota (Concepto 17b).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>7 · ¿Por qué la CI del curso corre sin la llave de la API?</Prompt>
+  <Option>Para que los tests sean más rápidos al arrancar</Option>
+  <Option>Porque GitHub no permite guardar secretos</Option>
+  <Option ok>A propósito: si un test empezara a llamar al modelo, fallaría de inmediato</Option>
+  <Feedback>Sin llave, cualquier test que se cuele llamando al LLM revienta en el acto. Es la garantía de que `-m offline` de verdad no gasta cuota (Concepto 17b).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>8 · ¿Qué problema resuelve MCP frente a integrar cada herramienta a mano?</Prompt>
+  <Option>Hace que el modelo razone mejor sobre cuándo usar cada tool</Option>
+  <Option ok>Convierte M×N integraciones en M+N: un conector estándar entre agentes y herramientas</Option>
+  <Option>Cifra las llamadas a las herramientas externas</Option>
+  <Feedback>Cada agente contra cada herramienta es M×N piezas a medida; con un estándar, cada lado habla el mismo protocolo y son M+N (Concepto 14).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>9 · Corres la evaluación antes y después de un cambio y el puntaje baja. ¿Qué haces?</Prompt>
+  <Option>Subes el cambio igual: una evaluación no es un test de verdad</Option>
+  <Option>Vuelves a correr hasta que el LLM-as-judge dé un número mejor</Option>
+  <Option ok>Es una regresión: el cambio no pasa hasta entender por qué empeoró</Option>
+  <Feedback>La misma evaluación antes/después es justo lo que atrapa una regresión. Si el puntaje baja, algo que funcionaba se rompió (Concepto 16).</Feedback>
+</Question>
+
+</Quiz>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar qué hace productivo a un repo: runbook, ADRs y "nada se ejecuta al importar".
+- Escribir un ADR de media página (contexto, decisión, alternativas, consecuencias).
+- Servir un agente con FastAPI y separar la conversación de cada usuario por `thread_id`.
+- Decir por qué el agente se construye *una vez* al arrancar y por qué un 429 se traduce a HTTP 503.
+
+</Checkpoint>
+
+<Recap level={4} label="↺ En una frase">
+
+Un repo productivo separa configuración, dominio y punto de entrada — y el runbook y los ADR son parte del código, no papeleo. Servir el agente es FastAPI + un `thread_id`.<Arch>archivo: `17_servidor_agente.py` · `docs/README_runbook.md`</Arch>
+
+</Recap>

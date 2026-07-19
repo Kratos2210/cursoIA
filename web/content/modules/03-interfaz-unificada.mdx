@@ -1,0 +1,127 @@
+Toda cadena LCEL entiende los mismos verbos. No reescribes nada: es el mismo objeto `cadena`, tres formas de ejecutarlo.
+
+<Box kind="def" label="◈ Definición · Interfaz unificada (Runnable)">
+
+La **interfaz unificada** es el contrato que cumplen todas las piezas de LangChain: un prompt, un modelo, un parser y una cadena entera exponen *exactamente los mismos métodos*. Ese contrato tiene nombre: `Runnable`.
+
+Es lo que hace posible el `|` del concepto anterior. Puedes conectar A con B porque ambos prometen entender los mismos verbos, y una cadena de dos Runnables **vuelve a ser un Runnable** — por eso las cadenas se anidan sin límite.
+
+<DefList>
+  <Term>invoke(entrada)</Term>
+  <Def>Una entrada, una salida. El modo normal.</Def>
+  <Term>batch([e1, e2, …])</Term>
+  <Def>Muchas entradas **en paralelo**. No es un `for`: las llamadas salen a la vez, así que N preguntas tardan casi lo que una.</Def>
+  <Term>stream(entrada)</Term>
+  <Def>La salida llega por trozos según se genera, en vez de esperar al final. Es lo que hace que un chat "escriba" delante de ti.</Def>
+  <Term>ainvoke / abatch / astream</Term>
+  <Def>Los tres gemelos **asíncronos** (la `a` es de *async*): mismo comportamiento, pero liberan el programa mientras esperan a la API. Concepto 09.</Def>
+</DefList>
+
+</Box>
+
+```python title="interfazunificada.ipynb · los 3 modos"
+# 1) invoke: una entrada, una respuesta
+cadena.invoke({"review": "Muy buena atención."})
+
+# 2) batch: MUCHAS a la vez, en paralelo (rápido)
+cadena.batch([
+    {"review": "Me encantó, súper rápido."},
+    {"review": "Pésima atención."},
+])
+
+# 3) stream: la respuesta llega por trozos, token a token
+for trozo in cadena.stream({"review": "Cumple, nada especial."}):
+    print(trozo, end="", flush=True)
+```
+
+```text title="▸ deberías ver (algo así — solo el stream imprime, y va apareciendo palabra a palabra)"
+Neutro. La reseña describe una experiencia correcta pero sin entusiasmo.
+```
+
+<Box kind="analogy" label="◆ La versión asíncrona">
+
+Cada verbo tiene su gemelo **async** con una `a` delante: `ainvoke`, `abatch`, `astream`. Sirven para no bloquear el programa mientras esperas a la API (lo profundizamos en el Concepto 09).
+
+</Box>
+
+```python title="versión async"
+respuesta = await cadena.ainvoke({"review": "Excelente."})
+
+async for trozo in cadena.astream({"review": "Excelente."}):
+    print(trozo, end="", flush=True)
+```
+
+<Box kind="warn" label="▲ El await no va suelto">
+
+`await` **solo funciona dentro de una función `async def`**. Si pegas `await cadena.ainvoke(...)` tal cual en un script normal, Python te lanza un `SyntaxError: 'await' outside function`. Para probarlo en un archivo, envuélvelo en una función async y arráncala con `asyncio.run(mi_funcion())` — justo como hace el Concepto 09. (En un notebook de Jupyter sí puedes escribir `await` a nivel de celda: el notebook ya corre dentro de un bucle async.)
+
+</Box>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Lee un CSV con `pandas`, conviértelo con `df.to_dict(orient="records")` y pásalo a `.batch()`. Cronometra `batch` vs un `for` con `invoke`: verás la diferencia.
+
+<Solution summary="Ver una solución">
+
+```python title="solución"
+import time, pandas as pd
+
+df = pd.read_csv("resenas.csv")            # una columna llamada "review"
+filas = df.to_dict(orient="records")       # [{"review": "…"}, {"review": "…"}, …]
+
+t = time.time()
+cadena.batch(filas)
+print("batch :", round(time.time() - t, 1), "s")
+
+t = time.time()
+for f in filas:
+    cadena.invoke(f)
+print("un for:", round(time.time() - t, 1), "s")   # bastante más lento
+```
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar qué promete la interfaz unificada (`Runnable`): toda pieza entiende los mismos verbos.
+- Decir cuándo usar `invoke` (una entrada), `batch` (muchas en paralelo) y `stream` (token a token).
+- Explicar por qué `batch` es más rápido que un `for` con `invoke`.
+- Reconocer para qué sirven los gemelos `async` (`ainvoke`, `abatch`, `astream`).
+
+</Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 03">
+
+<Question>
+  <Prompt>1 · ¿Qué significa que un prompt, un modelo, un parser y una cadena entera sean todos `Runnable`?</Prompt>
+  <Option>Que todos se ejecutan en paralelo por defecto</Option>
+  <Option ok>Que todos entienden los mismos verbos, así que se conectan entre sí y una cadena vuelve a ser un Runnable</Option>
+  <Option>Que todos necesitan una llave API para funcionar</Option>
+  <Feedback>Ese contrato compartido es lo que hace posible el `|`, y por eso las cadenas se anidan sin límite (Concepto 06).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · Pegas `await cadena.ainvoke({"review": "…"})` tal cual en un archivo `.py`. ¿Qué pasa?</Prompt>
+  <Option>Funciona: `ainvoke` se encarga de arrancar el bucle async</Option>
+  <Option ok>`SyntaxError`: `await` solo vive dentro de una función `async def`</Option>
+  <Option>Funciona, pero devuelve la respuesta sin esperar a que termine</Option>
+  <Feedback>Envuélvelo en una `async def` y arráncalo con `asyncio.run(...)`. En un notebook sí puedes escribir `await` suelto, porque ya corre dentro de un bucle async (Concepto 09).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · ¿Qué te dan los gemelos asíncronos `ainvoke` / `abatch` / `astream`?</Prompt>
+  <Option>Respuestas más rápidas del modelo</Option>
+  <Option>Reintentos automáticos cuando la API falla</Option>
+  <Option ok>Liberar tu programa mientras espera a la red, en vez de quedarse bloqueado</Option>
+  <Feedback>El modelo tarda lo mismo; lo que cambia es que tu proceso puede hacer otra cosa durante la espera. Solo gana cuando estás esperando a la red (Concepto 09).</Feedback>
+</Question>
+
+</Quiz>
+
+<Recap level={1} label="↺ En una frase">
+
+Toda pieza de LCEL habla el mismo idioma: `invoke` (una entrada), `batch` (muchas en paralelo) y `stream` (token a token). Por eso las piezas se intercambian sin reescribir nada.<Arch>archivo: `03_interfaz_unificada.py`</Arch>
+
+</Recap>

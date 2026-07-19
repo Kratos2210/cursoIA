@@ -177,7 +177,8 @@ def evento_sse(datos: dict, evento: str | None = None) -> str:
     return "\n".join(lineas) + "\n\n"
 
 
-async def tokens_del_agente(agente, mensaje: str, thread_id: str, callbacks=None):
+async def tokens_del_agente(agente, mensaje: str, thread_id: str, callbacks=None,
+                            contador=None):
     """Los tokens del agente, uno a uno, según los va produciendo el modelo.
 
     `stream_mode="messages"` es el que emite **chunks de token**. Los otros modos
@@ -186,6 +187,11 @@ async def tokens_del_agente(agente, mensaje: str, thread_id: str, callbacks=None
 
     Filtramos los mensajes de las tools: al usuario le interesa la respuesta del
     agente, no el volcado del retriever.
+
+    `contador` (un `ContadorDeUso`) es opcional y recoge el consumo de paso. Se
+    le empuja el fragmento ANTES de filtrar por nodo, a propósito: la llamada que
+    decide usar una tool gasta tokens igual que la que redacta la respuesta, y si
+    solo contáramos lo que se imprime, el coste saldría corto.
     """
     configuracion = {"configurable": {"thread_id": thread_id}}
     if callbacks:
@@ -196,6 +202,8 @@ async def tokens_del_agente(agente, mensaje: str, thread_id: str, callbacks=None
         config=configuracion,
         stream_mode="messages",
     ):
+        if contador is not None:
+            contador.sumar(fragmento)
         # El nodo 'tools' también emite mensajes; solo queremos los del modelo.
         if metadatos.get("langgraph_node") == "tools":
             continue

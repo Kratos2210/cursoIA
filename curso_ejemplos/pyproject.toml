@@ -129,6 +129,43 @@ hf = [
     "langchain-huggingface>=0.1",
     "sentence-transformers>=3.0",
 ]
+# ANEXO opcional: canal de WhatsApp (canales/whatsapp/). El webhook FastAPI que
+# pone tu agente en WhatsApp vía EvolutionAPI. FUERA del gate offline (ADR-0004):
+# la CI corre `uv sync --extra dev`, así que no lo instala ni lo testea.
+# Instalar con:  uv sync --extra whatsapp
+#   (o levanta todo con canales/whatsapp/docker-compose.yml)
+whatsapp = [
+    "fastapi>=0.115",   # el webhook
+    "uvicorn==0.51.0",  # servidor ASGI
+    "httpx>=0.27",      # POST de vuelta a EvolutionAPI
+]
+# ANEXO opcional: el MISMO RAG del curso, pero en LlamaIndex (frameworks/
+# rag_llamaindex.py). FUERA del gate offline (ADR-0006): ilustrativo-ejecutable,
+# no lo instala ni lo testea la CI.  Instalar con:  uv sync --extra llamaindex
+llamaindex = [
+    "llama-index>=0.12",                    # core + query engine
+    "llama-index-llms-openai-like>=0.3",    # LLM vía endpoint OpenAI-compatible
+    "llama-index-embeddings-fastembed>=0.3",# embeddings LOCALES (ONNX, sin cuota)
+]
+# ANEXO opcional: orquestación por roles con CrewAI (frameworks/crew_crewai.py).
+# FUERA del gate offline (ADR-0006).  Instalar con:  uv sync --extra crewai
+crewai = [
+    "crewai>=0.80",   # define roles/tareas; usa LiteLLM por dentro
+]
+# ANEXO opcional: agente de voz en TIEMPO REAL (voz/agente_voz_realtime.py):
+# Deepgram STT streaming -> LLM -> TTS por frase. FUERA del gate offline
+# (ADR-0007): necesita micrófono + API de Deepgram. La versión offline y
+# testeable es el m22b.  Instalar con:  uv sync --extra voice
+voice = [
+    "deepgram-sdk>=3.7",   # STT streaming + TTS
+]
+# COMPANION opcional del m24: el mismo ejercicio contra una DB vectorial REAL
+# (vectordb/qdrant_companion.py). FUERA del gate offline (ADR-0009): necesita
+# Docker.  Levanta:   docker compose -f vectordb/docker-compose.yml up -d
+#           Instala:  uv sync --extra qdrant --extra emb
+qdrant = [
+    "qdrant-client>=1.12",   # cliente oficial (REST/gRPC)
+]
 
 [tool.uv]
 # El curso son SCRIPTS SUELTOS, no una librería instalable. Con package=false
@@ -146,8 +183,9 @@ build-backend = "hatchling.build"
 bypass-selection = true
 
 [tool.pytest.ini_options]
-# Tres suites: los ejemplos, el proyecto final modular y el proyecto LLMOps.
-testpaths = ["tests", "proyecto_final/tests", "proyecto_llmops/tests"]
+# Cuatro suites: los ejemplos, el proyecto final modular, el proyecto LLMOps y
+# el proyecto retail.
+testpaths = ["tests", "proyecto_final/tests", "proyecto_llmops/tests", "proyecto_retail/tests"]
 # Añade al path la carpeta del curso (para 'import util'), la del proyecto
 # LLMOps (para 'import app.config', 'import guardrails.rbac'…) y la del
 # proyecto final (para 'import config', 'import rag'…, igual que main.py).
@@ -156,6 +194,11 @@ testpaths = ["tests", "proyecto_final/tests", "proyecto_llmops/tests"]
 #    los dos ofrecen un 'app'. Aquí gana el paquete proyecto_llmops/app/ y no
 #    el shim proyecto_final/app.py. (Y por eso app/ necesita su __init__.py:
 #    sin él sería un namespace package y perdería igual, fuese cual fuese el orden.)
+#
+# ⚠️ proyecto_retail NO va en pythonpath: sus módulos se importan con el prefijo
+#    completo 'proyecto_retail.app…' (desde '.'), justo para NO chocar con el
+#    'app'/'guardrails' de proyecto_llmops. Por eso su carpeta es un paquete
+#    (proyecto_retail/__init__.py) y aquí basta con '.'.
 pythonpath = [".", "proyecto_llmops", "proyecto_final"]
 # Cualquier archivo que empiece con test_ se considera test.
 #

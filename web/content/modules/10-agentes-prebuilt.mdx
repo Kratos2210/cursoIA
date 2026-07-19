@@ -1,0 +1,189 @@
+<LevelBanner level={3} title="Empieza el Nivel Avanzado">
+
+Construimos agentes de verdad y un RAG de calidad profesional: memoria automática, re-ranking y grafos de estado.
+
+</LevelBanner>
+
+En el Concepto 08 armaste el ciclo **a mano**. LangGraph lo hace por ti y lo repite hasta resolver el objetivo.
+
+<Box kind="def" label="◈ Definición · Agente">
+
+Un **agente** es un LLM metido en un **bucle** con acceso a herramientas, donde *el modelo decide cuándo parar*. Esa última parte es la definición entera: en una cadena, tú fijas cuántos pasos hay; en un agente, el modelo sigue pidiendo herramientas hasta que considera que ya puede responder.
+
+Por eso un agente no es "una cadena más larga". Una cadena es una línea recta y su longitud se conoce antes de ejecutarla. Un agente es un ciclo cuya longitud **se descubre en tiempo de ejecución** — y por eso necesita un límite de iteraciones, un presupuesto y observabilidad.
+
+<DefList>
+  <Term>ReAct</Term>
+  <Def>El patrón que sigue (*Reason + Act*): razona qué hacer, actúa llamando a una herramienta, observa el resultado, vuelve a razonar. Es el ciclo A→D del Concepto 08, repetido.</Def>
+  <Term>create_react_agent</Term>
+  <Def>La versión "ya hecha" de LangGraph: le pasas modelo + herramientas + memoria y te devuelve el agente con el ciclo montado. En el Concepto 13 lo abrimos por dentro.</Def>
+  <Term>checkpointer</Term>
+  <Def>Dónde se guarda el estado entre turnos. Con uno en memoria basta para probar; en producción va a Sqlite o Postgres para sobrevivir a un reinicio.</Def>
+</DefList>
+
+</Box>
+
+<Flow>
+  <Step n="1" title="Pregunta">Entra al agente con la memoria del hilo.</Step>
+  <Step n="2" title="El modelo piensa">¿Me basta lo que sé o necesito una tool?</Step>
+  <Step n="3" title="Actúa">LangGraph ejecuta la tool que pidió.</Step>
+  <Step n="4" title="Observa">El resultado entra al historial…</Step>
+  <Step n="2 otra vez" title="Vuelve a pensar">Repite hasta que no pida más tools.</Step>
+  <Step n="fin" title="Responde">Redacta con los datos reales.</Step>
+</Flow>
+
+La flecha `↺` es todo el asunto: el paso 4 no termina la ejecución, la *devuelve* al paso 2. Un agente no es una cadena más larga, es una cadena **que se muerde la cola** hasta que el modelo deja de pedir herramientas.
+
+<Box kind="analogy" label="◆ Analogía (de tu agent.py)">
+
+Una **cadena** es una línea de ensamblaje (sin libertad). Un **router** es un recepcionista (te manda a una puerta y termina). Un **agente** es un empleado con cinturón y *autonomía*: piensa ➡ actúa ➡ observa ➡ responde, en ciclo.
+
+</Box>
+
+```python title="funcionaconver_v3_streaming.py · agente con memoria"
+from langgraph.prebuilt import create_react_agent
+from langgraph.checkpoint.memory import MemorySaver
+
+memoria = MemorySaver()   # recuerda la charla (indexada por thread_id)
+
+agente = create_react_agent(
+    llm,
+    tools=[calculadora_descuentos],
+    checkpointer=memoria,
+    prompt="Eres un asesor de ventas claro y amable.",
+)
+
+config = {"configurable": {"thread_id": "cliente_001"}}   # id de conversación
+r = agente.invoke({"messages": [("user", "¿Cuánto pago por 3500 con 18% off?")]}, config)
+print(r["messages"][-1].content)
+```
+
+```text title="▸ deberías ver (algo así)"
+Con el 18% de descuento, pagarías 2870 soles. ¿Te ayudo con algo más?
+```
+
+Mucho más corto que el Concepto 08: LangGraph une cerebro + herramientas + memoria y corre el ciclo A→D solo. El `prompt=` da personalidad; el `thread_id` separa usuarios.
+
+<Box kind="analogy" label="◆ Novedad LangChain 1.x · el camino recomendado">
+
+En LangChain 1.x el estándar recomendado es `from langchain.agents import create_agent` (misma idea, API más limpia, soporta "middleware"). El curso usa `create_react_agent` de `langgraph.prebuilt` porque es el que ya tenías y **sigue funcionando** — son primos —, pero al usarlo verás un aviso de *deprecation* (`LangGraphDeprecatedSinceV10`): la función se mudó a `langchain.agents.create_agent`. Migrar es cambiar el import y añadir el paquete —`uv add langchain`—; todo lo demás de este concepto queda igual.
+
+</Box>
+
+### Streaming token a token
+
+```python title="streaming en un agente"
+from langchain_core.messages import AIMessageChunk
+
+for chunk, meta in agente.stream(
+    {"messages": [("user", "Dame 3 tips de ventas.")]}, config,
+    stream_mode="messages",
+):
+    if isinstance(chunk, AIMessageChunk) and chunk.content:
+        print(chunk.content, end="", flush=True)
+```
+
+```text title="▸ deberías ver (va apareciendo token a token, no de golpe)"
+1) Escucha antes de vender: pregunta qué necesita el cliente.
+2) Muestra el beneficio, no la característica.
+3) Cierra con una acción concreta: "¿lo agendamos?".
+```
+
+<Box kind="warn" label="▲ Cada vuelta del agente cuesta tokens">
+
+Un agente **no responde en una sola llamada**: puede iterar varias veces por pregunta (pensar → pedir tool → observar → volver a pensar). Cada vuelta es **una llamada más al modelo**, y cada llamada son tokens que se cobran. Un agente que se "engancha" pidiendo herramientas puede multiplicar el coste de una consulta sin que te des cuenta. Vigila el gasto (Concepto 16) y pon un **límite de iteraciones** (`recursion_limit` en la config) para que un ciclo que se descontrola no se te lleve la cuota entera.
+
+</Box>
+
+<Avoid label="⛔ Cuándo NO usar un agente (usa una cadena)">
+
+- **Cuando el flujo es predecible.** Si siempre haces los mismos pasos en el mismo orden, una cadena ([c02](/concepto/02-prompts-lcel)) o un router ([c08](/concepto/08-routing)) hace lo mismo más barato, más rápido y —lo importante— testeable de punta a punta.
+- **Cuando el coste o la latencia importan.** Un agente puede dar varias vueltas por consulta; una cadena da una sola llamada. No pagues la autonomía si no la necesitas.
+- **Cuando necesitas resultados reproducibles.** La longitud del ciclo de un agente se descubre en ejecución: eso es potencia, pero también imprevisibilidad. Para un paso que debe salir igual siempre, no uses un agente.
+
+</Avoid>
+
+<Box kind="def" label="◈ Más allá de ReAct: Plan-and-Execute y Reflexion">
+
+ReAct decide **un paso a la vez**: pensar → actuar → mirar → repetir. Para muchas tareas basta, pero hay otras dos arquitecturas canónicas que conviene reconocer por nombre. **Plan-and-Execute** (también verás *Plan-and-Solve*): el agente primero escribe el **plan completo** ("1. buscar X, 2. cruzar con Y, 3. redactar") y luego lo ejecuta paso a paso, replanificando solo si algo falla. Gana cuando la tarea es **multi-paso con dependencias** — con ReAct puro, el agente puede perderse a mitad de camino porque nunca miró el problema entero; además los pasos planificados pueden usar un modelo más barato que el planificador. **Reflexion**: el agente genera, un **crítico** (él mismo u otro modelo) señala qué está mal, y reintenta con esa crítica en el contexto. Gana cuando lo que importa es la **calidad iterativa** de una salida (código que debe pasar tests, un informe con requisitos). Ninguna necesita otro framework: ambas se arman con el `StateGraph` del [c13](/concepto/13-langgraph-a-fondo) — Plan-and-Execute es un nodo planificador + un bucle de ejecución; Reflexion es exactamente el patrón generar→evaluar→reintentar del Paso 1 del c13. La elección es por caso de uso, no por moda: paso a paso exploratorio → ReAct; multi-paso con dependencias → Plan-and-Execute; calidad con criterio verificable → Reflexion.
+
+</Box>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Dale dos tools: `consultar_disponibilidad` y `agendar_cita`. En los docstrings escribe "usa consultar cuando PREGUNTAN" y "usa agendar SOLO cuando CONFIRMAN". Observa cómo elige según tu intención.
+
+<Solution summary="Ver una solución">
+
+```python title="solución (es tu funcionaconver_v3_streaming.py)"
+@tool
+def consultar_disponibilidad(fecha: str) -> str:
+    """Consulta horarios libres para una fecha. Úsala cuando el
+    usuario PREGUNTA por disponibilidad, sin confirmar todavía."""
+    return f"El {fecha} hay turnos a las 10:00 y 15:30"
+
+@tool
+def agendar_cita(fecha: str, hora: str, nombre: str) -> str:
+    """Registra una cita. Úsala SOLO cuando el usuario CONFIRMA
+    explícitamente que quiere agendar (dice 'sí', 'resérvame', etc.)."""
+    return f"Cita agendada: {nombre}, {fecha} {hora}"
+
+agente = create_react_agent(llm, tools=[consultar_disponibilidad, agendar_cita],
+                            checkpointer=MemorySaver())
+# "¿Tienes algo el viernes?"  -> consulta.  "Sí, resérvame a las 10" -> agenda.
+```
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Definir qué es un agente: un LLM en un bucle con herramientas donde *el modelo* decide cuándo parar.
+- Explicar por qué un agente no es "una cadena más larga" (su longitud se descubre en tiempo de ejecución).
+- Reconocer para qué sirven el `checkpointer` y el `thread_id` (memoria separada por conversación).
+- Decir por qué conviene un `recursion_limit` y vigilar el gasto: cada vuelta del ciclo cuesta tokens.
+
+</Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 10">
+
+<Question>
+  <Prompt>1 · ¿Qué distingue de verdad a un agente de una cadena larga?</Prompt>
+  <Option>Que usa LangGraph en vez de LCEL</Option>
+  <Option ok>Que el *modelo* decide cuándo parar: la longitud del ciclo se descubre en ejecución</Option>
+  <Option>Que puede llamar a varias herramientas a la vez</Option>
+  <Feedback>En una cadena tú fijas los pasos antes de correrla. En un agente no sabes cuántas vueltas dará — y de ahí salen el `recursion_limit` y la factura variable (Concepto 10).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · Dos clientes conversan a la vez con el mismo agente. ¿Cómo evitas que se mezclen sus historiales?</Prompt>
+  <Option>Creando un agente distinto por cliente</Option>
+  <Option ok>Pasando un `thread_id` distinto en la config; el checkpointer separa cada conversación</Option>
+  <Option>Limpiando la memoria del agente después de cada respuesta</Option>
+  <Feedback>Un `thread_id`, una conversación. El checkpointer guarda el estado indexado por esa etiqueta — en memoria para probar, en Postgres para producción (Concepto 10).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · ¿Por qué conviene poner un `recursion_limit`?</Prompt>
+  <Option>Para que el modelo responda más rápido</Option>
+  <Option>Porque LangGraph lo exige al usar un checkpointer</Option>
+  <Option ok>Porque cada vuelta del ciclo es otra llamada al modelo, y un agente enganchado se lleva la cuota entera</Option>
+  <Feedback>Un agente no responde en una sola llamada: itera. Sin techo, un bucle que se descontrola multiplica el coste de una sola consulta (Concepto 16).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · La tarea es multi-paso y con dependencias entre pasos ("busca X, cruza con Y, redacta"). ¿Qué arquitectura encaja mejor?</Prompt>
+  <Option>ReAct puro: ya decide un paso a la vez</Option>
+  <Option ok>Plan-and-Execute: primero el plan completo, luego la ejecución paso a paso</Option>
+  <Option>Reflexion: generar, criticar y reintentar</Option>
+  <Feedback>ReAct nunca mira el problema entero y puede perderse a mitad de camino. Reflexion es para calidad iterativa con criterio verificable (código que pasa tests), no para dependencias (Concepto 10).</Feedback>
+</Question>
+
+</Quiz>
+
+<Recap level={3} label="↺ En una frase">
+
+`create_react_agent` cierra por ti el ciclo pensar→actuar→observar, y el *checkpointer* lo vuelve conversacional: un `thread_id`, una conversación.<Arch>archivo: `10_agente.py`</Arch>
+
+</Recap>

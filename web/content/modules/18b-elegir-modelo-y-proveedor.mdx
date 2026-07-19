@@ -1,0 +1,249 @@
+<LevelBanner level={5} title="Producción · Decisión de arquitectura">
+
+Ya tienes el capstone funcionando. Antes de ponerlo delante de usuarios reales toca decidir QUÉ modelo lo mueve y DÓNDE corre — sin reescribir una línea.
+
+</LevelBanner>
+
+Construiste el capstone contra Gemini porque era el camino por defecto. Pero una solución real obliga a dos decisiones que hasta ahora esquivamos: **¿qué modelo?** (capacidad, precio, ventana de contexto) y **¿dónde corre?** (API de pago, API hospedada, cloud gestionado, tu propia máquina). La buena noticia: como *ningún* ejemplo del curso instancia un modelo a mano — todos llaman a `util.crear_llm()` — cambiar de decisión es **una línea del `.env`**, no una reescritura.
+
+<Box kind="def" label="◈ Definición · Modelos de pago vs. open weights">
+
+Un modelo es de **pago / propietario** cuando sus pesos son secretos y solo lo usas pagando por token a quien lo hospeda; es de **open weights** cuando sus pesos se descargan y puedes correrlo tú. Elegir un modelo es elegir a la vez su *capacidad*, su *precio por token* y su *ventana de contexto*.
+
+<DefList>
+  <Term>modelo de pago / propietario</Term>
+  <Def>Pesos cerrados; pagas inferencia por token (GPT-5, Claude, Gemini). No puedes verlo ni moverlo de sus servidores.</Def>
+  <Term>open weights</Term>
+  <Def>Pesos descargables y ejecutables por ti (Llama, Qwen, DeepSeek, Mistral). "Open weights" no es lo mismo que "open source": suele publicarse el modelo entrenado, no los datos ni el código de entrenamiento.</Def>
+  <Term>licencia de modelo</Term>
+  <Def>El contrato que dice qué puedes hacer con esos pesos. La *Llama Community License* pone restricciones (p. ej. cláusula para productos de >700M usuarios); *Apache 2.0* (Qwen, DeepSeek, Mistral) permite uso comercial libre. Revísala antes de construir un producto encima.</Def>
+</DefList>
+
+</Box>
+
+<Box kind="warn" label="▲ ”open source” ≠ ”gratis”">
+
+Que los pesos de un Llama 70B sean descargables no lo hace gratis de usar. Servir un modelo de ese tamaño en producción exige GPUs caras (memoria de decenas de GB) encendidas y mantenidas. Lo que es gratis es **el archivo de pesos**; la **inferencia** — el cómputo que lo hace responder — siempre la paga alguien, tú o el proveedor que te lo hospeda.
+
+</Box>
+
+<Box kind="analogy" label="◆ La partitura y la orquesta">
+
+Los pesos abiertos son como una **partitura gratuita**: puedes descargarla, pero no suena sola. Para oírla necesitas una **orquesta** — las GPUs y la operación que ejecutan la inferencia — y eso cuesta. Tienes dos opciones: *contratar* una orquesta que ya está montada (una API hospedada como Groq o Together) o *montar la tuya* (servidores on-premise). La partitura es la misma; lo que pagas es quién la toca.
+
+</Box>
+
+### Los cuatro caminos para correr un modelo
+
+Toda decisión de despliegue cae en uno de estos cuatro cajones, ordenados de "menos fricción / menos control" a "más control / más trabajo".
+
+De cero fricción (izquierda) a control total (derecha)
+
+<Flow>
+  <Step n="①" title="API de pago">OpenAI · Anthropic · Gemini. Pagas por token, cero infraestructura.</Step>
+  <Step n="②" title="Open weights hospedados">Groq · Together · OpenRouter · DeepSeek. Modelos abiertos, pero corren en su nube.</Step>
+  <Step n="③" title="Cloud gestionado">AWS Bedrock · GCP Vertex · Azure Foundry. Los modelos dentro de tu nube corporativa.</Step>
+  <Step n="④" title="On-premise">Ollama (dev) · vLLM (prod). Los pesos en tu hardware, nada sale de tu red.</Step>
+</Flow>
+
+#### ① API de pago (propietaria)
+
+Le pides una llave a OpenAI, Anthropic o Google, pones la variable en el `.env` y ya estás produciendo tokens. Es el camino con **cero fricción** y el que da acceso a los modelos más capaces del mercado. El precio es el precio de lista por token y tus datos viajan a los servidores del proveedor.
+
+#### ② Open weights vía API hospedada
+
+Otras empresas descargan los pesos abiertos (Llama, Qwen, DeepSeek) y te venden la inferencia. **Groq** destaca por latencia (corre en LPUs, no GPUs), **Together** por catálogo, **OpenRouter** por ser un único endpoint hacia cientos de modelos (con variantes `:free` para prototipar), y **DeepSeek** por precio agresivo. Casi todos hablan el *dialecto de OpenAI*, así que en el curso son una `base_url` distinta y nada más.
+
+#### ③ Cloud gestionado — AWS Bedrock (y sus equivalentes)
+
+El camino que elige una empresa que ya vive en AWS, GCP o Azure. **Amazon Bedrock** es un servicio que te da acceso a modelos de varios proveedores (Anthropic, Meta, Mistral, Amazon…) *desde dentro de tu propia cuenta de AWS*. Lo que aporta a una organización:
+
+- **IAM y facturación unificadas**: los modelos se pagan y se permisan como cualquier otro servicio AWS; no hay una tarjeta ni una consola aparte por proveedor.
+- **Los datos no salen de tu VPC**: las llamadas se quedan en tu red privada de AWS, no viajan al servidor público del proveedor del modelo. Es la diferencia que un banco necesita para aprobar el proyecto.
+- **Catálogo multi-modelo con una sola integración**: cambias de Claude a Llama sin cambiar de SDK ni de credenciales.
+- **Compliance**: hereda las certificaciones de AWS (SOC 2, HIPAA, etc.), que en un sector regulado ya tienes auditadas.
+
+```python title="solo lectura — requiere cuenta AWS y uv add langchain-aws"
+from langchain_aws import ChatBedrockConverse
+llm = ChatBedrockConverse(
+    model="anthropic.claude-haiku-4-5",   # en Bedrock los ids llevan prefijo del proveedor
+    region_name="us-east-1",              # la llave no es una API key: son credenciales AWS (IAM)
+)
+```
+
+En GCP el equivalente es **Vertex AI** y en Azure, **Azure AI Foundry**: la misma idea — modelos de terceros servidos dentro de tu nube, con la identidad, la red y la factura de la nube que ya usas.
+
+#### ④ On-premise — de tu portátil a tu datacenter
+
+Los pesos corren en *tu* hardware. Para **desarrollo**, `Ollama` es imbatible: lo instalas, descargas `qwen3:8b` y ya tienes un modelo local sin llave ni cuota (en el curso es literalmente `LLM_PROVIDER=ollama`). Para **producción**, la herramienta es **vLLM**: un servidor de inferencia con *continuous batching* (agrupa peticiones en vuelo) que exprime el throughput de una GPU mucho mejor que Ollama, pensado para servir a muchos usuarios a la vez.
+
+<Box kind="warn" label="▲ La realidad del hardware">
+
+Un modelo **7B cuantizado** corre en un portátil decente. Un **70B** pide del orden de **2×A100 o 2×H100** (decenas de miles de dólares, o varios dólares/hora en la nube) solo para caber en memoria. El coste no desaparece cuando eliges on-premise: se transforma en **fierros y operación** — comprar/alquilar GPUs, mantenerlas encendidas, parchear, monitorear. On-premise gana en privacidad y control, no siempre en dinero.
+
+</Box>
+
+### Cuánto cuesta cada modelo (consultado: 2026-07-10)
+
+Precios de lista por millón de tokens, tomados de las páginas oficiales de cada proveedor el 2026-07-09. Sirven para *estimar* y *comparar*, no como contrato.
+
+| Modelo | Proveedor | Tipo | $/1M entrada | $/1M salida | Ventana | Nota |
+| --- | --- | --- | --- | --- | --- | --- |
+| `GPT-5.5` | OpenAI | pago | $5.00 | $30.00 | ~1M | 272K estándar; sobre eso 2× entrada / 1.5× salida. Ya salió 5.6 al mismo precio. |
+| `gpt-5.4-mini` | OpenAI | pago | $0.75 | $4.50 | 400K | El barato de OpenAI. Reemplaza al viejo `gpt-5-mini`. |
+| `Claude Opus 4.8` | Anthropic | pago | $5.00 | $25.00 | 1M | Máxima capacidad de Anthropic. |
+| `Claude Sonnet 5` | Anthropic | pago | $3.00 | $15.00 | 1M | Precio intro $2/$10 hasta 2026-08-31. |
+| `Claude Haiku 4.5` | Anthropic | pago | $1.00 | $5.00 | 200K | El barato y rápido de Anthropic. |
+| `Gemini 2.5 Pro` | Google | pago | $1.25 | $10.00 | 1M | Sobre 200K tokens sube a $2.50 / $15.00. |
+| `Gemini 2.5 Flash` | Google | pago | $0.30 | $2.50 | 1M | Tarifa única sin tramos. |
+| `gemini-3.1-flash-lite` | Google | pago | $0.25 | $1.50 | 1M | Tiene capa gratuita. **El default del curso**, tras apagarse `gemini-2.0-flash` el 2026-06-01. |
+| `deepseek-v4-flash` | DeepSeek | open weights (API) | $0.14 | $0.28 | 1M | Cache miss; el nombre `deepseek-chat` se renombra el 2026-07-24. |
+| `Llama 3.3 70B` | Groq | open weights | $0.59 | $0.79 | 128K | Llama Community License. |
+| `Qwen3 32B` | Groq | open weights | $0.29 | $0.59 | 131K | Apache 2.0. El que usa el curso en Groq. |
+| `qwen3:8b` (Ollama, tu máquina) | local | open weights | $0 | $0 | según tu RAM | Cero coste por token: pagas hardware y electricidad. |
+
+<Box kind="warn" label="▲ Esta tabla caduca">
+
+Los precios de los LLM cambian cada pocos meses (bajan casi siempre, y los nombres de modelo se renombran aún más rápido: OpenAI ya publica GPT-5.6). **Fecha de esta consulta: 2026-07-09.** Antes de decidir con dinero real, mira siempre la página oficial:
+
+- [OpenAI](https://platform.openai.com/docs/pricing) · [Gemini](https://ai.google.dev/gemini-api/docs/pricing) · [Anthropic](https://www.anthropic.com/pricing)
+- [DeepSeek](https://api-docs.deepseek.com/quick_start/pricing) · [Groq](https://groq.com/pricing)
+
+</Box>
+
+### Cómo decidir (y cómo cambiar de opinión barato)
+
+No hay un "mejor modelo": hay un mejor modelo *para tu restricción dominante*. Empieza por identificarla.
+
+| Si tu prioridad es… | Camino recomendado |
+| --- | --- |
+| Privacidad / regulación (banca, salud) | On-premise (④) o Bedrock/Vertex dentro de tu VPC (③). |
+| Latencia mínima | Groq (LPU) — respuestas casi instantáneas. |
+| Coste mínimo | DeepSeek · Gemini Flash · open weights hospedados. |
+| Máxima capacidad de razonamiento | Claude Opus · GPT-5. |
+| Ventana enorme (1M tokens) | Claude · Gemini. |
+| Prototipar sin gastar | Free tier de Groq / Gemini · OpenRouter `:free` · Ollama local. |
+
+Y como todo el curso pasa por `util.crear_llm()`, cambiar de camino es cambiar una variable — el conmutador ya soporta todos estos proveedores:
+
+```python title=".env · cambiar de proveedor = cambiar una línea"
+# Elige UNO. crear_llm() lee esto y construye el modelo del proveedor activo.
+LLM_PROVIDER=openai        # o: anthropic | google | groq | openrouter | deepseek | ollama
+# LLM_MODELO=…             # opcional: manda sobre el default del proveedor
+
+# …y pon la llave del proveedor que activaste:
+OPENAI_API_KEY=sk-...      # openai      (default gpt-5.4-mini)
+# ANTHROPIC_API_KEY=sk-ant-...           # anthropic (default claude-haiku-4-5)
+# OPENROUTER_API_KEY=sk-or-...           # openrouter (modelos :free para prototipar)
+# DEEPSEEK_API_KEY=sk-...                # deepseek   (default deepseek-v4-flash)
+# GROQ_API_KEY=gsk_...                   # groq       (default qwen/qwen3-32b)
+# GOOGLE_API_KEY=AIza...                 # google     (default gemini-3.1-flash-lite)
+# (ollama no necesita llave: corre en tu máquina)
+```
+
+<Box kind="analogy" label="◆ El respaldo puede ser de otra empresa">
+
+Recuerda el [Concepto 09](/concepto/09-resiliencia-async): `with_fallbacks` deja poner un modelo principal de pago y un **respaldo barato de otro proveedor**. La estrategia recomendada para arrancar: empieza con una **API de pago** (cero fricción, sales rápido), **mide el coste real** con lo del [Concepto 16b](/concepto/16-observabilidad-y-costo) (tokens → dólares), y **abarata después** — a Gemini Flash, a DeepSeek o a un open weights — sin tocar el código, solo el `.env`.
+
+</Box>
+
+<Box kind="analogy" label="◆ No es un matrimonio">
+
+Elegir modelo se siente como una decisión enorme e irreversible. No lo es. Gracias a la **interfaz unificada** de LangChain ([Concepto 03](/concepto/03-interfaz-unificada)), el modelo es una **variable de entorno**: pruebas cuatro, mides, te quedas con el que mejor equilibra capacidad y coste, y lo cambias el mes que viene cuando salga uno mejor o más barato.
+
+</Box>
+
+<Avoid label="⛔ Cuándo NO cambiar de modelo (ni perseguir el más nuevo o barato)">
+
+- **Sin re-evaluar.** Cambiar el modelo en producción sin correr tu dataset ([c16](/concepto/16-observabilidad-y-costo)) es apostar la calidad a ciegas: uno más barato puede alucinar más en TU caso.
+- **Por hype.** El modelo recién salido, o el más barato, no es el mejor para toda tarea. Si tu caso pide razonamiento fuerte o ventana enorme, el flagship se paga solo; si no, un modelo *flash* sobra.
+- **Montando on-premise para "ahorrar" sin volumen.** Las GPUs encendidas cuestan aunque nadie pregunte. On-premise gana por privacidad y control, no por dinero, hasta que tu tráfico es grande y constante.
+
+</Avoid>
+
+<Box kind="practice" label="✎ Para practicar">
+
+1. Consigue una llave gratuita de **OpenRouter** y corre el ejemplo `01_primer_modelo.py` con un modelo `:free` (`LLM_PROVIDER=openrouter` + `LLM_MODELO=…:free`). No debería costarte un centavo.
+2. Con la tabla de precios, **estima el coste mensual** del capstone si atiende 1000 consultas/día de ~2K tokens de entrada y ~500 de salida, en *dos* modelos distintos (p. ej. GPT-5.5 vs. Gemini 2.5 Flash). Compara.
+3. Un **banco** con datos confidenciales de clientes quiere este asistente. ¿Qué camino de los cuatro elegirías y por qué? Justifica en 3 líneas.
+
+<Solution summary="Ver soluciones razonadas">
+
+**1.** Con `LLM_PROVIDER=openrouter`, tu llave `OPENROUTER_API_KEY` y un modelo terminado en `:free`, `crear_llm()` lo construye igual que cualquier otro (OpenRouter habla el dialecto de OpenAI). El ejemplo 01 imprime la respuesta sin que cambies una línea de código.
+
+**2.** Consumo diario = 1000 × (2000 in + 500 out). Al mes (×30): 60M tokens de entrada + 15M de salida.
+ · *GPT-5.5*: 60 × $5.00 + 15 × $30.00 = $300 + $450 = **$750/mes**.
+ · *Gemini 2.5 Flash*: 60 × $0.30 + 15 × $2.50 = $18 + $37.50 = **$55.50/mes**.
+ El flagship cuesta ~13×. La lección: mide primero si de verdad necesitas la capacidad del caro; muchas tareas del capstone las cubre Flash. (Y con caché de prompt y descuentos por batch se abarata más.)
+
+**3.** **On-premise (④) o cloud gestionado en tu VPC (③, Bedrock/Vertex).** Los datos de clientes de un banco no pueden viajar a un servidor público de terceros por regulación. Bedrock deja usar Claude sin que las llamadas salgan de la VPC de AWS y hereda su compliance (SOC 2, etc.); on-premise da control total a cambio de operar el hardware. Una API de pago pública (①) queda descartada aunque sea la más cómoda.
+
+</Solution>
+
+</Box>
+
+<Box kind="def" label="◈ Dos palancas de coste que la tabla no muestra: caché de prompt y Batch API">
+
+El precio por token de arriba asume que pagas *cada* token *cada* vez. Dos mecanismos rompen ese supuesto y pueden recortar la factura a la mitad o más:
+
+<DefList>
+  <Term>caché de prompt (prompt caching)</Term>
+  <Def>Si tu prompt repite un prefijo largo en cada llamada —el *system prompt*, los ejemplos few-shot, el documento de contexto—, el proveedor **cachea** ese prefijo y te cobra esos tokens con un **descuento fuerte** (hasta del orden de 10× más baratos, según el proveedor) en las llamadas siguientes. La ganancia crece cuanto más largo y estable sea el prefijo: un agente con 2K tokens de instrucciones que atiende miles de consultas paga esas instrucciones casi gratis a partir de la segunda.</Def>
+  <Term>Batch API (procesamiento por lotes)</Term>
+  <Def>Para trabajo que **no** es interactivo —evaluar un dataset ([c16](/concepto/16-observabilidad-y-costo)), enriquecer un catálogo, clasificar miles de reclamos— mandas todo junto y aceptas la respuesta en minutos/horas en vez de segundos. A cambio, típicamente ~**50% de descuento**. La regla: si nadie espera la respuesta en pantalla, va por batch.</Def>
+</DefList>
+
+Ambas se combinan con la disciplina del [c16b](/concepto/16-observabilidad-y-costo): mide primero el coste real en tokens, y luego decide dónde aplicar caché (prefijos repetidos) y batch (trabajo diferible).
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Distinguir un modelo de pago de uno de open weights, y por qué "abierto" no es "gratis".
+- Nombrar los cuatro caminos de despliegue y cuándo conviene cada uno.
+- Explicar qué aporta AWS Bedrock a una empresa regulada frente a una API pública.
+- Estimar el coste mensual de un servicio con la tabla de precios, y cambiar de proveedor tocando solo el `.env`.
+
+</Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 18b">
+
+<Question>
+  <Prompt>1 · Tu equipo propone: "usemos Llama, es open source, así no pagamos nada". ¿Dónde está el error?</Prompt>
+  <Option>Llama no es open weights: solo publica el código, no el modelo entrenado</Option>
+  <Option ok>Gratis es el archivo de pesos; la inferencia —GPUs encendidas y operadas— siempre la paga alguien</Option>
+  <Option>Los pesos abiertos no se pueden usar en un producto comercial</Option>
+  <Feedback>La partitura es gratis, la orquesta no. Y ojo con la licencia: la de Llama pone condiciones que Apache 2.0 (Qwen, Mistral, DeepSeek) no.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · Un banco frena el proyecto porque "los datos de clientes no pueden salir". ¿Qué aporta Bedrock que una API pública no?</Prompt>
+  <Option ok>Las llamadas se quedan en tu VPC y heredan el compliance de AWS, con IAM y factura unificadas</Option>
+  <Option>Que los modelos responden más rápido al estar en tu misma región</Option>
+  <Option>Que puedes descargarte los pesos del modelo y auditarlos</Option>
+  <Feedback>Bedrock, Vertex y Foundry son "modelos de terceros dentro de tu nube": la ventaja es de red, identidad y auditoría — no de velocidad, y sin acceso a los pesos.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Sale un modelo más barato y lo pones en producción cambiando una línea del `.env`. ¿Qué te falta?</Prompt>
+  <Option>Reescribir las cadenas para el dialecto de API del nuevo proveedor</Option>
+  <Option ok>Volver a correr tu dataset de evaluación: más barato puede alucinar más en TU caso</Option>
+  <Option>Pedir una llave distinta para cada entorno antes de conmutar</Option>
+  <Feedback>Cambiar de modelo es barato justo por `crear_llm()`. Lo que nunca es gratis es dar por hecha la calidad sin medirla (c16).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Tu agente manda los mismos 2K tokens de instrucciones en cada una de miles de consultas. ¿Qué palanca ataca ese coste?</Prompt>
+  <Option ok>El caché de prompt: el proveedor cobra ese prefijo estable con descuento fuerte desde la segunda llamada</Option>
+  <Option>La Batch API, que agrupa las consultas interactivas y las cobra a mitad de precio</Option>
+  <Option>Bajar la temperatura, que reduce los tokens que el modelo genera</Option>
+  <Feedback>Caché de prompt = prefijo largo y estable. La Batch API es para trabajo que nadie espera en pantalla; en un chat en vivo no aplica.</Feedback>
+</Question>
+
+</Quiz>
+
+<Recap level={5} label="↺ En una frase">
+
+Elegir modelo = elegir a la vez **camino de despliegue + precio por token + ventana de contexto**; con `crear_llm()` esa elección vive en el `.env`, no en el código.<Arch>archivos: `util.py` · `.env`</Arch>
+
+</Recap>

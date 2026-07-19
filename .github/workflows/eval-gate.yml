@@ -35,7 +35,7 @@ on:
 
 jobs:
   gate:
-    name: tríada RAG sobre el dataset
+    name: eval-gate (llmops + retail)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -63,7 +63,7 @@ jobs:
             echo "presente=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Correr el gate
+      - name: Gate llmops (tríada RAG)
         if: steps.llave.outputs.presente == 'true'
         env:
           LLM_PROVIDER: openai
@@ -79,3 +79,17 @@ jobs:
         # Si el score baja del umbral, ci_gate.py sale con 1 y el job falla.
         # Ese fallo ES el propósito del workflow, no un accidente.
         run: uv run python proyecto_llmops/evals/ci_gate.py
+
+      - name: Gate retail (precio fiel al catálogo)
+        # !cancelled(): corre AUNQUE el gate de llmops haya vetado, para que ambos
+        # invariantes (tríada RAG y "cero precios inventados") reporten en la misma
+        # corrida. El job falla si CUALQUIERA de los dos veta.
+        if: ${{ !cancelled() && steps.llave.outputs.presente == 'true' }}
+        env:
+          LLM_PROVIDER: openai
+          LLM_BASE_URL: https://api.groq.com/openai/v1
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          EVAL_MUESTRA: ${{ github.event.inputs.muestra || '1.0' }}
+          # Puerta más estricta que la de llmops: un solo precio inventado veta.
+          EVAL_UMBRAL_APROBACION: "0.9"
+        run: uv run python proyecto_retail/evals/ci_gate.py

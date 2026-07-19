@@ -1,0 +1,139 @@
+En producción las APIs fallan: cuota agotada (429), timeouts, cortes. LCEL trae dos superpoderes para eso, y el async para no quedarte esperando.
+
+<Box kind="def" label="◈ Definición · Resiliencia y asincronía">
+
+**Resiliencia** es diseñar asumiendo que las llamadas *van a fallar*. No es evitar el fallo: es decidir de antemano qué pasa cuando ocurra, en lugar de que se caiga toda la petición.
+
+**Asincronía** es otra cosa distinta, aunque se estudien juntas: no hace nada más rápido, hace que tu programa **no se quede parado** mientras espera. Una llamada al LLM tarda segundos, y el 99% de ese tiempo la CPU no hace nada — el `await` aprovecha ese hueco para atender otra cosa.
+
+<DefList>
+  <Term>with_fallbacks([b])</Term>
+  <Def>Si la pieza principal falla, la cadena reintenta con **otra pieza** (otro modelo, otro proveedor). La llanta de repuesto.</Def>
+  <Term>with_retry()</Term>
+  <Def>Reintenta **lo mismo** unas cuantas veces, esperando cada vez un poco más. Sirve para fallos temporales como un 429; es inútil si tu prompt está mal.</Def>
+  <Term>429 RESOURCE_EXHAUSTED</Term>
+  <Def>El error de cuota. En este curso lo verás seguido con el plan gratuito de Gemini: **no es un bug de tu código**, es el proveedor diciendo "más despacio".</Def>
+  <Term>async / await</Term>
+  <Def>La sintaxis de Python para "esto tarda, sigue con otra cosa mientras". Combinado con `asyncio.gather` lanza muchas llamadas a la vez.</Def>
+</DefList>
+
+</Box>
+
+```python title="fallbacks.ipynb · planes de respaldo y reintentos"
+principal = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite")
+respaldo  = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
+
+# Si 'principal' falla, salta AUTOMÁTICAMENTE a 'respaldo'
+modelo_robusto = principal.with_fallbacks([respaldo])
+
+# Reintenta ante errores temporales (ej. 429) antes de rendirse
+cadena = (prompt | modelo_robusto | StrOutputParser()).with_retry(
+    stop_after_attempt=3
+)
+```
+
+<Box kind="analogy" label="◆ Analogía">
+
+`with_fallbacks` es la **llanta de repuesto**: si un modelo se pincha, la cadena sigue rodando con otro. `with_retry` es **volver a tocar la puerta** unas veces antes de irte.
+
+</Box>
+
+```python title="interfazunificada.ipynb · procesar en paralelo con async"
+import asyncio
+
+async def procesar_todo(preguntas):
+    tareas = [cadena.ainvoke({"q": q}) for q in preguntas]
+    return await asyncio.gather(*tareas)   # lanza todas a la vez
+
+respuestas = asyncio.run(procesar_todo(["...", "...", "..."]))
+print(respuestas)
+```
+
+```text title="▸ deberías ver (una lista con las 3 respuestas — pero llegaron casi a la vez, no una tras otra)"
+['Respuesta a la 1…', 'Respuesta a la 2…', 'Respuesta a la 3…']
+```
+
+<Avoid label="⛔ Cuándo NO usar esto">
+
+- No metas `async` en un flujo secuencial y corto (una sola llamada, o pasos que dependen uno del otro): no ganas nada y complicas el código. Async paga cuando hay muchas esperas de red en paralelo.
+- `with_retry` no arregla bugs de lógica: si el prompt está mal o el modelo no existe, reintentar solo repite el error más lento. Úsalo solo para fallos pasajeros (429, timeout).
+- No apiles un `with_fallbacks` "por si acaso" cuando el modelo principal es estable: cada capa extra es más código que mantener y probar.
+
+</Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Pon como modelo principal uno con nombre inválido a propósito y comprueba que el fallback responde igual. Es la mejor forma de *ver* la resiliencia funcionando.
+
+<Solution summary="Ver una solución">
+
+```python title="solución · romper para creer"
+principal = ChatGoogleGenerativeAI(model="modelo-que-no-existe")   # falla seguro
+respaldo  = ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite")
+
+robusto = principal.with_fallbacks([respaldo])
+print(robusto.invoke("Di hola").content)   # responde IGUAL, gracias al respaldo
+```
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Distinguir `with_retry` (reintenta lo mismo, para fallos pasajeros) de `with_fallbacks` (salta a otro modelo).
+- Reconocer un `429 RESOURCE_EXHAUSTED` como límite del proveedor, no un bug de tu código.
+- Explicar qué gana `async`: no acelera el cómputo, libera el programa mientras espera a la red.
+- Decir cómo lanzar varias llamadas a la vez (`asyncio.gather` sobre varios `ainvoke`).
+
+</Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Nivel Intermedio (conceptos 05–09)">
+
+<Question>
+  <Prompt>1 · El docstring de una `@tool`…</Prompt>
+  <Option>Es documentación opcional para otros programadores</Option>
+  <Option ok>Lo lee el modelo para decidir cuándo y cómo usarla</Option>
+  <Option>Hace que la función corra más rápido</Option>
+  <Feedback>"El docstring no es documentación: es programación" — docstring vago, agente que se equivoca (Concepto 07).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Qué pieza une el pedido de una tool con su resultado?</Prompt>
+  <Option ok>El ToolMessage con su tool_call_id</Option>
+  <Option>El SystemMessage</Option>
+  <Option>El StrOutputParser</Option>
+  <Feedback>Sin ese hilo, el modelo no sabe qué resultado corresponde a qué pedido (Concepto 08, pasos C y D).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · `with_structured_output` sirve para…</Prompt>
+  <Option>Traducir la respuesta a otro idioma</Option>
+  <Option>Guardar la conversación en un archivo</Option>
+  <Option ok>Obligar al modelo a llenar un molde Pydantic con campos exactos</Option>
+  <Feedback>Le pones "anteojeras": deja de conversar y rellena tu formulario, con tipos validados (Concepto 05).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Si el modelo principal falla, ¿qué lo reemplaza automáticamente?</Prompt>
+  <Option>with_retry</Option>
+  <Option ok>with_fallbacks</Option>
+  <Option>batch</Option>
+  <Feedback>La llanta de repuesto. `with_retry` es distinto: reintenta con el MISMO modelo (Concepto 09).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>5 · ¿Cuándo conviene `batch` en vez de `invoke`?</Prompt>
+  <Option ok>Cuando tengo muchas entradas independientes que procesar a la vez</Option>
+  <Option>Cuando quiero respuestas más creativas</Option>
+  <Option>Cuando la conversación es muy larga</Option>
+  <Feedback>100 reseñas para clasificar = 1 batch, no 100 invokes en fila (Concepto 03).</Feedback>
+</Question>
+
+</Quiz>
+
+<Recap level={2} label="↺ En una frase">
+
+`with_retry` reintenta con el *mismo* modelo (fallos pasajeros); `with_fallbacks` cambia a *otro* (fallos persistentes). Y `async` solo gana cuando estás esperando a la red.<Arch>archivo: `09_resiliencia_async.py`</Arch>
+
+</Recap>

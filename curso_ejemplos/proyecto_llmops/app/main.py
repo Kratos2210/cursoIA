@@ -45,19 +45,23 @@ Probar:
 """
 from __future__ import annotations
 
+import uuid
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from app import frontend, streaming
+from app import auth, frontend, rate_limit, streaming
 from app.config import settings
 from guardrails import input_guard
-from observability import metrics, tracing
-from observability.cost_model import Uso
+from observability import logs, metrics, tracing
+from observability.cost_model import ContadorDeUso, Uso
 from observability.feedback import ColectorFeedback
 from prompts import experimentos
+
+log = logs.obtener_logger(__name__)
 
 # Las variantes del A/B de prompts. A = el prompt actual (agente_gobdata),
 # B = la variante concisa (agente_gobdata_conciso.yaml). El `thread_id` fija cuál
@@ -81,10 +85,12 @@ class PeticionChat(BaseModel):
     # El hilo de conversación: la memoria del agente cuelga de aquí.
     thread_id: str = Field(default="demo")
 
-    # ⚠️ En producción el `rol` NO llega en el body: se deriva del token de
-    #    autenticación. Un rol que manda el cliente es un rol que el cliente
-    #    elige, y el RBAC entero se vuelve decorativo. Aquí viene en el body
-    #    para que el curso sea ejecutable sin montar un proveedor de identidad.
+    # ⚠️ El `rol` de aquí es una PETICIÓN, no una afirmación. Con `API_KEYS`
+    #    configurado (ver app/auth.py), el rol efectivo se deriva de la
+    #    credencial y este campo se ignora: un rol que manda el cliente es un
+    #    rol que el cliente elige, y con eso el RBAC entero sería decorativo.
+    #    Sin credenciales configuradas se sigue respetando, para que el curso
+    #    sea ejecutable sin montar un proveedor de identidad.
 
 
 class Feedback(BaseModel):
@@ -117,6 +123,16 @@ def crear_app(agente=None, agentes=None, cache=None, colector=None, feedback=Non
                limpio. Como las métricas, va por parámetro para poder inyectar
                uno vacío en cada test.
     """
+    # Lo primero de todo: si algo falla más abajo, queremos que el fallo salga
+    # ya en formato legible por máquina y no en un print perdido.
+    logs.configurar_logging(settings.log_level)
+    # Y que quede dicho, en el arranque, si el servicio está abierto de par en par.
+    auth.avisar_del_modo_abierto()
+
+    # Un limitador POR APLICACIÓN (no global de módulo): así cada test tiene el
+    # suyo y no hereda las peticiones que contó el anterior.
+    limitador = rate_limit.crear_limitador()
+
     # Normalizamos a un mapa {variante: agente}. Un `agente` suelto se replica a
     # todas las variantes: sirve para los tests que ejercitan el pipeline sin
     # medir el efecto del prompt. `None` en ambos → se construye al arrancar.
@@ -172,6 +188,80 @@ def crear_app(agente=None, agentes=None, cache=None, colector=None, feedback=Non
     )
 
     # ------------------------------------------------------------------
+    # CORS · qué páginas pueden llamar a esta API desde un navegador
+    # ------------------------------------------------------------------
+    # Solo si hay orígenes configurados. La demo sirve su propio frontend en `/`,
+    # así que es el MISMO origen y no necesita CORS: instalarlo "por si acaso"
+    # con "*" sería abrir la API a cualquier página de internet.
+    if settings.lista_cors:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=settings.lista_cors,
+            allow_credentials=True,
+            allow_methods=["GET", "POST"],      # lo que la API usa, nada más
+            allow_headers=["Content-Type", "X-API-Key", "X-Request-ID"],
+        )
+
+    # ------------------------------------------------------------------
+    # MIDDLEWARE · el request_id que cose los logs de una misma petición
+    # ------------------------------------------------------------------
+    @app.middleware("http")
+    async def correlacionar_y_registrar(request, call_next):
+        """Le pone un id a cada petición y registra cómo acabó.
+
+        ⭐ El id se RESPETA si viene de fuera (`X-Request-ID`). Así, cuando haya
+           un reverse proxy o un frontend delante, el mismo identificador cose la
+           traza de punta a punta y no empieza de cero en cada salto.
+
+        Se devuelve también en la respuesta: quien reporte un fallo puede pegar
+        su `X-Request-ID` y encontramos SU petición entre millones.
+        """
+        rid = request.headers.get("X-Request-ID") or uuid.uuid4().hex[:12]
+        token = logs.fijar_request_id(rid)
+        try:
+            # El freno va ANTES de llamar a nada: el sentido de limitar es no
+            # gastar. /health queda fuera — lo llama el orquestador cada pocos
+            # segundos y un 429 ahí se leería como "servicio caído".
+            #
+            # ⚠️ Se captura aquí y se convierte a JSONResponse a mano porque una
+            #    HTTPException lanzada DENTRO de un middleware no la maneja
+            #    nadie: el manejador de FastAPI vive en el stack de routing, más
+            #    adentro. Sin este try, el 429 saldría como un 500.
+            if request.url.path != "/health":
+                try:
+                    rate_limit.revisar(limitador, request)
+                except HTTPException as limite:
+                    respuesta = JSONResponse(status_code=limite.status_code,
+                                             content={"error": limite.detail},
+                                             headers=limite.headers)
+                    respuesta.headers["X-Request-ID"] = rid
+                    return respuesta
+
+            respuesta = await call_next(request)
+            respuesta.headers["X-Request-ID"] = rid
+            # /health lo llama el orquestador cada pocos segundos: registrarlo
+            # ahogaría el log real en ruido.
+            #
+            # ⚠️ Este log va DENTRO del try, antes del `finally`. Si se emitiera
+            #    después, el ContextVar ya estaría limpio y la línea saldría sin
+            #    `request_id` — justo la que más lo necesita.
+            if request.url.path != "/health":
+                log.info("request", extra={
+                    "ruta": request.url.path,
+                    "metodo": request.method,
+                    "estado": respuesta.status_code,
+                })
+            return respuesta
+        except Exception:
+            # `exception()` mete el traceback dentro del JSON. Sin esto, un 500
+            # aparece en los logs sin una sola pista de dónde se rompió.
+            log.exception("request falló", extra={
+                "ruta": request.url.path, "metodo": request.method})
+            raise
+        finally:
+            logs.reiniciar_request_id(token)
+
+    # ------------------------------------------------------------------
     # GET / — el frontend de chat (la cara visible del servicio)
     # ------------------------------------------------------------------
     @app.get("/", response_class=HTMLResponse)
@@ -182,9 +272,9 @@ def crear_app(agente=None, agentes=None, cache=None, colector=None, feedback=Non
         posible: cero E/S por request. La página consume /chat por SSE con
         fetch+ReadableStream y vota en /feedback — el mismo servicio, con cara.
 
-        ⚠️ En producción esto va detrás de auth y del mismo origen (o CORS
-           explícito): la demo lo sirve abierto para ser ejecutable sin montar
-           un proveedor de identidad, igual que el `rol` viaja en el body.
+        ⚠️ La PÁGINA se sirve abierta a propósito (es HTML, no datos), pero el
+           /chat que consume ya exige credencial si `API_KEYS` está configurado.
+           Con CORS_ORIGINS vacío, además, solo la sirve este mismo origen.
         """
         return frontend.PAGINA_CHAT
 
@@ -196,23 +286,34 @@ def crear_app(agente=None, agentes=None, cache=None, colector=None, feedback=Non
         """Lo que mira el orquestador (Kubernetes, docker-compose) cada pocos
         segundos. Debe ser BARATO: si el health check llama al LLM, un pico de
         latencia del proveedor tumba tus pods sanos.
+
+        Va SIN auth: el orquestador no tiene credenciales, y si /health exigiera
+        una, un fallo de configuración de las claves parecería un servicio caído
+        y desataría un reinicio en bucle.
         """
         return {
             "estado": "ok",
             "modelo": settings.llm_modelo_cheap,
             "tracing": tracing.activo(),
             "agente_listo": estado["agentes"] is not None,
+            # Que el modo abierto sea VISIBLE. Un servicio sin auth debe poder
+            # detectarse desde fuera, no solo leyendo el .env del servidor.
+            "auth_activa": auth.auth_activa(),
         }
 
     # ------------------------------------------------------------------
     # GET /metrics — el resumen del proceso
     # ------------------------------------------------------------------
-    @app.get("/metrics")
+    @app.get("/metrics", dependencies=[Depends(auth.requiere_credencial)])
     def metricas() -> dict:
         """Tokens, coste, p95 y tasa de aciertos del caché.
 
         ⚠️ Por proceso. Con varios workers, cada uno reporta LO SUYO. El total
            agregado lo da Langfuse (ver observability/tracing.py).
+
+        Detrás de auth: el consumo de tokens y la latencia de un servicio son
+        información de negocio. Publicarlos abiertamente le dice a cualquiera
+        cuánto tráfico manejas y cuánto te cuesta.
         """
         resumen = estado["colector"].resumen()
         if estado["cache"] is not None:
@@ -255,10 +356,22 @@ def crear_app(agente=None, agentes=None, cache=None, colector=None, feedback=Non
     # POST /chat — el camino completo
     # ------------------------------------------------------------------
     @app.post("/chat")
-    async def chat(peticion: PeticionChat) -> StreamingResponse:
-        """Responde en streaming SSE, atravesando las cuatro capas."""
+    async def chat(peticion: PeticionChat,
+                   x_api_key: str | None = Header(default=None)) -> StreamingResponse:
+        """Responde en streaming SSE, atravesando las cuatro capas.
+
+        ⭐ EL ROL SE RESUELVE AQUÍ, no dentro del flujo. `resolver_rol` devuelve
+           el rol de la CREDENCIAL cuando hay auth activa, e ignora el del body
+           (dejando constancia en el log). Con el servicio abierto, se respeta el
+           del body como en el prototipo.
+
+           Se hace en el endpoint y no en `_flujo` porque un 401 debe salir como
+           un 401 de verdad: una vez abierto el stream SSE, la cabecera ya se
+           mandó y solo se puede avisar por el canal de eventos.
+        """
+        rol = auth.resolver_rol(x_api_key, peticion.rol)
         return StreamingResponse(
-            _flujo(peticion, estado),
+            _flujo(peticion.model_copy(update={"rol": rol}), estado),
             media_type="text/event-stream",
             # Sin esto, un proxy (nginx) bufferiza la respuesta entera y el
             # streaming deja de serlo: el usuario recibe todo de golpe al final.
@@ -319,10 +432,11 @@ async def _flujo(peticion: PeticionChat, estado: dict):
 
         # ---- 3 y 4) AGENTE + GUARDRAIL DE SALIDA sobre el stream ----------
         guardia = streaming.GuardiaDeStream(rol=peticion.rol)
+        contador = ContadorDeUso()
         try:
             async for token in streaming.tokens_del_agente(
                 agente, pregunta, peticion.thread_id,
-                callbacks=tracing.callbacks(),
+                callbacks=tracing.callbacks(), contador=contador,
             ):
                 crono.primer_token()
                 trozo = guardia.empujar(token)
@@ -351,13 +465,25 @@ async def _flujo(peticion: PeticionChat, estado: dict):
             # Un 429 del proveedor, un timeout, Postgres caído. El cliente ya
             # tiene la cabecera 200 y el stream abierto: no podemos devolver un
             # 503. Se lo decimos por el canal de eventos.
+            #
+            # Y lo dejamos en el log CON traceback: el cliente ve un mensaje, el
+            # operador necesita la pila. El `request_id` del middleware ya viaja
+            # en la línea, así que este fallo se puede cruzar con el resto de la
+            # petición que lo produjo.
+            log.exception("el agente falló a mitad del stream",
+                          extra={"variante": variante, "rol": peticion.rol})
             yield streaming.evento_sse({"error": str(error)}, evento="error")
 
     # ---- 6) MÉTRICAS --------------------------------------------------
     # Fuera del `with`: el cronómetro ya se cerró y la latencia es la final.
     metrica = metrics.MetricasRequest(
         modelo=settings.llm_modelo_cheap,
-        uso=Uso(),          # el conteo real lo aporta el callback de Langfuse
+        # El consumo sumado de TODAS las llamadas del ciclo ReAct, recogido del
+        # propio stream. Antes iba `Uso()` vacío delegando en el callback de
+        # Langfuse: sin Langfuse levantado, /metrics reportaba coste 0 en
+        # silencio, que es peor que no reportarlo. Un 0 hoy significa que el
+        # proveedor no informó del consumo (pasa en streaming), no que fue gratis.
+        uso=contador.uso,
         latencia_ms=crono.latencia_ms,
         ttft_ms=crono.ttft_ms,
         cache_hit=False,

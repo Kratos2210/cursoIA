@@ -48,3 +48,6 @@ curso_ejemplos/proyecto_final/hallazgos_auditoria.log
 
 # ---- Borrador histórico (notebooks originales, no forma parte del curso) ----
 curso/
+
+# ---- Export de herramienta externa (no es fuente del curso) ----
+curso_ejemplos/AI Engineer learning roadmap/

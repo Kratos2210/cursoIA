@@ -39,6 +39,30 @@ class TestExtraerUso:
         assert cost_model.extraer_uso(object()) == Uso(0, 0)
 
 
+class TestContadorDeUso:
+    """El acumulador que hace que /metrics deje de reportar coste 0 en streaming."""
+
+    def test_suma_las_llamadas_de_un_ciclo_react(self):
+        # Un ReAct hace varias llamadas al modelo: decidir la tool y redactar.
+        # Cobrar solo la última subestima la factura.
+        contador = cost_model.ContadorDeUso()
+        contador.sumar(RespuestaConUso(100, 20))
+        contador.sumar(RespuestaConUso(300, 80))
+        assert contador.uso == Uso(400, 100)
+
+    def test_los_fragmentos_sin_conteo_no_estorban(self):
+        # La mayoría de chunks de un stream no traen usage_metadata; solo el
+        # último. Los demás deben sumar 0, no reventar.
+        contador = cost_model.ContadorDeUso()
+        contador.sumar(object())
+        contador.sumar(RespuestaConUso(10, 5))
+        contador.sumar(object())
+        assert contador.uso == Uso(10, 5)
+
+    def test_un_contador_virgen_no_inventa_consumo(self):
+        assert cost_model.ContadorDeUso().uso == Uso(0, 0)
+
+
 class TestEstimarCosto:
     def test_calcula_por_millon_de_tokens(self):
         # 1M de entrada a $0.10 + 1M de salida a $0.40 = $0.50

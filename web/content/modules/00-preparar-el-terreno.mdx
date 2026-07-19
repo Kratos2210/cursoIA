@@ -1,0 +1,427 @@
+Un modelo de lenguaje (LLM) como Gemini o Qwen sabe conversar, pero por sí solo *no* calcula con exactitud, no recuerda charlas anteriores y no conoce tus documentos privados. Estas librerías resuelven justo eso.
+
+<Box kind="analogy" label="◆ Analogía">
+
+Piensa en un **LLM** como un empleado brillante recién contratado: habla muchos idiomas y sabe de casi todo… pero llegó sin computadora, sin acceso a tu base de datos y con amnesia cada mañana. **LangChain, RAG y LangGraph** son las herramientas de oficina que lo vuelven realmente útil.
+
+</Box>
+
+### Los tres protagonistas
+
+<Grid3>
+
+<Card num="pieza 1" title="LangChain">
+
+La caja de piezas estándar: modelos, prompts, parsers, herramientas. Bloques que encajan entre sí.
+
+</Card>
+
+<Card num="técnica" title="RAG">
+
+No es una librería, es una *técnica*: darle al modelo tus documentos como "chuleta" para responder con datos reales.
+
+</Card>
+
+<Card num="pieza 2" title="LangGraph">
+
+El orquestador: agentes que piensan en ciclo (pensar → actuar → observar), recuerdan y sobreviven a fallos.
+
+</Card>
+
+</Grid3>
+
+### Cómo estudiar este curso (plan sugerido)
+
+El curso está pensado para **13 sesiones de ~90 minutos** + el proyecto final. La regla de oro: cada concepto se estudia *corriendo su ejemplo*, no solo leyéndolo — y no avances de nivel sin pasar su **quiz de autoevaluación**. Marca cada concepto completado (el botón al final de cada uno): tu avance se guarda en este navegador.
+
+Y cuando termines un nivel, haz sus [ejercicios](/recurso/ejercicios): leer código no enseña a escribirlo. Cada uno trae pistas progresivas y un criterio de aceptación que puedes verificar tú mismo.
+
+| Sesión | Conceptos | Qué logras |
+| --- | --- | --- |
+| 1 | 00 + 0b | Entorno instalado y el Python mínimo para leer todo lo demás. |
+| 2 | 01 · 02 | Hablas con el modelo y armas tu primera cadena LCEL. |
+| 3 | 03 · 04 + quiz Básico | Los 3 modos de ejecución y memoria conversacional. |
+| 4 | 05 · 06 · 07 | Datos estructurados, flujos con ramas y tu primera herramienta. |
+| 5 | 08 · 09 + quiz Intermedio | El ciclo completo de un agente y apps que resisten fallos. |
+| 6 | 10 · 11 · 12 | Agentes con memoria y un RAG con búsqueda híbrida + re-ranking. |
+| 7 | 13 · 13b + quiz Avanzado | Grafos de estado, ciclos, pausa humana y auditoría. |
+| 8 | 14 · 15 · 16 · 16b | MCP, el patrón supervisor, observabilidad y cuánto cuesta cada consulta. |
+| 9 | 17 · 17b + quiz Producción | Repo productivo, ADRs, runbook — y los tests que sostienen todo. |
+| final | 18 · Capstone | El sistema completo de gobierno de datos, por fases (2-3 sesiones). |
+| 10 | 18b · 19 · 20 | Elegir modelo/proveedor con criterio, Spec-Driven Development + verificador, y RAG avanzado (multi-query + RAG-Fusion). |
+| 11 | 21 · 22 · 23 | Fine-tuning vs RAG, entrada multimodal (texto + imagen) y blindar el prompt (guardrails / red-teaming OWASP). |
+| 12 | 24 · 24b · 25 · 26 · 26b | Vector DBs en producción, feedback + A/B de prompts, chat por SSE, el mapa del ecosistema y prompt engineering medible. |
+| 13 | 27 · 28 · 29 + entrevista | Abres la caja del LLM (tokens, atención, RLHF/DPO, inferencia), entiendes por qué alucina, cierras con el [caso real de retail](/concepto/29-caso-real-2-retail) (asistente de compras sobre un catálogo vivo) y practicas el [banco de preguntas y los casos de system design](/recurso/entrevista) de AI Engineer. |
+
+### Antes de empezar: prepara tu computadora
+
+Si nunca programaste, este es tu punto de partida. Necesitas **tres cosas**: una terminal (ya la tienes), `uv` (lo instalas en un comando) y un editor para escribir tus archivos. Nada más.
+
+#### 1 · La terminal (tu línea de comandos)
+
+La **terminal** es una ventana donde escribes órdenes con el teclado en vez de hacer clic. Todos los comandos del curso se escriben ahí. Cómo abrirla:
+
+- **Windows:** menú Inicio → escribe `PowerShell` → Enter.
+- **macOS:** `Cmd + Espacio` → escribe `Terminal` → Enter.
+- **Linux:** `Ctrl + Alt + T` (o busca "Terminal" en tus aplicaciones).
+
+<Box kind="analogy" label="◆ Analogía">
+
+La terminal es como enviarle notas escritas a tu computadora en lugar de señalarle cosas con el dedo. Al principio intimida porque no hay botones; pero cada comando de este curso está listo para **copiar y pegar**, así que no tienes que memorizar nada.
+
+</Box>
+
+#### 2 · Instala `uv`
+
+`uv` es la herramienta que gestiona tu Python y tus librerías (y si te falta Python, `uv` lo instala solo). Pega en tu terminal el comando de tu sistema:
+
+```bash title="terminal · instalar uv"
+# macOS o Linux:
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Windows (en PowerShell):
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```
+
+**Cierra la terminal y abre una nueva** (para que reconozca el nuevo programa) y comprueba que quedó instalado:
+
+```bash title="terminal · verificar"
+uv --version
+```
+
+```text title="▸ deberías ver (algo así)"
+uv 0.9.x
+```
+
+Si en cambio dice `command not found: uv`, no abriste una terminal nueva o la instalación no terminó: repite el comando y vuelve a abrir la terminal.
+
+#### 3 · Instala VS Code (tu editor)
+
+Para escribir los archivos `.py` necesitas un editor de texto para programadores. El más usado es **Visual Studio Code**, gratis: descárgalo de [code.visualstudio.com](https://code.visualstudio.com) e instálalo como cualquier programa.
+
+Para crear tu primer archivo: abre VS Code → menú *Archivo → Nuevo archivo* → menú *Archivo → Guardar como…* y ponle un nombre que termine en `.py` (por ejemplo `main.py`). Esa terminación es la que le dice a todo el mundo —y a `uv`— que dentro hay código Python. VS Code además trae su propia terminal integrada (menú *Terminal → Nueva terminal*), muy cómoda para no cambiar de ventana.
+
+### Instalación (con `uv`)
+
+```bash title="terminal · setup.sh"
+# Básico e intermedio
+uv init mi-curso-ia && cd mi-curso-ia
+uv add langchain langgraph python-dotenv pypdf
+
+# Los dos clientes de modelo. langchain-openai no es "para OpenAI":
+# es para CUALQUIER API que hable su dialecto — Groq, Ollama, Together…
+uv add langchain-google-genai langchain-openai
+
+# Avanzado (RAG pro + re-ranking)
+uv add langchain-chroma langchain-text-splitters langchain-community rank-bm25
+
+# Embeddings en tu máquina, sin cuota (opcional pero recomendado para el RAG)
+uv add fastembed
+
+# Producción (opcional)
+uv add langchain-mcp-adapters langsmith
+
+# Crea el .env con tu llave (NUNCA lo subas a git). Elige UNA:
+echo "LLM_PROVIDER=google"                    >  .env   # opción A: Gemini
+echo "GOOGLE_API_KEY=tu_llave_secreta"        >> .env
+
+# echo "LLM_PROVIDER=groq"                    >  .env   # opción B: Groq
+# echo "GROQ_API_KEY=gsk_tu_llave_secreta"    >> .env
+# echo "EMBEDDINGS_PROVIDER=fastembed"        >> .env
+```
+
+Esos comandos hacen dos cosas distintas y conviene no confundirlas. `uv init` crea la carpeta del proyecto con un `pyproject.toml` **vacío de dependencias**. `uv add` es lo que las escribe ahí dentro *y* las instala. Si te saltas los `uv add`, tienes un proyecto perfectamente válido… que no sabe nada de LangChain.
+
+<Box kind="warn" label="▲ Mac con chip Intel: el error de onnxruntime">
+
+Si tu Mac es **Intel** (no Apple Silicon), los `uv add` de arriba que traen `langchain-chroma` y `fastembed` pueden cortarse así:
+
+```text title="▸ el síntoma"
+error: Distribution `onnxruntime==1.27.0` can't be installed because it
+doesn't have a source distribution or wheel for the current platform
+hint: You're on macOS (`macosx_13_0_x86_64`), but `onnxruntime` only has
+wheels for … `macosx_14_0_arm64` …
+```
+
+No es tu código: `chromadb` arrastra `onnxruntime`, y desde la versión **1.24** ese paquete dejó de publicar binarios para Mac Intel (`x86_64`). La última con binario es la **1.23.2**. La solución es ponerle un techo en tu `pyproject.toml` y repetir la instalación:
+
+```toml title="pyproject.toml · añade este bloque, luego repite los uv add"
+[tool.uv]
+# onnxruntime dejó de publicar wheels para Mac Intel desde la 1.24
+constraint-dependencies = ["onnxruntime<1.24"]
+```
+
+Con eso `uv` resuelve `onnxruntime` a la **1.23.2** y todo instala. Solo afecta a Macs Intel; en Apple Silicon, Linux o Windows no verás este error ni necesitas el bloque.
+
+</Box>
+
+<Box kind="warn" label="▲ El primer tropiezo de todo el mundo">
+
+Al verificar la instalación verás esto:
+
+```text title="▸ el síntoma"
+$ uv run python -c "from dotenv import load_dotenv; print('listo')"
+Using CPython 3.12.13
+Creating virtual environment at: .venv
+ModuleNotFoundError: No module named 'dotenv'
+```
+
+Parece que `uv` falló. No falló: hizo **exactamente** lo que le pediste. `uv run` nunca adivina qué necesitas — instala *solo* lo que declara el `pyproject.toml`. Si la lista `dependencies` está vacía, crea el entorno y no pone nada dentro. La línea `Creating virtual environment` es la pista: significa que ahí no había entorno, así que tampoco había nada instalado.
+
+**La cura:** corre los `uv add` de arriba dentro de tu carpeta. Y si el error persiste, casi siempre es porque estás *parado en otro sitio*.
+
+</Box>
+
+<Box kind="analogy" label="◆ Dónde estás parado importa (la regla de oro de uv)">
+
+`uv` elige el entorno buscando el `pyproject.toml` **más cercano hacia arriba** desde tu carpeta actual. Por eso el *mismo* comando funciona en una carpeta y falla en la de al lado, y por eso el curso te pide siempre `cd` antes de ejecutar. Cuando dudes, pregúntale a Python qué entorno está usando de verdad:
+
+```bash title="diagnóstico · ¿qué .venv estoy usando?"
+uv run python -c "import sys; print(sys.prefix)"
+# .../mi-curso-ia/.venv   ← el tuyo, el que tiene tus uv add
+# .../otro-proyecto/.venv ← estás en la carpeta equivocada: haz cd
+```
+
+En este curso hay **una sola carpeta de trabajo**: `mi-curso-ia/`. Ahí vives, ahí escribes tus archivos y ahí traes las librerías con `uv add`. Si un comando te falla, la primera pregunta no es "¿me faltó instalar algo?" sino **"¿estoy parado en `mi-curso-ia/`?"**. Nueve de cada diez veces, ese es el problema.
+
+</Box>
+
+### Consigue tu llave (paso a paso)
+
+El modelo vive en los servidores de otra empresa; tu programa se identifica ante ellos con una **llave API**. Conseguirla es gratis y toma un minuto. **Tienes dos proveedores para elegir**, y el curso funciona igual con cualquiera de los dos.
+
+<Box kind="analogy" label="◆ Cuál elegir (y por qué te vas a acabar pasando a Groq)">
+
+**Gemini** es el camino por defecto del curso. **Groq** sirve `qwen/qwen3-32b` con un cupo gratuito *mucho* más generoso y respuestas bastante más rápidas.
+
+La cuota gratuita de Gemini se agota en una tarde de práctica: verás un `429 RESOURCE_EXHAUSTED` y creerás que rompiste algo. No rompiste nada. Si vas a hacer los ejercicios del tirón, **empieza directamente en Groq**. Puedes tener las dos llaves y cambiar con una línea del `.env`.
+
+</Box>
+
+Para empezar, con Gemini o Groq te basta. Pero el conmutador entiende **más proveedores** — `openai`, `anthropic` (Claude), `openrouter` y `deepseek`, además de `ollama` en tu máquina — todos con la misma línea del `.env`. Cuándo y por qué elegir cada uno (pago vs. open weights, precios reales, dónde corre) lo ves en el [Concepto 18b · Elegir modelo y proveedor](/concepto/18b-elegir-modelo-y-proveedor).
+
+#### Opción A · Gemini
+
+1. Entra a [aistudio.google.com](https://aistudio.google.com).
+2. Inicia sesión con tu cuenta de Google (la misma de Gmail sirve).
+3. Haz clic en el botón **"Create API key"** (Crear llave API).
+4. **Copia** la llave que aparece — empieza con `AIza…`.
+5. Pégala en tu archivo `.env`, **reemplazando** el texto de relleno `tu_llave_secreta`.
+
+El paso 5 es el que más confunde. El comando de instalación te dejó un `.env` con un texto de ejemplo; tú lo cambias por tu llave real:
+
+```ini title=".env · ANTES (lo que creó el comando)"
+GOOGLE_API_KEY=tu_llave_secreta
+```
+
+```ini title=".env · DESPUÉS (con tu llave real, sin comillas ni espacios)"
+LLM_PROVIDER=google
+GOOGLE_API_KEY=AIzaSyD-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+#### Opción B · Groq con `qwen/qwen3-32b`
+
+1. Entra a [console.groq.com/keys](https://console.groq.com/keys).
+2. Inicia sesión (con Google o GitHub, no hace falta tarjeta).
+3. Haz clic en **"Create API Key"** y ponle cualquier nombre.
+4. **Copia** la llave — empieza con `gsk_…`. Solo se muestra *una vez*.
+5. Pégala en el `.env` y cambia el proveedor:
+
+```ini title=".env · con Groq"
+LLM_PROVIDER=groq
+GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+Eso es todo. Los ejemplos no cambian: todos llaman a `util.crear_llm()`, que lee el `.env` y construye el modelo del proveedor activo. Ninguno instancia un modelo a mano.
+
+```python title="util.py · una clase para casi todo el mercado"
+def crear_llm(temperature=0.0, modelo=None):
+    activo = proveedor()                       # lo dice LLM_PROVIDER
+    modelo = modelo or modelo_por_defecto(activo)
+
+    if activo == "google":                     # Gemini habla su propio dialecto
+        from langchain_google_genai import ChatGoogleGenerativeAI
+        return ChatGoogleGenerativeAI(model=modelo, temperature=temperature)
+
+    # Groq, Ollama, Together, OpenAI… todos hablan el dialecto de OpenAI.
+    # Lo único que cambia entre ellos es la base_url.
+    base_url, variable = _COMPATIBLES_OPENAI[activo]
+    from langchain_openai import ChatOpenAI
+    return ChatOpenAI(model=modelo, temperature=temperature,
+                      base_url=base_url, api_key=os.getenv(variable))
+```
+
+<Box kind="analogy" label="◆ Por qué basta con eso">
+
+No es que LangChain tenga un adaptador por proveedor: es que **el mercado convergió en un protocolo**. Groq, Ollama, Together y OpenAI hablan todos la misma API, así que una sola clase con otra `base_url` los cubre a los cuatro. Gemini no la habla, y por eso tiene su propia rama. También puedes usar `LLM_PROVIDER=ollama` para correr un modelo en tu propia máquina, sin llave y sin cuota.
+
+</Box>
+
+<Box kind="analogy" label="◆ Dos cosas que crear_llm() arregla por ti con Groq">
+
+**1. El bloque `<think>`.** `qwen/qwen3-32b` es un **modelo de razonamiento**: antes de responder escribe su cadena de pensamiento, y Groq la devuelve *dentro* del contenido, envuelta en `<think>…</think>`. Sin tratarlo, todas las salidas del curso saldrían con ese ruido delante. `crear_llm()` envía `reasoning_format: "hidden"` y Groq lo descarta.
+
+**2. La salida estructurada.** Por defecto, `with_structured_output()` pide `response_format: json_schema`. OpenAI lo soporta; **Groq solo en algunos modelos**, y `qwen3-32b` no está entre ellos: devolvía un `400` y el [Concepto 05](/concepto/05-salida-estructurada) se caía en seco. `crear_llm()` usa `method="function_calling"`, que consigue lo mismo declarando una herramienta con la forma del esquema.
+
+Los dos parches son **específicos de Groq** y condicionales: `reasoning_format` solo se manda a modelos de razonamiento, porque a `llama-3.3-70b` le provoca un `400`. Esto es exactamente el trabajo invisible que ahorra una fábrica de modelos: si cada ejemplo instanciara el suyo, tendrías que recordar los dos parches diecinueve veces.
+
+</Box>
+
+#### El RAG no se salva: los embeddings y `fastembed`
+
+Esto no lo vas a entender del todo hasta el [Concepto 11](/concepto/11-rag-profesional), y no pasa nada: **déjalo puesto en el `.env` y sigue**. Allí se explica qué es `fastembed` y por qué existe. Lo mínimo que necesitas saber ahora:
+
+Además del modelo que *conversa*, el RAG usa un segundo modelo que convierte texto en números (**embeddings**) para poder buscar por significado. Ese segundo modelo **no** se cambia con `LLM_PROVIDER`, por dos razones:
+
+1. **Groq no ofrece embeddings.** Ninguno. Si mueves el chat a Groq, el RAG se queda sin quien vectorice.
+2. **Cambiar de modelo de embeddings invalida el índice entero.** No es como cambiar de modelo de chat, donde lo peor que pasa es que la respuesta suene distinta. Los vectores de `gemini-embedding-001` y los de otro modelo *viven en espacios distintos*: compararlos no da un resultado peor, da un resultado **sin sentido**. Hay que reindexar.
+
+Por eso los embeddings tienen su propia variable. Y por eso existe una salida que no depende de ningún proveedor: **calcularlos en tu propia máquina** con `fastembed`.
+
+```bash title="terminal · instalar los embeddings locales"
+uv sync --extra emb     # trae fastembed (ONNX, sin PyTorch)
+```
+
+```ini title=".env · chat en Groq, embeddings en tu portátil → cero cuota de Gemini"
+LLM_PROVIDER=groq
+GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+EMBEDDINGS_PROVIDER=fastembed
+```
+
+Con esas cuatro líneas, `11_rag.py` vectoriza los fragmentos en tu máquina y solo el chat sale a internet. La primera ejecución descarga el modelo (~220 MB, multilingüe: el curso está en español); a partir de ahí funciona incluso sin conexión.
+
+```text title="salida esperada · 11_rag.py con fastembed"
+📄 Se crearon 7 fragmentos.
+
+🙋 ¿Cuál es el horario de atención?
+🤖 Atendemos de lunes a viernes, de 9:00 a 18:00.
+```
+
+<Box kind="warn" label="▲ Si ya habías indexado con otro modelo, reindexa">
+
+En el curso no muerde: los ejemplos reconstruyen el índice en cada arranque, así que cambiar `EMBEDDINGS_PROVIDER` es inofensivo. En producción, donde el índice vive en una base de datos, cambiarlo **sin reindexar** deja un vector store que responde con basura convincente. Así lo resuelve [`proyecto_llmops/`](/recurso/llmops): los embeddings son locales *desde el principio*, precisamente para que ningún proveedor pueda obligarte a reindexar.
+
+</Box>
+
+<Box kind="def" label="◈ Definición · API key">
+
+Una **API key** (llave de acceso) es una contraseña que identifica a tu programa ante el servicio de Google. En el plan gratuito de Gemini **no cuesta nada**, pero se trata como cualquier contraseña: **no se comparte, no se pega en un chat y nunca se sube a internet** (por eso vive en el `.env`, un archivo que dejas fuera de git). Si alguien la ve, revócala y crea otra.
+
+</Box>
+
+<Box kind="analogy" label="◆ ¿Y si no sé qué es git?">
+
+Verás mencionado **git** y un `.gitignore` aquí y allá. Si no sabes qué son, **ignóralos por ahora**: son herramientas para versionar código y no hacen falta para seguir el curso. Lo único que importa quedarte hoy es esto: **el `.env` es secreto y no se sube a ningún lado**. Cuando más adelante uses git, el `.gitignore` es justo lo que evita que esa llave se escape.
+
+</Box>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Instala lo del bloque básico y consigue tu llave: en **aistudio.google.com** (Gemini) o en **console.groq.com/keys** (Groq). Verifica que `.env` exista y esté en tu `.gitignore`. Las demás librerías las instalarás cuando llegues a cada nivel.
+
+<Solution summary="Ver una solución">
+
+```bash title="solución · verificación en 4 comandos"
+pwd                      # ¿estás DENTRO de mi-curso-ia? si no: cd mi-curso-ia
+cat .env                 # debe mostrar LLM_PROVIDER y tu llave (AIza… o gsk_…)
+cat .gitignore | grep .env   # debe imprimir ".env" (si no: echo ".env" >> .gitignore)
+uv run python -c "from dotenv import load_dotenv; print('listo')"   # debe decir: listo
+```
+
+Si el último comando dice `No module named 'dotenv'`, no es tu código: te faltó el `uv add python-dotenv`, o estás en otra carpeta. Repasa el aviso de arriba.
+
+</Solution>
+
+</Box>
+
+### 📋 Los ejemplos de referencia
+
+Cada concepto trae su código completo en la propia guía, y además existe una versión **autónoma y comentada línea por línea** publicada en el repositorio del curso. Verás el aviso *"📋 Copia y ejecuta"* en cada concepto con el nombre de su archivo: [github.com/Kratos2210/cursoIA](https://github.com/Kratos2210/cursoIA/tree/main/curso_ejemplos).
+
+<Box kind="warn" label="▲ Todo el curso se hace en mi-curso-ia/">
+
+No tienes que clonar nada ni cambiar de carpeta. **Desde aquí hasta el último concepto trabajas en la carpeta que creaste en el paso anterior**, escribiendo tú cada archivo. Cada concepto enlaza su ejemplo ejecutable para que lo *leas* cuando te atasques o compares tu solución con la de referencia — nunca para reemplazar el rato que pasas escribiendo el código.
+
+Tu único comando de trabajo, siempre el mismo — cambia el nombre del archivo según el concepto:
+
+```bash title="terminal · el bucle de todo el curso"
+cd mi-curso-ia              # ya estás aquí desde el paso anterior
+uv run python main.py      # el archivo que uv init te creó
+
+# Y a partir del Concepto 01, el archivo que escribas tú:
+# uv run python llmodel.py
+```
+
+</Box>
+
+<Box kind="analogy" label="◆ Leer la solución antes de intentarlo no te ahorra nada">
+
+El código correcto lo vas a tener igual — está a un clic. Lo que no vuelve es el rato que habrías pasado equivocándote, que es exactamente donde se aprende. Abre el ejemplo de referencia *después* de tener algo corriendo, no antes.
+
+</Box>
+
+### Los 7 ejemplos que corren sin llave (y sin cuota)
+
+El plan gratuito de Gemini se agota (el famoso `429`). Por eso siete temas del curso están diseñados para correr **completamente offline**: `07`, `12`, `13b`, `14`, `15`, `16` y `16b`. No es un premio de consolación: los conceptos 12 y 13b, los dos más densos en ingeniería de RAG y agentes, están entre ellos. Si te quedaste sin cuota, ese es tu camino.
+
+### Las librerías que usaremos (y para qué sirve cada una)
+
+| Import | Para qué sirve |
+| --- | --- |
+| `import os` | Leer variables de entorno (tu llave API) y rutas de archivos. |
+| `from dotenv import load_dotenv` | Cargar la llave secreta desde el archivo `.env`. |
+| `langchain_google_genai` | El modelo Gemini: `ChatGoogleGenerativeAI` (chat) y `GoogleGenerativeAIEmbeddings` (RAG). |
+| `langchain_openai` | `ChatOpenAI`. Pese al nombre, sirve para **Groq**, Ollama, Together y OpenAI: todos hablan el mismo dialecto. Solo cambia la `base_url`. |
+| `langchain_core.messages` | Los roles de la conversación: System / Human / AI / Tool. |
+| `langchain_core.prompts` | Plantillas de prompt con huecos `{variable}`. |
+| `langchain_core.output_parsers` | Convertir la respuesta del modelo en texto plano (`StrOutputParser`). |
+| `langchain_core.tools` | El decorador `@tool` para crear herramientas. |
+| `langchain_core.runnables` | Componer flujos: Parallel / Passthrough / Lambda. |
+| `langchain_core.vectorstores` | Guardar y buscar por significado (`InMemoryVectorStore`) para RAG. |
+| `pydantic` | Moldes de datos para salida estructurada (`BaseModel`, `Field`). |
+| `langgraph.prebuilt` | Agentes listos: `create_react_agent`, `ToolNode`. |
+| `langgraph.graph` | Construir agentes a mano: `StateGraph`, `START`, `END`. |
+| `langgraph.checkpoint.memory` | La memoria del agente (`MemorySaver`), por `thread_id`. |
+
+<Quiz title="✅ Autoevaluación · Concepto 00">
+
+<Question>
+  <Prompt>1 · Corres `uv run python -c "from dotenv import load_dotenv"` y sale `ModuleNotFoundError: No module named 'dotenv'`. ¿Qué pasó?</Prompt>
+  <Option>Tu llave API está mal escrita en el `.env`</Option>
+  <Option ok>No corriste los `uv add`, o estás parado en otra carpeta</Option>
+  <Option>`uv` falló al instalarse y hay que reinstalarlo</Option>
+  <Feedback>`uv run` instala *solo* lo que declara el `pyproject.toml` más cercano hacia arriba. Si la lista de dependencias está vacía, crea el entorno y no pone nada dentro (Concepto 00).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Por qué el `.env` nunca se sube a git?</Prompt>
+  <Option>Porque pesa demasiado para un repositorio</Option>
+  <Option>Porque cada máquina necesita rutas distintas</Option>
+  <Option ok>Porque guarda tu llave API, que se trata como cualquier contraseña</Option>
+  <Feedback>Una llave publicada es una llave comprometida: por eso vive en el `.env` y el `.gitignore` lo deja fuera. Si alguien la ve, revócala (Concepto 00).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Cambias `LLM_PROVIDER=groq` en el `.env`. ¿Tu RAG pasa también a vectorizar con Groq?</Prompt>
+  <Option>Sí: esa variable controla todos los modelos del proyecto</Option>
+  <Option ok>No: los embeddings tienen su propia variable, y Groq ni siquiera los ofrece</Option>
+  <Option>Sí, pero hay que borrar el vector store primero</Option>
+  <Feedback>`EMBEDDINGS_PROVIDER` es una variable aparte justamente porque Groq no tiene endpoint de embeddings — y porque cambiar de motor invalida el índice entero (Concepto 11).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · ¿Qué ganas con que todos los ejemplos llamen a `util.crear_llm()` en vez de instanciar el modelo cada uno?</Prompt>
+  <Option>El modelo responde más rápido porque se reutiliza la conexión</Option>
+  <Option>Se gasta menos cuota porque las respuestas se cachean</Option>
+  <Option ok>Cambias de proveedor con una línea del `.env`, y los parches raros de cada uno viven en un solo sitio</Option>
+  <Feedback>Los dos arreglos de Groq (`reasoning_format` y `method="function_calling"`) están escritos una vez, no diecinueve. Ese es el trabajo invisible que ahorra una fábrica de modelos (Concepto 00).</Feedback>
+</Question>
+
+</Quiz>
+
+<Recap level={1} label="↺ En una frase">
+
+Un LLM por sí solo no calcula, no recuerda y no conoce tus documentos. **LangChain** lo conecta a herramientas, **RAG** le da tus papeles y **LangGraph** le da un ciclo de trabajo.<Arch>Para empezar: `cd mi-curso-ia` y `uv run python main.py`</Arch>
+
+</Recap>

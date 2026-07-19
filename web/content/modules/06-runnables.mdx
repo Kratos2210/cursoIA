@@ -1,0 +1,160 @@
+Hasta ahora tus cadenas eran una línea recta. Estos tres "conectores" te dejan armar flujos con ramas y funciones propias — la base para el RAG del Nivel Avanzado.
+
+<Box kind="def" label="◈ Definición · Runnable">
+
+Un **Runnable** es *cualquier* pieza que se puede meter en una cadena LCEL: un prompt, un modelo, un parser, una función tuya, o una cadena entera. Solo tiene que cumplir el contrato del Concepto 03 (`invoke`, `batch`, `stream`).
+
+La propiedad que lo vuelve poderoso es que **es cerrado bajo composición**: si `a` y `b` son Runnables, `a | b` también lo es. Por eso puedes tratar un RAG completo como si fuera un solo eslabón dentro de una cadena más grande.
+
+<DefList>
+  <Term>RunnableParallel</Term>
+  <Def>Ejecuta varias ramas **a la vez** sobre la misma entrada y devuelve un diccionario con la salida de cada una. Un diccionario de Python dentro de una cadena ya se interpreta como esto.</Def>
+  <Term>RunnablePassthrough</Term>
+  <Def>El **cable**: deja pasar la entrada tal cual. Sirve para conservar el dato original mientras otra rama lo transforma (el patrón `{"contexto": retriever, "pregunta": passthrough}` del RAG).</Def>
+  <Term>RunnableLambda</Term>
+  <Def>Convierte **una función normal de Python** en un eslabón de la cadena. Es la puerta por la que entra tu propio código: limpiar, filtrar, formatear.</Def>
+</DefList>
+
+</Box>
+
+<Grid3>
+
+<Card num="" title="RunnableParallel">
+
+Corre varias ramas *a la vez* y junta sus salidas en un diccionario.
+
+</Card>
+
+<Card num="" title="RunnablePassthrough">
+
+Pasa la entrada tal cual, sin tocarla (clave en RAG para conservar la pregunta).
+
+</Card>
+
+<Card num="" title="RunnableLambda">
+
+Mete cualquier función de Python dentro de la cadena.
+
+</Card>
+
+</Grid3>
+
+<Box kind="analogy" label="◆ Primera vez que ves `lambda`: una función sin nombre">
+
+`lambda x: x.upper()` es una función de una sola línea escrita *en el sitio*, sin `def` ni nombre. Equivale a `def f(x): return x.upper()`. Se usa cuando la función es tan corta que ponerle nombre estorba — justo lo que pide `RunnableLambda` para colar un paso propio dentro de la cadena.
+
+</Box>
+
+```python title="chaincompleja.ipynb · componer flujos"
+from langchain_core.runnables import RunnableParallel, RunnablePassthrough, RunnableLambda
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from util import crear_llm
+
+llm = crear_llm()
+# Dos prompts, cada uno pide una cosa distinta sobre el MISMO {texto}
+prompt_resumen     = ChatPromptTemplate.from_template("Resume en 5 palabras: {texto}")
+prompt_sentimiento = ChatPromptTemplate.from_template("Sentimiento en 1 palabra de: {texto}")
+
+# Dos análisis del mismo texto, en paralelo
+analisis = RunnableParallel(
+    resumen     = prompt_resumen     | llm | StrOutputParser(),
+    sentimiento = prompt_sentimiento | llm | StrOutputParser(),
+)
+print(analisis.invoke({"texto": "El servicio fue rápido pero caro."}))
+
+# Una función normal como eslabón de la cadena
+a_mayusculas = RunnableLambda(lambda x: x.upper())
+print((a_mayusculas).invoke("hola"))   # -> HOLA
+```
+
+```text title="▸ deberías ver (algo así)"
+{'resumen': 'El cliente valoró la rapidez pero le pareció caro.', 'sentimiento': 'Neutro'}
+HOLA
+```
+
+<Box kind="analogy" label="◆ Por qué importa">
+
+Una cadena RAG (Concepto 11) es literalmente esto: `{"context": retriever | unir, "question": RunnablePassthrough()}`. Recuperas contexto en una rama y conservas la pregunta en la otra, en paralelo.
+
+</Box>
+
+<Avoid label="⛔ Cuándo NO usar estos runnables">
+
+- **Cuando el flujo es una línea recta.** Si no hay ramas ni copias que conservar, un simple `prompt | llm | parser` sobra: meter `RunnableParallel` "por si acaso" solo añade indirección.
+- **Cuando el paso hace algo caro o con efectos.** Un `RunnableLambda` es para lógica trivial y pura (limpiar, formatear, contar). Si la función llama a una API, escribe en disco o puede fallar, merece ser una herramienta ([c07](/concepto/07-herramientas)) o un nodo de grafo ([c13](/concepto/13-langgraph-a-fondo)), no un lambda escondido en la cadena.
+- **Cuando la decisión es del modelo, no tuya.** Si el camino depende de lo que el modelo elija, eso es *routing* ([c08](/concepto/08-routing)) o un agente, no ramas fijas en paralelo.
+
+</Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Arma un `RunnableParallel` que a la vez traduzca un texto y cuente sus palabras (con un `RunnableLambda`). Observa el diccionario resultante.
+
+<Solution summary="Ver una solución">
+
+```python title="solución"
+prompt_en = ChatPromptTemplate.from_template("Traduce al inglés: {texto}")
+
+analisis = RunnableParallel(
+    ingles   = prompt_en | llm | StrOutputParser(),          # rama 1: la IA traduce
+    palabras = RunnableLambda(lambda x: len(x["texto"].split())),  # rama 2: Python cuenta
+)
+print(analisis.invoke({"texto": "La automatización ahorra tiempo valioso"}))
+# {'ingles': 'Automation saves valuable time', 'palabras': 5}
+```
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Decir qué hace `RunnableParallel` (ramas a la vez que devuelven un diccionario).
+- Explicar para qué sirven `RunnablePassthrough` (dejar pasar la entrada) y `RunnableLambda` (meter una función tuya).
+- Explicar qué significa que un Runnable sea "cerrado bajo composición" (`a | b` vuelve a ser un Runnable).
+- Reconocer el patrón `{"context": retriever, "question": passthrough}` que armará el RAG.
+
+</Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 06">
+
+<Question>
+  <Prompt>1 · Que un Runnable sea "cerrado bajo composición" significa que…</Prompt>
+  <Option>Una vez compuesto, ya no puedes modificarlo</Option>
+  <Option ok>Si `a` y `b` son Runnables, `a | b` también lo es — así un RAG entero cabe como un solo eslabón</Option>
+  <Option>Solo se pueden encadenar piezas del mismo tipo</Option>
+  <Feedback>Por eso puedes meter una cadena dentro de otra sin adaptadores: el resultado sigue entendiendo `invoke`, `batch` y `stream` (Concepto 03).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · Tu paso intermedio llama a una API externa y a veces falla. ¿Lo metes en un `RunnableLambda`?</Prompt>
+  <Option>Sí: para eso existe, para meter tu propio código</Option>
+  <Option ok>No: un lambda es para lógica trivial y pura; algo que falla o tiene efectos merece ser una tool o un nodo de grafo</Option>
+  <Option>Sí, pero envolviéndolo en un `RunnableParallel`</Option>
+  <Feedback>Limpiar, formatear, contar → `RunnableLambda`. Llamar fuera, escribir en disco, poder fallar → `@tool` ([c07](/concepto/07-herramientas)) o un nodo ([c13](/concepto/13-langgraph-a-fondo)).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · El camino que toma el flujo depende de lo que decida el modelo. ¿`RunnableParallel` con dos ramas?</Prompt>
+  <Option>Sí: corres las dos y te quedas con la que sirva</Option>
+  <Option ok>No: si decide el modelo, eso es *routing* o un agente, no ramas fijas</Option>
+  <Option>Sí, pero pasando la decisión por `RunnablePassthrough`</Option>
+  <Feedback>Estos runnables arman topologías **fijas** que tú decides al escribir el código. Que elija el modelo es el Concepto 08.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · En el patrón `{"context": retriever, "question": RunnablePassthrough()}`, ¿qué hace el passthrough?</Prompt>
+  <Option>Copia el contexto recuperado a la segunda clave</Option>
+  <Option ok>Conserva la pregunta original intacta mientras la otra rama la usa para recuperar</Option>
+  <Option>Espera a que el retriever termine antes de continuar</Option>
+  <Feedback>Es el "cable": deja pasar la entrada tal cual. Sin él perderías la pregunta, porque el retriever devuelve documentos, no la pregunta (Concepto 11).</Feedback>
+</Question>
+
+</Quiz>
+
+<Recap level={2} label="↺ En una frase">
+
+`RunnableParallel`, `RunnablePassthrough` y `RunnableLambda` te dejan armar cualquier topología —ramas, copias, funciones tuyas— sin salir de LCEL.<Arch>archivo: `06_runnables.py`</Arch>
+
+</Recap>

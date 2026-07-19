@@ -9,14 +9,25 @@ El invariante que sostiene el módulo — `VENTANA >= el patrón más largo` —
 su propio test. Si alguien añade a policy.py un término de 80 caracteres, esa
 prueba falla y avisa; sin ella, el streaming dejaría de filtrar en silencio.
 """
+import asyncio
 import json
 
 import pytest
 
 from app import streaming
 from app.streaming import GuardiaDeStream
+from observability import cost_model
+from observability.cost_model import Uso
 
 pytestmark = pytest.mark.offline
+
+
+def _consumir_stream(agente, contador=None) -> list[str]:
+    """Agota `tokens_del_agente` (async) desde un test síncrono."""
+    async def _correr():
+        return [t async for t in streaming.tokens_del_agente(
+            agente, "hola", "hilo-1", contador=contador)]
+    return asyncio.run(_correr())
 
 
 def _consumir(guardia: GuardiaDeStream, tokens: list[str]) -> str:
@@ -123,6 +134,37 @@ class TestTextoCompleto:
         _consumir(guardia, ["Usa api_key=sk-1 ", "x" * 100])
         assert "api_key" not in guardia.texto_completo
         assert "[REDACTED]" in guardia.texto_completo
+
+
+class TestContadorEnElStream:
+    """El cableado que hace que el coste de /metrics deje de ser 0.
+
+    `tokens_del_agente` es un generador ASÍNCRONO y la suite no tiene plugin de
+    asyncio (ver pyproject.toml): se conduce con `asyncio.run` a mano, igual que
+    TestClient lo hace por dentro en test_smoke_api.py.
+    """
+
+    def test_recoge_el_uso_que_llega_en_el_ultimo_chunk(self, fabrica_agente):
+        # Un proveedor real no manda el conteo en cada chunk: solo en el último.
+        agente = fabrica_agente(["todo ", "en ", "orden"], uso=(120, 30))
+        contador = cost_model.ContadorDeUso()
+        emitido = _consumir_stream(agente, contador)
+        assert "".join(emitido) == "todo en orden"
+        assert contador.uso == Uso(120, 30)
+
+    def test_tambien_cuenta_lo_que_gasto_la_llamada_de_las_tools(self, fabrica_agente):
+        # ⭐ El fragmento se le empuja al contador ANTES de filtrar por nodo.
+        #    La llamada que decide usar una tool gasta tokens aunque su salida no
+        #    se le imprima al usuario: si no se contara, el coste saldría corto.
+        agente = fabrica_agente(["volcado del retriever"], nodo="tools", uso=(500, 40))
+        contador = cost_model.ContadorDeUso()
+        assert _consumir_stream(agente, contador) == []   # al usuario no le llega nada
+        assert contador.uso == Uso(500, 40)               # pero se cobra igual
+
+    def test_sin_contador_el_stream_funciona_igual(self, fabrica_agente):
+        # El parámetro es opcional: quien solo quiera tokens no debe pasarlo.
+        agente = fabrica_agente(["todo ", "en ", "orden"], uso=(120, 30))
+        assert "".join(_consumir_stream(agente)) == "todo en orden"
 
 
 class TestFormatoSSE:

@@ -1,0 +1,179 @@
+El [c16](/concepto/16-observabilidad-y-costo) te dio ojos para ver el sistema **en vivo**: trazas, tokens, coste. Pero observar no es medir la calidad. La observabilidad te dice que el sistema está *lento*; la **evaluación** te dice si se ha vuelto *tonto*. Este concepto cierra ese hueco: medir si las respuestas son buenas, de forma **repetible**, y detectar cuándo un cambio las empeora sin avisar.
+
+<Box kind="def" label="◈ Definición · Evaluación, dataset y el juez">
+
+**Evaluación** es medir *si las respuestas son buenas* contra un conjunto de casos con respuesta esperada — antes de desplegar, y de forma repetible. Sin ella, "mejoró" es una opinión.
+
+<DefList>
+  <Term>dataset de evaluación</Term>
+  <Def>Pares pregunta → respuesta esperada. Es tu red de seguridad: sin él, "mejoró" es una opinión.</Def>
+  <Term>LLM-as-judge</Term>
+  <Def>Usar un modelo para puntuar las respuestas de otro cuando no hay una respuesta exacta que comparar. Barato y útil, pero es un juez con sesgos: valídalo contra casos que ya sabes juzgar.</Def>
+  <Term>regresión</Term>
+  <Def>Que algo que antes funcionaba deje de funcionar. En IA aparece sin tocar tu código: cambia el modelo, cambian tus resultados. Por eso se re-evalúa periódicamente, no solo al programar.</Def>
+</DefList>
+
+</Box>
+
+### Paso 1 — Evaluación automatizada: datasets + tests
+
+Observar no basta: quieres **medir la calidad de forma repetible** y que un cambio de prompt o modelo no la rompa sin avisar. La receta tiene tres ingredientes: un *dataset* (preguntas con respuesta esperada — tu `proyectorag/preguntas.txt` ya es el borrador de uno), un *evaluador* que puntúa cada respuesta, y *tests* que corren en cada cambio.
+
+```python title="run_eval.py · evaluar contra un dataset (LangSmith)"
+from langsmith import Client
+from langsmith.evaluation import evaluate
+
+client = Client()
+
+# 1) Dataset: preguntas con su respuesta esperada
+dataset = client.create_dataset("preguntas_normativa")
+client.create_examples(
+    dataset_id=dataset.id,
+    inputs=[{"q": "¿Qué es la completitud de datos?"}],
+    outputs=[{"esperado": "que no falten valores obligatorios"}],
+)
+
+# 2) Corre tu app contra TODO el dataset y puntúa la calidad
+def mi_app(inputs):
+    return {"respuesta": rag.invoke(inputs["q"])}
+
+evaluate(mi_app, data="preguntas_normativa", evaluators=[evaluador_correccion])
+```
+
+¿Y quién es `evaluador_correccion`? Comparar texto libre con "la respuesta esperada" no se puede con un `==`. La solución estándar es **LLM-as-judge**: otro modelo actúa de juez y califica si la respuesta contesta bien — con temperatura 0, porque un juez debe ser consistente:
+
+```python title="el juez · LLM-as-judge con openevals (patrón de la comisión de EricBz)"
+from openevals.llm import create_llm_as_judge
+from openevals.prompts import CORRECTNESS_PROMPT
+
+evaluador_correccion = create_llm_as_judge(
+    prompt=CORRECTNESS_PROMPT,     # prompt de juez ya probado, no lo inventas tú
+    judge_model=ChatGoogleGenerativeAI(model="gemini-3.1-flash-lite", temperature=0),
+)
+```
+
+Y los tests: además de tus asserts de siempre, el marcador de LangSmith hace que **cada corrida del test quede trazada** — la evaluación y la observabilidad se encuentran:
+
+```python title="test_app.py · tests que también se observan (pytest)"
+import pytest
+from langsmith import unit
+
+@pytest.mark.langsmith          # esta corrida queda registrada en LangSmith
+@unit
+def test_no_inventa_cuando_no_sabe():
+    r = rag.invoke("¿Cuál es la capital de Marte?")
+    assert "no" in r.lower()   # debe admitir que no está en el contexto
+```
+
+```text title="▸ deberías ver al correr 16_evaluacion.py (recortado)"
+=== Evaluando 5 preguntas ===
+
+· ¿Cuál es el horario de atención?
+  respuesta: Horario de atención: Nuestro horario de atención al cliente…
+  contenido esperado: 100%
+...
+==============================================
+PUNTAJE GLOBAL: 100%  (5.0 de 5 puntos)
+Guarda este número. Si tras cambiar el prompt/modelo baja: REGRESIÓN.
+```
+
+### Paso 2 — Detección de regresiones: el ritual que salva sistemas
+
+Una **regresión** es cuando algo que funcionaba deja de funcionar tras un cambio. El ritual: corre la evaluación completa *antes* del cambio (tu línea base: digamos 87%), haz el cambio, corre la *misma* evaluación. ¿92%? Adelante. ¿74%? El cambio no pasa, y las trazas te muestran exactamente qué preguntas se rompieron. En un equipo, esto corre automático en el CI: nadie integra un cambio que baje el puntaje. `16_evaluacion.py` te deja vivir este ciclo completo en pequeño y sin costo.
+
+<Box kind="practice" label="▸ Para practicar">
+
+Corre `16_evaluacion.py` y anota el puntaje. Rompe algo a propósito (por ejemplo, haz que `responder()` devuelva siempre el primer chunk) y corre de nuevo: acabas de *ver* una regresión.
+
+<Solution summary="Ver una solución">
+
+```python title="solución · provocar la regresión"
+# En 16_evaluacion.py, dentro de responder(), reemplaza la línea del max():
+    mejor = chunks[0]        # ← "bug": siempre devuelve el primer chunk
+
+# Corre de nuevo:
+#   PUNTAJE GLOBAL: 24%   (antes: 100%)  ← ESO es una regresión, detectada
+# Restaura la línea original y el puntaje vuelve a 100%.
+```
+
+</Solution>
+
+</Box>
+
+<Box kind="def" label="◈ La tríada de métricas RAG · qué mide un juez, exactamente">
+
+"¿La respuesta es buena?" es demasiado vago para un LLM-as-judge. La industria (marcos como **RAGAS**) parte esa pregunta en **tres** preguntas concretas, cada una un juez con su propio prompt — y las tres juntas separan los dos sitios donde un RAG puede fallar: *recuperar* mal o *redactar* mal.
+
+<DefList>
+  <Term>Faithfulness (fidelidad)</Term>
+  <Def>¿La respuesta se sostiene **solo** en el contexto recuperado, sin inventar? Es tu medidor directo de alucinación: si el juez encuentra una afirmación que no está en los chunks, baja.</Def>
+  <Term>Answer relevance (relevancia)</Term>
+  <Def>¿La respuesta **contesta la pregunta** que se hizo, sin irse por las ramas? Una respuesta fiel al contexto pero que no responde lo pedido puntúa bajo aquí.</Def>
+  <Term>Context precision / recall</Term>
+  <Def>La calidad del *retriever*, no del generador: **precision** = de lo que recuperaste, cuánto era relevante (¿metiste basura?); **recall** = de lo relevante que existía, cuánto llegaste a recuperar (¿te dejaste lo bueno fuera?).</Def>
+</DefList>
+
+El diagnóstico es lo valioso: fidelidad baja → el problema está en el *generador* (prompt, modelo); recall bajo → está en el *retriever* (chunking, búsqueda del [c12](/concepto/12-recuperar-re-rankear), o la pregunta del [c20](/concepto/20-rag-avanzado)). Cada una se implementa como un LLM-as-judge, exactamente el patrón que armaste arriba.
+
+Dos encuadres que ordenan todo lo anterior. **Model evals vs product evals:** un *model eval* pregunta "¿este modelo es bueno en general?" (benchmarks); un *product eval* pregunta "¿MI app resuelve el caso de MIS usuarios?" — y ese, con tu dataset y tu tríada, es el único que decide si despliegas. **Evaluar un agente** añade una capa: no basta con juzgar el resultado final, hay que mirar la **trayectoria** — ¿eligió las herramientas correctas?, ¿en el orden razonable?, ¿sin pasos inútiles? Un agente que acierta la respuesta por suerte tras tres llamadas equivocadas está roto aunque el resultado pase.
+
+</Box>
+
+<Avoid label="⛔ Cuándo NO fiarte de una evaluación">
+
+- **Cuando el juez no está validado.** Un LLM-as-judge tiene sesgos (premia respuestas largas, se deja engañar por tono seguro). Antes de creerle, contrástalo con casos que tú ya sabes puntuar.
+- **Con un dataset diminuto o sesgado.** Cinco preguntas fáciles dan un 100% que no significa nada. El dataset debe parecerse a lo que preguntan tus usuarios de verdad, casos difíciles incluidos.
+- **Mirando solo el resultado de un agente.** Si no evalúas la *trayectoria*, un agente que acierta por suerte tras tres pasos equivocados te parecerá sano.
+
+</Avoid>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Armar un dataset de evaluación (pregunta → respuesta esperada) y correr tu app contra él.
+- Explicar por qué se usa un LLM-as-judge y con qué temperatura, y por qué hay que validarlo.
+- Nombrar la tríada RAG (fidelidad, relevancia, precision/recall) y qué diagnostica cada una.
+- Explicar qué es una regresión y cómo la caza el ritual de re-evaluar antes/después.
+
+</Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 16c">
+
+<Question>
+  <Prompt>1 · ¿Qué te dice la evaluación que la observabilidad no te dice?</Prompt>
+  <Option>Cuántos tokens consumió cada paso de la ejecución</Option>
+  <Option ok>Si el sistema se ha vuelto *tonto*: la observabilidad te dice que está *lento*</Option>
+  <Option>Qué herramienta eligió el agente en cada vuelta</Option>
+  <Feedback>Una mira el sistema en vivo; la otra mide la calidad contra casos con respuesta esperada, antes de desplegar. Hacen falta las dos ([c16](/concepto/16-observabilidad-y-costo)).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Con qué temperatura corres el modelo que hace de juez?</Prompt>
+  <Option>0.7, para que valore matices y no sea rígido</Option>
+  <Option ok>0: un juez que puntúa distinto la misma respuesta no sirve para comparar antes/después</Option>
+  <Option>La misma que use el modelo evaluado, para ser justos</Option>
+  <Feedback>Toda la evaluación se apoya en que el número sea **repetible**. Y aun con temperatura 0, el juez tiene sesgos: valídalo contra casos que ya sabes puntuar (Concepto 16c).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · La fidelidad (*faithfulness*) sale baja pero el *context recall* está alto. ¿Dónde está el problema?</Prompt>
+  <Option>En el chunking: los fragmentos parten ideas</Option>
+  <Option ok>En el generador: recuperaste lo relevante, pero el modelo está afirmando cosas que no están en el contexto</Option>
+  <Option>En el re-ranker, que deja pasar ruido</Option>
+  <Feedback>Ese es el valor de partir "¿es buena?" en tres jueces: fidelidad baja → prompt o modelo; recall bajo → retriever ([c12](/concepto/12-recuperar-re-rankear)).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Un agente da la respuesta correcta tras tres llamadas a herramientas equivocadas. ¿Pasa la evaluación?</Prompt>
+  <Option>Sí: lo que importa es el resultado que ve el usuario</Option>
+  <Option ok>No: hay que evaluar también la **trayectoria** — acertar por suerte es estar roto</Option>
+  <Option>Depende de si las tres llamadas costaron menos que el presupuesto</Option>
+  <Feedback>Evaluar un agente añade una capa sobre el resultado: ¿eligió las tools correctas?, ¿en orden razonable?, ¿sin pasos inútiles? (Concepto 16c).</Feedback>
+</Question>
+
+</Quiz>
+
+<Recap level={4} label="↺ En una frase">
+
+Sin un dataset y un juez, "mejoró" es una opinión. Mide la calidad de forma repetible, parte "¿es buena?" en la tríada RAG, y corre la misma evaluación antes/después de cada cambio para cazar regresiones.<Arch>archivo: `16_evaluacion.py` · la observabilidad, en el c16</Arch>
+
+</Recap>
