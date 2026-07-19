@@ -581,3 +581,10 @@ details.qa[open] > summary::after { content: " –"; }
 .video-play { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 62px; height: 62px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 22px; display: flex; align-items: center; justify-content: center; box-shadow: 0 8px 26px rgba(0,0,0,.45); }
 .video-cover:hover .video-play { filter: brightness(1.1); }
 .video-label { position: absolute; bottom: 12px; left: 14px; color: #fff; font-size: 13px; font-weight: 600; text-shadow: 0 1px 6px rgba(0,0,0,.7); }
+
+/* modo escucha */
+.listen { display: inline-flex; gap: 8px; margin: 10px 0 2px; }
+.listen-btn { font-family: inherit; font-size: 12.5px; font-weight: 600; background: var(--surface); color: var(--ink-soft); border: 1px solid var(--line-2); border-radius: 999px; padding: 6px 13px; cursor: pointer; }
+.listen-btn:hover { border-color: var(--accent); color: var(--accent); }
+.listen-btn.stop { padding: 6px 10px; }
+@media print { .listen { display: none !important; } }

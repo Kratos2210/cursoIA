@@ -7,6 +7,7 @@ import { OnThisPage } from "@/components/app/OnThisPage";
 import { ReadingProgress } from "@/components/app/ReadingProgress";
 import { KindTag, FileRef, MetaChip } from "@/components/content/ui";
 import { VideoEmbed } from "@/components/app/VideoEmbed";
+import { ListenButton } from "@/components/app/ListenButton";
 
 export const dynamicParams = false;
 
@@ -89,6 +90,7 @@ export default async function ModulePage({
             </div>
           ) : null}
           {item.videoUrl ? <VideoEmbed url={item.videoUrl} title={item.title} /> : null}
+          <ListenButton title={item.title} goals={item.goals} />
           <Content />
         </article>
         <ModuleFooter id={item.id} prev={prev} next={next} />
