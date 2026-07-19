@@ -52,6 +52,7 @@ export type Item = {
   levelShort: string;
   colorVar: string;
   pyFile: string | null;
+  fileref: string | null;
   tested: boolean;
   goals: string | null;
   prereqs: string | null;
@@ -73,6 +74,7 @@ function toItem(m: ManifestItem): Item {
     levelShort: style.short,
     colorVar: style.colorVar,
     pyFile: m.pyFile,
+    fileref: m.fileref,
     tested: m.tested,
     goals: m.goals,
     prereqs: m.prereqs,

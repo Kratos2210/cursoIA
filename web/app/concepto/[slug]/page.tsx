@@ -71,7 +71,13 @@ export default async function ModulePage({
             {item.levelName} · Concepto {item.num}
           </KindTag>
           <h1>{item.title}</h1>
-          {item.pyFile ? <FileRef file={item.pyFile} tested={item.tested} /> : null}
+          {item.pyFile ? (
+            <FileRef file={item.pyFile} tested={item.tested} />
+          ) : (
+            <div className="fileref">
+              {item.fileref ?? "📖 Concepto de lectura — sin script asociado"}
+            </div>
+          )}
           {chips.length ? (
             <div className="meta-chips">
               {chips.map((c) => (
