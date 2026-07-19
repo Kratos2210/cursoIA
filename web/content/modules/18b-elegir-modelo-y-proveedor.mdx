@@ -85,6 +85,41 @@ Un modelo **7B cuantizado** corre en un portátil decente. Un **70B** pide del o
 
 </Box>
 
+### La ficha técnica: qué PUEDE hacer un modelo (antes de mirar el precio)
+
+Casuística típica: el equipo de una startup de e-commerce va a elegir el modelo de su chatbot de atención al cliente, y el tech lead pregunta *"¿hay alguna forma de obtener información más detallada sobre cada uno?"*. La hay, y no es un benchmark ni un blog: **todo modelo publica su ficha técnica** (la *model card*), y los catálogos como Bedrock la exponen por API:
+
+```python title="solo lectura — requiere cuenta AWS · el catálogo de Bedrock por API"
+import boto3
+bedrock = boto3.client("bedrock", region_name="us-east-1")
+
+# El catálogo entero: bedrock.list_foundation_models()["modelSummaries"]
+ficha = bedrock.get_foundation_model(
+    modelIdentifier="anthropic.claude-sonnet-4-5-20250929-v1:0"
+)["modelDetails"]
+
+# Lo que devuelve — los campos que deciden:
+#   modelName:                  Claude Sonnet 4.5
+#   providerName:               Anthropic
+#   inputModalities:            ['TEXT', 'IMAGE']      ← el modelo VE
+#   outputModalities:           ['TEXT']
+#   responseStreamingSupported: True                   ← chat token a token
+#   customizationsSupported:    []                     ← aquí no se fine-tunea
+#   inferenceTypesSupported:    ['INFERENCE_PROFILE']  ← se invoca vía perfil
+```
+
+Cada campo responde una pregunta de negocio concreta — así se lee la ficha con ojos de ingeniero:
+
+| Campo | Qué te dice | La decisión que alimenta |
+| --- | --- | --- |
+| `inputModalities: TEXT, IMAGE` | El modelo **ve** imágenes además de leer texto | ¿Tu chatbot recibirá la foto del producto dañado en el reclamo? Si sí, la ficha ya filtró a los solo-texto ([c22](/concepto/22-multimodal)) |
+| `responseStreamingSupported: True` | Puede responder token a token | Imprescindible para el chat en vivo con SSE ([c25](/concepto/25-frontend-chat-sse)); irrelevante para un batch nocturno |
+| `customizationsSupported: []` | Este modelo **no** admite fine-tuning en esta plataforma | Si tu plan incluía afinarlo ([c21](/concepto/21-fine-tuning-vs-rag)), o cambias de modelo o cambias de plan |
+| `inferenceTypesSupported: INFERENCE_PROFILE` | No se invoca "on-demand" directo: se llama a través de un **perfil de inferencia** (que enruta entre regiones) | Un detalle operativo que cambia el id que pones en el código — operarlo es el [c34](/concepto/34-desplegar-en-bedrock-y-vertex) |
+| `modelId` con fecha y versión (`…-20250929-v1:0`) | El modelo está **versionado como artefacto** | El mismo principio del tag inmutable del [c17c](/concepto/17c-continuous-delivery): sabes exactamente qué corre en producción |
+
+Fuera de Bedrock, la misma información vive en la **model card** de cada proveedor (la página del modelo en su documentación), en el endpoint `/models` de OpenRouter y en `ollama show <modelo>` para los locales. Leer la ficha es el paso CERO de la elección: filtra por capacidades **antes** de discutir precios — un modelo que no ve imágenes no se abarata: se descarta.
+
 ### Cuánto cuesta cada modelo (consultado: 2026-07-10)
 
 Precios de lista por millón de tokens, tomados de las páginas oficiales de cada proveedor el 2026-07-09. Sirven para *estimar* y *comparar*, no como contrato.
@@ -102,6 +137,9 @@ Precios de lista por millón de tokens, tomados de las páginas oficiales de cad
 | `deepseek-v4-flash` | DeepSeek | open weights (API) | $0.14 | $0.28 | 1M | Cache miss; el nombre `deepseek-chat` se renombra el 2026-07-24. |
 | `Llama 3.3 70B` | Groq | open weights | $0.59 | $0.79 | 128K | Llama Community License. |
 | `Qwen3 32B` | Groq | open weights | $0.29 | $0.59 | 131K | Apache 2.0. El que usa el curso en Groq. |
+| `GLM-5` | Z.ai (Zhipu) | open weights (API) | $1.00 | $3.20 | — | Flagship chino de Zhipu. Consultado 2026-07-19. |
+| `GLM-4.7-FlashX` | Z.ai (Zhipu) | open weights (API) | $0.07 | $0.40 | — | El piso de precio de la familia GLM (y hay un Flash gratis). Consultado 2026-07-19. |
+| `kimi-k3` | Moonshot (Kimi) | open weights (API) | $3.00 | $15.00 | 1M | Cache miss; con cache hit la entrada baja a $0.30. Consultado 2026-07-19. |
 | `qwen3:8b` (Ollama, tu máquina) | local | open weights | $0 | $0 | según tu RAM | Cero coste por token: pagas hardware y electricidad. |
 
 <Box kind="warn" label="▲ Esta tabla caduca">
@@ -109,13 +147,32 @@ Precios de lista por millón de tokens, tomados de las páginas oficiales de cad
 Los precios de los LLM cambian cada pocos meses (bajan casi siempre, y los nombres de modelo se renombran aún más rápido: OpenAI ya publica GPT-5.6). **Fecha de esta consulta: 2026-07-09.** Antes de decidir con dinero real, mira siempre la página oficial:
 
 - [OpenAI](https://platform.openai.com/docs/pricing) · [Gemini](https://ai.google.dev/gemini-api/docs/pricing) · [Anthropic](https://www.anthropic.com/pricing)
-- [DeepSeek](https://api-docs.deepseek.com/quick_start/pricing) · [Groq](https://groq.com/pricing)
+- [DeepSeek](https://api-docs.deepseek.com/quick_start/pricing) · [Groq](https://groq.com/pricing) · [Z.ai / GLM](https://docs.z.ai/guides/overview/pricing) · [Kimi / Moonshot](https://platform.kimi.ai/docs/pricing/chat)
+
+</Box>
+
+<Box kind="def" label="◈ Los modelos chinos: GLM, Qwen, DeepSeek, Kimi">
+
+Los laboratorios chinos — **Zhipu/Z.ai** (familia GLM), **Alibaba** (Qwen), **DeepSeek** y **Moonshot** (Kimi) — publican open weights con licencias permisivas y marcan el **piso de precio** del mercado. De hecho ya usas dos sin llamarlos así: el Qwen que corres en Groq y en Ollama, y DeepSeek por API. Dos matices que la tabla enseña:
+
+- **Chino ≠ barato siempre.** `kimi-k3` cuesta como un Claude Sonnet — compite en el tier flagship (con ventana de 1M) — mientras `GLM-4.7-FlashX` cuesta centavos. La familia importa menos que el tier.
+- **El mismo peso, tres jurisdicciones.** Un open weights chino puedes consumirlo por su **API nativa** (tus datos viajan a servidores del laboratorio — para un chatbot de atención al cliente con datos personales, eso es una decisión de privacidad, no solo de precio), **hospedado en un proveedor occidental** (Groq, Together, OpenRouter, el marketplace de Bedrock) o **en tus fierros** (camino ④). El modelo es el mismo; lo que eliges es quién ve tus datos y a qué precio — los cuatro caminos de arriba, otra vez.
 
 </Box>
 
 ### Cómo decidir (y cómo cambiar de opinión barato)
 
-No hay un "mejor modelo": hay un mejor modelo *para tu restricción dominante*. Empieza por identificarla.
+No hay un "mejor modelo": hay un mejor modelo *para tu restricción dominante*. Y la forma disciplinada de encontrarlo es un **embudo de tres pasos** — del más barato de ejecutar al más caro, y del menos fiable al que de verdad decide:
+
+<Flow>
+  <Step n="①" title="La ficha filtra">Modalidades, streaming, ventana, customización. Elimina a los que NO PUEDEN hacer el trabajo — un modelo sin visión no se abarata para leer fotos de reclamos: se descarta.</Step>
+  <Step n="②" title="El benchmark público preselecciona">LMArena, Artificial Analysis: reducen cientos de modelos a 2–3 candidatos por tier. Con dos límites honestos: los labs sobreajustan a los tests famosos, y ningún leaderboard mide TU caso.</Step>
+  <Step n="③" title="TU eval decide">Corre tu dataset ([c16c](/concepto/16c-evaluacion)) contra el caro y el barato del tier. Si el barato empata en TU dataset, el caro es dinero regalado; si pierde, ya sabes exactamente cuánta calidad compra la diferencia.</Step>
+</Flow>
+
+El paso ③ es donde vive el ahorro real, porque casi cada flagship tiene un hermano barato que hace *casi* lo mismo en tareas acotadas: **Claude Opus ↔ Haiku**, **GPT-5.5 ↔ gpt-5.4-mini**, **Gemini Pro ↔ Flash** — y debajo de todos, el piso chino (GLM-FlashX, Qwen, DeepSeek). Para el chatbot del e-commerce de la casuística: streaming sí (chat en vivo), visión solo si los reclamos llegan con foto, tarea acotada y volumen alto → los candidatos naturales son del tier barato multimodal, y la decisión final la toma tu eval con transcripciones reales — no el leaderboard, y menos el hype.
+
+La tabla de atajos, cuando ya sabes cuál es tu restricción dominante:
 
 | Si tu prioridad es… | Camino recomendado |
 | --- | --- |
@@ -168,6 +225,7 @@ Elegir modelo se siente como una decisión enorme e irreversible. No lo es. Grac
 1. Consigue una llave gratuita de **OpenRouter** y corre el ejemplo `01_primer_modelo.py` con un modelo `:free` (`LLM_PROVIDER=openrouter` + `LLM_MODELO=…:free`). No debería costarte un centavo.
 2. Con la tabla de precios, **estima el coste mensual** del capstone si atiende 1000 consultas/día de ~2K tokens de entrada y ~500 de salida, en *dos* modelos distintos (p. ej. GPT-5.5 vs. Gemini 2.5 Flash). Compara.
 3. Un **banco** con datos confidenciales de clientes quiere este asistente. ¿Qué camino de los cuatro elegirías y por qué? Justifica en 3 líneas.
+4. Te llega esta ficha de un catálogo: entrada `['TEXT','IMAGE']`, salida `['TEXT']`, streaming `True`, customización `[]`, inferencia `['INFERENCE_PROFILE']`. El equipo la quiere para un chatbot de atención al cliente. **Léela campo a campo**: ¿qué te habilita, qué te niega, y cuál sería tu siguiente paso antes de comprometerte con este modelo?
 
 <Solution summary="Ver soluciones razonadas">
 
@@ -179,6 +237,8 @@ Elegir modelo se siente como una decisión enorme e irreversible. No lo es. Grac
  El flagship cuesta ~13×. La lección: mide primero si de verdad necesitas la capacidad del caro; muchas tareas del capstone las cubre Flash. (Y con caché de prompt y descuentos por batch se abarata más.)
 
 **3.** **On-premise (④) o cloud gestionado en tu VPC (③, Bedrock/Vertex).** Los datos de clientes de un banco no pueden viajar a un servidor público de terceros por regulación. Bedrock deja usar Claude sin que las llamadas salgan de la VPC de AWS y hereda su compliance (SOC 2, etc.); on-premise da control total a cambio de operar el hardware. Una API de pago pública (①) queda descartada aunque sea la más cómoda.
+
+**4.** Lo que **habilita**: ve imágenes (los reclamos con foto del producto entran al alcance) y hace streaming (el chat en vivo con SSE del c25 funciona). Lo que **niega**: `customizationsSupported: []` — si el plan era fine-tunearlo, no será sobre este modelo en esta plataforma (y el c21 te diría que para un chatbot de soporte casi seguro no hace falta: RAG + prompt). Lo **operativo**: `INFERENCE_PROFILE` significa que no lo invocas por el id a secas — va vía perfil de inferencia (c34). Y el siguiente paso de un senior no es firmar: es el embudo — este es un modelo de tier medio/alto, así que corre tu eval con transcripciones reales contra su hermano barato (Haiku) y contra el piso (GLM/Qwen); si empatan en TU caso, la diferencia de precio es margen que regalas.
 
 </Solution>
 
@@ -205,6 +265,7 @@ Ambas se combinan con la disciplina del [c16b](/concepto/16-observabilidad-y-cos
 - Nombrar los cuatro caminos de despliegue y cuándo conviene cada uno.
 - Explicar qué aporta AWS Bedrock a una empresa regulada frente a una API pública.
 - Estimar el coste mensual de un servicio con la tabla de precios, y cambiar de proveedor tocando solo el `.env`.
+- Leer la ficha técnica de un modelo (modalidades, streaming, customización, tipo de inferencia) y aplicar el embudo ficha → benchmark → tu eval para justificar el caro o el barato según el propósito.
 
 </Checkpoint>
 
@@ -240,6 +301,14 @@ Ambas se combinan con la disciplina del [c16b](/concepto/16-observabilidad-y-cos
   <Option>La Batch API, que agrupa las consultas interactivas y las cobra a mitad de precio</Option>
   <Option>Bajar la temperatura, que reduce los tokens que el modelo genera</Option>
   <Feedback>Caché de prompt = prefijo largo y estable. La Batch API es para trabajo que nadie espera en pantalla; en un chat en vivo no aplica.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>5 · El tech lead pregunta: "¿hay forma de obtener información detallada de cada modelo antes de elegir?". ¿Qué le respondes?</Prompt>
+  <Option>Con el leaderboard público basta: el mejor rankeado es el mejor para nuestro caso</Option>
+  <Option ok>Sí: la ficha técnica del catálogo (en Bedrock, `list_foundation_models` / `get_foundation_model`; fuera, la model card) — y de ahí el embudo: la ficha filtra capacidades, el benchmark preselecciona, TU eval decide</Option>
+  <Option>Pregúntale al propio modelo qué sabe hacer: él conoce sus capacidades mejor que nadie</Option>
+  <Feedback>El leaderboard no sabe si necesitas visión o streaming, y los modelos alucinan sus propias specs con total confianza. La ficha da los hechos; tu eval con datos reales da el veredicto (Concepto 18b).</Feedback>
 </Question>
 
 </Quiz>
