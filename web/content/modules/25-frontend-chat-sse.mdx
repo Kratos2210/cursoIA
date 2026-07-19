@@ -185,7 +185,7 @@ Y ojo al `insertAdjacentHTML` con datos del servidor: aquí el distintivo es una
 
 </Quiz>
 
-<Recap level={5} label="↺ En una frase">
+<Recap level={6} label="↺ En una frase">
 
 Para darle cara al servicio: sirve una **SPA vainilla** desde el propio FastAPI (`GET /`, leída una vez) y consume su **SSE** con `fetch`+`ReadableStream` —troceando por `\n\n`— porque `EventSource` no puede hacer POST; luego cierra el A/B votando la `variante` del evento `fin`.<Arch>archivos: `proyecto_llmops/app/frontend.py` · `app/static/chat.html`</Arch>
 
