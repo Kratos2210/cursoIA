@@ -53,7 +53,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
-from app import auth, frontend, rate_limit, streaming
+from app import auth, frontend, persistence, rate_limit, streaming
 from app.config import settings
 from guardrails import input_guard
 from observability import logs, metrics, tracing
@@ -164,21 +164,29 @@ def crear_app(agente=None, agentes=None, cache=None, colector=None, feedback=Non
         Todo lo que va ANTES del `yield` corre al arrancar; lo de después, al
         apagar. Ahí vaciamos el buffer de trazas: un proceso que muere con el
         buffer lleno pierde en silencio las trazas de sus últimas requests.
+
+        ⭐ El checkpointer se abre AQUÍ, envolviendo todo. Con Postgres es un pool
+           de conexiones que debe vivir tanto como el servicio: abrirlo por
+           petición sería absurdo, cerrarlo antes del `yield` dejaría al agente
+           sin memoria. El `async with` lo abre al arrancar y lo cierra al apagar.
+           Con "memoria" (el default) es un MemorySaver y el `with` no cuesta nada.
         """
-        if estado["agentes"] is None:         # pragma: no cover - requiere API real
-            from app.agent import construir_agentes_por_variante
-            # Un agente por variante, con SU prompt; comparten las piezas caras.
-            estado["agentes"] = construir_agentes_por_variante(
-                EXPERIMENTO_PROMPT.variantes)
-        if estado["cache"] is None:           # pragma: no cover - requiere embeddings
-            from app.embeddings import crear_embeddings
-            from cache.cache_backends import crear_backend
-            from cache.semantic_cache import SemanticCache
-            estado["cache"] = SemanticCache(crear_embeddings(), crear_backend())
+        async with persistence.abrir_checkpointer() as checkpointer:
+            if estado["agentes"] is None:     # pragma: no cover - requiere API real
+                from app.agent import construir_agentes_por_variante
+                # Un agente por variante, con SU prompt; comparten las piezas
+                # caras Y el checkpointer (el thread_id evita que choquen).
+                estado["agentes"] = construir_agentes_por_variante(
+                    EXPERIMENTO_PROMPT.variantes, checkpointer=checkpointer)
+            if estado["cache"] is None:       # pragma: no cover - requiere embeddings
+                from app.embeddings import crear_embeddings
+                from cache.cache_backends import crear_backend
+                from cache.semantic_cache import SemanticCache
+                estado["cache"] = SemanticCache(crear_embeddings(), crear_backend())
 
-        yield                                  # ← aquí el servicio atiende
+            yield                              # ← aquí el servicio atiende
 
-        tracing.vaciar()
+            tracing.vaciar()
 
     app = FastAPI(
         title="GobData — servicio LLMOps",

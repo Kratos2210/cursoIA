@@ -793,10 +793,12 @@ llmops = [
     { name = "langchain-openai" },
     { name = "langchain-postgres" },
     { name = "langfuse" },
+    { name = "langgraph-checkpoint-postgres" },
     { name = "numpy", version = "2.4.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "numpy", version = "2.5.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
     { name = "onnxruntime", version = "1.23.2", source = { registry = "https://pypi.org/simple" }, marker = "platform_machine == 'x86_64' and sys_platform == 'darwin'" },
     { name = "psycopg", extra = ["binary"] },
+    { name = "psycopg-pool" },
     { name = "pydantic-settings" },
     { name = "pyyaml" },
     { name = "redis" },
@@ -840,6 +842,7 @@ requires-dist = [
     { name = "langchain-postgres", marker = "extra == 'llmops'", specifier = ">=0.0.10" },
     { name = "langfuse", marker = "extra == 'llmops'", specifier = ">=2,<3" },
     { name = "langgraph", specifier = "==1.2.8" },
+    { name = "langgraph-checkpoint-postgres", marker = "extra == 'llmops'", specifier = "==3.1.0" },
     { name = "langsmith", specifier = "==0.9.8" },
     { name = "llama-index", marker = "extra == 'llamaindex'", specifier = ">=0.12" },
     { name = "llama-index-embeddings-fastembed", marker = "extra == 'llamaindex'", specifier = ">=0.3" },
@@ -849,6 +852,7 @@ requires-dist = [
     { name = "onnxruntime", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin' and extra == 'emb'", specifier = "<1.24" },
     { name = "onnxruntime", marker = "platform_machine == 'x86_64' and sys_platform == 'darwin' and extra == 'llmops'", specifier = "<1.24" },
     { name = "psycopg", extras = ["binary"], marker = "extra == 'llmops'", specifier = ">=3.1" },
+    { name = "psycopg-pool", marker = "extra == 'llmops'", specifier = ">=3.2" },
     { name = "pydantic", specifier = "==2.13.4" },
     { name = "pydantic-settings", marker = "extra == 'llmops'", specifier = ">=2.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
@@ -1995,6 +1999,21 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/83/47/886af6f886f0bff2273164a45f008694e48a96ff3cd25ff0228f2aa9480e/langgraph_checkpoint-4.1.1.tar.gz", hash = "sha256:6c2bdb530c91f91d7d9c1bd100925d0fc4f498d418c17f3587d1526279482a25", size = 184020, upload-time = "2026-05-22T16:57:38.503Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/bd/b4/71425e3e38be92611300b9cc5e46a5bf98ab23f5ea8a75b73d02a2f1413c/langgraph_checkpoint-4.1.1-py3-none-any.whl", hash = "sha256:25d29144b082827218e7bc3f1e9b0566a4bb007895cd6cc26f66a8428739f56e", size = 56212, upload-time = "2026-05-22T16:57:37.203Z" },
+]
+
+[[package]]
+name = "langgraph-checkpoint-postgres"
+version = "3.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "langgraph-checkpoint" },
+    { name = "orjson" },
+    { name = "psycopg" },
+    { name = "psycopg-pool" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/6d/51/5a2dc42e8b5d5942b933b5b7237eae5a4dbc92508a04727c263dd383ad8a/langgraph_checkpoint_postgres-3.1.0.tar.gz", hash = "sha256:02bff4ab63d9dae8eab3a9640fce1d479da8965c9fba7b0dc04cb1f7c56f0a55", size = 148473, upload-time = "2026-05-12T03:40:10.599Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2f/cd/eff9b82bc3b5f62d481b437099f44f3ef7b1d907f166fb4ee25e8f84a1e7/langgraph_checkpoint_postgres-3.1.0-py3-none-any.whl", hash = "sha256:814cce2ef35d792bf07b090a95eed004f1acac0724fe6605536b13f6d1e7032c", size = 48988, upload-time = "2026-05-12T03:40:08.925Z" },
 ]
 
 [[package]]

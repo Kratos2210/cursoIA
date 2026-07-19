@@ -164,6 +164,24 @@ class Settings(BaseSettings):
     # Reutiliza el Postgres que ya levanta el compose para pgvector.
     metricas_backend: str = "memoria"
 
+    # ---- PERSISTENCIA DEL FEEDBACK 👍/👎 (A/B de prompts) ----
+    # Mismo problema y misma solución que las métricas: en "memoria" cada worker
+    # acumula sus votos y un reinicio los borra, así que el A/B decide sobre una
+    # fracción del tráfico. Con "postgres" los votos van a una tabla compartida y
+    # se puede elegir variante con significancia estadística. Ver ADR-0006 y
+    # observability/feedback_backends.py.
+    feedback_backend: str = "memoria"
+
+    # ---- PERSISTENCIA DE LA CONVERSACIÓN (checkpointer de LangGraph) ----
+    # "memoria" (por defecto): MemorySaver, la conversación vive en RAM y un
+    # reinicio la pierde — lo correcto para el curso y los tests.
+    # "postgres": AsyncPostgresSaver, la conversación sobrevive al deploy y la
+    # comparten todos los workers. Ver app/persistence.py.
+    checkpointer_backend: str = "memoria"
+    # Conexiones del pool del checkpointer Postgres. Cada petición en vuelo toma
+    # una mientras lee/escribe el estado; con astream concurrente, 1 no basta.
+    checkpointer_pool_max: int = Field(default=10, ge=1)
+
     # ---- LOGGING ----
     # DEBUG en desarrollo, INFO en producción. Cambiar la verbosidad de un
     # servicio no debería requerir tocar código ni reconstruir la imagen.

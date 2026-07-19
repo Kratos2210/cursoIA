@@ -184,6 +184,12 @@ services:
       # varias réplicas posibles. Cada worker escribiendo en su propia lista
       # haría que /metrics informara de una fracción arbitraria del tráfico.
       METRICAS_BACKEND: ${METRICAS_BACKEND:-postgres}
+      # Mismo razonamiento que METRICAS_BACKEND, para los otros dos estados que
+      # un reinicio se llevaba: los votos 👍/👎 del A/B y la conversación del
+      # agente. En el contenedor hay Postgres al lado y puede haber réplicas, así
+      # que ambos persisten y se comparten. El :- también respeta lo que definas.
+      FEEDBACK_BACKEND: ${FEEDBACK_BACKEND:-postgres}
+      CHECKPOINTER_BACKEND: ${CHECKPOINTER_BACKEND:-postgres}
       # Vacío = servicio abierto (la app lo avisa al arrancar y lo publica en
       # /health). Para un despliegue real: API_KEYS=clave:rol,...
       API_KEYS: ${API_KEYS:-}
