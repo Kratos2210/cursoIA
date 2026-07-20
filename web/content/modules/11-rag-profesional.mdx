@@ -52,6 +52,15 @@ Camino B · **en cada pregunta** del usuario
 
 </Box>
 
+<Box kind="def" label="◈ En qué situaciones se usa">
+
+- **Las respuestas deben salir de un corpus privado que el modelo nunca vio.** La normativa interna del capstone, tus manuales, tus contratos: material que no estuvo en su entrenamiento.
+- **El corpus cambia más rápido de lo que aguantaría cualquier reentrenamiento.** Actualizas el índice y ya está, sin re-entrenar nada ([c21](/concepto/21-fine-tuning-vs-rag)).
+- **Te exigen poder CITAR de dónde salió cada afirmación.** Auditoría, compliance: cada respuesta apunta a su fuente ([c20](/concepto/20-rag-avanzado)).
+- **Y el contrapunto doble:** si el dato es estructurado (precios, stock), la respuesta es un `WHERE`, no un retriever ([c29](/concepto/29-caso-real-2-retail)); y si el corpus entero cabe en el contexto y es estable, prueba CAG antes (la caja 🌐 de más abajo en este mismo concepto).
+
+</Box>
+
 En el nivel básico troceabas a mano. En profesional usas herramientas dedicadas: un **loader**, un **text splitter** que respeta párrafos, y un vector store **persistente** (se guarda en disco).
 
 ```python title="RAG pro · loaders + splitter + Chroma persistente"

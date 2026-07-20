@@ -73,22 +73,26 @@ Todo lo que has construido hasta aquí cae en una de dos familias, y conviene sa
 El poder real de un grafo cíclico se ve en este patrón de producción: si la búsqueda no encontró contexto, el agente **reintenta**; si falla varias veces, no se cae ni inventa — **escala a un humano**. Un nodo evaluador devuelve el nombre de la ruta a seguir:
 
 ```python title="patrón real · reintentar y escalar (adaptado de la comisión de EricBz)"
-def evaluar(state):
+def evaluate(state):                       # NODO: es quien ACTUALIZA el estado
+    if state["retrieved_docs"]:
+        return {}                          # hay contexto: nada que cambiar
+    return {"attempts": state["attempts"] + 1}   # un intento más, al estado
+
+def decidir_ruta(state):                   # ARISTA condicional: solo LEE el estado
     if state["retrieved_docs"]:
         return "finish"                    # hay contexto: pasar a redactar
-    state["attempts"] += 1
     if state["attempts"] >= 3:
         return "human"                     # 3 intentos fallidos: escala a un humano
     return "retry"                         # aún no: vuelve a buscar (CICLO)
 
-grafo.add_conditional_edges("evaluate", evaluar, {
+grafo.add_conditional_edges("evaluate", decidir_ruta, {
     "finish": "generate",     # ruta feliz
     "retry":  "retrieve",     # el ciclo: evaluate -> retrieve -> evaluate...
     "human":  "escalar",      # la salida de emergencia
 })
 ```
 
-Fíjate en el detalle: el contador `attempts` vive *en el estado*, no en una variable suelta. Todo lo que el agente necesita recordar entre vueltas del ciclo viaja en la carpeta.
+Fíjate en dos detalles. Uno: el contador `attempts` vive *en el estado*, no en una variable suelta — todo lo que el agente necesita recordar entre vueltas del ciclo viaja en la carpeta. Dos: lo incrementa el **nodo** `evaluate` (devolviendo la actualización), no la arista condicional. La arista **solo lee y elige ruta**: si mutaras el estado ahí dentro, ese cambio no pasa por el checkpointer y se perdería al reanudar — la escalada a humano nunca dispararía.
 
 ### Paso 2 — Human-in-the-loop: pausar y pedir permiso
 
@@ -143,6 +147,16 @@ def nodo_aprobacion(state):
 ▶  Reanudando con la respuesta del humano: "si"
 ✅ aprobado = True
 ```
+
+<Box kind="def" label="◈ En qué situaciones se pone un interrupt">
+
+- **Sale dinero.** Reembolsos, pagos, notas de crédito: nada que mueva plata se dispara sin que alguien lo apruebe.
+- **Hay efecto legal o regulatorio.** Marcar un incumplimiento (el capstone), rechazar una cobertura, responder a un regulador: quien firma es una persona.
+- **Es irreversible o público.** Borrar datos, enviar el correo al cliente, publicar: acciones que no tienen "deshacer".
+- **Baja confianza.** El propio flujo detecta que duda —reintentos agotados, margen bajo— y escala en vez de insistir.
+- **Y el contrapunto:** una pausa que nadie va a atender solo congela el grafo — lo dice el ⛔ del módulo.
+
+</Box>
 
 <Box kind="analogy" label="🌐 Patrón del mundo real: agentes ambientales">
 

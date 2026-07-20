@@ -50,6 +50,15 @@ Es como un chat de WhatsApp: cada mensaje ve todo el hilo arriba. Aquí tú "sub
 
 </Box>
 
+<Box kind="def" label="◈ En qué situaciones se usa">
+
+- **Mesa de ayuda donde la pregunta N depende de la anterior.** Un "¿y en cuotas?" solo se entiende con el turno previo; sin historial, el asistente responde a ciegas.
+- **Flujos que juntan datos en varios turnos.** Una reserva se arma por partes: nombre → fecha → confirmación, y cada turno se apoya en lo ya dicho.
+- **Tutores o asesores que retoman lo dicho.** Un "como te expliqué arriba…" exige que el hilo anterior siga a mano.
+- **Y el contrapunto:** en cuanto atiendes a VARIOS usuarios a la vez, la lista manual se queda corta — pasas a checkpointer + `thread_id` ([c10](/concepto/10-agentes-prebuilt)). Y una consulta suelta sin hilo (clasificar, extraer) no necesita memoria: pagarla es contexto muerto.
+
+</Box>
+
 <Box kind="practice" label="▸ Para practicar">
 
 Envuelve `chatear()` en un `while True` con `input()` y comprueba que recuerda datos varios turnos después.
