@@ -302,6 +302,8 @@ No por el ranking de moda, sino por el **triángulo coste / latencia / calidad**
 
 No es un truco, es una cadena de decisiones en orden. **Primero medir**: cada respuesta trae `usage_metadata`, y de tokens a dólares solo hay una multiplicación (c16). La regla contraintuitiva que demuestra que lo entiendes: los tokens de **salida** cuestan varias veces más que los de entrada, así que recortas la *respuesta* antes que el *contexto*. **Segundo, no llamar al modelo si no hace falta**: caché exacta para repeticiones idénticas, caché semántica (por similitud, con TTL y la llave incluyendo rol/variante) y el **prompt caching del proveedor** —pones lo estable primero y lo variable al final para no romper el prefijo—, que es lo que hace viable el CAG del c11. **Tercero, el modelo correcto**: uno pequeño para el grueso con *fallback*, elegido por el triángulo coste/latencia/calidad contra tu product eval, y Batch API (~50% menos) para lo no interactivo (c18b). **Cuarto, higiene de contexto**: re-rankear el top-k en vez de volcar veinte chunks sucios (c12/c20). **Quinto, límites**: rate limiting y guardrail de entrada *antes* de gastar un token (c23). Y saber **cuándo NO**: optimizar sin tráfico real es afilar el lápiz con la casa apagada.
 
+**◆ En una frase para negocio:** el gasto en IA no se dispara solo — se controla midiendo el costo por consulta, reusando las respuestas que se repiten y usando el modelo justo para cada tarea; así la factura crece con el uso, de forma previsible, y nunca por sorpresa.
+
   </QAnswer>
 </QA>
 
@@ -340,6 +342,8 @@ Un buen stack se cuenta por **qué problema resuelve cada pieza**, no como lista
 
 Lo que sube la respuesta de "hice una demo" a "operé un sistema" es **no parar en las cajas felices**: nombrar la capa de producción que casi todos olvidan —**observabilidad** (trazas, tokens y coste en vivo, c16), **evaluación con gate de veto** en CI (c16c), **guardrails** de entrada/salida y RBAC (c23), y **caché** semántica más prompt caching para la factura (c16)—. Esa mitad es la que separa el notebook del servicio.
 
+**◆ En una frase para negocio:** está armado con piezas estándar y probadas, sin licencias caras ni un proveedor que te secuestre; corre en cualquier nube o servidor, el modelo es open-source (los datos sensibles se quedan en casa y el costo por consulta lo controlamos nosotros) y trae lo necesario para ser confiable en producción, no solo una demo que funciona el día del pitch.
+
   </QAnswer>
 </QA>
 
@@ -370,6 +374,8 @@ Casi cualquier sistema de IA serio se dibuja con las mismas siete capas; los cua
 **6 · Guardrail de salida + observabilidad/eval** — valida lo que sale, y traza tokens, coste y latencia en vivo (c16) con evals que tienen poder de veto en CI (c16c).
 
 **7 · Datos / mejora** — feedback 👍/👎 persistido y A/B pegajoso para que el sistema aprenda de datos, no de opiniones (c24b).
+
+**◆ En una frase para negocio:** una solución de IA seria no es "un chatbot", son siete piezas —puerta segura, cerebro, biblioteca de datos, motor, memoria, vigilancia y mejora continua—; saber nombrarlas es lo que muestra que diseñas un sistema confiable y mantenible, no una demo que impresiona un día.
 
   </QAnswer>
 </QA>
