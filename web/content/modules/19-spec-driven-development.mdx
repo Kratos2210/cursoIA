@@ -43,6 +43,44 @@ De los principios (izquierda) al código (derecha)
   <Step n="⑤" title="/implement">`verificar_curso.py` + sus tests. El código, por fin.</Step>
 </Flow>
 
+<Box kind="def" label="◈ El mapa completo: spec-kit tiene más de cinco comandos">
+
+Esos cinco son la **espina dorsal**, pero no todo spec-kit. Alrededor del flujo principal hay comandos auxiliares que rara vez se enseñan y que resuelven los momentos incómodos reales de un proyecto:
+
+<DefList>
+  <Term>/speckit-clarify</Term>
+  <Def>Va **entre** `/specify` y `/plan`. Detecta las zonas poco especificadas del spec y te hace hasta cinco preguntas dirigidas, codificando tus respuestas de vuelta en el documento. Es lo que convierte un `[NEEDS CLARIFICATION]` en una decisión escrita en vez de una suposición del agente.</Def>
+  <Term>/speckit-analyze</Term>
+  <Def>Se corre **después** de `/tasks`. Hace un análisis no destructivo de consistencia cruzada entre `spec.md`, `plan.md` y `tasks.md`: caza el requisito que quedó sin tarea, o la tarea que no responde a ningún requisito. No cambia nada; solo reporta.</Def>
+  <Term>/speckit-checklist</Term>
+  <Def>Genera una checklist de calidad a medida de la feature — la lista de comprobaciones concretas que este spec necesita antes de darse por listo.</Def>
+  <Term>/speckit-converge</Term>
+  <Def>El comando para cuando **ya hay código escrito**. Evalúa lo que existe contra el spec, el plan y las tasks, y añade a `tasks.md` el trabajo que todavía falta. Es cómo se le pone un spec a algo que nació sin él.</Def>
+  <Term>/speckit-taskstoissues</Term>
+  <Def>Convierte las tasks en issues de GitHub ordenados por dependencia, para repartir el trabajo en un equipo.</Def>
+</DefList>
+
+No hace falta usarlos todos en cada feature. Pero saber que existen cambia la respuesta a "¿y si el spec quedó ambiguo?" (`clarify`), "¿el plan cubre todo el spec?" (`analyze`) y "¿esto ya está a medio construir?" (`converge`).
+
+</Box>
+
+<Box kind="def" label="◈ Cómo se escribe una constitución (el paso ①)">
+
+La constitución es el paso ① y el más fácil de despachar con un placeholder. Escribirla bien es sencillo si respetas su anatomía: **cada principio es una regla + su Rationale**. La regla dice qué se hace o no se hace; el *Rationale* dice por qué, y es lo que impide que alguien la borre dentro de tres meses por parecer un capricho.
+
+```text title="La forma de un principio (de la constitución real de este curso)"
+### III. Tests offline obligatorios (marcador offline, sin red, sin llaves)
+Todo comportamiento verificable se cubre con un test offline: sin red,
+sin llaves, corre entero con `uv run pytest -m offline`.
+Rationale: el estudiante debe poder correr la suite en un avión, sin
+cuota y sin gastar un centavo. Un test que necesita red no es una red
+de seguridad: es una lotería.
+```
+
+Tres reglas de oficio: **pocos principios** (cinco es un buen número; treinta no los recuerda nadie), **cada uno con su Rationale** (una regla sin porqué es una orden, y las órdenes se saltan), y **versionado semántico** — MAJOR si redefines un principio de forma incompatible, MINOR si añades uno, PATCH si solo aclaras. La constitución de este proyecto está en `.specify/memory/constitution.md` y la plantilla en blanco en `.specify/templates/constitution-template.md`; el comando que la crea o actualiza es `/speckit-constitution`, que además mantiene alineadas las plantillas de spec, plan y tasks con lo que la constitución exige.
+
+</Box>
+
 ### El ejemplo trabajado: cómo nació este verificador
 
 No es un ejemplo inventado. El script `verificar_curso.py` — el que comprueba que la web, el README y `util.py` se cuentan la misma historia — recorrió los cinco pasos, y sus artefactos están commiteados en `specs/001-verificador-curso/`. Sigue la cadena:
@@ -82,6 +120,10 @@ El stack de quien trabaja en serio con asistentes de código tiene **tres pilare
 La diferencia con MCP es la que aclara para qué sirve cada uno: **MCP le da al agente *capacidades*** (a qué sistemas puede tocar), un **skill le da *procedimiento*** (cómo se hace bien *aquí*). Un MCP conecta tu base de datos; un skill explica cómo tu equipo escribe migraciones sin romper producción. Los dos convierten conocimiento tribal —lo que "todos saben" pero nadie escribió— en algo que el asistente lee, aplica y tú revisas. Es la misma idea de este concepto, un nivel más arriba: no solo especificas *esta* tarea, empaquetas el *criterio* con el que se hace bien cualquier tarea de ese tipo.
 
 </Box>
+
+### Y cuando el sistema no es determinista
+
+Todo lo anterior se apoya en un supuesto que aquí se cumplía: el verificador es software determinista, así que "correcto" es una propiedad binaria y los escenarios de aceptación se pueden escribir con resultado exacto. En cuanto especifiques un sistema con un **LLM dentro** ese supuesto se rompe, y con él la mitad de las secciones de la plantilla: el criterio de aceptación pasa a ser un umbral sobre un conjunto dorado, aparece el problema de especificar **cuándo el sistema se calla**, y el coste deja de ser algo que se optimiza al final. Eso es el [c19b](/concepto/19b-spec-de-apps-de-ia).
 
 <Box kind="practice" label="✎ Para practicar">
 

@@ -139,6 +139,7 @@ montón de scripts: **cada concepto tiene una prueba que lo defiende**.
 | Auditoría / trazabilidad | `proyecto_final/audit.py` | [🏆](ejercicios/ejercicio_proyecto.md) | `proyecto_final/tests/test_audit.py` |
 | Inyección de dependencias | `proyecto_final/graph_builder.py` | [🏆](ejercicios/ejercicio_proyecto.md) | `proyecto_final/tests/test_agente.py` |
 | Spec-Driven Development (verificador) | `verificar_curso.py` | — | `tests/test_verificar_curso.py` |
+| Spec de una aplicación de IA | `docs/guia-spec-para-apps-de-ia.md` | — | — (documento de método, sin test) |
 | Multi-query y RAG-Fusion | `20` | [20](ejercicios/ejercicio_20_rag_avanzado.md) | `test_offline.py::TestTema20*` |
 | Fine-tuning vs RAG | `21` | — | `test_offline.py::TestTema21*` |
 | Fine-tuning hands-on (LoRA/QLoRA en Colab) | `docs/notebooks/21b_lora_colab.ipynb` | — | — (fuera del gate, ADR-0003) |

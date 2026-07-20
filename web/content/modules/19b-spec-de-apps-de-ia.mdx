@@ -1,0 +1,241 @@
+El [c19](/concepto/19-spec-driven-development) te dio el método: escribir el QUÉ y el POR QUÉ antes del CÓMO, y que el spec gane cuando discrepa del código. Pero su ejemplo trabajado —el verificador de este curso— es software **determinista**: un enlace roto está roto siempre, en todas las ejecuciones, y por eso su spec se pudo escribir con escenarios de resultado exacto. Ahora especifica un asistente que responde a clientes. La misma pregunta puede dar dos redacciones distintas y ambas correctas; o una correcta y una sutilmente inventada. **El supuesto que sostenía la plantilla —que "correcto" es una propiedad binaria— acaba de romperse**, y con él la mitad de las secciones del spec.
+
+Este concepto es la reparación: qué se escribe en un spec cuando el sistema no es determinista.
+
+<Box kind="def" label="◈ Definición · El criterio de aceptación deja de ser booleano">
+
+En un spec determinista, un escenario de aceptación fija **un caso** con su resultado exacto. En un spec de IA eso es inútil, porque el modelo dirá lo correcto con otras palabras y el escenario fallará siendo la respuesta perfecta. El escenario se mueve entonces de un caso a **una medición sobre un conjunto, con umbral**.
+
+<DefList>
+  <Term>conjunto dorado (golden set)</Term>
+  <Def>Las preguntas reales con su respuesta esperada y su fuente correcta, etiquetadas por quien conoce el negocio. Es la definición **ejecutable** del QUÉ: lo que los escenarios de aceptación son al spec determinista.</Def>
+  <Term>eval</Term>
+  <Def>La corrida del conjunto dorado contra el sistema, que devuelve métricas: exactitud, tasa de citación, tasa de abstención, coste medio. Es la definición de "listo" que sustituye a "los tests pasan".</Def>
+  <Term>umbral</Term>
+  <Def>El número que separa aceptable de inaceptable, y que es **distinto por criterio**: una respuesta incompleta molesta, un precio inventado cuesta dinero. Lo segundo lleva umbral cero.</Def>
+  <Term>abstención</Term>
+  <Def>Que el sistema diga "no sé" en vez de improvisar. En IA es lo más difícil de especificar y lo que decide si puedes dejar el sistema encendido sin vigilancia.</Def>
+</DefList>
+
+</Box>
+
+Así se ve el cambio en el mismo requisito, "responde bien sobre horarios":
+
+<Flow>
+  <Step n="✗" title="Escenario determinista">Given "¿a qué hora abren?", Then responde "Abrimos de 9am a 6pm".</Step>
+  <Step n="→" title="El problema">El modelo dice "Estamos abiertos de 9 de la mañana a 6 de la tarde". Falla siendo perfecto.</Step>
+  <Step n="✓" title="Escenario con umbral">Given el conjunto dorado de 60 preguntas reales, Then ≥90% contienen el dato correcto, ≥95% citan su fuente y 0% inventan un precio.</Step>
+</Flow>
+
+### El método: de la idea difusa al spec, paso a paso
+
+Antes de lo que cambia con la IA, el orden en que uno se sienta a escribir. Un cliente nunca trae un spec: trae una frase ("quiero un bot que responda a mis clientes"). Estos seis pasos la convierten en un documento verificable, y van en este orden porque cada uno acota al siguiente. Los cuatro primeros valen para cualquier software; los pasos ④ y ⑤ son donde el sistema de IA aprieta, y los desarrollan las cajas de más abajo.
+
+<Flow>
+  <Step n="①" title="Las cuatro preguntas">Quién sufre hoy y cuánto · qué hace en su lugar · cómo sabremos que mejoró · qué explícitamente NO haremos. Si no puedes contestarlas, no te falta redacción: te falta una conversación con el cliente.</Step>
+  <Step n="②" title="Cortar historias por valor">Prioriza P1, P2, P3 cortando por rebanada de valor, no por capa técnica. La P1 no es "montar la base vectorial": es "responde horarios citando la fuente".</Step>
+  <Step n="③" title="Requisitos funcionales">Cada uno: MUST + un verbo observable desde fuera, sin nombrar tecnología.</Step>
+  <Step n="④" title="Criterios de éxito y golden set">Resultados medibles y agnósticos. Aquí, en IA, defines los umbrales y el conjunto dorado que los mide.</Step>
+  <Step n="⑤" title="Presupuesto y abstención">El techo de coste por conversación y las reglas de cuándo el sistema se calla. En IA no son un anexo: condicionan el diseño.</Step>
+  <Step n="⑥" title="Marcar lo que no sabes">`[NEEDS CLARIFICATION]` para lo que no decides tú; `Assumptions` para lo que decidiste por defecto. Luego, la checklist antes de `/plan`.</Step>
+</Flow>
+
+Tres de esos pasos tienen una técnica que no es obvia y que conviene tener a mano:
+
+- **El test de independencia (paso ②).** Pregúntate: si implemento *solo* la P1 y nada más, ¿tengo algo que enseñarle a un cliente? Si la respuesta es "no, falta la P2", la P1 está mal cortada. La rebanada buena atraviesa el sistema entero por su parte más fina —recibir, recuperar, responder, citar— para que, terminada, ya sepas si la idea funciona.
+- **El test de la tapadera (paso ③).** Tapa con el dedo la palabra que nombra la tecnología en un requisito. Si pierde sentido, estaba mal escrito. "MUST citar el documento y la fecha" sobrevive a cualquier stack; "MUST usar pgvector" no dice qué gana el usuario — es plan colado hacia arriba.
+- **FR contra criterio de éxito (pasos ③ vs ④).** El FR describe lo que el sistema *hace* ("MUST responder en menos de 5 segundos"); el criterio de éxito describe el *resultado* con el que sabrás, dentro de un mes, si valió la pena ("el 80% de las consultas de fin de semana se resuelven sin intervención humana"). Se confunden constantemente; el segundo se mide sin abrir el código.
+
+Con ese esqueleto en la cabeza, el resto del concepto es qué se escribe distinto en los pasos ④ y ⑤ cuando hay un modelo dentro.
+
+### Qué cambia, sección por sección
+
+Esta es la tabla que conviene tener al lado cuando escribas tu primer spec de IA. La columna izquierda es el spec del verificador del c19; la derecha, el del asistente de WhatsApp que sirve de ejemplo trabajado.
+
+| Dimensión | Spec determinista | Spec de aplicación de IA |
+| --- | --- | --- |
+| Criterio de aceptación | Given/When/Then exacto | Umbral sobre conjunto dorado |
+| Definición de "listo" | Los tests pasan | Las evals superan el umbral |
+| Artefacto que acompaña | Escenarios escritos | Conjunto dorado etiquetado por el negocio |
+| Lo difícil de especificar | Qué hace el sistema | **Cuándo se abstiene** |
+| Coste y latencia | Requisito de segunda fila | Requisito que **elimina arquitecturas** |
+| Casos de borde | Entradas límite | + alucinación, inyección, fuga, deriva de versión |
+| Estabilidad en el tiempo | El código no cambia solo | El modelo cambia bajo tus pies |
+
+<Box kind="warn" label="▲ El conjunto dorado va en el spec, no en el plan">
+
+Es el punto que más gente se salta y el que más caro sale. El conjunto dorado **es la definición ejecutable del QUÉ**, así que pertenece al spec junto con los requisitos, no al plan ni a "cuando lleguemos a testear".
+
+Lo que pasa si lo pospones es siempre lo mismo: acaba construyéndose **después** del sistema, mirando lo que el sistema ya hace. Y un examen escrito después de ver las respuestas del alumno no evalúa nada — solo certifica lo que ya había. El spec debe fijar cuatro cosas: de dónde salen los casos (mensajes **reales**, no inventados por el equipo), cuántos y con qué cobertura, **quién etiqueta la respuesta correcta** (el negocio, no el equipo técnico) y cuántos casos negativos lleva.
+
+Ese último es el que distingue un conjunto serio: si tus 60 casos son 60 preguntas que el sistema debe contestar, estás midiendo si responde, no si sabe callarse.
+
+</Box>
+
+<Box kind="warn" label="▲ El modelo NO va en el spec">
+
+"Usa Claude", "usa GPT", "usa un modelo abierto" son decisiones de **plan**, con su justificación y sus alternativas descartadas. En el spec no pintan nada, y el argumento es puramente práctico: el panorama de modelos cambia cada pocos meses. Si "MUST usar el modelo X" está escrito en el spec, cada cambio de proveedor te obliga a editar el documento que se supone que es la fuente de verdad **del negocio** — y el negocio no cambió. Lo que pidió sigue siendo "que cite la fuente y no invente precios".
+
+El spec pone el techo, el plan elige qué cabe debajo:
+
+```text title="Dónde vive cada decisión"
+Spec:  FR-004  El sistema MUST citar la fuente de todo dato factual.
+       FR-010  El coste por conversación MUST ser menor a USD 0.03.
+
+Plan:  Modelo elegido: [id y versión concretos].
+       Por qué: cumple FR-010 con margen y cita de forma fiable en las pruebas.
+       Descartado: [alternativa] — mejor calidad, 4× el coste, no cabe.
+```
+
+Con esta separación, cambiar de modelo es editar el plan y correr el conjunto dorado. Sin ella, es renegociar el contrato.
+
+Corolario que vale para tu trabajo diario: **nunca escribas de memoria el identificador ni el precio de un modelo**. Ambos caducan, y un precio viejo invalida el cálculo del presupuesto entero. Se verifican contra la documentación oficial del proveedor el día que llenas el plan.
+
+</Box>
+
+<Box kind="analogy" label="◆ El presupuesto no es algo que se optimiza al final">
+
+En software normal, coste y latencia se dejan para el final: si molestan, se optimizan. En IA eso no funciona, porque **el presupuesto elimina arquitecturas antes de diseñarlas**.
+
+Con tres centavos por conversación y tres mensajes de media, el presupuesto por mensaje es de un centavo. Ahí no cabe un re-ranker sobre veinte fragmentos ([c12](/concepto/12-recuperar-re-rankear)), ni una cadena de tres llamadas al modelo, ni un agente que itere hasta convencerse ([c13](/concepto/13-langgraph-a-fondo)). Si el techo aparece **después** de elegir la arquitectura, descubres la incompatibilidad cuando ya está construida y el arreglo es un rediseño. Escrito en el spec, el plan nace sabiendo contra qué techo trabaja.
+
+Un detalle que se olvida: el presupuesto se expresa **por unidad de negocio** —por conversación resuelta, por documento procesado—, no por llamada al modelo. Al cliente le importa lo que cuesta atender a un cliente, no lo que cuesta un token. La instrumentación para medirlo es la del [c16](/concepto/16-observabilidad-y-costo).
+
+</Box>
+
+<Box kind="warn" label="▲ Lo difícil no es qué responde: es cuándo se calla">
+
+Un LLM **siempre** responde. Es su naturaleza, y es también el riesgo: ante una pregunta cuya respuesta no está en el corpus, producirá algo plausible en lugar de admitir que no sabe. Si el spec no exige la abstención, no la vas a obtener.
+
+Cuatro requisitos que casi todo sistema de IA necesita y que casi ningún spec de principiante incluye:
+
+```text title="Requisitos de abstención"
+FR-006  MUST responder "no tengo ese dato, te paso con una persona"
+        cuando ningún fragmento recuperado supere el umbral de relevancia.
+
+FR-007  MUST escalar a un humano, sin intentar responder, cuando el mensaje
+        contenga un reclamo, una queja formal o una solicitud de devolución.
+
+FR-008  MUST negarse a confirmar precios, stock o plazos que no aparezcan
+        literalmente en el corpus vigente, aunque pueda inferirlos.
+
+FR-009  MUST NO confirmar pedidos ni comprometer stock; ante una intención
+        de compra MUST escalar.
+```
+
+Los dos primeros salvan proyectos; el tercero evita la demanda. Y fíjate en un detalle de diseño que se deriva de exigir el **100%** de abstención: pedirle al modelo "si no sabes, dilo" cumple *casi* siempre, y casi no es cien. Un umbral de relevancia comprobado en código **antes** de llamar al modelo sí da el cien — y además ahorra la llamada. Cuando el spec pone un umbral duro, el plan se ve obligado a encontrar una garantía en vez de una esperanza.
+
+</Box>
+
+### Los modos de fallo que hay que nombrar
+
+La sección de casos de borde de un spec determinista lista entradas límite. Un sistema de IA tiene además cuatro fallos que **no aparecerán solos** si el spec no los nombra:
+
+- **Alucinación** — afirmar con confianza algo que no está en las fuentes. Se combate exigiendo trazabilidad, y con umbral cero para los datos que cuestan dinero.
+- **Inyección de prompt indirecta** — un documento del corpus contiene instrucciones que el modelo obedece. El contenido recuperado se trata como **datos**, nunca como instrucciones, con casos de prueba explícitos ([c23](/concepto/23-seguridad-red-teaming)).
+- **Fuga** — el sistema revela el prompt interno o datos de otro cliente.
+- **Deriva de versión** — el proveedor actualiza el modelo y el comportamiento cambia sin que tú toques nada.
+
+El último es el más subestimado, y es la razón real de que el conjunto dorado exista. No es para el día del lanzamiento: es para el día, dentro de seis meses, en que algo cambie por debajo y necesites saber en veinte minutos si sigues cumpliendo el contrato.
+
+<Box kind="analogy" label="🌐 Desde cero vs. un feature sobre lo que ya existe">
+
+**Desde cero**, el orden es constitución primero, spec después. La constitución recoge lo que no se negocia nunca —trazabilidad, techo de coste, evals antes que features, datos del cliente, degradación explícita— y su valor aparece meses más tarde, cuando alguien proponga el atajo que ella prohíbe. Luego se escribe el spec del **slice más fino que ya entrega valor**, no el de la aplicación entera: quince páginas que mezclan lo seguro con lo especulativo estarán obsoletas antes de terminar la primera historia.
+
+**Sobre algo que ya existe**, la constitución está y los presupuestos se heredan, así que el spec cabe en media página. Pero gana una sección que el greenfield no tiene: **no-regresión**, o qué no debe romperse.
+
+```text title="La sección que todo spec de feature necesita"
+## No-regresión
+- El conjunto dorado actual MUST seguir superando sus umbrales vigentes.
+- La abstención en casos negativos MUST seguir en 100%.
+- El coste por conversación MUST NO subir más de USD 0.005.
+```
+
+Esto importa en IA por una razón sin equivalente en software normal: **tocar el prompt para mejorar una cosa empeora otra, y no hay compilador que avise**. Un cambio de dos líneas para que cite mejor las fuentes puede hacer que deje de abstenerse. Sin la corrida del conjunto dorado antes y después, ese intercambio ocurre y nadie lo nota hasta que lo reporta un cliente.
+
+Y una regla de tamaño que ahorra discusiones: si el spec no cabe en dos páginas, no es un spec — son tres specs mal cortados.
+
+</Box>
+
+### El ejemplo trabajado
+
+En `curso_ejemplos/docs/ejemplos-spec/asistente-rag-whatsapp/` está el recorrido completo para un caso realista: una bodega de barrio que quiere responder consultas de clientes por WhatsApp sobre catálogo, precios y políticas, sin inventarse nada. Son cinco documentos copiables: la constitución con sus cinco principios, el `spec.md` con las tres historias priorizadas y el conjunto dorado, el `plan.md` donde por fin aparecen las decisiones técnicas con sus alternativas descartadas, el `tasks.md` —y ahí está lo que hay que mirar— y un spec de feature de media página para contrastar el tamaño.
+
+Lo que hay que mirar en el `tasks.md` es el **orden**: las tareas del conjunto dorado son T004–T007, **antes** de escribir una línea del sistema. Y T007 es la que delata si el método se está aplicando de verdad — *"correr las evals contra un sistema vacío y verificar que falla"*. Es el mismo instinto que el [c17b](/concepto/17b-tests-y-ci) enseña para los tests: un examen que aprueba sin alumno no está evaluando nada.
+
+La guía larga de la que este concepto es el resumen está en `curso_ejemplos/docs/guia-spec-para-apps-de-ia.md`, con el método de redacción sección por sección y una checklist de revisión.
+
+Y cuando quieras dejar de leer y **escribir uno de verdad**, el enunciado guiado está en `curso_ejemplos/ejercicios/ejercicio_19_spec.md`: specas una feature nueva sobre ese mismo asistente y corres `/speckit-clarify`, `/speckit-plan`, `/speckit-tasks` y `/speckit-analyze` para ver qué te obliga a mejorar cada uno. Leer el método no enseña a escribirlo; ese ejercicio sí.
+
+<Box kind="practice" label="✎ Para practicar">
+
+Un cliente te pide un asistente que responda dudas sobre **pólizas de seguro de salud** a partir de los PDF de las pólizas. Antes de pensar en arquitectura:
+
+1. Escribe **tres requisitos de abstención**: cuándo el sistema debe negarse a responder y a quién escala. Piensa en qué respuesta, si fuera inventada, le costaría dinero o un problema legal al cliente.
+2. Escribe **un criterio de éxito con umbral** sobre un conjunto dorado. Define de dónde salen los casos, cuántos son y quién etiqueta la respuesta correcta.
+3. Uno de estos tres pertenece al **plan**, no al spec. ¿Cuál, y por qué? — *(a)* "MUST citar el artículo de la póliza en toda respuesta sobre cobertura"; *(b)* "MUST usar una base vectorial con búsqueda híbrida"; *(c)* "El coste por consulta MUST ser menor a USD 0.05".
+
+<Solution summary="Ver soluciones razonadas">
+
+**1.** Tres que casi cualquier corrector aceptaría: *«MUST responder que no tiene el dato y derivar a un asesor humano cuando ningún fragmento recuperado supere el umbral de relevancia»*; *«MUST negarse a afirmar si un tratamiento concreto está cubierto cuando la póliza no lo mencione explícitamente, aunque pueda inferirlo de una categoría más amplia»*; *«MUST escalar sin responder cualquier mensaje que plantee un reclamo, una denegación de cobertura o una urgencia médica»*. Fíjate en el patrón: los tres nombran **la condición que dispara el silencio**, no una instrucción de buena conducta. "Que sea prudente con la cobertura" no es un requisito — no se puede incumplir de forma comprobable.
+
+**2.** *«Dado un conjunto dorado de 80 consultas reales del centro de atención de los últimos 6 meses —50 de cobertura, 20 de trámites, 10 casos negativos—, etiquetadas por un asesor senior de la aseguradora, la evaluación MUST alcanzar ≥92% de respuestas correctas, ≥98% con el artículo citado, y 100% de abstención en los casos negativos.»* Tres decisiones importan aquí: los casos son **reales** (no imaginados por ti), etiqueta **la aseguradora** (la verdad de negocio la tiene el negocio) y la citación lleva umbral más alto que la exactitud, porque una respuesta correcta sin artículo no es verificable por el cliente y en seguros eso no vale.
+
+**3.** La **(b)**. "Base vectorial con búsqueda híbrida" es una decisión de implementación: describe CÓMO, no qué gana el usuario, y aplícale el test de la tapadera —tapa el nombre de la tecnología y el requisito se queda sin contenido. Además cierra la investigación antes de empezar: el plan ya no puede evaluar alternativas porque el spec se las prohibió. La (a) es un requisito de trazabilidad y la (c) un presupuesto: ambas son spec, y ambas sobreviven a cualquier cambio de stack.
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Recorrer los seis pasos de redacción de un spec y aplicar el test de independencia y el de la tapadera.
+- Convertir un escenario de aceptación determinista en uno con umbral sobre un conjunto dorado.
+- Justificar por qué el conjunto dorado pertenece al spec y qué pasa cuando se pospone al final.
+- Escribir requisitos de abstención y explicar por qué son la parte difícil de un spec de IA.
+- Defender que el modelo y el vector store van en el plan, y el coste y la trazabilidad en el spec.
+- Distinguir un spec greenfield de uno de feature, y escribir la sección de no-regresión.
+
+</Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 19b">
+
+<Question>
+  <Prompt>1 · ¿Por qué un escenario "Given '¿a qué hora abren?' Then responde 'Abrimos de 9am a 6pm'" no sirve en un spec de IA?</Prompt>
+  <Option>Porque los escenarios Given/When/Then quedaron obsoletos con los modelos de lenguaje</Option>
+  <Option ok>Porque el modelo dirá lo mismo con otras palabras y el escenario fallará siendo la respuesta correcta</Option>
+  <Option>Porque los horarios son un dato que debería estar en el plan, no en el spec</Option>
+  <Feedback>El escenario tiene que moverse de un caso con resultado exacto a una medición sobre un conjunto, con umbral. Lo que se verifica ya no es una interacción: es una tasa.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Por qué el conjunto dorado va en el spec y no en el plan?</Prompt>
+  <Option>Porque el plan lo escribe el agente de IA y podría sesgarlo</Option>
+  <Option>Porque así el cliente puede aprobarlo antes de que empiece el trabajo técnico</Option>
+  <Option ok>Porque es la definición ejecutable del QUÉ; si se pospone, acaba construyéndose mirando lo que el sistema ya hace</Option>
+  <Feedback>Un examen escrito después de ver las respuestas del alumno no evalúa nada: certifica lo que ya había. El conjunto dorado es a un spec de IA lo que los escenarios de aceptación a uno determinista.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Un spec dice "MUST usar embeddings de 1536 dimensiones con pgvector". ¿Qué tiene de malo?</Prompt>
+  <Option>Nada: es un requisito técnico preciso y verificable</Option>
+  <Option ok>Es una decisión de plan colada en el spec: cierra la investigación antes de tiempo y obliga a editar el spec cuando cambie el stack</Option>
+  <Option>Que le falta el umbral de calidad que debería acompañar a toda decisión de recuperación</Option>
+  <Feedback>El test de la tapadera: tapa el nombre de la tecnología y mira si el requisito sigue teniendo sentido para el cliente. "MUST citar el documento y la fecha" sobrevive a cualquier stack; "MUST usar pgvector" no dice qué gana el usuario.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · ¿Por qué un spec de feature sobre un sistema de IA en producción necesita una sección de no-regresión?</Prompt>
+  <Option>Porque los proveedores de modelos exigen documentar los cambios antes de desplegarlos</Option>
+  <Option>Porque el conjunto dorado se invalida cada vez que se añade una funcionalidad nueva</Option>
+  <Option ok>Porque tocar el prompt para mejorar una cosa puede empeorar otra, y ningún compilador avisa de ese intercambio</Option>
+  <Feedback>Un cambio de dos líneas para que cite mejor las fuentes puede hacer que deje de abstenerse. Solo la corrida del conjunto dorado antes y después lo detecta, y por eso los umbrales vigentes se escriben en el spec del feature.</Feedback>
+</Question>
+
+</Quiz>
+
+<Recap level={7} label="↺ En una frase">
+
+En un spec de IA el criterio de aceptación deja de ser booleano: se convierte en **umbrales sobre un conjunto dorado** que pertenece al spec; lo difícil de especificar no es qué responde sino **cuándo se abstiene**; el coste es un requisito que elimina arquitecturas, y el modelo va en el plan.<Arch>archivos: `docs/guia-spec-para-apps-de-ia.md` · `docs/ejemplos-spec/asistente-rag-whatsapp/`</Arch>
+
+</Recap>
