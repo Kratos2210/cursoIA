@@ -90,7 +90,7 @@ export default async function ModulePage({
             </div>
           ) : null}
           {item.videoUrl ? <VideoEmbed url={item.videoUrl} title={item.title} /> : null}
-          <ListenButton title={item.title} goals={item.goals} />
+          <ListenButton title={item.title} goals={item.goals} slug={item.slug} />
           <Content />
         </article>
         <ModuleFooter id={item.id} prev={prev} next={next} />

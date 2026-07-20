@@ -2,43 +2,57 @@
 
 import { useEffect, useRef, useState } from "react";
 
-// Modo escucha con la Web Speech API del navegador: gratis, offline y sin
-// hosting de audio. La voz es la del sistema (robótica, sí) — el objetivo es
-// accesibilidad y repaso con las manos ocupadas, no producción de podcast.
-// Lee: título + objetivos + el Recap («en una frase») del propio DOM.
-export function ListenButton({ title, goals }: { title: string; goals: string | null }) {
+// Modo escucha con dos capas:
+//
+//   1. Audio neural pregenerado: un mp3 en /audio/<slug>.mp3 sintetizado con
+//      edge-tts (voz es-PE-CamilaNeural). Suena natural, es lo que se reproduce
+//      por defecto. Se regenera con:
+//        uv run --with edge-tts python web/scripts/generar-audio.py
+//   2. Fallback a la Web Speech API del navegador (SpeechSynthesis): gratis y
+//      offline, pero robótica. Sólo entra si el mp3 no existe (404 porque aún
+//      no se generó) o falla al cargar. Lee título + objetivos + el Recap
+//      («en una frase») directamente del DOM.
+//
+// La caída de la capa 1 a la 2 es transparente: el usuario ve el mismo botón.
+export function ListenButton({ title, goals, slug }: { title: string; goals: string | null; slug: string }) {
   const [estado, setEstado] = useState<"idle" | "hablando" | "pausado">("idle");
   const [soportado, setSoportado] = useState(false);
   const utterRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  // true = estamos usando el <audio> mp3; false = usamos SpeechSynthesis.
+  const usandoAudio = useRef(false);
 
   useEffect(() => {
-    setSoportado(typeof window !== "undefined" && "speechSynthesis" in window);
-    // Al salir de la página, que no siga hablando.
-    return () => window.speechSynthesis?.cancel();
+    // El botón se muestra si hay AL MENOS una capa disponible: <audio> siempre
+    // existe en el navegador; SpeechSynthesis es el respaldo.
+    const hayAudio = typeof window !== "undefined" && typeof Audio !== "undefined";
+    const haySynth = typeof window !== "undefined" && "speechSynthesis" in window;
+    setSoportado(hayAudio || haySynth);
+    // Al salir de la página, que no siga sonando por ninguna vía.
+    return () => {
+      audioRef.current?.pause();
+      window.speechSynthesis?.cancel();
+    };
   }, []);
 
   if (!soportado) return null;
 
-  const texto = () => {
+  // --- Capa 2: SpeechSynthesis (fallback) -----------------------------------
+
+  const textoSynth = () => {
     const recap = document.querySelector(".recap")?.textContent ?? "";
     const objetivos = (goals ?? "").replace(/^[^A-Za-zÁÉÍÓÚáéíóúñ]*/, "");
     return `${title}. ${objetivos}. En resumen: ${recap}`;
   };
 
-  const hablar = () => {
+  const hablarSynth = () => {
     const synth = window.speechSynthesis;
-    if (estado === "hablando") {
-      synth.pause();
-      setEstado("pausado");
-      return;
-    }
-    if (estado === "pausado") {
-      synth.resume();
-      setEstado("hablando");
+    if (!synth) {
+      setEstado("idle");
       return;
     }
     synth.cancel();
-    const u = new SpeechSynthesisUtterance(texto());
+    const u = new SpeechSynthesisUtterance(textoSynth());
     const voz = synth.getVoices().find((v) => v.lang.startsWith("es"));
     if (voz) u.voice = voz;
     u.lang = voz?.lang ?? "es-PE";
@@ -50,14 +64,62 @@ export function ListenButton({ title, goals }: { title: string; goals: string | 
     setEstado("hablando");
   };
 
+  // --- Capa 1: mp3 neural pregenerado ---------------------------------------
+
+  const reproducirMp3 = () => {
+    const audio = new Audio(`/audio/${slug}.mp3`);
+    audioRef.current = audio;
+    usandoAudio.current = true;
+    audio.onended = () => setEstado("idle");
+    // Si el mp3 no existe (404) o no carga, caemos a SpeechSynthesis sin ruido.
+    audio.onerror = () => {
+      usandoAudio.current = false;
+      audioRef.current = null;
+      hablarSynth();
+    };
+    audio
+      .play()
+      .then(() => setEstado("hablando"))
+      .catch(() => {
+        // play() rechazado (p. ej. mp3 inexistente): fallback transparente.
+        usandoAudio.current = false;
+        audioRef.current = null;
+        hablarSynth();
+      });
+  };
+
+  // --- Control del botón ----------------------------------------------------
+
+  const alternar = () => {
+    // Pausar / seguir sobre la capa activa.
+    if (estado === "hablando") {
+      if (usandoAudio.current) audioRef.current?.pause();
+      else window.speechSynthesis?.pause();
+      setEstado("pausado");
+      return;
+    }
+    if (estado === "pausado") {
+      if (usandoAudio.current) void audioRef.current?.play();
+      else window.speechSynthesis?.resume();
+      setEstado("hablando");
+      return;
+    }
+    // Arranque desde cero: siempre se intenta primero el mp3 neural.
+    reproducirMp3();
+  };
+
   const parar = () => {
-    window.speechSynthesis.cancel();
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+    window.speechSynthesis?.cancel();
     setEstado("idle");
   };
 
   return (
     <span className="listen">
-      <button className="listen-btn" onClick={hablar} aria-live="polite">
+      <button className="listen-btn" onClick={alternar} aria-live="polite">
         {estado === "hablando" ? "⏸ Pausar" : estado === "pausado" ? "▶ Seguir" : "🔊 Escuchar el resumen"}
       </button>
       {estado !== "idle" ? (
