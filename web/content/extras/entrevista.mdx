@@ -70,7 +70,7 @@ La perplejidad mide **cuán sorprendido** está el modelo ante un texto: baja si
   <QSummary>¿Por qué la inferencia de un LLM es lenta y cara? ¿Qué es el KV cache?</QSummary>
   <QAnswer>
 
-Es **autoregresiva**: cada token nuevo necesita todos los anteriores, así que no se paraleliza la generación — se hace en fila, y por eso existe el *streaming* del c18. El **KV cache** guarda las claves/valores de atención ya calculados para no recomputarlos en cada paso: acelera muchísimo, a cambio de memoria que crece con la longitud. La *cuantización* (menos bits por peso) es la otra palanca: por eso un modelo cabe y corre en tu laptop con Ollama.
+Es **autoregresiva**: cada token nuevo necesita todos los anteriores, así que no se paraleliza la generación — se hace en fila, y por eso existe el *streaming* del c03/c25. El **KV cache** guarda las claves/valores de atención ya calculados para no recomputarlos en cada paso: acelera muchísimo, a cambio de memoria que crece con la longitud. La *cuantización* (menos bits por peso) es la otra palanca: por eso un modelo cabe y corre en tu laptop con Ollama.
 
   </QAnswer>
 </QA>
