@@ -84,6 +84,21 @@ Esto es lo que tienes que decidir *antes* de mover un agente a Bedrock o Vertex 
 - **Embeddings.** Decisión aparte del chat: ¿usas los embeddings nativos del proveedor (Titan en Bedrock, `text-embedding` en Vertex) o mantienes `fastembed` local? Cambiar de modelo de embeddings **obliga a reindexar** todo tu vector store ([c24](/concepto/24-vector-dbs-en-produccion)) — no es gratis, y a veces mantener el local es lo correcto.
 - **Dónde corre el contenedor.** La imagen del [c17c](/concepto/17c-continuous-delivery) es la misma; solo cambia el orquestador (ECS/Fargate/EKS o Cloud Run/GKE) y que el rol de ese cómputo tenga permiso sobre el modelo. Ahí se cierra el círculo con el [c15b](/concepto/15b-arquitectura-de-despliegue).
 
+<Solution summary="Ver el checklist resuelto para un caso concreto">
+
+Una financiera limeña quiere llevar el asistente del [c29](/concepto/29-caso-real-2-retail) a AWS Bedrock. Así queda cada línea del checklist, decidida y por escrito:
+
+- **Identidad del cómputo:** el contenedor corre en ECS Fargate con un *task role* que solo permite `bedrock:InvokeModel` sobre el modelo elegido. En el `.env` de producción no queda ninguna llave de LLM.
+- **Región:** los datos deben quedarse cerca y bajo la política del regulador → se evalúa primero `sa-east-1` (São Paulo). Si el modelo elegido no está disponible ahí, la pregunta ("¿pueden salir los prompts a `us-east-1`?") la responde legal, no ingeniería.
+- **Model access:** se habilita el modelo en la cuenta *antes* del primer deploy, y el smoke test del [c17c](/concepto/17c-continuous-delivery) hace una llamada mínima para cazar el "modelo apagado" en el momento del despliegue, no en el primer cliente.
+- **Cuotas y throughput:** tráfico de oficina con picos a fin de mes → on-demand; *provisioned throughput* solo se reconsidera si el uso se vuelve constante y alto.
+- **Embeddings:** se quedan en `fastembed` local — pasarse a los nativos del proveedor obligaría a **reindexar todo el vector store** y no aporta nada a este caso.
+- **Cómputo:** la MISMA imagen del c17c, ahora en ECS; lo único nuevo es el task role con permiso sobre Bedrock.
+
+Lo importante no son estas respuestas concretas: es que **cada línea tenga una respuesta escrita antes de desplegar**. Cambia la empresa y cambian las respuestas; el checklist es el mismo.
+
+</Solution>
+
 </Box>
 
 <Box kind="warn" label="▲ El lock-in, y por qué el patrón inyectable del curso lo amortigua">

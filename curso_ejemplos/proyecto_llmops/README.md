@@ -179,7 +179,7 @@ Lo más diferenciador frente al MLOps tradicional.
 | Por qué Langfuse y no LangSmith | `docs/adr/0004-langfuse.md` |
 | Por qué el caché va por rol | `docs/adr/0005-semantic-cache.md` |
 
-## 6) Cómo se prueba (322 tests, cero cuota, cero Docker)
+## 6) Cómo se prueba (366 tests, cero cuota, cero Docker)
 
 ```bash
 uv run pytest proyecto_llmops/tests -m offline    # ~2 s
@@ -265,7 +265,7 @@ está hecho.
   servicio roto que la media esconde.
 - [ ] **Criterio:** sin llaves de Langfuse, `observar()` devuelve la función
   intacta y `callbacks()` devuelve `[]` — el proyecto corre **sin** el servicio
-  y los 322 tests offline lo demuestran.
+  y los 366 tests offline lo demuestran.
 
 ### 4 · Resiliencia y coste — aguanta producción sin arruinarte
 
@@ -285,8 +285,8 @@ está hecho.
 
 ### 5 · Documentación e ingeniería — otro puede recogerlo
 
-- [ ] **Criterio:** `uv run pytest proyecto_llmops -m offline` colecta **232
-  tests** y pasa en verde, **sin Docker, sin llave y sin cuota**, en ~2 s.
+- [ ] **Criterio:** `uv run pytest proyecto_llmops -m offline` colecta **366
+  tests** y pasa en verde, **sin Docker, sin llave y sin cuota**, en ~7 s.
 - [ ] **Criterio:** existe un ADR por cada decisión no obvia, con alternativas
   descartadas y consecuencias. Hoy son **5** (`docs/adr/0003`–`0007`). Toda
   decisión nueva que un lector pueda cuestionar añade el suyo.

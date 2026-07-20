@@ -223,7 +223,7 @@ está hecho.
 
 ### 5 · Documentación e ingeniería — otro puede recogerlo
 
-- [ ] **Criterio:** `uv run pytest proyecto_retail -m offline` colecta **61
+- [ ] **Criterio:** `uv run pytest proyecto_retail -m offline` colecta **127
   tests** y pasa en verde, **sin Docker, sin llave y sin cuota**, en ~1 s.
 - [ ] **Criterio:** existe un ADR por cada decisión no obvia. Hoy son **5**
   (`docs/adr/0001`–`0005`), incluida la más discutible: **por qué el grounding

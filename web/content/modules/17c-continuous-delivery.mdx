@@ -178,6 +178,30 @@ SMOKE_URL=http://localhost:8000 uv run pytest \
 
 Ahora rompe algo a propósito: pon una llave de Langfuse falsa en el `.env` para que `/health` anuncie `tracing: true` sin tracing real, y corre el smoke con `SMOKE_EXPECT_TRACING=0`. Debería ponerse **rojo** — que es exactamente lo que impediría que esa versión llegara a producción.
 
+<Solution summary="Ver una solución">
+
+```bash title="paso 1 · el smoke en verde"
+docker compose -f proyecto_llmops/docker-compose.yml --profile app up -d --build
+SMOKE_URL=http://localhost:8000 uv run pytest \
+    proyecto_llmops/tests/test_smoke_despliegue.py -v
+# Sin SMOKE_URL el archivo entero se SALTA: la suite normal nunca depende
+# de que haya un contenedor escuchando.
+```
+
+```bash title="paso 2 · romperlo a propósito"
+# En el .env: LANGFUSE_PUBLIC_KEY=pk-lf-falsa  LANGFUSE_SECRET_KEY=sk-lf-falsa
+docker compose -f proyecto_llmops/docker-compose.yml --profile app up -d --build
+
+SMOKE_URL=http://localhost:8000 SMOKE_EXPECT_TRACING=0 uv run pytest \
+    proyecto_llmops/tests/test_smoke_despliegue.py -v
+# → test_health_dice_la_verdad_sobre_el_tracing se pone ROJO: /health anuncia
+#   tracing: true, pero tú (el pipeline) sabes que esas llaves no trazan nada.
+```
+
+El rojo del paso 2 no es un fallo del test: es el pipeline haciendo su trabajo. En el `deploy.yml` real, ese mismo assert corre después del deploy y con él la versión mentirosa **no se promueve** — que es la diferencia entre "tests en verde" y "el contenedor de verdad funciona".
+
+</Solution>
+
 </Box>
 
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">

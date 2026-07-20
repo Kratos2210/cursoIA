@@ -15,11 +15,24 @@ No te conectas a WhatsApp "a pelo": WhatsApp habla su propio protocolo. Un puent
 
 El flujo completo, turno a turno (WhatsApp es de **mensajes**, no streaming):
 
-```text title="Arquitectura del canal"
-WhatsApp ─▶ EvolutionAPI ─▶ (tu webhook) ─▶ responder(texto) ─▶ agente
-                                  │                                │
-                                  └──── enviar_whatsapp(reply) ◀───┘
-```
+<Diagrama
+  title="Arquitectura del canal — la respuesta vuelve por el mismo webhook"
+  viewBox="0 0 620 140"
+  nodes={[
+    { x: 10, y: 20, w: 88, label: "WhatsApp" },
+    { x: 130, y: 20, w: 110, label: "EvolutionAPI" },
+    { x: 272, y: 20, w: 110, label: "webhook", sub: "tu FastAPI" },
+    { x: 414, y: 20, w: 92, label: "responder", sub: "(texto)" },
+    { x: 538, y: 20, w: 72, label: "agente" },
+  ]}
+  edges={[
+    { d: "M98 34 H 126" },
+    { d: "M240 34 H 268" },
+    { d: "M382 34 H 410" },
+    { d: "M506 34 H 534" },
+    { d: "M574 48 V 100 H 327 V 52", back: true, label: "enviar_whatsapp(reply)", lx: 360, ly: 94 },
+  ]}
+/>
 
 <Box kind="def" label="◈ El webhook, en tres funciones">
 

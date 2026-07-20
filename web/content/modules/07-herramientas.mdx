@@ -69,6 +69,15 @@ El **docstring no es documentación: es programación**. El modelo decide *cuán
 
 </Box>
 
+<Box kind="def" label="◈ En qué situaciones se usa">
+
+- **Consultar un sistema vivo cuyo dato el modelo no puede saber.** El stock en el POS, el estado del pedido en el courier: no lo adivina, lo pide con una tool.
+- **Cálculo exacto que no se le "estima" a un LLM.** La cuota de un crédito, el descuento aplicado: el modelo redacta, pero la aritmética la hace Python.
+- **Acciones con efecto en el mundo.** Registrar el reclamo, agendar la cita — siempre con la reserva de lo irreversible: aprobación humana antes de disparar.
+- **Y el contrapunto:** lo que debe correr siempre lo llamas tú; lo peligroso, con un humano en el bucle — justo lo que detalla el ⛔ de abajo.
+
+</Box>
+
 <Avoid label="⛔ Cuándo NO darle una herramienta al modelo">
 
 - **Cuando la acción debe correr siempre.** Si un paso es obligatorio y determinista (guardar el pedido, cobrar), llámalo *tú* en el código. No lo dejes a criterio del modelo, que puede decidir no usarlo.

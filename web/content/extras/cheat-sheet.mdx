@@ -38,6 +38,27 @@ Las líneas que usarás mil veces, juntas en un solo lugar. Cada una está expli
 | Recomendar productos sin inventar precios | filtros duros del catálogo + `respuesta_es_fiel(...)` (grounding determinista) | 29 |
 | Recordar al usuario entre conversaciones | `store.put(("memorias", uid), "nombre", {"dato": "Ana"})` | 30 |
 
+### ¿Qué pieza uso para esta situación?
+
+La tabla de arriba mapea intención → código. Esta mapea **situación de negocio → decisión**: cuando reconozcas tu caso en la primera columna, la segunda te dice qué sacar de la caja.
+
+| Si tu situación es… | La pieza es… | Mód. |
+| --- | --- | --- |
+| Llegan cientos de reseñas o tickets al día y hay que clasificarlos igual | cadena LCEL + `batch` | 02·03 |
+| El usuario pide algo en lenguaje libre y otro sistema consume el resultado | salida estructurada (Pydantic) | 05 |
+| El dato vive en un sistema (stock, estado del pedido) y el modelo debe consultarlo | `@tool` + ciclo A→D | 07·08 |
+| No sabes cuántos pasos tomará resolver la consulta | agente (con `recursion_limit`) | 10 |
+| La respuesta debe salir de TUS documentos, citando la fuente | RAG (+ citación) | 11·20 |
+| El usuario y el documento usan palabras distintas ("aros" / "aretes") | híbrida + re-rank / multi-query | 12·20 |
+| La acción mueve dinero, firma o borra algo | `interrupt` (HITL) | 13 |
+| Un solo agente se confunde entre sus doce herramientas | supervisor multiagente | 15 |
+| La misma pregunta se repite mil veces al día | caché semántico (TTL + rol en la clave) | 16 |
+| "Mejoré el prompt" tiene que dejar de ser una opinión | dataset + juez + gate | 16c |
+| El dato cambia a diario (precios, stock, políticas) | RAG, jamás fine-tuning | 21·29 |
+| Quieres fijar formato o tono y tienes cientos de ejemplos | LoRA (tras agotar few-shot) | 21·21b |
+| Los datos no pueden salir de tu red o tu nube | on-premise / Bedrock·Vertex | 18b·34 |
+| El proceso tiene reglas fijas y entrada de formato conocido | workflow determinista, sin LLM | 35 |
+
 ### Cambiar de proveedor (Gemini ↔ Groq ↔ OpenAI ↔ Claude)
 
 **Nada** de lo que aprendiste depende del proveedor. El resto (LCEL, tools, agentes, RAG, grafos) queda intacto. De hecho los ejemplos del repo ya no instancian ningún modelo: llaman a `util.crear_llm()`, que lee `LLM_PROVIDER` del `.env`. Si prefieres el interruptor de LangChain, es `init_chat_model`:
@@ -46,7 +67,7 @@ Las líneas que usarás mil veces, juntas en un solo lugar. Cada una está expli
 from langchain.chat_models import init_chat_model
 
 llm = init_chat_model("gemini-3.1-flash-lite")        # Google (necesita GOOGLE_API_KEY)
-# llm = init_chat_model("gpt-4o-mini")           # OpenAI  (OPENAI_API_KEY)
+# llm = init_chat_model("gpt-5.4-mini")          # OpenAI  (OPENAI_API_KEY)
 # llm = init_chat_model("claude-sonnet-5")       # Anthropic (ANTHROPIC_API_KEY)
 
 # Groq (y Ollama, y Together): NO hace falta una clase por proveedor.

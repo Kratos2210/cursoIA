@@ -6,6 +6,8 @@ import { ModuleFooter } from "@/components/app/ModuleFooter";
 import { OnThisPage } from "@/components/app/OnThisPage";
 import { ReadingProgress } from "@/components/app/ReadingProgress";
 import { KindTag, FileRef, MetaChip } from "@/components/content/ui";
+import { VideoEmbed } from "@/components/app/VideoEmbed";
+import { ListenButton } from "@/components/app/ListenButton";
 
 export const dynamicParams = false;
 
@@ -71,7 +73,13 @@ export default async function ModulePage({
             {item.levelName} · Concepto {item.num}
           </KindTag>
           <h1>{item.title}</h1>
-          {item.pyFile ? <FileRef file={item.pyFile} tested={item.tested} /> : null}
+          {item.pyFile ? (
+            <FileRef file={item.pyFile} tested={item.tested} />
+          ) : (
+            <div className="fileref">
+              {item.fileref ?? "📖 Concepto de lectura — sin script asociado"}
+            </div>
+          )}
           {chips.length ? (
             <div className="meta-chips">
               {chips.map((c) => (
@@ -81,6 +89,8 @@ export default async function ModulePage({
               ))}
             </div>
           ) : null}
+          {item.videoUrl ? <VideoEmbed url={item.videoUrl} title={item.title} /> : null}
+          <ListenButton title={item.title} goals={item.goals} slug={item.slug} />
           <Content />
         </article>
         <ModuleFooter id={item.id} prev={prev} next={next} />

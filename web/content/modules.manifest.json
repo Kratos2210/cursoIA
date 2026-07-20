@@ -1,6 +1,6 @@
 {
   "generatedAt": "2026-07-19T00:00:00.000Z",
-  "total": 58,
+  "total": 59,
   "modules": [
     {
       "id": "m0",
@@ -736,7 +736,23 @@
       "tested": true,
       "goals": "🎯 Al terminar sabrás: describir un cambio como spec → plan → tasks → implementación y por qué ese orden produce mejor código, sobre todo cuando quien teclea es un agente de IA.",
       "prereqs": "✅ Necesitas: el Concepto 17b (tests y CI).",
-      "minutes": "⏱️ ~30 min"
+      "minutes": "⏱️ ~40 min"
+    },
+    {
+      "id": "m19b",
+      "slug": "19b-spec-de-apps-de-ia",
+      "title": "Escribir el spec de una aplicación de IA",
+      "kind": "concept",
+      "level": 7,
+      "levelName": "Proyectos",
+      "order": 46,
+      "badge": "19b",
+      "pyFile": null,
+      "fileref": "📋 Concepto de lectura y método — sin script ni dependencias nuevas. Ejemplo trabajado completo en curso_ejemplos/docs/ejemplos-spec/asistente-rag-whatsapp/ y guía larga en docs/guia-spec-para-apps-de-ia.md.",
+      "tested": false,
+      "goals": "🎯 Al terminar sabrás: redactar un spec paso a paso —de la idea difusa a requisitos y criterios medibles— y qué cambia cuando el sistema es de IA: criterios de aceptación con umbral sobre un conjunto dorado, requisitos de abstención y presupuesto de coste, separando lo que va en el spec de lo que va en el plan.",
+      "prereqs": "✅ Necesitas: el Concepto 19 (qué es SDD). Ayuda haber visto RAG (c11) y observabilidad de costo (c16). Sin código.",
+      "minutes": "⏱️ ~45 min"
     },
     {
       "id": "m18",
@@ -745,7 +761,7 @@
       "kind": "concept",
       "level": 7,
       "levelName": "Proyectos",
-      "order": 46,
+      "order": 47,
       "badge": "18",
       "pyFile": null,
       "fileref": "📋 Proyecto ejecutable: curso_ejemplos/proyecto_final/main.py — corre solo con tu llave. Abajo se explican las piezas.✓ 44 tests, sin API",
@@ -761,7 +777,7 @@
       "kind": "concept",
       "level": 7,
       "levelName": "Proyectos",
-      "order": 47,
+      "order": 48,
       "badge": "29",
       "pyFile": "29_caso_retail.py",
       "fileref": "📋 Copia y ejecuta: curso_ejemplos/29_caso_retail.py — 100% offline, no gasta cuota✓ cubierto por tests",
@@ -777,7 +793,7 @@
       "kind": "concept",
       "level": 8,
       "levelName": "Cierre",
-      "order": 48,
+      "order": 49,
       "badge": "26",
       "pyFile": null,
       "fileref": "📋 Concepto de lectura — comparativa honesta de frameworks, sin dependencias nuevas ni script ejecutable. Los snippets de otros frameworks son ilustrativos: muestran el \"sabor\" de su API, no se instalan ni se ejecutan aquí.",
@@ -793,7 +809,7 @@
       "kind": "concept",
       "level": 8,
       "levelName": "Cierre",
-      "order": 49,
+      "order": 50,
       "badge": "32",
       "pyFile": "frameworks/rag_llamaindex.py",
       "fileref": "📋 Anexo. Vuelve ejecutables los snippets ilustrativos del m26: frameworks/rag_llamaindex.py + crew_crewai.py — fuera del gate offline (ADR-0006): extras opcionales, necesitan cuota de LLM, no se testean.",

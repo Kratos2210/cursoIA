@@ -16,10 +16,25 @@ El webhook del c31 es como cablear tú mismo la casa: control total, pero cada e
 
 El workflow `canales/n8n/agente_rag_whatsapp.json` es importable (en n8n: *Workflows → Import from File*). Hace exactamente lo del c31, con nodos:
 
-```text title="canales/n8n/agente_rag_whatsapp.json"
-Webhook ─▶ Set (numero+texto) ─▶ IF (¿texto entrante?) ─┬─▶ HTTP: POST /chat ─▶ HTTP: sendText ─▶ 200
-                                                        └─▶ NoOp (ignora fromMe / sin texto)
-```
+<Diagrama
+  title="canales/n8n/agente_rag_whatsapp.json — el IF parte el flujo en dos"
+  viewBox="0 0 660 150"
+  nodes={[
+    { x: 10, y: 40, w: 84, label: "Webhook" },
+    { x: 118, y: 40, w: 122, label: "Set", sub: "numero + texto" },
+    { x: 266, y: 40, w: 122, label: "IF", sub: "¿texto entrante?" },
+    { x: 424, y: 4, w: 104, label: "POST /chat", sub: "HTTP" },
+    { x: 550, y: 4, w: 100, label: "sendText", sub: "HTTP → 200" },
+    { x: 424, y: 100, w: 190, label: "NoOp", sub: "ignora fromMe / sin texto" },
+  ]}
+  edges={[
+    { d: "M94 54 H 114" },
+    { d: "M240 54 H 262" },
+    { d: "M388 48 C 404 38, 408 30, 420 26", label: "sí", lx: 398, ly: 24 },
+    { d: "M526 24 H 546" },
+    { d: "M388 62 C 404 84, 408 104, 420 116", back: true, label: "no", lx: 398, ly: 100 },
+  ]}
+/>
 
 <Box kind="def" label="◈ Los nodos que importan">
 

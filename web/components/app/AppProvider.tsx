@@ -18,6 +18,9 @@ type AppState = {
   navOpen: boolean;
   toggleNav: () => void;
   closeNav: () => void;
+  searchOpen: boolean;
+  openSearch: () => void;
+  closeSearch: () => void;
 };
 
 const AppContext = createContext<AppState | null>(null);
@@ -101,6 +104,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const toggleNav = useCallback(() => setNavOpen((o) => !o), []);
   const closeNav = useCallback(() => setNavOpen(false), []);
 
+  const [searchOpen, setSearchOpen] = useState(false);
+  const openSearch = useCallback(() => setSearchOpen(true), []);
+  const closeSearch = useCallback(() => setSearchOpen(false), []);
+
+  // ⌘K / Ctrl+K toggles the search palette from anywhere in the app.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const value: AppState = {
     ready,
     theme,
@@ -113,6 +132,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     navOpen,
     toggleNav,
     closeNav,
+    searchOpen,
+    openSearch,
+    closeSearch,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

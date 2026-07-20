@@ -100,18 +100,18 @@ def extraer_tokens(mensaje) -> dict[str, int]:
             "salida":  uso.get("output_tokens", 0)}
 ```
 
-Contraintuición útil: **lo caro no es el contexto gigante, es la respuesta larga**. Un RAG que mete 20 chunks sucios (Concepto 12) paga 4× menos por ese ruido que por cada párrafo de más que escribe el modelo. Si necesitas recortar la factura, empieza por la salida.
+Contraintuición útil: **lo caro no es el contexto gigante, es la respuesta larga**. Un RAG que mete 20 chunks sucios (Concepto 12) paga 6× menos por ese ruido que por cada párrafo de más que escribe el modelo ($0.25 vs $1.50 por millón). Si necesitas recortar la factura, empieza por la salida.
 
 ```text title="▸ deberías ver al correr 16b (recortado)"
 🙋 ¿Cuál es el horario de atención?
 🤖 Horario de atención: Nuestro horario de atención al cliente es de lunes a…
-   tokens: 73 entrada + 38 salida   ·   coste: $0.000023
+   tokens: 73 entrada + 38 salida   ·   coste: $0.000075
 
 ============================================================
 TOTAL · 225 tokens de entrada, 122 de salida
-COSTE · $0.000071 por 3 consultas
-        ≈ $0.000024 por consulta
-        ≈ $0.02 cada 1000 consultas
+COSTE · $0.000239 por 3 consultas
+        ≈ $0.00008 por consulta
+        ≈ $0.08 cada 1000 consultas
 ============================================================
 ```
 
@@ -175,7 +175,7 @@ Corre `16b_observabilidad_langsmith.py` y mira el desglose de tokens → dólare
 
 <Solution summary="Qué deberías observar">
 
-Al correr `16b` verás el desglose de más arriba: **225 tokens de entrada y 122 de salida** en 3 consultas, ≈ $0.000024 por consulta. La lección no es el número exacto (los precios caducan), sino la **proporción**: cada token de salida se cobra varias veces más caro que uno de entrada, así que la respuesta *larga* pesa más en la factura que el contexto *grande*. Si mañana tu factura sube, mira primero cuánto **escribe** el modelo, no cuánto contexto le metes.
+Al correr `16b` verás el desglose de más arriba: **225 tokens de entrada y 122 de salida** en 3 consultas, ≈ $0.00008 por consulta. La lección no es el número exacto (los precios caducan), sino la **proporción**: cada token de salida se cobra varias veces más caro que uno de entrada, así que la respuesta *larga* pesa más en la factura que el contexto *grande*. Si mañana tu factura sube, mira primero cuánto **escribe** el modelo, no cuánto contexto le metes.
 
 En la traza de LangSmith (con tu llave) deberías poder señalar, para UNA consulta: el prompt exacto que se armó, qué herramienta se llamó (si el agente del c10 usó alguna) y el `usage_metadata` con los tokens de ese paso. Cuando algo falle, la traza te dice *en qué eslabón* — ese es el punto de instrumentar.
 

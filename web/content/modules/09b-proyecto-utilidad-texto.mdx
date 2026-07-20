@@ -1,12 +1,27 @@
 Hasta aquí aprendiste las piezas **por separado**. Este concepto no enseña nada nuevo: las **cose**. Vas a construir tu primer sistema completo — una utilidad que recibe una consulta de soporte y devuelve un **dato**, no un párrafo:
 
-```text title="El pipeline completo"
-consulta ─▶ filtro de entrada ─▶ prompt ─▶ modelo ─▶ JSON validado
-            (versión simple)     (c02)               (c05)
-                                                        │
-       estimación de coste (regla de servilleta) ◀─────┤
-       reintento + fallback (c09) ──────────────────────┘
-```
+<Diagrama
+  title="El pipeline completo — y sus dos lazos de vuelta"
+  viewBox="0 0 560 150"
+  nodes={[
+    { x: 10, y: 20, w: 74, label: "consulta" },
+    { x: 112, y: 20, w: 102, label: "filtro", sub: "versión simple" },
+    { x: 242, y: 20, w: 82, label: "prompt", sub: "c02" },
+    { x: 352, y: 20, w: 74, label: "modelo" },
+    { x: 454, y: 20, w: 96, label: "JSON", sub: "validado · c05" },
+    { x: 130, y: 100, w: 172, label: "reintento + fallback", sub: "c09" },
+    { x: 330, y: 100, w: 172, label: "estimación de coste", sub: "regla de servilleta" },
+  ]}
+  edges={[
+    { d: "M84 34 H 108" },
+    { d: "M214 34 H 238" },
+    { d: "M324 34 H 348" },
+    { d: "M426 34 H 450" },
+    { d: "M502 60 V 96", back: true },
+    { d: "M326 120 H 306", back: true },
+    { d: "M216 100 C 216 72, 320 64, 384 52", back: true },
+  ]}
+/>
 
 Las dos piezas sin código propio —el **filtro de entrada** y la **estimación de coste**— son versiones de juguete; las serias llegan más adelante, en [seguridad en capas](/concepto/23-seguridad-red-teaming) y [observabilidad y costo](/concepto/16-observabilidad-y-costo). Los códigos entre paréntesis solo señalan de qué lección salió cada pieza que **ya viste**.
 

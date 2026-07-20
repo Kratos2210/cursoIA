@@ -73,6 +73,15 @@ Muchos se quedan en el paso B e imprimen el `tool_calls` crudo. Sin C y D no tie
 
 </Box>
 
+<Box kind="def" label="◈ En qué situaciones se usa">
+
+- **La entrada llega en lenguaje libre y ella decide el camino.** La mesa de entrada de correos de la financiera: ¿es una factura, una queja o una consulta de normativa? El modelo lee y enruta.
+- **Triaje de tickets de soporte.** Cada categoría tiene su herramienta o su equipo, y quien clasifica es el propio modelo leyendo el texto.
+- **Un asistente que a veces responde directo y a veces busca datos frescos.** El modelo decide si le basta lo que ya sabe o si pide la tool.
+- **Y el contrapunto:** si el camino se decide con una regla fija (una palabra clave, un tipo de dato), es un `if` — lo dice el ⛔ de abajo.
+
+</Box>
+
 <Avoid label="⛔ Cuándo NO usar esto">
 
 - Si un solo prompt directo ya resuelve la pregunta (no necesita datos externos): un `.invoke()` normal es más barato y rápido que atar herramientas.

@@ -22,6 +22,7 @@ type ManifestItem = {
   goals: string | null;
   prereqs: string | null;
   minutes: string | null;
+  videoUrl?: string | null;
 };
 
 const MODULES = manifest.modules as ManifestItem[];
@@ -52,10 +53,12 @@ export type Item = {
   levelShort: string;
   colorVar: string;
   pyFile: string | null;
+  fileref: string | null;
   tested: boolean;
   goals: string | null;
   prereqs: string | null;
   minutes: string | null;
+  videoUrl: string | null;
 };
 
 function toItem(m: ManifestItem): Item {
@@ -73,10 +76,12 @@ function toItem(m: ManifestItem): Item {
     levelShort: style.short,
     colorVar: style.colorVar,
     pyFile: m.pyFile,
+    fileref: m.fileref,
     tested: m.tested,
     goals: m.goals,
     prereqs: m.prereqs,
     minutes: m.minutes,
+    videoUrl: m.videoUrl ?? null,
   };
 }
 

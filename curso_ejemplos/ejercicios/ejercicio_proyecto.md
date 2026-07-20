@@ -170,3 +170,9 @@ de estos seis ejercicios.
 
 Las decisiones de arquitectura y su porqué: [`docs/adr/`](../docs/adr/).
 Cuando algo se rompa: [`docs/README_runbook.md`](../docs/README_runbook.md).
+
+> **Este ejercicio no tiene archivo en `soluciones/`, a propósito.** Es trabajo
+> abierto: cada parte admite varias soluciones buenas y ninguna "oficial". Tu
+> red de seguridad no es comparar con una respuesta, son los tests del proyecto
+> (`uv run pytest proyecto_final -m offline`) y los criterios de aceptación de
+> cada parte.

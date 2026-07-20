@@ -7,7 +7,7 @@ import { LEVELS, EXTRA_ITEMS, ALL_IDS, type Item } from "@/lib/roadmap";
 import { useApp } from "./AppProvider";
 
 export function Sidebar() {
-  const { ready, theme, isDone, doneCount, toggleTheme, reset, navOpen, closeNav } = useApp();
+  const { ready, theme, isDone, doneCount, toggleTheme, reset, navOpen, closeNav, openSearch } = useApp();
   const pathname = usePathname();
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
@@ -59,8 +59,16 @@ export function Sidebar() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Buscar concepto…"
-          aria-label="Buscar concepto"
+          aria-label="Buscar concepto por título"
         />
+        <button
+          className="kbd-hint"
+          onClick={openSearch}
+          title="Buscar en todo el contenido (⌘K / Ctrl K)"
+          aria-label="Buscar en todo el contenido del curso"
+        >
+          ⌘K
+        </button>
       </div>
 
       <nav className="nav" aria-label="Índice del curso">

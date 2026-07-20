@@ -56,6 +56,15 @@ Negativo. El cliente expresa molestia porque el producto llegó tarde y dañado.
 
 `StrOutputParser()` convierte la respuesta del modelo en **texto plano**, para no escribir `.content` todo el tiempo.
 
+<Box kind="def" label="◈ En qué situaciones se usa">
+
+- **El mismo análisis sobre entradas que rotan.** Clasificar cada reseña que entra, resumir cada ticket de soporte: el molde de instrucciones es fijo y el dato cambia a cada rato — tú declaras la cadena una vez y la entrada es lo único variable.
+- **Un pipeline de 2+ pasos que mañana querrás correr por lotes o en streaming.** Al declararlo como cadena, `batch` y `stream` te salen gratis sin reescribir nada ([c03](/concepto/03-interfaz-unificada)).
+- **Piezas que quieres intercambiar sin tocar el resto.** Cambiar el prompt o el modelo sin reescribir la tubería: la topología es una cosa y las instrucciones, otra.
+- **Y el contrapunto:** para una exploración de una sola vez en un notebook, un `llm.invoke()` suelto basta — la cadena paga cuando el flujo se repite.
+
+</Box>
+
 <Box kind="practice" label="▸ Para practicar">
 
 Modifica el prompt para que además **traduzca la reseña al inglés**. Solo cambias el molde: la cadena `prompt | llm | parser` sigue igual. Eso es el poder de LCEL.

@@ -34,6 +34,12 @@ La columna «¿Gasta cuota?» se refiere al proveedor que tengas activo — con
 | 16 | [Casos trampa en el dataset](ejercicio_16_evaluacion.md) | Evaluación | `16_evaluacion.py` | Parcial | ✅ chat (juez) |
 | 16b | [Predice la factura](ejercicio_16b_costes.md) | Observabilidad + coste | `16b_observabilidad_langsmith.py` | **No** | — |
 | 17 | [Un endpoint nuevo, sin API](ejercicio_17_api.md) | Servir el agente | `17_servidor_agente.py` | **No** | — |
+| 20 | [Cuándo el multi-query NO ayuda](ejercicio_20_rag_avanzado.md) | RAG avanzado | `20_rag_avanzado.py` | **No** | — |
+| 22 | [El mensaje deja de ser un string](ejercicio_22_multimodal.md) | Multimodal + voz | `22_multimodal.py` · `22b_voz.py` | **No** | — |
+| 23 | [Rodea tu propio detector](ejercicio_23_seguridad.md) | Seguridad | `23_seguridad.py` | **No** | — |
+| 27 | [Qué significan de verdad tus parámetros](ejercicio_27_fundamentos.md) | Fundamentos del LLM | `27_fundamentos_llm.py` | **No** | — |
+| 28 | [Mide la sospecha, no la confíes](ejercicio_28_alucinaciones.md) | Alucinaciones | `28_alucinaciones.py` | **No** | — |
+| 29 | [El dato sucio y el eval que no perdona](ejercicio_29_retail.md) | Caso real retail | `29_caso_retail.py` | **No** | — |
 | 🏆 | [Extender el proyecto final](ejercicio_proyecto.md) | Todo junto | `proyecto_final/` | Parcial | ⚠️ chat sí, embeddings no |
 
 ## ⚡ Si la cuota de Gemini se te agota (429)
@@ -75,10 +81,11 @@ Y de paso aprendes algo que muerde en producción: cambiar de modelo de embeddin
 **no** es cambiar de proveedor de chat. **Invalida el índice entero**, porque los
 vectores viejos y los nuevos viven en espacios distintos. Hay que reindexar.
 
-**Salida 2 — Haz los ejercicios offline.** Los ejercicios 12, 13, 14, 15, 16b y
-17 no llaman a ningún modelo y, no por casualidad, son los que más enseñan sobre
-*ingeniería* de RAG, agentes, MCP, coste y despliegue. Un 429 no es excusa: es
-una invitación a practicar justo lo que importa.
+**Salida 2 — Haz los ejercicios offline.** Los ejercicios 12, 13, 14, 15, 16b,
+17, 20, 22, 23, 27, 28 y 29 no llaman a ningún modelo y, no por casualidad, son
+los que más enseñan sobre *ingeniería* de RAG, agentes, MCP, multimodal,
+alucinaciones, coste y despliegue. Un 429 no es excusa: es una invitación a
+practicar justo lo que importa.
 
 ## Cómo saber que lo hiciste bien
 

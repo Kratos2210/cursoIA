@@ -52,6 +52,15 @@ Camino B · **en cada pregunta** del usuario
 
 </Box>
 
+<Box kind="def" label="◈ En qué situaciones se usa">
+
+- **Las respuestas deben salir de un corpus privado que el modelo nunca vio.** La normativa interna del capstone, tus manuales, tus contratos: material que no estuvo en su entrenamiento.
+- **El corpus cambia más rápido de lo que aguantaría cualquier reentrenamiento.** Actualizas el índice y ya está, sin re-entrenar nada ([c21](/concepto/21-fine-tuning-vs-rag)).
+- **Te exigen poder CITAR de dónde salió cada afirmación.** Auditoría, compliance: cada respuesta apunta a su fuente ([c20](/concepto/20-rag-avanzado)).
+- **Y el contrapunto doble:** si el dato es estructurado (precios, stock), la respuesta es un `WHERE`, no un retriever ([c29](/concepto/29-caso-real-2-retail)); y si el corpus entero cabe en el contexto y es estable, prueba CAG antes (la caja 🌐 de más abajo en este mismo concepto).
+
+</Box>
+
 En el nivel básico troceabas a mano. En profesional usas herramientas dedicadas: un **loader**, un **text splitter** que respeta párrafos, y un vector store **persistente** (se guarda en disco).
 
 ```python title="RAG pro · loaders + splitter + Chroma persistente"
@@ -179,6 +188,12 @@ No es que CAG reemplace a RAG: cada uno gana en un terreno distinto.
 La regla práctica: si tu base de conocimiento es un manual acotado y estable, prueba CAG antes de montar toda la maquinaria de RAG — es más simple y elimina una clase entera de fallos. La palanca que lo hace barato es el **prompt caching del proveedor**, que verás en el [c16](/concepto/16-observabilidad-y-costo); no confundas ese caché (del prefijo, por el proveedor) con el **caché semántico** de respuestas del [proyecto_llmops](/recurso/llmops), que ataca otra parte del problema.
 
 </Box>
+
+### 🎛 Tócalo tú mismo
+
+El primer dial que vas a girar en cualquier RAG real: el tamaño del chunk y su solape, sobre un texto de políticas como el de este concepto (simplificado a caracteres; el splitter real además respeta párrafos y frases):
+
+<PlaygroundChunks />
 
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 

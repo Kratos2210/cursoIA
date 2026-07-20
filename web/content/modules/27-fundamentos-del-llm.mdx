@@ -49,6 +49,18 @@ def tokenizar_bpe(palabra, merges):
 
 Una palabra nueva reutiliza los trozos que quepan; lo que no encaje se queda en piezas pequeñas. Por eso `"proyectos"` = `['p','r','o','y','ecto','s']` cuesta un token **más** que `"proyecto"` = `['p','r','o','y','ecto']`: la `s` del plural no estaba en el vocabulario y viaja suelta. Multiplica eso por millones de palabras y entiendes por qué la factura del [c16](/concepto/16-observabilidad-y-costo) se cuenta en tokens, no en caracteres.
 
+<Box kind="practice" label="▸ Míralo con el tokenizador real de OpenAI">
+
+El BPE de arriba es didáctico —un vocabulario de juguete— pero puedes ver el de verdad sin instalar nada: pega texto en [platform.openai.com/tokenizer](https://platform.openai.com/tokenizer) y te lo pinta partido en tokens de colores, con el conteo exacto. Tres cosas que vale la pena comprobar ahí, porque explican facturas reales:
+
+- **El español cuesta más que el inglés.** Escribe la misma frase en los dos idiomas: la versión en español suele gastar bastante más tokens. Los vocabularios se entrenaron con corpus mayoritariamente en inglés, así que nuestras palabras llegan más troceadas — y eso lo pagas en cada llamada.
+- **El espacio va pegado al token.** `" banco"` y `"banco"` son piezas distintas. De ahí que un prompt cambie de conteo solo por reformatear saltos de línea.
+- **Los números y el JSON se fragmentan.** Un `1234567` se parte en varios trozos, y las llaves y comillas de una salida estructurada ([c05](/concepto/05-salida-estructurada)) también cuentan.
+
+Es el mismo mecanismo del `tokenizar_bpe()` de arriba, solo que con el vocabulario aprendido de verdad. Ojo: el tokenizador de esa página es el de los modelos de OpenAI; Claude y Gemini usan el suyo, así que los conteos exactos varían de proveedor a proveedor aunque el fenómeno sea idéntico.
+
+</Box>
+
 ### Softmax con temperatura · qué hace de verdad `temperature=0`
 
 ```python title="curso_ejemplos/27_fundamentos_llm.py · softmax_con_temperatura (función pura)"
@@ -150,6 +162,12 @@ Ojo con la conclusión: un margen alto dice que el modelo está **seguro**, no q
 </Solution>
 
 </Box>
+
+### 🎛 Tócalo tú mismo
+
+Los mismos logits `[2.0, 1.0, 0.2, -1.0]` del ejemplo y del ejercicio, ahora en vivo. Mueve la temperatura hasta que la distribución colapse, y baja `top_p` hasta descubrir en qué punto el "muestreo" deja de muestrear:
+
+<PlaygroundSoftmax />
 
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 
