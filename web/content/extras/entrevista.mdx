@@ -296,6 +296,15 @@ No por el ranking de moda, sino por el **triángulo coste / latencia / calidad**
   </QAnswer>
 </QA>
 
+<QA mod="c16 · c18b · c12">
+  <QSummary>¿Cómo garantizas un uso eficiente de tokens y costos de punta a punta? Es la pregunta que separa al que hizo una demo del que operó un sistema.</QSummary>
+  <QAnswer>
+
+No es un truco, es una cadena de decisiones en orden. **Primero medir**: cada respuesta trae `usage_metadata`, y de tokens a dólares solo hay una multiplicación (c16). La regla contraintuitiva que demuestra que lo entiendes: los tokens de **salida** cuestan varias veces más que los de entrada, así que recortas la *respuesta* antes que el *contexto*. **Segundo, no llamar al modelo si no hace falta**: caché exacta para repeticiones idénticas, caché semántica (por similitud, con TTL y la llave incluyendo rol/variante) y el **prompt caching del proveedor** —pones lo estable primero y lo variable al final para no romper el prefijo—, que es lo que hace viable el CAG del c11. **Tercero, el modelo correcto**: uno pequeño para el grueso con *fallback*, elegido por el triángulo coste/latencia/calidad contra tu product eval, y Batch API (~50% menos) para lo no interactivo (c18b). **Cuarto, higiene de contexto**: re-rankear el top-k en vez de volcar veinte chunks sucios (c12/c20). **Quinto, límites**: rate limiting y guardrail de entrada *antes* de gastar un token (c23). Y saber **cuándo NO**: optimizar sin tráfico real es afilar el lápiz con la casa apagada.
+
+  </QAnswer>
+</QA>
+
 <QA mod="c24">
   <QSummary>¿Cuándo pasas del vector store en memoria a una DB vectorial de verdad?</QSummary>
   <QAnswer>
@@ -323,6 +332,17 @@ Es colar instrucciones en la *entrada* (o en un documento que el RAG recupera) p
   </QAnswer>
 </QA>
 
+<QA mod="c15a · c17 · c24 · c18b">
+  <QSummary>"¿Con qué está construida tu solución de IA?" — nombrar el stack está bien; el senior justifica cada pieza y no olvida la capa de producción.</QSummary>
+  <QAnswer>
+
+Un buen stack se cuenta por **qué problema resuelve cada pieza**, no como lista de logos. Una respuesta sólida: **Next.js** en el frontend (streaming del token a token por SSE, c25); **FastAPI** en el backend (async y tipado, y te regala la API documentada con OpenAPI casi gratis); **Python** como lenguaje porque es donde vive el ecosistema de IA; **LangGraph/LangChain** para orquestar el agente (estado, tools y memoria por `thread_id`, c13); **Postgres** como una sola pieza que hace triple trabajo —relacional, vector con `pgvector` (c24) y checkpointer del agente—, así montas menos infra; el **modelo** (Qwen u otro) elegido por el triángulo coste/latencia/calidad y, siendo *open-weights*, te da la carta de auto-hospedaje por privacidad o coste (c18b); y todo **dockerizado** y **stateless** —el estado vive en Postgres/Redis, no en el proceso— para desplegar en cualquier ambiente y escalar en horizontal (c15a/c15b). Es, casi punto por punto, el `proyecto_llmops` del curso.
+
+Lo que sube la respuesta de "hice una demo" a "operé un sistema" es **no parar en las cajas felices**: nombrar la capa de producción que casi todos olvidan —**observabilidad** (trazas, tokens y coste en vivo, c16), **evaluación con gate de veto** en CI (c16c), **guardrails** de entrada/salida y RBAC (c23), y **caché** semántica más prompt caching para la factura (c16)—. Esa mitad es la que separa el notebook del servicio.
+
+  </QAnswer>
+</QA>
+
 </IvBlock>
 
 <IvBlock>
@@ -330,6 +350,29 @@ Es colar instrucciones en la *entrada* (o en un documento que el RAG recupera) p
 ### System design · cuatro casos para diseñar en voz alta
 
 Lee el enunciado, responde las preguntas guía como si dibujaras en una pizarra, y solo después abre la solución esquemática.
+
+<QA mod="c15a · c11 · c16 · c23">
+  <QSummary>Antes de los casos: dibuja la arquitectura de referencia de una solución de IA en producción. ¿Qué capas tiene?</QSummary>
+  <QAnswer>
+
+Casi cualquier sistema de IA serio se dibuja con las mismas siete capas; los cuatro casos de abajo son esta plantilla con distinto énfasis. Nombrarlas ordenadas —de la petición hacia dentro— es lo que muestra que diseñas, no que memorizaste.
+
+**1 · Gateway / API** — la puerta. Auth por credencial (el rol sale de *quién demostró ser*, nunca del body), rate limiting y guardrail de entrada contra inyección y PII, antes de gastar un token (c23).
+
+**2 · Orquestación** — el cerebro. Un agente o grafo (ReAct sobre un StateGraph, c13) que decide qué tool llamar; sube a supervisor multiagente (c15) solo si las especialidades lo piden.
+
+**3 · Conocimiento** — la biblioteca. Ingesta → chunking → embeddings → DB vectorial → retrieval híbrido + re-ranking (c11/c12/c24). Es lo que da hechos frescos y citables sin fine-tuning.
+
+**4 · Modelo / serving** — el motor. Proveedor con *fallback*, prompt caching y elección por eval, no por el ranking de moda (c18b).
+
+**5 · Estado / memoria** — checkpointer por `thread_id` para el hilo, y memoria de largo plazo destilada para lo que persiste entre sesiones (c04/c30).
+
+**6 · Guardrail de salida + observabilidad/eval** — valida lo que sale, y traza tokens, coste y latencia en vivo (c16) con evals que tienen poder de veto en CI (c16c).
+
+**7 · Datos / mejora** — feedback 👍/👎 persistido y A/B pegajoso para que el sistema aprenda de datos, no de opiniones (c24b).
+
+  </QAnswer>
+</QA>
 
 #### Caso 1 · Chatbot de soporte con la base de conocimiento de la empresa
 
