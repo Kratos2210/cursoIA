@@ -147,6 +147,46 @@ El entregable del discovery no es un PowerPoint: es un paquete concreto — **el
   <Step n="4" title="Operación">c16/c24b: coste real y feedback… que alimentan el próximo discovery.</Step>
 </Flow>
 
+### El equipo híbrido: quién hace qué cuando entra un agente
+
+El discovery decide en qué peldaño vive cada proceso; pero un peldaño no es solo tecnología, es **un reparto de trabajo entre humanos y agentes**. Igual que un manager aprendió a coordinar equipos remotos, ahora dirige una **célula híbrida**: personas y agentes colaborando en el mismo proceso. Tres piezas lo hacen explícito.
+
+<Box kind="def" label="◈ La job description del agente · Persona · Tarea · Contexto">
+
+Meter un agente en un peldaño de la escalera es, en la práctica, **contratarlo** — y como a cualquier contratación, le debes una descripción de puesto. Tres partes, y ya sabes construir las tres:
+
+<DefList>
+  <Term>Persona</Term>
+  <Def>Quién es, su tono y sus límites — "eres el asistente de la bodega, cercano pero nunca inventas precios". Es el <strong>system prompt</strong> del [c26b](/concepto/26b-prompt-engineering).</Def>
+  <Term>Tarea</Term>
+  <Def>De qué es responsable, su alcance y su definición de "hecho" — con criterios medibles. Es el <strong>spec</strong> del [c19](/concepto/19-spec-driven-development), no una orden vaga.</Def>
+  <Term>Contexto</Term>
+  <Def>Qué necesita saber y qué puede tocar — el corpus, las tools, las restricciones. Es el <strong>RAG y las herramientas</strong> del [c07](/concepto/07-herramientas)/[c11](/concepto/11-rag-profesional).</Def>
+</DefList>
+
+No es un método nuevo: es el material del curso, nombrado como se contrata a una persona. Un agente sin "job description" es el mismo becario sin encargo claro — hace algo, rara vez lo que hacía falta.
+
+</Box>
+
+<Box kind="analogy" label="◆ El blueprint de la célula híbrida">
+
+El blueprint es el **organigrama** de esa célula: dibuja quién hace qué y dónde se tocan. Cuatro decisiones que no pueden quedar implícitas:
+
+- **Reparto:** qué pasos hace el agente y cuáles el humano — explícito, no "lo que el agente pueda".
+- **Peldaño por tarea, no por proceso:** un mismo flujo mezcla pasos agénticos (redactar el borrador) con pasos de firma humana (aprobar el crédito). La autonomía se fija paso a paso.
+- **Gates de supervisión:** dónde un humano revisa antes de continuar — el HITL (`interrupt`) del [c13](/concepto/13-langgraph-a-fondo) y la revisión de salida del [c23](/concepto/23-seguridad-red-teaming).
+- **Rutas de escalamiento:** cuándo el agente **se abstiene** y sube el caso a una persona — la abstención del [c19b](/concepto/19b-spec-de-apps-de-ia)/[c28](/concepto/28-desafios-y-alucinaciones), que es una respuesta válida, no un fallo.
+
+Un blueprint bien hecho se lee como el manual de un turno: cualquiera sabe qué le toca, a quién le pasa la pelota y cuándo suena la alarma.
+
+</Box>
+
+<Box kind="warn" label="▲ El roadmap de adopción · el peldaño más bajo del proceso de más valor">
+
+No se adopta una célula híbrida de golpe. La secuencia que no se quema: arranca por el **peldaño más bajo del proceso de más valor** (justo lo que prioriza este módulo), pilotea **un** caso, **mide con evals ([c16c](/concepto/16c-evaluacion)) y coste ([c16](/concepto/16-observabilidad-y-costo))**, y solo entonces subes de peldaño o abres otro proceso. La gestión del cambio va con el dato, no con la promesa: la gente confía en el agente cuando **ve la métrica**, no cuando se la prometen. El antipatrón clásico es pedir el "sistema agéntico" en el paso uno — máxima autonomía sobre cero confianza ganada.
+
+</Box>
+
 <Avoid label="⛔ Errores clásicos del discovery">
 
 - **Empezar por la tecnología.** "Tenemos que tener IA" no es un requisito: es un síntoma. El discovery empieza por el proceso y a veces concluye que la IA no hace falta — esa conclusión también es un entregable.
@@ -176,6 +216,7 @@ La financiera del [c18](/concepto/18-capstone-final) te pasa tres procesos. Para
 - Escribir un TO-BE que rediseña (checkpoints HITL, qué no cambia) en vez de espolvorear un chatbot.
 - Priorizar un menú de casos con impacto × viabilidad y un payback de servilleta — y explicar por qué en Sifrah ganó el asistente de compras y no el copiloto de más horas.
 - Entregar el paquete que la spec del c19 recibe como input.
+- Diseñar la célula híbrida: la job description del agente (Persona·Tarea·Contexto), el reparto humano/agente con peldaño por tarea, y un roadmap de adopción que empieza por el peldaño más bajo y mide antes de subir.
 
 </Checkpoint>
 
@@ -211,6 +252,14 @@ La financiera del [c18](/concepto/18-capstone-final) te pasa tres procesos. Para
   <Option ok>~5,5 meses: 12.000 / (2.500 − 300) — el ahorro neto descuenta lo que cuesta operar</Option>
   <Option>No se puede estimar sin medir primero el consumo real de tokens</Option>
   <Feedback>Dividir solo por el ahorro bruto olvida que el sistema cuesta cada mes. Y el discovery estima con órdenes de magnitud a propósito: la medición fina llega después, con el c16 en producción (Concepto 35).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>5 · Vas a meter un agente en un proceso de aprobación de gastos. ¿Cómo repartes la autonomía en la célula híbrida?</Prompt>
+  <Option>El peldaño se fija para todo el proceso: si es "agente", el agente hace y aprueba todo</Option>
+  <Option ok>Peldaño por tarea: el agente prepara y resume el expediente, y la aprobación irreversible queda con firma humana (HITL)</Option>
+  <Option>Un humano revisa cada paso, incluso los deterministas, para máxima seguridad</Option>
+  <Feedback>La autonomía se fija paso a paso, no de una vez: un mismo flujo mezcla pasos agénticos (redactar, resumir) con gates de firma humana donde el coste del error es alto. Revisar también lo que una regla ya resuelve no es control, es costo (Concepto 35).</Feedback>
 </Question>
 
 </Quiz>
