@@ -51,9 +51,10 @@ llm = ChatOpenAI(
     temperature=0,
     base_url="https://api.groq.com/openai/v1",   # ← lo único específico de Groq
     api_key=os.getenv("GROQ_API_KEY"),
-    # Este modelo RAZONA antes de responder y Groq devuelve ese razonamiento dentro
-    # del texto, envuelto en <think>…</think>. Esto le dice que lo descarte.
-    extra_body={"reasoning_format": "hidden"},
+    # Este modelo RAZONA antes de responder. Los gpt-oss devuelven ese
+    # razonamiento en un campo aparte (no ensucia el texto); esto lo apaga
+    # para no pagar tokens que nadie va a leer.
+    extra_body={"include_reasoning": False},
 )
 
 respuesta = llm.invoke([HumanMessage(content="Explica qué es un LLM en una frase.")])

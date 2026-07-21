@@ -144,20 +144,38 @@ def requiere_llm_key() -> str | None:
 
 
 # Modelos "de razonamiento": antes de responder escriben su cadena de
-# pensamiento. En Groq, esa cadena llega DENTRO del contenido, envuelta en
-# <think>…</think>, y ensucia todas las salidas del curso.
+# pensamiento. El problema es DÓNDE la devuelve cada proveedor: si llega DENTRO
+# del contenido, envuelta en <think>…</think>, ensucia todas las salidas del
+# curso; si llega en un campo aparte, no molesta a nadie.
 #
-# `reasoning_format: "hidden"` le dice a Groq que la descarte y devuelva solo la
-# respuesta. ⚠️ Es un parámetro específico de Groq y **solo lo aceptan los
-# modelos de razonamiento**: mandárselo a llama-3.3-70b devuelve un 400
-# ("`reasoning_format` is not supported with this model"). Por eso se envía
-# únicamente cuando el nombre del modelo coincide con esta lista.
+# `reasoning_format: "hidden"` le dice a Groq que la descarte. ⚠️ Es un parámetro
+# específico de Groq y **solo lo aceptan algunos modelos**: mandárselo a
+# llama-3.3-70b devuelve un 400 ("`reasoning_format` is not supported with this
+# model"). Por eso se envía únicamente cuando el modelo coincide con esta lista.
 _MODELOS_DE_RAZONAMIENTO = ("qwen3", "deepseek-r1", "gpt-oss")
+
+# …y dentro de esa lista, la familia gpt-oss es la EXCEPCIÓN de Groq: es de
+# razonamiento, pero NO acepta `reasoning_format` (la doc de Groq lo dice
+# explícitamente) y usa `include_reasoning` en su lugar. Además su razonamiento
+# ya viaja en un campo APARTE (`message.reasoning`), así que el contenido sale
+# limpio de todos modos — como con deepseek-v4-flash. Confundir los dos
+# parámetros es un 400 en la primera llamada, que es justo lo que no queremos
+# que le pase a nadie el día 1 del curso.
+_SIN_REASONING_FORMAT_EN_GROQ = ("gpt-oss",)
 
 
 def _es_modelo_de_razonamiento(modelo: str) -> bool:
     m = modelo.lower()
     return any(marca in m for marca in _MODELOS_DE_RAZONAMIENTO)
+
+
+def _acepta_reasoning_format_en_groq(modelo: str) -> bool:
+    """Si el modelo razona Y Groq le admite `reasoning_format` (gpt-oss no)."""
+    m = modelo.lower()
+    return (
+        _es_modelo_de_razonamiento(modelo)
+        and not any(marca in m for marca in _SIN_REASONING_FORMAT_EN_GROQ)
+    )
 
 
 def _crear_chat_openai_compatible(modelo: str, temperature: float, activo: str):
@@ -169,10 +187,15 @@ def _crear_chat_openai_compatible(modelo: str, temperature: float, activo: str):
     extra: dict = {}
     # ⚠️ Cada proveedor esconde el <think> con SU parámetro; no son intercambiables
     #    (mandarle `reasoning_format` a quien no es Groq devuelve un 400).
-    if activo == "groq" and _es_modelo_de_razonamiento(modelo):
+    if activo == "groq" and _acepta_reasoning_format_en_groq(modelo):
         # "hidden" descarta el <think>; "raw" lo deja dentro del contenido.
         # `reasoning_format` es EXCLUSIVO de Groq.
         extra["reasoning_format"] = os.getenv("GROQ_RAZONAMIENTO", "hidden")
+    elif activo == "groq" and _es_modelo_de_razonamiento(modelo):
+        # La familia gpt-oss: mismo objetivo, otro parámetro. `include_reasoning`
+        # es booleano y los dos son MUTUAMENTE EXCLUYENTES — mandar los dos, o
+        # mandarle `reasoning_format`, es un 400.
+        extra["include_reasoning"] = os.getenv("GROQ_RAZONAMIENTO", "hidden") == "raw"
     elif activo == "openrouter" and _es_modelo_de_razonamiento(modelo):
         # OpenRouter unifica el suyo bajo `reasoning`: {"exclude": True} descarta
         # la cadena de pensamiento (el equivalente al "hidden" de Groq).

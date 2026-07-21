@@ -206,14 +206,13 @@ class TestCrearLlm:
         assert llm.temperature == 0.3
 
     def test_groq_oculta_el_bloque_think_de_los_modelos_de_razonamiento(self, monkeypatch):
-        # El default de Groq es un modelo de RAZONAMIENTO: escribe su cadena de
-        # pensamiento dentro del contenido, envuelta en <think>…</think>.
-        # `reasoning_format: hidden` le dice a Groq que la descarte. Sin esto,
-        # TODAS las salidas del curso salen contaminadas. Ojo: la aserción mira
-        # el COMPORTAMIENTO, no el ID — así sobrevive al próximo cambio de default.
+        # qwen3.6 es de RAZONAMIENTO y devuelve su cadena de pensamiento dentro
+        # del contenido, envuelta en <think>…</think>. `reasoning_format: hidden`
+        # le dice a Groq que la descarte; sin esto, TODAS las salidas del curso
+        # salen contaminadas.
         monkeypatch.setenv("LLM_PROVIDER", "groq")
         monkeypatch.setenv("GROQ_API_KEY", "gsk_de_prueba")
-        monkeypatch.delenv("LLM_MODELO", raising=False)
+        monkeypatch.setenv("LLM_MODELO", "qwen/qwen3.6-27b")
         assert util.crear_llm().extra_body == {"reasoning_format": "hidden"}
 
     def test_a_un_modelo_SIN_razonamiento_no_se_le_manda_ese_parametro(self, monkeypatch):
@@ -223,6 +222,29 @@ class TestCrearLlm:
         monkeypatch.setenv("GROQ_API_KEY", "gsk_de_prueba")
         monkeypatch.setenv("LLM_MODELO", "llama-3.3-70b-versatile")
         assert util.crear_llm().extra_body is None
+
+    def test_a_gpt_oss_NUNCA_se_le_manda_reasoning_format(self, monkeypatch):
+        # ⭐ LA REGRESIÓN QUE NOS COSTÓ UN 400. gpt-oss ES de razonamiento, pero
+        #    la doc de Groq dice que NO acepta `reasoning_format` (usa
+        #    `include_reasoning`, y son mutuamente excluyentes). Como gpt-oss es
+        #    el default de Groq del curso, mandárselo rompía la PRIMERA llamada
+        #    de cualquier alumno. Este test vigila que no vuelva a colarse.
+        monkeypatch.setenv("LLM_PROVIDER", "groq")
+        monkeypatch.setenv("GROQ_API_KEY", "gsk_de_prueba")
+        monkeypatch.delenv("LLM_MODELO", raising=False)  # el default: gpt-oss
+        extra = util.crear_llm().extra_body
+        assert "reasoning_format" not in extra
+        # Su razonamiento ya viaja en un campo aparte; lo apagamos igualmente
+        # para no pagar tokens que nadie va a leer.
+        assert extra == {"include_reasoning": False}
+
+    def test_gpt_oss_respeta_GROQ_RAZONAMIENTO_raw(self, monkeypatch):
+        # El interruptor didáctico sigue funcionando, traducido a su parámetro.
+        monkeypatch.setenv("LLM_PROVIDER", "groq")
+        monkeypatch.setenv("GROQ_API_KEY", "gsk_de_prueba")
+        monkeypatch.delenv("LLM_MODELO", raising=False)
+        monkeypatch.setenv("GROQ_RAZONAMIENTO", "raw")
+        assert util.crear_llm().extra_body == {"include_reasoning": True}
 
     def test_structured_output_usa_function_calling_no_json_schema(self, monkeypatch):
         # ⭐ Groq solo soporta response_format=json_schema en ALGUNOS modelos, y
