@@ -104,7 +104,97 @@ Para texto plano, `.content` basta y lo verás en casi todo el curso. Cuando lle
 
 <Box kind="analogy" label="◆ Bueno saber">
 
-El parámetro `temperature` controla la creatividad: `0` = preciso y repetible (clasificar, calcular, usar tools); `0.7–1` = variado (redactar, conversar). En LangChain 1.x existe también `init_chat_model("google_genai:gemini-3.1-flash-lite")` para crear cualquier modelo cambiando solo el nombre: la sintaxis canónica es `"proveedor:modelo"` (`"openai:gpt-5.4-mini"`, `"anthropic:claude-haiku-4-5"`…). El curso usa su propia fábrica `util.crear_llm()`, que además resuelve los casos especiales de cada proveedor.
+El parámetro `temperature` controla la creatividad: `0` = preciso y repetible (clasificar, calcular, usar tools); `0.7–1` = variado (redactar, conversar). Todo el curso usa `0` a propósito: así, si repites un ejemplo, obtienes lo mismo y puedes comparar.
+
+</Box>
+
+### El archivo `util.py` (lo vas a ver en todos los ejemplos)
+
+Al clonar el repo te llevaste, junto a los ejemplos, un archivo llamado `util.py`. **No es una librería ni magia del curso**: es un `.py` corriente, en la misma carpeta que los ejemplos y que tus `mi_01.py`, y puedes abrirlo y leerlo — está comentado línea por línea. Eso es todo lo que hace falta para que esto funcione:
+
+```python title="mi_01.py · usar la fábrica en vez de instanciar a mano"
+from util import crear_llm
+
+llm = crear_llm()          # lee LLM_PROVIDER del .env y devuelve el modelo ya configurado
+print(llm.invoke("Explica qué es un LLM en una frase.").content)
+```
+
+Existe por una razón práctica: **22 ejemplos** del curso necesitan lo mismo (crear el modelo, reconocer un `429`, avisar si falta la llave). Repetir ese bloque en 22 archivos sería 22 sitios donde equivocarse. Además, al estar suelto en una función, esa lógica se puede **testear sin gastar cuota** — es lo que hace `tests/test_util.py`.
+
+Dentro hay cuatro familias de funciones. No las memorices; te las irás encontrando:
+
+| Familia | Funciones | Para qué |
+| --- | --- | --- |
+| La fábrica | `crear_llm()` · `crear_embeddings()` | construir el modelo que diga el `.env` |
+| Las llaves | `requiere_llm_key()` · `cargar_var_entorno()` | fallar con un mensaje legible en vez de un traceback |
+| La cuota | `es_error_cuota()` · `mensaje_cuota()` | reconocer el `429` y explicarlo ([c09](/concepto/09-resiliencia-async)) |
+| El texto | `trocear_parrafos()` | partir documentos en fragmentos (lo usa el RAG del [c11](/concepto/11-rag-profesional)) |
+
+Y ya que estás mirando la carpeta: hay **tres archivos `.py` que no son ejemplos**, y conviene no confundirlos.
+
+| Archivo | ¿Es tuyo? | Para qué |
+| --- | --- | --- |
+| `util.py` | lo usas | lo importan los ejemplos; es el de esta sección |
+| `env_utils.py` | lo corres | tu chequeo de entorno del día 1 ([c00](/concepto/00-preparar-el-terreno)) |
+| `verificar_curso.py` | ignóralo | es del mantenedor: comprueba que el material sea coherente |
+
+<Box kind="def" label="◈ ¿Y por qué no `init_chat_model`?">
+
+LangChain 1.x trae su propio atajo, `init_chat_model("proveedor:modelo")` — por ejemplo `init_chat_model("openai:gpt-5.4-mini")` o `init_chat_model("anthropic:claude-haiku-4-5")`. Es la sintaxis canónica y está muy bien. ¿Por qué el curso no la usa?
+
+**Para unos proveedores daría igual; para otros, no.** `crear_llm()` tiene dos ramas:
+
+- **Gemini y Claude** son los dos únicos que *no* hablan el dialecto de OpenAI, así que tienen su clase propia. Ahí `init_chat_model` haría exactamente lo mismo, ni mejor ni peor.
+- **Los otros seis** (OpenAI, Groq, Ollama, OpenRouter, DeepSeek, Kimi) sí lo hablan, y se resuelven con **un solo `ChatOpenAI` cambiando la `base_url`** — como viste arriba con Groq. Ahí es donde `init_chat_model` se queda corto, por dos motivos.
+
+**Motivo 1: no es un cliente único, es un despachador.** `"groq:…"` no habla con Groq: importa `langchain_groq`, un paquete aparte. Cubrir los ocho proveedores del curso costaría cuatro paquetes más… y Kimi se quedaría fuera igual, porque ni siquiera está en su lista.
+
+**Motivo 2: cada proveedor tiene sus parámetros prohibidos**, y mandarles el equivocado no da un aviso: da un error 400. `crear_llm()` los conoce:
+
+- **Groq** solo acepta el formato de salida estructurada del [c05](/concepto/05-salida-estructurada) en *algunos* modelos; en el resto hay que pedirlo por otro camino.
+- **El razonamiento** se oculta con un parámetro distinto en Groq, en la familia `gpt-oss` y en OpenRouter — y son mutuamente excluyentes.
+- **Kimi prohíbe `temperature`**, justo el que este curso fija en `0` en todas partes.
+
+Se ve mejor con las dos ramas juntas. Primero, con el atajo de LangChain:
+
+```python title="con init_chat_model · un proveedor nativo y otro compatible"
+from langchain.chat_models import init_chat_model
+
+# ── Gemini (nativo) · aquí el atajo va perfecto ─────────────────
+llm = init_chat_model("google_genai:gemini-3.1-flash-lite", temperature=0)
+
+# ── Groq (compatible con OpenAI) · el mismo atajo ya no basta ───
+llm = init_chat_model(
+    "openai/gpt-oss-120b",
+    model_provider="openai",                      # ChatOpenAI, para no instalar
+    temperature=0,                                # un paquete por proveedor
+    base_url="https://api.groq.com/openai/v1",    # la URL de Groq
+    api_key=os.getenv("GROQ_API_KEY"),            # su llave, con OTRO nombre
+    extra_body={"include_reasoning": False},      # parámetro propio de gpt-oss:
+)                                                 # otro modelo pide otro distinto
+
+datos = llm.with_structured_output(Ficha, method="function_calling")
+#                                         ↑ hay que acordarse en CADA llamada del c05
+```
+
+Y ahora lo mismo con la fábrica del curso — **las dos ramas se escriben igual**:
+
+```python title="con crear_llm() · idéntico para los ocho proveedores"
+from util import crear_llm
+
+llm = crear_llm()                           # proveedor, modelo, llave y parches: del .env
+datos = llm.with_structured_output(Ficha)   # ya entra por el camino que aguanta
+```
+
+```ini title=".env · lo único que cambias para saltar de rama"
+LLM_PROVIDER=google      # …o groq, anthropic, ollama, openrouter, deepseek
+```
+
+La diferencia no es cuántas líneas escribes: es **dónde vive el conocimiento de cada proveedor**. Arriba está repartido por tu código, así que cambiar de proveedor es editarlo (y si te dejas puesto el `extra_body` de Groq al pasar a Gemini, es un 400). Abajo vive en un solo sitio, y cambiar de proveedor es una línea del `.env` — que es justo lo que necesitas la tarde en que se te agota la cuota a mitad de ejercicio.
+
+**Y esto no es un apaño del curso.** Apuntar un cliente de OpenAI a otra `base_url` es lo que documentan los propios proveedores — es la razón por la que anuncian ser "compatibles con OpenAI" —, y una fábrica que lee configuración y devuelve el cliente correcto es el mismo patrón que hay detrás de un *gateway* (LiteLLM, OpenRouter, Bedrock).
+
+Así que `init_chat_model` no es peor: **resuelve otro problema**. Sirve para elegir modelo por nombre en una app que se queda en un proveedor. Este curso salta de proveedor en cuanto se te agota la cuota, y ahí es donde aparecen los casos de arriba. El detalle de cada uno, en el [c18b](/concepto/18b-elegir-modelo-y-proveedor).
 
 </Box>
 
@@ -137,6 +227,7 @@ for _ in range(3):
 - Nombrar los cuatro tipos de mensaje (`System`, `Human`, `AI`, `Tool`) y para qué sirve cada rol.
 - Decir cómo cambia la respuesta al ajustar `temperature` de `0` a `0.9`.
 - Reconocer por qué `util.crear_llm()` te deja cambiar de proveedor sin tocar el resto del código.
+- Decir qué es `util.py` (un `.py` normal que puedes abrir, no una librería) y distinguirlo de `env_utils.py` y `verificar_curso.py`.
 
 </Checkpoint>
 
