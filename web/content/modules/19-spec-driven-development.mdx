@@ -64,6 +64,23 @@ No hace falta usarlos todos en cada feature. Pero saber que existen cambia la re
 
 </Box>
 
+<Box kind="def" label="◈ spec-kit no es el único: el paisaje de frameworks">
+
+spec-kit es **GitHub Spec Kit** (`github/spec-kit`), el que has usado en todo este módulo, pero no es el único que lleva SDD a la práctica. Hay tres, y no compiten: cubren tamaños de equipo distintos.
+
+<DefList>
+  <Term>GitHub Spec Kit</Term>
+  <Def>CLI agnóstico del asistente (Claude Code, Cursor, Aider…). El spec vive en git como cualquier archivo. Su fuerte: **equipo y trazabilidad a largo plazo** — cuando el spec tiene que leerlo alguien que no eres tú, o sobrevivir meses en el repo.</Def>
+  <Term>Superpowers</Term>
+  <Def>Un plugin de Claude Code cuyas *skills* se auto-cargan por lenguaje natural (brainstorming, writing-plans, subagent-driven-development, requesting-code-review). Su fuerte: **trabajo en solitario, un repo, corridas largas sin intervención**.</Def>
+  <Term>BMAD-METHOD</Term>
+  <Def>Reparte el trabajo en **agentes con rol** (analista, PM, arquitecto, dev). Su fuerte: **varios desarrolladores con hand-offs reales** y un PM de verdad en el lazo — sobra para un proyecto de una persona.</Def>
+</DefList>
+
+La regla de bolsillo: **solo y un repo → Superpowers · equipo y git → Spec Kit · multi-rol con PM → BMAD**. Los nombres y la instalación cambian seguido; quédate con el criterio de elección, no con el comando de hoy — igual que con los precios del [c16](/concepto/16-observabilidad-y-costo).
+
+</Box>
+
 <Box kind="def" label="◈ Cómo se escribe una constitución (el paso ①)">
 
 La constitución es el paso ① y el más fácil de despachar con un placeholder. Escribirla bien es sencillo si respetas su anatomía: **cada principio es una regla + su Rationale**. La regla dice qué se hace o no se hace; el *Rationale* dice por qué, y es lo que impide que alguien la borre dentro de tres meses por parecer un capricho.
@@ -113,6 +130,39 @@ Este concepto te enseñó, sin decirlo, el **ciclo de trabajo colaborativo** que
 
 </Box>
 
+<Box kind="analogy" label="◆ Plan mode ≠ SDD (y dónde queda el vibe-coding)">
+
+Hay un espectro de rigor, y conviene saber en qué escalón estás. En un extremo, el **vibe-coding**: describes, el asistente teclea, revisas — sin diseño escrito. Funciona para un script de usar y tirar; se desmorona en cuanto la feature toca varios archivos. Un paso arriba, el **plan mode** del asistente (el mismo en el que quizás te pidieron aprobar un plan): produce un plan **en un solo turno, en memoria**, sin spec persistido y sin revisión entre fases — cuando cierras la sesión, se lo lleva el viento. En el otro extremo, **SDD**: el spec y el plan viven **en disco**, pasan por un gate humano entre fase y fase, y **sobreviven entre sesiones** — mañana, otra persona, u otro agente, retoman desde el mismo contrato.
+
+La lección: el plan mode es un gran *primer* paso —piénsalo antes de teclear—, pero no sustituye al spec cuando la decisión vale la pena razonar y va a durar. Uno es una nota mental; el otro, un contrato versionado.
+
+</Box>
+
+<Box kind="def" label="◈ Los tres gates de revisión · cada uno caza otra clase de error">
+
+"Revisar" no es un solo momento: SDD pone **tres puntos de control**, y cada uno atrapa fallos que los otros dejan pasar. Por eso el flujo tiene una pausa humana entre fase y fase, no solo al final.
+
+| Gate | La clase de error que caza |
+| --- | --- |
+| **Spec review** | Scope creep (la feature crece más allá de lo pedido) · arreglar el síntoma equivocado en vez de la causa. |
+| **Plan review** | La implementación que se declara "lista" al 80% con TODOs y stubs · el patrón que choca con cómo está escrito el repo. |
+| **Code review** | El plan que se leía perfecto pero se rompe al primer test — solo el diff real lo destapa. |
+
+Es el mismo "revisa el diff como un PR" de la caja anterior, pero movido *hacia arriba*: revisar el **spec** y el **plan** cuesta minutos y evita horas; descubrir el mismo error en el código cuesta lo que ya escribiste.
+
+</Box>
+
+<Box kind="warn" label="▲ Red-teamea tu spec, y deja que subagentes implementen">
+
+Dos prácticas de quien lleva SDD en serio con un asistente, ambas apoyadas en **subagentes**:
+
+- **Antes de `/implement`, red-teamea el spec.** Despacha uno o más subagentes (Opus rinde bien aquí) a leer el spec **en frío**, sin tu contexto, con una sola misión: buscarle huecos, ambigüedades y supuestos no escritos. Es el mismo músculo del red-teaming del [c23](/concepto/23-seguridad-red-teaming), pero apuntado a tu *propio* documento — un hueco que caza un revisor adversarial en el spec es un bug que no llega al código.
+- **Durante `/implement`, dirige con subagentes.** En vez de un solo hilo largo, un **subagente por task** (con su test primero) y un **subagente revisor** que lee cada diff contra el spec antes de pasar a la siguiente. Aísla el contexto de cada tarea y mete un code-review por pieza, no uno gigante al final.
+
+Ninguna de las dos es parte del flujo mínimo de spec-kit: son la capa de disciplina que le pones encima cuando el trabajo lo justifica.
+
+</Box>
+
 <Box kind="analogy" label="🌐 Skills: conocimiento empaquetado para tu asistente">
 
 El stack de quien trabaja en serio con asistentes de código tiene **tres pilares**, y ya conoces dos: **SDD** (este concepto — fija la *intención*) y **MCP** ([c14](/concepto/14-mcp) — le da *herramientas y datos*). El tercero son los **skills**: paquetes reutilizables de instrucciones + contexto + criterio que el asistente **carga cuando la tarea lo pide**, en vez de que se los repitas en cada sesión. "Cómo se revisa un PR en este equipo", "cómo se despliega este repo", "qué convenciones sigue nuestro SQL" — conocimiento operativo que hoy vive en la cabeza de alguien y que un skill vuelve **versionable en el repo**.
@@ -149,6 +199,7 @@ Todo lo anterior se apoya en un supuesto que aquí se cumplía: el verificador e
 - Explicar por qué el spec gana sobre el código cuando discrepan (y por qué se arregla el código, no el spec).
 - Nombrar los cinco pasos de spec-kit en orden: constitution → /specify → /plan → /tasks → /implement.
 - Justificar por qué SDD ayuda *especialmente* cuando quien escribe el código es un agente de IA.
+- Distinguir vibe-coding, plan mode y SDD, y decir qué caza cada uno de los tres gates de revisión.
 
 </Checkpoint>
 
@@ -184,6 +235,14 @@ Todo lo anterior se apoya en un supuesto que aquí se cumplía: el verificador e
   <Option>Cuando la feature toca varios servicios y aún no sabes cuáles</Option>
   <Option ok>Cuando la decisión es trivial y no hay nada que razonar antes de teclear</Option>
   <Feedback>SDD es para lo que vale la pena razonar antes, donde una decisión olvidada cuesta cara. Un README de una línea con spec es justo la burocracia que SDD evita.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>5 · ¿Qué distingue al **plan mode** de un asistente del SDD de verdad?</Prompt>
+  <Option>Nada: el plan mode ES spec-driven development, solo que con otro nombre</Option>
+  <Option ok>El plan mode vive en un turno y en memoria; SDD persiste spec y plan en disco, con gate humano entre fases, y sobrevive entre sesiones</Option>
+  <Option>El plan mode sirve para equipos y SDD solo para trabajo en solitario</Option>
+  <Feedback>El plan mode es un gran primer paso —pensar antes de teclear— pero se lo lleva el viento al cerrar la sesión. SDD deja un contrato versionado que mañana retoma otra persona u otro agente.</Feedback>
 </Question>
 
 </Quiz>
