@@ -72,7 +72,7 @@ Todo lo que has construido hasta aquí cae en una de dos familias, y conviene sa
 
 El poder real de un grafo cíclico se ve en este patrón de producción: si la búsqueda no encontró contexto, el agente **reintenta**; si falla varias veces, no se cae ni inventa — **escala a un humano**. Un nodo evaluador devuelve el nombre de la ruta a seguir:
 
-```python title="patrón real · reintentar y escalar (adaptado de la comisión de EricBz)"
+```python title="patrón real · reintentar y escalar"
 def evaluate(state):                       # NODO: es quien ACTUALIZA el estado
     if state["retrieved_docs"]:
         return {}                          # hay contexto: nada que cambiar
