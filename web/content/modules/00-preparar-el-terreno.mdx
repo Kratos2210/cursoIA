@@ -196,9 +196,30 @@ LLM_PROVIDER=groq
 GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-¿No especificas modelo? Cada proveedor trae el suyo de fábrica. Y si algún día te contesta `model not found` o `model_decommissioned`, **no rompiste nada**: retiraron ese modelo del catálogo. Copia un ID vigente de la [tabla de modelos del cheat sheet](/recurso/cheat-sheet), ponlo en `LLM_MODELO=` de tu `.env` y sigue — esa línea gana sobre cualquier default del curso.
-
 Eso es todo. Los ejemplos no cambian: todos llaman a `util.crear_llm()`, que lee el `.env` y construye el modelo del proveedor activo — nunca instancias un modelo a mano. Cambiar de proveedor es una línea del `.env`; el cómo y el porqué de esa "fábrica de modelos" (y cuándo conviene cada proveedor) lo ves en el [Concepto 18b](/concepto/18b-elegir-modelo-y-proveedor).
+
+<Box kind="warn" label="▲ Léelo hoy, te ahorrará una tarde: los modelos se apagan">
+
+Fíjate en que arriba **no pusiste ningún modelo**, solo el proveedor: cada uno trae el suyo de fábrica. Eso es deliberado, y conviene que sepas por qué desde el primer día.
+
+**Los proveedores retiran modelos cada pocos meses.** Cualquier nombre de modelo que leas en este curso —o en cualquier tutorial— es una **foto con fecha**, no una verdad permanente. Le pasó a este mismo curso: Groq apagó `qwen/qwen3-32b`, que era su modelo por defecto aquí, en julio de 2026.
+
+Así que si algún día tu programa responde `model not found`, `model_decommissioned` o `has been deprecated`, **no rompiste nada y tu llave está bien**. Se arregla en 30 segundos y sin tocar código:
+
+```ini title=".env · el interruptor maestro"
+LLM_PROVIDER=groq
+GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+LLM_MODELO=openai/gpt-oss-120b
+```
+
+Copias un ID vigente y lo pegas en `LLM_MODELO`. Esa línea **gana sobre cualquier default del curso**, así que no dependes de que nosotros actualicemos el material. De dónde sacas el ID, en este orden:
+
+1. La [tabla de modelos vigentes del cheat sheet](/recurso/cheat-sheet) — lleva su fecha de verificación.
+2. La **página oficial del proveedor**, que siempre va por delante de nosotros: [Groq](https://console.groq.com/docs/models) · [Google](https://ai.google.dev/gemini-api/docs/models) · [OpenAI](https://platform.openai.com/docs/models) · [Anthropic](https://docs.anthropic.com/en/docs/about-claude/models) · [OpenRouter](https://openrouter.ai/models) · [Ollama](https://ollama.com/library).
+
+Esta es la razón de fondo por la que en este curso el modelo vive en el `.env` y nunca dentro del código.
+
+</Box>
 
 Si más adelante haces RAG y mueves el chat a Groq (que no ofrece embeddings), añadirás `EMBEDDINGS_PROVIDER=fastembed` para calcularlos en tu propia máquina, sin cuota. Se explica en el [Concepto 11](/concepto/11-rag-profesional) — por ahora no hace falta.
 
