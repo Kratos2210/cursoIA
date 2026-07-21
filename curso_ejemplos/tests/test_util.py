@@ -130,6 +130,8 @@ class TestProveedor:
         assert util.modelo_por_defecto("anthropic") == "claude-haiku-4-5"
         assert util.modelo_por_defecto("openrouter") == "meta-llama/llama-3.3-70b-instruct:free"
         assert util.modelo_por_defecto("deepseek") == "deepseek-v4-flash"
+        # Kimi entra con el tier BARATO (k2.6), no con el flagship k3.
+        assert util.modelo_por_defecto("kimi") == "kimi-k2.6"
 
     def test_LLM_MODELO_manda_sobre_el_default(self, monkeypatch):
         monkeypatch.setenv("LLM_MODELO", "llama-3.3-70b-versatile")
@@ -152,6 +154,10 @@ class TestProveedor:
         assert util.variable_de_llave("anthropic") == "ANTHROPIC_API_KEY"
         assert util.variable_de_llave("openrouter") == "OPENROUTER_API_KEY"
         assert util.variable_de_llave("deepseek") == "DEEPSEEK_API_KEY"
+        # El desajuste a propósito: el proveedor es `kimi`, la empresa es Moonshot
+        # y la variable que espera su API es MOONSHOT_API_KEY. Deducirla del
+        # nombre del producto (KIMI_API_KEY) da un 401.
+        assert util.variable_de_llave("kimi") == "MOONSHOT_API_KEY"
 
 
 @pytest.mark.offline
@@ -384,6 +390,67 @@ class TestProveedoresNuevos:
         monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or_de_prueba")
         monkeypatch.setenv("LLM_MODELO", "openai/gpt-oss-120b")
         assert util.crear_llm().extra_body == {"reasoning": {"exclude": True}}
+
+
+@pytest.mark.offline
+class TestKimi:
+    """Kimi (Moonshot): otro compatible con OpenAI, con una trampa propia.
+
+    Habla el dialecto de OpenAI —así que es una `base_url` más—, pero FIJA los
+    parámetros de muestreo: mandarle `temperature=0.0`, que es lo que pide todo
+    el curso, es un 400. Estos tests blindan las tres cosas que hay que acertar:
+    la base_url, la variable de llave (que NO se llama como el producto) y la
+    temperatura omitida.
+    """
+
+    def _entorno(self, monkeypatch):
+        monkeypatch.setenv("LLM_PROVIDER", "kimi")
+        monkeypatch.setenv("MOONSHOT_API_KEY", "sk_de_prueba")
+        monkeypatch.delenv("LLM_MODELO", raising=False)
+        monkeypatch.delenv("LLM_BASE_URL", raising=False)
+
+    def test_kimi_apunta_a_moonshot_con_el_tier_barato(self, monkeypatch):
+        self._entorno(monkeypatch)
+        llm = util.crear_llm()
+        assert llm.model_name == "kimi-k2.6"
+        assert "api.moonshot.ai" in str(llm.openai_api_base)
+
+    def test_kimi_sin_llave_aborta_nombrando_MOONSHOT_API_KEY(self, monkeypatch):
+        # El nombre de la variable no se deduce del proveedor: el aviso tiene que
+        # decir MOONSHOT_API_KEY, o el alumno buscará una KIMI_API_KEY que no existe.
+        monkeypatch.setenv("LLM_PROVIDER", "kimi")
+        monkeypatch.delenv("MOONSHOT_API_KEY", raising=False)
+        with pytest.raises(SystemExit, match="MOONSHOT_API_KEY"):
+            util.crear_llm()
+
+    def test_a_kimi_NUNCA_se_le_manda_temperature(self, monkeypatch):
+        # REGRESIÓN. La doc de Moonshot fija la temperatura (k3 la clava en 1.0 y
+        # pide OMITIR el campo; k2.6 solo admite 1.0 o 0.6). `crear_llm` recibe
+        # 0.0 de todo el curso, y aquí NO puede reenviarlo.
+        #
+        # Por qué `is None` prueba que se omite: `ChatOpenAI._default_params`
+        # construye el payload con un `exclude_if_none`, así que un campo en None
+        # no llega a viajar en el JSON. `None` aquí ES "no mandar el kwarg".
+        self._entorno(monkeypatch)
+        llm = util.crear_llm(temperature=0.0)
+        assert llm.temperature is None
+        assert "temperature" not in llm._default_params
+
+    def test_los_demas_proveedores_SIGUEN_recibiendo_la_temperatura(self, monkeypatch):
+        # La otra mitad de la regresión: la excepción de Kimi no puede haberle
+        # quitado la temperatura —y con ella la reproducibilidad— a nadie más.
+        monkeypatch.setenv("LLM_PROVIDER", "groq")
+        monkeypatch.setenv("GROQ_API_KEY", "gsk_de_prueba")
+        monkeypatch.delenv("LLM_MODELO", raising=False)
+        assert util.crear_llm(temperature=0.0).temperature == 0.0
+
+    def test_kimi_no_lleva_ningun_parche_en_extra_body(self, monkeypatch):
+        # Las ramas de `extra_body` son de Groq y OpenRouter: sus nombres de
+        # parámetro NO son intercambiables, y mandarle uno ajeno a Moonshot sería
+        # otro 400. Si algún día hace falta esconder el razonamiento de kimi-k3,
+        # será con el parámetro que diga SU doc, no reciclando el de otro.
+        self._entorno(monkeypatch)
+        assert util.crear_llm().extra_body is None
 
 
 @pytest.mark.offline
