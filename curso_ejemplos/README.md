@@ -9,9 +9,11 @@ Y todo está **verificado por 872 tests** que corren sin gastar un solo token
 ## 1) Requisitos (una sola vez)
 
 ```bash
-cd curso_ejemplos
-uv sync                  # instala todo desde pyproject.toml (el canon)
-cp .env.example .env     # edita y pon tu llave de https://aistudio.google.com
+git clone https://github.com/Kratos2210/cursoIA.git
+cd cursoIA/curso_ejemplos
+cp .env.example .env       # edita y pon tu llave de https://aistudio.google.com
+uv sync                    # instala todo desde pyproject.toml (el canon)
+uv run python env_utils.py # ¿está todo listo? (añade --ping para llamar de verdad)
 ```
 
 > 🧰 ¿Usas pip en vez de uv, necesitas un extra concreto o algo se rompió?

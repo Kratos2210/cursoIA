@@ -61,7 +61,7 @@ Y cuando termines un nivel, haz sus [ejercicios](/recurso/ejercicios): leer cód
 
 ### Antes de empezar: prepara tu computadora
 
-Si nunca programaste, este es tu punto de partida. Necesitas **tres cosas**: una terminal (ya la tienes), `uv` (lo instalas en un comando) y un editor para escribir tus archivos. Nada más.
+Si nunca programaste, este es tu punto de partida. Necesitas **tres cosas**: una terminal (ya la tienes), `git` (para traerte el curso) y un editor para escribir tus archivos. Nada más — de Python y las librerías se encarga `uv`, que instalas en la primera línea del bloque de instalación.
 
 #### 1 · La terminal (tu línea de comandos)
 
@@ -77,78 +77,77 @@ La terminal es como enviarle notas escritas a tu computadora en lugar de señala
 
 </Box>
 
-#### 2 · Instala `uv`
+#### 2 · Instala `git`
 
-`uv` es la herramienta que gestiona tu Python y tus librerías (y si te falta Python, `uv` lo instala solo). Pega en tu terminal el comando de tu sistema:
+**git** es el programa que se baja el material del curso a tu computadora (y, más adelante, el que versiona tu código). Hoy lo usarás para **un solo comando**. Comprueba primero si ya lo tienes:
 
-```bash title="terminal · instalar uv"
-# macOS o Linux:
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Windows (en PowerShell):
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+```bash title="terminal · ¿ya tengo git?"
+git --version
 ```
 
-**Cierra la terminal y abre una nueva** (para que reconozca el nuevo programa) y comprueba que quedó instalado:
+Si responde algo como `git version 2.43.0`, ya está: sigue al paso 3. Si dice `command not found`:
 
-```bash title="terminal · verificar"
-uv --version
-```
+- **Windows:** descárgalo de [git-scm.com/download/win](https://git-scm.com/download/win) e instálalo con las opciones por defecto (Siguiente → Siguiente).
+- **macOS:** escribe `git --version` y macOS mismo te ofrecerá instalar las *Command Line Tools*; acepta. (O `brew install git` si usas Homebrew.)
+- **Linux:** `sudo apt install git` (Debian/Ubuntu) o `sudo dnf install git` (Fedora).
 
-```text title="▸ deberías ver (algo así)"
-uv 0.9.x
-```
-
-Si en cambio dice `command not found: uv`, no abriste una terminal nueva o la instalación no terminó: repite el comando y vuelve a abrir la terminal.
+Cierra la terminal, abre una nueva y vuelve a comprobar con `git --version`.
 
 #### 3 · Instala VS Code (tu editor)
 
 Para escribir los archivos `.py` necesitas un editor de texto para programadores. El más usado es **Visual Studio Code**, gratis: descárgalo de [code.visualstudio.com](https://code.visualstudio.com) e instálalo como cualquier programa.
 
-Para crear tu primer archivo: abre VS Code → menú *Archivo → Nuevo archivo* → menú *Archivo → Guardar como…* y ponle un nombre que termine en `.py` (por ejemplo `main.py`). Esa terminación es la que le dice a todo el mundo —y a `uv`— que dentro hay código Python. VS Code además trae su propia terminal integrada (menú *Terminal → Nueva terminal*), muy cómoda para no cambiar de ventana.
+Los archivos que escribas los guardarás con nombre terminado en `.py` (por ejemplo `mi_01.py`). Esa terminación es la que le dice a todo el mundo —y a `uv`— que dentro hay código Python. VS Code además trae su propia terminal integrada (menú *Terminal → Nueva terminal*), muy cómoda para no cambiar de ventana.
 
-### Instalación (con `uv`)
+### Instalación: el día 1 completo
 
-```bash title="terminal · setup.sh"
-# Crea el proyecto e instala lo básico para empezar
-uv init mi-curso-ia && cd mi-curso-ia
-uv add langchain langgraph python-dotenv
+Todo el curso vive en un repositorio público. Te lo traes con `git clone`, entras en la carpeta de trabajo y dejas que `uv` haga el resto:
 
-# Los dos clientes de modelo. langchain-openai no es "para OpenAI":
-# es para CUALQUIER API que hable su dialecto — Groq, Ollama, Together…
-uv add langchain-google-genai langchain-openai
+```bash title="terminal · de cero a instalado"
+# 1 · Instala uv (gestiona Python, el entorno y las librerías).
+#     macOS o Linux:
+curl -LsSf https://astral.sh/uv/install.sh | sh
+#     Windows (en PowerShell):
+#     powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+#     ⚠️ Después, CIERRA la terminal y abre una nueva.
 
-# Crea el .env con tu llave (NUNCA lo subas a git). Elige UNA:
-echo "LLM_PROVIDER=google"                    >  .env   # opción A: Gemini
-echo "GOOGLE_API_KEY=tu_llave_secreta"        >> .env
+# 2 · Trae el curso a tu computadora
+git clone https://github.com/Kratos2210/cursoIA.git
 
-# echo "LLM_PROVIDER=groq"                    >  .env   # opción B: Groq
-# echo "GROQ_API_KEY=gsk_tu_llave_secreta"    >> .env
+# 3 · Entra en la carpeta de trabajo (aquí vives todo el curso)
+cd cursoIA/curso_ejemplos
+
+# 4 · Crea tu .env a partir de la plantilla, y pega tu llave dentro
+cp .env.example .env        # Windows PowerShell:  copy .env.example .env
+
+# 5 · Instala Python y todas las librerías, en las versiones exactas del curso
+uv sync
 ```
 
-Con esto arrancas. Las demás librerías (RAG, re-ranking, producción…) las añades con un `uv add` cuando llegues a su nivel — cada concepto te dice cuál necesita.
+Cada comando hace una cosa distinta y conviene no confundirlas:
 
-Esos comandos hacen dos cosas distintas y conviene no confundirlas. `uv init` crea la carpeta del proyecto con un `pyproject.toml` **vacío de dependencias**. `uv add` es lo que las escribe ahí dentro *y* las instala. Si te saltas los `uv add`, tienes un proyecto perfectamente válido… que no sabe nada de LangChain.
+| Comando | Qué hace |
+| --- | --- |
+| El instalador de `uv` | Lo único que instalas a mano. Si después ves `command not found: uv`, no abriste una terminal nueva. |
+| `git clone` | Copia el repositorio completo a tu disco. Se hace **una sola vez**. |
+| `cp .env.example .env` | Crea tu archivo de secretos a partir de la plantilla comentada. El `.env.example` sí está en el repo; tu `.env` **nunca** (lo bloquea el `.gitignore`). |
+| `uv sync` | Lee `pyproject.toml` + `uv.lock`, crea el entorno virtual (`.venv`) e instala las versiones exactas. **Si te falta Python, también lo instala.** |
 
-<Box kind="def" label="◈ Si algún `uv add` se traba, es normal (y tiene arreglo de una línea)">
+Fíjate en lo que *no* tienes que hacer: no creas el entorno virtual, no lo activas y no instalas Python. De las tres cosas se encarga `uv sync`, y `uv run` ya ejecuta dentro de ese entorno. El paso 4 es el único que te pide algo tuyo — la llave. Es lo que viene ahora.
+
+<Box kind="def" label="◈ Por qué `uv sync` y no `uv add` uno por uno">
+
+`uv add` va añadiendo librerías de una en una a un proyecto vacío; `uv sync` instala de golpe la lista ya escrita en `pyproject.toml`, respetando `uv.lock`. Esa diferencia importa: el lockfile fija las **versiones exactas** con las que está probado el curso, así que no te toca lidiar con un cambio de API de LangChain publicado la semana pasada. Los extras opcionales (RAG local, servidor, vector DB) se instalan cuando llegues a su módulo, con `uv sync --extra emb` y compañía — cada concepto te dice cuál.
+
+</Box>
+
+<Box kind="def" label="◈ Si `uv sync` se traba, es normal (y tiene arreglo de una línea)">
 
 La instalación puede tener algún tropiezo según tu equipo —el más común es en **Mac Intel**, donde un paquete que arrastra Chroma ya no trae binario—. No es tu código, y ninguno te frena de verdad: todos los casos están reunidos, con su causa y su solución de una línea, en el anexo **[Errores comunes](/recurso/faq)**. El hábito correcto es el del [Concepto 0b](/concepto/0b-python-minimo): lee la **última línea** de lo que salió en tu terminal y búscala ahí.
 
 </Box>
 
-<Box kind="analogy" label="◆ Dónde estás parado importa (la regla de oro de uv)">
-
-`uv` elige el entorno buscando el `pyproject.toml` **más cercano hacia arriba** desde tu carpeta actual. Por eso el *mismo* comando funciona en una carpeta y falla en la de al lado, y por eso el curso te pide siempre `cd` antes de ejecutar. Cuando dudes, pregúntale a Python qué entorno está usando de verdad:
-
-```bash title="diagnóstico · ¿qué .venv estoy usando?"
-uv run python -c "import sys; print(sys.prefix)"
-# .../mi-curso-ia/.venv   ← el tuyo, el que tiene tus uv add
-# .../otro-proyecto/.venv ← estás en la carpeta equivocada: haz cd
-```
-
-En este curso hay **una sola carpeta de trabajo**: `mi-curso-ia/`. Ahí vives, ahí escribes tus archivos y ahí traes las librerías con `uv add`. Si un comando te falla, la primera pregunta no es "¿me faltó instalar algo?" sino **"¿estoy parado en `mi-curso-ia/`?"**. Nueve de cada diez veces, ese es el problema.
-
-</Box>
+En este curso hay **una sola carpeta de trabajo**: `cursoIA/curso_ejemplos/`. Ahí vives, ahí escribes tus archivos y ahí corres todo. Importa más de lo que parece, porque `uv` elige el entorno buscando el `pyproject.toml` **más cercano hacia arriba**: fuera de esa carpeta, el mismo comando que te funcionaba deja de hacerlo. Si algo falla, la primera pregunta no es "¿me faltó instalar algo?" sino **"¿estoy parado en `curso_ejemplos/`?"** — y el verificador de más abajo te lo responde en su paso 2.
 
 ### Consigue tu llave (paso a paso)
 
@@ -172,10 +171,11 @@ Para empezar, con Gemini o Groq te basta. Pero el conmutador entiende **más pro
 4. **Copia** la llave que aparece — empieza con `AIza…`.
 5. Pégala en tu archivo `.env`, **reemplazando** el texto de relleno `tu_llave_secreta`.
 
-El paso 5 es el que más confunde. El comando de instalación te dejó un `.env` con un texto de ejemplo; tú lo cambias por tu llave real:
+El paso 5 es el que más confunde. Tu `cp .env.example .env` copió una plantilla llena de comentarios y de textos de relleno; tú cambias el de tu proveedor por tu llave real:
 
-```ini title=".env · ANTES (lo que creó el comando)"
-GOOGLE_API_KEY=tu_llave_secreta
+```ini title=".env · ANTES (lo que trae la plantilla)"
+LLM_PROVIDER=google
+GOOGLE_API_KEY=tu_llave_secreta_aqui
 ```
 
 ```ini title=".env · DESPUÉS (con tu llave real, sin comillas ni espacios)"
@@ -223,6 +223,50 @@ Esta es la razón de fondo por la que en este curso el modelo vive en el `.env` 
 
 Si más adelante haces RAG y mueves el chat a Groq (que no ofrece embeddings), añadirás `EMBEDDINGS_PROVIDER=fastembed` para calcularlos en tu propia máquina, sin cuota. Se explica en el [Concepto 11](/concepto/11-rag-profesional) — por ahora no hace falta.
 
+### El último paso: comprueba que todo quedó bien
+
+Antes de escribir una sola línea de código, el curso trae un verificador que responde de una vez a la pregunta del día 1 — *¿está todo listo?*:
+
+```bash title="terminal · el chequeo de entorno"
+uv run python env_utils.py
+```
+
+```text title="▸ deberías ver (algo así)"
+1. Python
+  ✔ Python 3.12.13
+2. La carpeta de trabajo
+  ✔ estás en la carpeta del curso: .../cursoIA/curso_ejemplos
+  ✔ usando el entorno virtual de esta carpeta (.venv)
+3. Las librerías (instalación base)
+  ✔ langchain 1.3.14
+  ✔ langgraph 1.2.8
+  ...
+4. El archivo .env
+  ✔ .env encontrado
+5. El proveedor del modelo
+  ✔ LLM_PROVIDER=google
+6. La llave
+  ✔ GOOGLE_API_KEY presente (AIzaSy…, 39 caracteres)
+
+  ✔ Entorno listo.
+```
+
+Si algo falta, no verás un pantallazo de error de Python: verás una línea `✘` **con su arreglo debajo**. Los tres fallos del primer día son siempre los mismos — no existe el `.env`, la llave sigue siendo el texto de relleno (copiaste la plantilla pero no pegaste nada), o `LLM_PROVIDER` está mal escrito.
+
+Ese chequeo confirma que la llave **está**, no que **sirva**. Para confirmarlo de verdad hace falta una llamada real, y por eso va detrás de un interruptor aparte (gasta 1 de cuota):
+
+```bash title="terminal · la prueba de fuego"
+uv run python env_utils.py --ping
+```
+
+```text title="▸ deberías ver"
+8. Llamada real al proveedor (--ping)
+  ✔ el modelo respondió: 'listo'
+  ✔ tu entorno habla con el LLM. Ya puedes correr 01_primer_modelo.py
+```
+
+Es también el único chequeo que distingue un ID de modelo **vigente** de uno que el proveedor ya apagó: si te dice que el modelo no existe, no rompiste nada — es lo que cuenta la caja de arriba, y se arregla con la línea `LLM_MODELO` de tu `.env`.
+
 <Box kind="def" label="◈ Definición · API key">
 
 Una **API key** (llave de acceso) es una contraseña que identifica a tu programa ante el servicio de Google. En el plan gratuito de Gemini **no cuesta nada**, pero se trata como cualquier contraseña: **no se comparte, no se pega en un chat y nunca se sube a internet** (por eso vive en el `.env`, un archivo que dejas fuera de git). Si alguien la ve, revócala y crea otra.
@@ -231,24 +275,28 @@ Una **API key** (llave de acceso) es una contraseña que identifica a tu program
 
 <Box kind="analogy" label="◆ ¿Y si no sé qué es git?">
 
-Verás mencionado **git** y un `.gitignore` aquí y allá. Si no sabes qué son, **ignóralos por ahora**: son herramientas para versionar código y no hacen falta para seguir el curso. Lo único que importa quedarte hoy es esto: **el `.env` es secreto y no se sube a ningún lado**. Cuando más adelante uses git, el `.gitignore` es justo lo que evita que esa llave se escape.
+Acabas de usarlo sin saberlo. **git** es el sistema que versiona código: guarda la historia de un proyecto y permite copiarlo entero con un comando. Hoy solo necesitas ese comando —`git clone`, que se hace una vez y ya está—; el resto (ramas, commits, pull requests) llega en el [Concepto 37](/concepto/37-git-flujo-de-trabajo), cuando tenga sentido.
+
+Lo que sí conviene quedarse hoy es la otra mitad: el repositorio trae un **`.gitignore`**, y ahí dentro está la línea `.env`. Eso es justo lo que evita que tu llave se escape cuando empieces a versionar tu propio trabajo. Regla de oro: **el `.env` es secreto y no se sube a ningún lado**. El `.env.example` sí viaja en el repo — porque es una plantilla sin llaves reales.
 
 </Box>
 
 <Box kind="practice" label="▸ Para practicar">
 
-Instala lo del bloque básico y consigue tu llave: en **aistudio.google.com** (Gemini) o en **console.groq.com/keys** (Groq). Verifica que `.env` exista y esté en tu `.gitignore`. Las demás librerías las instalarás cuando llegues a cada nivel.
+Clona el curso, instálalo y consigue tu llave: en **aistudio.google.com** (Gemini) o en **console.groq.com/keys** (Groq). Objetivo: que `env_utils.py` te dé **✔ Entorno listo** — y, si te sobra cuota, que el `--ping` te devuelva la palabra `listo`. Los extras (RAG local, servidor, vector DB) los instalarás cuando llegues a cada nivel.
 
 <Solution summary="Ver una solución">
 
-```bash title="solución · verificación en 4 comandos"
-pwd                      # ¿estás DENTRO de mi-curso-ia? si no: cd mi-curso-ia
-cat .env                 # debe mostrar LLM_PROVIDER y tu llave (AIza… o gsk_…)
-cat .gitignore | grep .env   # debe imprimir ".env" (si no: echo ".env" >> .gitignore)
-uv run python -c "from dotenv import load_dotenv; print('listo')"   # debe decir: listo
+```bash title="solución · de cero a verificado"
+git clone https://github.com/Kratos2210/cursoIA.git
+cd cursoIA/curso_ejemplos
+cp .env.example .env     # abre el .env y pega tu llave (AIza… o gsk_…)
+uv sync
+uv run python env_utils.py          # debe terminar en: ✔ Entorno listo.
+uv run python env_utils.py --ping   # la prueba de fuego (gasta 1 de cuota)
 ```
 
-Si el último comando dice `No module named 'dotenv'`, no es tu código: te faltó el `uv add python-dotenv`, o estás en otra carpeta. Repasa el aviso de arriba.
+Si el verificador dice `no existe curso_ejemplos/.env`, te saltaste el `cp`. Si dice que la llave `sigue con el texto de relleno`, copiaste la plantilla pero no pegaste tu llave dentro. Si dice que falta alguna librería, estás en otra carpeta o te faltó el `uv sync`. En los tres casos el arreglo sale impreso junto al error: no hace falta que lo busques.
 
 </Solution>
 
@@ -256,27 +304,31 @@ Si el último comando dice `No module named 'dotenv'`, no es tu código: te falt
 
 ### 📋 Los ejemplos de referencia
 
-Cada concepto trae su código completo en la propia guía, y además existe una versión **autónoma y comentada línea por línea** publicada en el repositorio del curso. Verás el aviso *"📋 Copia y ejecuta"* en cada concepto con el nombre de su archivo: [github.com/Kratos2210/cursoIA](https://github.com/Kratos2210/cursoIA/tree/main/curso_ejemplos).
+Al clonar el repo ya te llevaste **todos los ejemplos del curso**: cada concepto tiene su archivo autónomo y comentado línea por línea dentro de `curso_ejemplos/`. Verás el aviso *"📋 Copia y ejecuta"* en cada concepto con el nombre de su archivo (`01_primer_modelo.py`, `11_rag.py`…). Están ahí para *leerlos* cuando te atasques, y para correrlos y ver la salida esperada:
 
-<Box kind="warn" label="▲ Todo el curso se hace en mi-curso-ia/">
+```bash title="terminal · correr un ejemplo de referencia"
+uv run python 01_primer_modelo.py
+```
 
-No tienes que clonar nada ni cambiar de carpeta. **Desde aquí hasta el último concepto trabajas en la carpeta que creaste en el paso anterior**, escribiendo tú cada archivo. Cada concepto enlaza su ejemplo ejecutable para que lo *leas* cuando te atasques o compares tu solución con la de referencia — nunca para reemplazar el rato que pasas escribiendo el código.
+<Box kind="warn" label="▲ Los ejemplos son la referencia, no tu cuaderno">
 
-Tu único comando de trabajo, siempre el mismo — cambia el nombre del archivo según el concepto:
+Tú también escribes código, y lo escribes **en esa misma carpeta**, en archivos con tu propio nombre. La convención del curso es prefijarlos con `mi_`, para que nunca se mezclen con los de referencia:
 
 ```bash title="terminal · el bucle de todo el curso"
-cd mi-curso-ia              # ya estás aquí desde el paso anterior
-uv run python main.py      # el archivo que uv init te creó
-
-# Y a partir del Concepto 01, el archivo que escribas tú:
-# uv run python llmodel.py
+cd cursoIA/curso_ejemplos       # ya estás aquí desde la instalación
+# creas mi_01.py en VS Code y lo corres:
+uv run python mi_01.py
 ```
+
+Van en la misma carpeta por una razón práctica: ahí está el `pyproject.toml` que `uv` necesita y el `util.py` del que tirarás desde el Concepto 01 (`import util`). Un archivo tuyo en otra carpeta no encontraría ninguno de los dos. Y no ensucian el repositorio: el `.gitignore` ya deja fuera todo lo que empiece por `mi_`.
 
 </Box>
 
-<Box kind="analogy" label="◆ Leer la solución antes de intentarlo no te ahorra nada">
+<Box kind="analogy" label="◆ Tener la solución al lado es justo la prueba">
 
-El código correcto lo vas a tener igual — está a un clic. Lo que no vuelve es el rato que habrías pasado equivocándote, que es exactamente donde se aprende. Abre el ejemplo de referencia *después* de tener algo corriendo, no antes.
+Este es el precio de clonar el repo: la respuesta está en la carpeta de al lado, a un `cat` de distancia. Y aun así, **abrirla antes de intentarlo no te ahorra nada**. El código correcto lo vas a tener igual; lo que no vuelve es el rato que habrías pasado equivocándote, que es exactamente donde se aprende.
+
+La regla práctica: escribe tu `mi_01.py` mirando solo la guía del concepto. Abre el `01_primer_modelo.py` *después* — para comparar, no para copiar. Si te atascas más de quince minutos, entonces sí: mira una línea, cierra el archivo y sigue tú.
 
 </Box>
 
@@ -297,9 +349,9 @@ No memorices nada: cada concepto presenta los suyos cuando toca. Para arrancar, 
 
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 
-- Correr `uv run python main.py` dentro de `mi-curso-ia/` sin errores.
-- Explicar dónde vive tu llave (en el `.env`) y por qué nunca va en el código ni en git.
-- Distinguir tu carpeta de trabajo (`mi-curso-ia/`) del repo de referencia (`curso_ejemplos/`), y cuándo abrir cada una.
+- Clonar el curso, instalarlo con `uv sync` y ver `✔ Entorno listo` en `env_utils.py`.
+- Explicar dónde vive tu llave (en el `.env`) y por qué nunca va en el código ni en git — y en qué se diferencia del `.env.example`.
+- Distinguir un ejemplo de referencia (`01_primer_modelo.py`) de tu propio cuaderno (`mi_01.py`), aunque vivan en la misma carpeta.
 - Nombrar a qué siete conceptos ir si el `429` te deja sin cuota.
 
 </Checkpoint>
@@ -307,11 +359,11 @@ No memorices nada: cada concepto presenta los suyos cuando toca. Para arrancar, 
 <Quiz title="✅ Autoevaluación · Concepto 00">
 
 <Question>
-  <Prompt>1 · Corres `uv run python -c "from dotenv import load_dotenv"` y sale `ModuleNotFoundError: No module named 'dotenv'`. ¿Qué pasó?</Prompt>
+  <Prompt>1 · Corres `uv run python env_utils.py` y te marca con `✘` que faltan `langchain` y `langgraph`. ¿Qué pasó?</Prompt>
   <Option>Tu llave API está mal escrita en el `.env`</Option>
-  <Option ok>No corriste los `uv add`, o estás parado en otra carpeta</Option>
+  <Option ok>No corriste `uv sync`, o estás parado en otra carpeta</Option>
   <Option>`uv` falló al instalarse y hay que reinstalarlo</Option>
-  <Feedback>`uv run` instala *solo* lo que declara el `pyproject.toml` más cercano hacia arriba. Si la lista de dependencias está vacía, crea el entorno y no pone nada dentro (Concepto 00).</Feedback>
+  <Feedback>`uv` elige el entorno según el `pyproject.toml` más cercano hacia arriba: fuera de `curso_ejemplos/` no encuentra ni las dependencias ni el `.venv` que creó tu `uv sync` (Concepto 00).</Feedback>
 </Question>
 
 <Question>
@@ -327,7 +379,7 @@ No memorices nada: cada concepto presenta los suyos cuando toca. Para arrancar, 
   <Option>Porque hay que reinstalar `uv` en cada carpeta</Option>
   <Option ok>Porque `uv` elige el entorno según el `pyproject.toml` más cercano hacia arriba: cambiar de carpeta cambia de `.venv`</Option>
   <Option>Porque la llave del `.env` solo vale en la carpeta donde se creó</Option>
-  <Feedback>La regla de oro de `uv`: antes de correr, `cd` a `mi-curso-ia/`. Cuando dudes, `uv run python -c "import sys; print(sys.prefix)"` te dice qué entorno usa de verdad (Concepto 00).</Feedback>
+  <Feedback>La regla de oro de `uv`: antes de correr, `cd` a `cursoIA/curso_ejemplos/`. Cuando dudes, el paso 2 de `env_utils.py` te lo dice, o `uv run python -c "import sys; print(sys.prefix)"` (Concepto 00).</Feedback>
 </Question>
 
 <Question>
@@ -342,6 +394,6 @@ No memorices nada: cada concepto presenta los suyos cuando toca. Para arrancar, 
 
 <Recap level={1} label="↺ En una frase">
 
-Un LLM por sí solo no calcula, no recuerda y no conoce tus documentos. **LangChain** lo conecta a herramientas, **RAG** le da tus papeles y **LangGraph** le da un ciclo de trabajo.<Arch>Para empezar: `cd mi-curso-ia` y `uv run python main.py`</Arch>
+Un LLM por sí solo no calcula, no recuerda y no conoce tus documentos. **LangChain** lo conecta a herramientas, **RAG** le da tus papeles y **LangGraph** le da un ciclo de trabajo.<Arch>Para empezar: `git clone` → `cd cursoIA/curso_ejemplos` → `cp .env.example .env` → `uv sync` → `uv run python env_utils.py`</Arch>
 
 </Recap>
