@@ -1,0 +1,231 @@
+En el [c15c](/concepto/15c-donde-vive-tu-agente) aprovisionaste la VM a mano: siete pasos por SSH —crear la máquina, endurecer el usuario, abrir tres puertos con `ufw`, instalar Docker, apuntar el DNS, montar el TLS, dejar `/srv/gobdata` listo—. Funciona una vez. El problema aparece la segunda: ¿cuál era exactamente el tamaño de la VM?, ¿quién abrió el 443 y quién el 8080 "para probar" que se quedó abierto?, ¿por qué el servidor de staging no es idéntico al de producción? Nadie lo recuerda, porque el conocimiento vivía en la memoria de quien tecleó los comandos, no en un archivo. Este módulo cierra ese hueco: describir la infraestructura en **archivos versionados** en vez de teclearla, el enfoque reproducible. Es el pilar **Automation** del [c36](/concepto/36-devops-y-calms) bajado una capa —no automatizas el despliegue del código, automatizas el nacimiento del servidor donde el código corre— y es el mismo salto declarativo que ya viste en Kubernetes ([c15b](/concepto/15b-arquitectura-de-despliegue)), solo que una capa más abajo.
+
+<Box kind="def" label="◈ Glosario exprés de infraestructura como código">
+
+<DefList>
+  <Term>IaC (Infrastructure as Code)</Term>
+  <Def>Describir la infraestructura —servidores, redes, firewalls, DNS— en archivos de texto versionados, en vez de crearla a clics en una consola web o a comandos sueltos por SSH.</Def>
+  <Term>provider</Term>
+  <Def>El plugin que traduce tu descripción a llamadas a la API de un proveedor concreto: `hetzner`, `aws`, `digitalocean`, `cloudflare`. Un `.tf` que habla con Hetzner usa el provider de Hetzner.</Def>
+  <Term>resource</Term>
+  <Def>Cada pieza de infraestructura que declaras: una VM, una regla de firewall, un registro DNS. Es el sustantivo del lenguaje: "quiero **un** servidor así".</Def>
+  <Term>state (el archivo de estado)</Term>
+  <Def>El mapa que Terraform guarda de lo que ya creó en el mundo real: qué recursos existen y con qué IDs. Es su fuente de verdad para saber qué cambiar.</Def>
+  <Term>plan / apply</Term>
+  <Def>`plan` te muestra el diff —qué crearía, cambiaría o destruiría— sin tocar nada; `apply` ejecuta ese diff y **converge** el mundo real hacia lo que pediste.</Def>
+  <Term>idempotencia</Term>
+  <Def>Aplicar lo mismo dos veces no duplica nada: si el servidor ya existe como lo pediste, el segundo `apply` no hace nada. Describes un *estado*, no una *secuencia de pasos*.</Def>
+  <Term>drift (deriva)</Term>
+  <Def>Cuando el mundo real se aleja de lo que dice tu código —alguien tocó algo a mano en la consola—. Terraform lo detecta comparando el state con la realidad.</Def>
+</DefList>
+
+</Box>
+
+### Qué es IaC: la infra deja de ser un recuerdo y pasa a ser un archivo
+
+La idea central es simple y potente: **si la infraestructura es un archivo, hereda todo lo que ya sabes hacer con archivos.** Vive en git ([c37](/concepto/37-git-flujo-de-trabajo)), así que tiene historial —quién cambió el tamaño de la VM, cuándo y por qué—. Se revisa en un Pull Request ([c17b](/concepto/17b-tests-y-ci)), así que abrir el puerto 22 al mundo entero es un cambio que alguien aprueba, no un comando que nadie ve. Se puede recrear: si la VM se incendia, `terraform apply` levanta una idéntica en minutos, no en una tarde de teclear los siete pasos otra vez.
+
+Y es **declarativo**: no escribes "instala Docker, luego abre el 443, luego…"; escribes *el estado final que quieres* —"un servidor Ubuntu de 4 GB con estas reglas de firewall"— y la herramienta averigua los pasos. Es exactamente el mismo principio del manifiesto de Kubernetes del [c15b](/concepto/15b-arquitectura-de-despliegue): ahí declarabas "quiero 3 réplicas de ranking" y K8s las mantenía; aquí declaras "quiero esta VM y este firewall" y Terraform los mantiene. Mismo cerebro, otra capa: **K8s gobierna los contenedores dentro del clúster; Terraform gobierna el clúster —o la VM— que aún no existe.**
+
+<Box kind="analogy" label="◆ Analogía · la receta contra el plato ya servido">
+
+Aprovisionar a mano ([c15c](/concepto/15c-donde-vive-tu-agente)) es cocinar un plato improvisando: sale rico, pero cuando te piden repetirlo exacto no sabes cuánta sal echaste. IaC es escribir la **receta**: ingredientes y cantidades en un papel. Cualquiera la ejecuta y sale idéntico, puedes versionarla ("v2: menos sal"), y si se te quema la olla no pierdes el saber —solo vuelves a seguir la receta—. El comando a mano se lo lleva el viento; la receta queda en el recetario (git).
+
+</Box>
+
+### Terraform: el ciclo write → plan → apply
+
+Terraform es la herramienta de IaC más extendida. Su flujo de trabajo son tres tiempos que repites en cada cambio:
+
+<Flow>
+  <Step n="1" title="Write">Escribes o editas los `.tf`: declaras los recursos que quieres (una VM, un firewall) y de qué provider salen.</Step>
+  <Step n="2" title="plan">`terraform plan` compara tu código con el state y te enseña el **diff** —`+` crear, `~` modificar, `-` destruir— sin tocar el mundo real. Es tu previsualización revisable.</Step>
+  <Step n="3" title="apply">`terraform apply` ejecuta ese diff contra la API del proveedor y **converge**: el mundo real pasa a ser lo que pediste. Actualiza el state con lo que creó.</Step>
+</Flow>
+
+```bash title="el ciclo de trabajo · comentado"
+terraform init          # descarga el provider (p. ej. el de Hetzner) la 1.ª vez
+terraform plan          # PREVISUALIZA: "voy a crear 1 servidor y 1 firewall". No toca nada.
+                        #   → esta salida es lo que se revisa en el PR (c17b)
+terraform apply         # EJECUTA el plan: crea de verdad la VM. Pide confirmación.
+                        #   → al terminar, actualiza el state con los IDs reales
+terraform apply         # otra vez: "No changes." Nada que hacer → idempotencia
+terraform destroy       # el reverso: borra TODO lo que este código creó, limpio
+```
+
+Fíjate en el segundo `apply`: no duplica el servidor porque el state ya sabe que existe y coincide con lo pedido. Esa es la diferencia de fondo con un script de bash que hace `crear_servidor` —ejecutarlo dos veces te deja con dos servidores; ejecutar `apply` dos veces te deja con uno—.
+
+### Un `main.tf` comentado: la VM del c15c, ahora como código
+
+Traduzcamos a Terraform lo que en el [c15c](/concepto/15c-donde-vive-tu-agente) se hacía a mano en el panel del proveedor: crear la VM y abrir solo los puertos 22, 80 y 443. Léelo bloque por bloque:
+
+```hcl title="main.tf · la VM y su firewall, declarados"
+# --- PROVIDER: con qué nube hablamos y con qué credencial ---
+terraform {
+  required_providers {
+    hcloud = { source = "hetznercloud/hcloud" }   # el plugin de Hetzner
+  }
+}
+provider "hcloud" {
+  token = var.hcloud_token    # NUNCA la llave en claro aquí: entra por variable
+}
+
+# --- VARIABLES: los parámetros que cambian entre entornos ---
+variable "hcloud_token" {
+  type      = string
+  sensitive = true            # marcada sensible: no se imprime en los logs
+}
+variable "server_name" {
+  type    = string
+  default = "gobdata-prod"
+}
+
+# --- RESOURCE 1: la VM (lo que en c15c hacías en el formulario web) ---
+resource "hcloud_server" "app" {
+  name        = var.server_name
+  server_type = "cx22"        # 2 vCPU / 4 GB — el tamaño, ahora versionado
+  image       = "ubuntu-24.04"
+  location    = "ash"         # región cercana a tus usuarios
+  firewall_ids = [hcloud_firewall.web.id]   # ata el firewall de abajo a esta VM
+}
+
+# --- RESOURCE 2: el firewall (el `ufw allow` del paso 3, ahora declarativo) ---
+resource "hcloud_firewall" "web" {
+  name = "solo-web-y-ssh"
+  rule { direction = "in"  protocol = "tcp"  port = "22"   source_ips = ["0.0.0.0/0", "::/0"] }
+  rule { direction = "in"  protocol = "tcp"  port = "80"   source_ips = ["0.0.0.0/0", "::/0"] }
+  rule { direction = "in"  protocol = "tcp"  port = "443"  source_ips = ["0.0.0.0/0", "::/0"] }
+  # El 8000 de la app NO aparece → no existe la puerta. La misma regla del c15c,
+  # pero ahora imposible de "abrir mientras tanto y olvidar": no está en el código.
+}
+
+# --- OUTPUT: lo que el apply te devuelve para usar después ---
+output "server_ip" {
+  value = hcloud_server.app.ipv4_address   # la IP real, para tu registro A del DNS
+}
+```
+
+Cuatro bloques, cuatro papeles: el `provider` dice *con quién* hablamos, las `variable` parametrizan lo que cambia, los `resource` son los sustantivos —la VM y su firewall— y el `output` te devuelve la IP que en el [c15c](/concepto/15c-donde-vive-tu-agente) copiabas del panel para el registro A. Todo el conocimiento que antes vivía en la cabeza de quien creó el servidor ahora es un archivo de 40 líneas que se revisa, se versiona y se recrea.
+
+<Box kind="warn" label="▲ IaC crea el servidor; no lo configura por dentro">
+
+Terraform brilla creando el *sustrato* —la VM, la red, el firewall—, pero "instalar Docker y arrancar el compose" es otra tarea: la **configuración** de lo que va dentro. Ahí entran herramientas como Ansible, un script de `cloud-init` al arranque, o directamente tu pipeline de entrega ([c17c](/concepto/17c-continuous-delivery)) haciendo SSH a la IP que Terraform devolvió. La frontera sana: Terraform pare la máquina; otro proceso la amuebla. Mezclar ambas cosas en el mismo `.tf` es la receta del enredo.
+
+</Box>
+
+### El state y el drift: la fuente de verdad de Terraform
+
+Cuando haces `apply`, Terraform escribe un archivo `terraform.tfstate`: el mapa de lo que creó, con los IDs reales que le devolvió la nube. Es su **fuente de verdad** —así sabe, en el próximo `plan`, que la VM `gobdata-prod` ya existe y no hay que crearla otra vez—. Sin state, Terraform no sabría distinguir "esto es nuevo" de "esto ya lo hice".
+
+Ese archivo tiene dos peligros que debes conocer desde el día uno:
+
+<Grid3>
+
+<Card num="1" title="Contiene secretos">
+
+El state guarda en **texto plano** valores que la nube le devolvió: contraseñas de bases de datos, tokens, IPs privadas. Un `tfstate` filtrado es una fuga ([c23](/concepto/23-seguridad-red-teaming)): jamás va a git, jamás sin cifrar.
+
+</Card>
+
+<Card num="2" title="Debe ser compartido">
+
+Si el state vive en tu laptop, tu compañero no lo tiene: hará `apply` y creará un **segundo** servidor duplicado. El state va **remoto** —un bucket S3, Terraform Cloud— con bloqueo, para que el equipo comparta una sola verdad.
+
+</Card>
+
+<Card num="3" title="Detecta el drift">
+
+En cada `plan`, Terraform compara el state con la realidad. Si alguien abrió un puerto a mano en la consola, el `plan` lo marca: "esto no está en tu código". Es cómo IaC caza la **deriva** antes de que muerda.
+
+</Card>
+
+</Grid3>
+
+El **drift** es el enemigo que IaC vino a matar: el momento en que el mundo real deja de coincidir con el código porque alguien tocó algo por fuera. Un puerto abierto "para depurar", un tamaño de VM subido a mano en un apuro. Con IaC, el siguiente `plan` te lo enseña —y `apply` lo revierte al estado declarado—. Por eso la regla de oro: **si Terraform lo gestiona, no lo toques a mano.** El código es la verdad; la consola web, solo para mirar.
+
+<Avoid label="⛔ Antipatrones que convierten IaC en un problema peor que no tenerla">
+
+- **Editar a mano lo que gestiona Terraform.** Subes la RAM de la VM desde el panel "rapidito". Ahora el código miente y el próximo `apply` de otra persona te la baja de vuelta —o peor, destruye y recrea—. Todo cambio pasa por el `.tf` y su PR, sin excepción.
+- **State local en una laptop.** El `terraform.tfstate` en tu máquina es un único punto de fallo y una colisión garantizada en cuanto sois dos. Va a un backend remoto con bloqueo, desde el primer día del proyecto.
+- **Secretos en el `.tf` o en el state sin cifrar.** Un `token = "abc123"` escrito en el código acaba en git para siempre; un state sin cifrar en un bucket público es una brecha. Las credenciales entran por variables (`var.hcloud_token`, `sensitive = true`) y por un backend cifrado — nunca en claro, nunca versionadas ([c23](/concepto/23-seguridad-red-teaming)).
+- **`apply` a mano desde tu portátil contra producción.** El `apply` a producción vive en el pipeline ([c17c](/concepto/17c-continuous-delivery)), tras la revisión del `plan` en el PR — igual que no despliegas código a mano, no despliegas infra a mano.
+
+</Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Toma otro de los siete pasos manuales del [c15c](/concepto/15c-donde-vive-tu-agente) —el registro DNS de tipo A que apuntaba `gobdata.example.com` a la IP de la VM— y decláralo como un `resource` de Terraform usando el provider de Cloudflare. Pista: necesitarás la IP que el `output server_ip` de arriba devuelve; en Terraform un recurso puede referirse a otro por su nombre.
+
+<Solution summary="Ver una solución">
+
+```hcl title="dns.tf · el registro A del paso 5, ahora como recurso"
+provider "cloudflare" {
+  api_token = var.cloudflare_token    # otra credencial por variable, sensible
+}
+
+resource "cloudflare_record" "app" {
+  zone_id = var.zone_id               # la zona de tu dominio en Cloudflare
+  name    = "gobdata"                 # → gobdata.example.com
+  type    = "A"
+  content = hcloud_server.app.ipv4_address   # ⭐ la IP de la VM del main.tf
+  proxied = false                     # DNS directo: Let's Encrypt debe resolver
+                                      #   hacia tu VM para emitir el TLS (c15c)
+}
+```
+
+La clave está en `content = hcloud_server.app.ipv4_address`: Terraform entiende que el registro DNS **depende** de la VM, así que la crea primero y usa su IP real automáticamente. Ese encadenado —imposible de olvidar, imposible de teclear mal— es justo lo que a mano se hacía copiando la IP del panel al registrador con el riesgo de equivocarse un dígito.
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar por qué aprovisionar a mano ([c15c](/concepto/15c-donde-vive-tu-agente)) no es reproducible ni versionable, y cómo IaC —infra en archivos en git, revisada en un PR— resuelve cada una de esas carencias.
+- Recorrer el ciclo write → `plan` → `apply` y decir qué hace cada paso, en particular por qué `plan` no toca nada y por qué un segundo `apply` no duplica (idempotencia).
+- Leer un `main.tf` y distinguir el papel del `provider`, las `variable`, los `resource` y los `output`.
+- Definir qué es el `state`, por qué es la fuente de verdad de Terraform, por qué va remoto y cifrado, y qué es el `drift` y cómo lo detecta un `plan`.
+
+</Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 39">
+
+<Question>
+  <Prompt>1 · ¿Qué gana crear la VM con Terraform frente a crearla a clics en la consola del proveedor?</Prompt>
+  <Option>Es más rápido la primera vez que llenar el formulario web</Option>
+  <Option ok>Queda versionada en git y revisable en un PR: reproducible, con historial y recreable si la máquina muere</Option>
+  <Option>Terraform hace la VM más segura por defecto que la consola</Option>
+  <Feedback>La primera vez incluso puede costar más escribir el `.tf` que llenar el formulario. La ganancia es todo lo demás: reproducibilidad, historial, revisión y recreación —la infra hereda lo que sabes hacer con archivos (Concepto 39).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Cuál es la diferencia entre `terraform plan` y `terraform apply`?</Prompt>
+  <Option>`plan` crea los recursos en modo prueba y `apply` los hace permanentes</Option>
+  <Option ok>`plan` solo muestra el diff sin tocar el mundo real; `apply` ejecuta ese diff y converge la infra real hacia lo declarado</Option>
+  <Option>Son sinónimos: `plan` es el alias corto de `apply`</Option>
+  <Feedback>`plan` es la previsualización que se revisa en el PR —no crea nada—; `apply` es el que converge el mundo real. Esa separación es lo que hace la infra revisable antes de existir (Concepto 39).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · ¿Qué es el `state` de Terraform y por qué no debe vivir solo en tu laptop?</Prompt>
+  <Option>Es un log de comandos; da igual dónde viva porque se puede regenerar solo</Option>
+  <Option ok>Es el mapa de lo que Terraform ya creó, su fuente de verdad; si es local, un compañero sin él haría `apply` y duplicaría los recursos</Option>
+  <Option>Es la caché del provider y siempre debe ir versionada en git</Option>
+  <Feedback>El state es cómo Terraform sabe qué existe. Local, choca en cuanto sois dos y puede duplicar infra; por eso va a un backend remoto con bloqueo. Y como contiene secretos en claro, jamás a git sin cifrar (Concepto 39).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · Alguien abre un puerto extra en la consola del proveedor, sin tocar el código. ¿Cómo se llama eso y cómo lo caza Terraform?</Prompt>
+  <Option>Idempotencia; se ve porque el segundo `apply` duplica el recurso</Option>
+  <Option ok>Drift; el siguiente `plan` lo detecta al comparar el state con la realidad y ofrece revertirlo al estado declarado</Option>
+  <Option>Cold start; se resuelve reiniciando el provider</Option>
+  <Feedback>Drift es que el mundo real se aleja del código. El `plan` lo marca porque compara state contra realidad —y `apply` lo revierte—. Por eso la regla: si Terraform lo gestiona, no lo toques a mano (Concepto 39).</Feedback>
+</Question>
+
+</Quiz>
+
+<Recap level={9} label="↺ En una frase">
+
+Infraestructura como código es dejar de teclear el servidor a mano ([c15c](/concepto/15c-donde-vive-tu-agente)) y **declararlo en archivos versionados**: Terraform lee tu `.tf`, te muestra el diff con `plan`, converge el mundo real con `apply` de forma idempotente, y usa el `state` como fuente de verdad para cazar el drift —el pilar Automation del [c36](/concepto/36-devops-y-calms) aplicado al nacimiento del servidor.<Arch>c15c aprovisiona a mano → c39 lo hace reproducible · mismo salto declarativo que K8s (c15b), una capa más abajo</Arch>
+
+</Recap>

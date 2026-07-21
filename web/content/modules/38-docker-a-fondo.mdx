@@ -1,0 +1,190 @@
+Ya arrancaste contenedores sin abrir la caja. En el [c15c](/concepto/15c-donde-vive-tu-agente) levantaste Postgres, el proxy y tu app con `docker compose up`, y en el [c17c](/concepto/17c-continuous-delivery) viste que a producción no viaja el código sino una **imagen sellada** con un tag inmutable que el servidor solo descarga y arranca. Diste ese salto confiando en que la magia funciona. Este concepto abre la caja: qué es *exactamente* una imagen, por qué pesa lo que pesa, y cómo se construye la tuya con un `Dockerfile`. No repetimos el tag inmutable —eso ya es del [c17c](/concepto/17c-continuous-delivery)—; aquí miramos qué hay dentro del lote antes de sellarlo. Es la primera parada técnica de la Ruta 8, después del encuadre cultural de [c36](/concepto/36-devops-y-calms).
+
+<Box kind="def" label="◈ Cuatro palabras antes de empezar">
+
+Docker tiene su propia jerga y conviene fijarla en una línea cada una; vuelve si alguna te frena:
+
+<DefList>
+  <Term>imagen</Term>
+  <Def>Una plantilla **inmutable y de solo lectura**, construida en capas, con todo lo que tu app necesita para correr: el código, sus dependencias y un sistema de archivos mínimo. No se ejecuta: se instancia.</Def>
+  <Term>contenedor</Term>
+  <Def>Una **instancia viva y efímera** de una imagen: un proceso aislado corriendo. De una misma imagen levantas 1 o 50 contenedores idénticos; los matas y recreas sin drama.</Def>
+  <Term>Dockerfile</Term>
+  <Def>La **receta** que describe, paso a paso, cómo construir una imagen. Texto plano, versionado en git, reproducible.</Def>
+  <Term>registry</Term>
+  <Def>El almacén de imágenes: Docker Hub o GHCR (GitHub Container Registry). Subes (`push`) la imagen construida y el servidor la baja (`pull`). Es el estante de donde el [c17c](/concepto/17c-continuous-delivery) saca el lote.</Def>
+</DefList>
+
+</Box>
+
+### Máquina virtual vs. contenedor: qué comparten con el host
+
+Antes de Docker, aislar dos apps en un servidor significaba **una máquina virtual (VM) por cada una**. Una VM emula un ordenador completo: un *hipervisor* reparte el hardware y cada VM arranca su **propio sistema operativo invitado entero** —kernel incluido—. Eso es potente pero caro: cada VM pesa **gigabytes**, reserva su RAM por adelantado y tarda **minutos** en arrancar.
+
+Un contenedor juega otro juego. No emula hardware ni trae su propio kernel: **comparte el kernel del host** y solo aísla los procesos usando dos mecanismos del propio Linux —*namespaces* (cada contenedor ve su propio árbol de procesos, red y sistema de archivos, como si estuviera solo) y *cgroups* (limitan cuánta CPU y memoria puede consumir)—. Como no carga un SO entero, un contenedor pesa **megabytes**, arranca en **milisegundos** y empaqueta solo lo que tu app añade encima del kernel compartido.
+
+| Aspecto | Máquina virtual | Contenedor |
+| --- | --- | --- |
+| Qué aísla | Un ordenador completo, con SO invitado y kernel propio | Procesos, sobre el kernel compartido del host |
+| Cómo aísla | Hipervisor (virtualiza hardware) | Namespaces + cgroups (features del kernel) |
+| Peso típico | Gigabytes | Megabytes |
+| Arranque | Segundos a minutos | Milisegundos |
+| Densidad | Pocas por servidor | Docenas o cientos |
+| Cuándo brilla | Aislar SO distintos, cargas no confiables | Empaquetar y escalar servicios de app |
+
+<Box kind="analogy" label="◆ Casas con cimientos propios vs. apartamentos">
+
+Una VM es una **casa independiente**: cimientos, tuberías y tejado propios. Aísla perfecto —tu vecino no toca nada tuyo— pero construir cada una cuesta y ocupa terreno. Un contenedor es un **apartamento en un edificio**: comparte estructura, cimientos y cañerías maestras (el kernel del host), y por eso caben docenas en el mismo solar y se entregan llave en mano en segundos. Compartir la estructura es justo lo que lo hace ligero — y también por qué contenedor y host tienen que confiar algo el uno en el otro.
+
+</Box>
+
+### Anatomía de un Dockerfile: capas y caché
+
+Una imagen se construye ejecutando la receta del `Dockerfile` de arriba abajo. Y aquí está la idea que lo explica casi todo: **cada instrucción crea una capa**, una porción de sistema de archivos apilada sobre la anterior. Docker cachea cada capa; si una instrucción y todo lo anterior no cambió, reutiliza la capa en vez de rehacerla. Leamos una receta mínima, línea por línea:
+
+```dockerfile title="Dockerfile · una receta de Python, comentada"
+FROM python:3.12-slim          # capa base: un Python 3.12 mínimo (~120 MB, no el completo)
+WORKDIR /srv                   # carpeta de trabajo dentro de la imagen; los COPY caen aquí
+COPY requirements.txt .        # ⭐ SOLO el manifiesto de dependencias, primero
+RUN pip install -r requirements.txt   # instala deps: es lo LENTO (minutos)
+COPY . .                       # ahora sí, el código de tu app
+EXPOSE 8000                    # documenta el puerto (no lo abre solo)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]  # qué corre al arrancar
+```
+
+Fíjate en el orden de los dos `COPY`, que no es capricho. Copiamos **primero** `requirements.txt` y hacemos el `pip install`; **después** copiamos el código. ¿Por qué separarlos? Porque tú tocas el código decenas de veces al día, pero las dependencias cambian una vez por semana. Al poner el `pip install` sobre una capa que solo depende de `requirements.txt`, Docker **reutiliza la instalación cacheada** en cada edición de código: el build baja de minutos a segundos. Si copiaras todo junto con un solo `COPY . .` antes del `install`, cualquier cambio en una coma del código invalidaría la capa de dependencias y **reinstalarías todo cada vez**. La regla: **lo que cambia poco va arriba; lo que cambia mucho, abajo.**
+
+### Multi-stage build: construir en una imagen, correr en otra
+
+La receta de arriba funciona, pero arrastra un problema: la imagen final se lleva `pip`, sus cachés y —si compilas algo— el toolchain de C entero. Todo eso sirvió para *construir*, pero no hace falta para *correr*, y sin embargo viaja a producción sumando peso y superficie de ataque. El **multi-stage build** lo corta en seco: usas **dos (o más) etapas** en el mismo `Dockerfile`, y la etapa final copia de la anterior **solo el resultado**, no las herramientas.
+
+```dockerfile title="Dockerfile · multi-stage con uv (basado en proyecto_llmops/Dockerfile)"
+# ---------- ETAPA 1: builder (aquí se compila y se resuelve todo) ----------
+FROM python:3.12-slim AS builder
+COPY --from=ghcr.io/astral-sh/uv:0.5.11 /uv /bin/uv   # uv oficial, versión fijada
+WORKDIR /srv
+COPY pyproject.toml uv.lock ./          # ⭐ manifiestos primero (misma regla de caché)
+RUN uv sync --frozen --no-dev           # instala EXACTO lo del lock en /srv/.venv
+
+# ---------- ETAPA 2: runtime (la imagen que de verdad se despliega) ----------
+FROM python:3.12-slim                   # base limpia: NO hereda uv ni cachés del builder
+RUN useradd --create-home --uid 10001 gobdata   # un usuario sin privilegios
+WORKDIR /srv
+COPY --from=builder /srv/.venv /srv/.venv        # ⭐ solo el entorno ya resuelto
+ENV PATH="/srv/.venv/bin:$PATH"
+COPY --chown=gobdata:gobdata . .        # el código, propiedad del usuario no-root
+USER gobdata                            # el proceso NO corre como root
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+El truco vive en el `COPY --from=builder /srv/.venv`: la etapa `runtime` arranca de una base `python:3.12-slim` fresca y **se lleva solo el `.venv` ya resuelto**. Ni `uv`, ni cachés de pip, ni compiladores viajan a producción. El efecto en números es grande: una imagen single-stage con el toolchain puede rondar los **800 MB o más**; la misma app en multi-stage baja a menos de 200 MB. Y el peso es lo de menos: cada binario que no está en la imagen es **superficie de ataque que no existe** —lo que no viaja no se puede explotar—, la lección de [c23](/concepto/23-seguridad-red-teaming) aplicada a la imagen. Menos peso hace además el `pull` del [c17c](/concepto/17c-continuous-delivery) más rápido en cada deploy.
+
+| | Single-stage | Multi-stage |
+| --- | --- | --- |
+| Qué viaja | Código + deps + `pip`/`uv` + toolchain | Código + deps, nada más |
+| Tamaño típico | ~800 MB o más | menos de 200 MB |
+| Superficie de ataque | Grande (compiladores, cachés) | Mínima |
+| `pull` en cada deploy | Lento | Rápido |
+
+<Avoid label="⛔ Antipatrones al construir imágenes">
+
+- **Etiquetar `latest` para producción.** `latest` cambia bajo tus pies y mata el rollback: usa un tag inmutable (`v1.4.2`), la disciplina del [c17c](/concepto/17c-continuous-delivery).
+- **Correr como root.** Por defecto el contenedor corre como root, y un root dentro es un root a un descuido del host. Crea un usuario sin privilegios y `USER` a él (como hace la etapa 2).
+- **Hornear secretos en la imagen.** Un `.env`, una `API key` o una llave SSH copiados en una capa quedan en la imagen para siempre y viajan a cada `pull`. Los secretos se inyectan como variables de entorno **al arrancar**, nunca en el build ([c23](/concepto/23-seguridad-red-teaming), [c15b](/concepto/15b-arquitectura-de-despliegue)).
+- **Imágenes gigantes por pereza.** Partir de una base completa en vez de `-slim`, no usar multi-stage y copiar el repo entero infla la imagen sin dar nada a cambio: más `pull`, más superficie, más lentitud.
+
+</Avoid>
+
+Y el círculo se cierra fuera de este módulo: la imagen que construyes aquí es exactamente el artefacto que el `deploy.yml` del [c17c](/concepto/17c-continuous-delivery) sube al registry, que el Kubernetes del [c15b](/concepto/15b-arquitectura-de-despliegue) orquesta en réplicas, y que el `docker compose` del VPS en [c15c](/concepto/15c-donde-vive-tu-agente) descarga y arranca. Este `Dockerfile` es la pieza que faltaba explicar debajo de todo eso. Lo que sigue en la ruta —[c37](/concepto/37-git-flujo-de-trabajo) para versionar la receta, [c39](/concepto/39-iac-terraform) para el servidor que la corre y [c40](/concepto/40-devsecops) para escanearla— construye encima.
+
+<Box kind="practice" label="▸ Para practicar">
+
+Te dan este `Dockerfile` ingenuo de una app FastAPI. Reescríbelo a **multi-stage** y di, en una frase, qué se ahorra la imagen final.
+
+```dockerfile title="el punto de partida (todo en una etapa)"
+FROM python:3.12
+WORKDIR /srv
+COPY . .
+RUN pip install -r requirements.txt
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+Pistas: parte de `-slim`, separa el `COPY` de dependencias del `COPY` del código, y deja el toolchain en el builder.
+
+<Solution summary="Ver una solución">
+
+```dockerfile title="la versión multi-stage"
+# ETAPA 1: builder — instala deps en un prefijo aislado
+FROM python:3.12-slim AS builder
+WORKDIR /srv
+COPY requirements.txt .                 # manifiesto primero: aprovecha la caché
+RUN pip install --prefix=/install -r requirements.txt
+
+# ETAPA 2: runtime — base limpia, sin pip ni cachés de build
+FROM python:3.12-slim
+RUN useradd --create-home --uid 10001 app
+WORKDIR /srv
+COPY --from=builder /install /usr/local # ⭐ solo las deps ya instaladas
+COPY --chown=app:app . .                # el código, después
+USER app                                # no-root
+EXPOSE 8000
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+**Qué se ahorra:** la imagen final ya no arrastra la caché de `pip` ni el toolchain de compilación del builder —pasa de la base `python:3.12` completa (casi 1 GB) a una `-slim` con solo las dependencias, quedando por debajo de 200 MB— y además corre como usuario sin privilegios en vez de root. Menos peso, menos superficie de ataque, `pull` más rápido.
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar por qué un contenedor pesa megabytes y arranca en milisegundos, y una VM gigabytes y minutos (el kernel compartido, namespaces y cgroups).
+- Distinguir imagen (plantilla inmutable en capas) de contenedor (instancia viva y efímera), y decir para qué sirve el registry.
+- Leer un `Dockerfile` línea a línea y justificar por qué el `COPY` de dependencias va **antes** del `COPY` del código (la caché de capas).
+- Describir qué gana un multi-stage build: menos tamaño y menos superficie de ataque, porque el toolchain se queda en el builder.
+
+</Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 38">
+
+<Question>
+  <Prompt>1 · ¿Por qué un contenedor arranca en milisegundos y una VM en minutos?</Prompt>
+  <Option>Porque el contenedor usa un disco más rápido que la VM</Option>
+  <Option ok>Porque el contenedor comparte el kernel del host y solo aísla procesos; la VM arranca un sistema operativo invitado entero</Option>
+  <Option>Porque la VM siempre corre en la nube y el contenedor en tu máquina</Option>
+  <Feedback>La VM emula un ordenador completo con su propio kernel (gigabytes, minutos); el contenedor comparte el kernel y aísla con namespaces y cgroups (megabytes, milisegundos) (Concepto 38).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Cuál es la diferencia entre una imagen y un contenedor?</Prompt>
+  <Option>La imagen corre en producción y el contenedor solo en tu máquina</Option>
+  <Option ok>La imagen es una plantilla inmutable de solo lectura; el contenedor es una instancia viva y efímera de esa imagen</Option>
+  <Option>Son lo mismo: "imagen" es el nombre que usa Docker Hub y "contenedor" el que usa GHCR</Option>
+  <Feedback>Una imagen es la plantilla sellada en capas; de ella instancias contenedores vivos y desechables, tantos como quieras. La imagen no se ejecuta: se instancia (Concepto 38).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · En el Dockerfile, ¿por qué se copia `requirements.txt` y se instalan las dependencias *antes* de copiar el código?</Prompt>
+  <Option>Porque el código necesita que las dependencias ya estén en disco para compilar</Option>
+  <Option ok>Para aprovechar la caché de capas: mientras el manifiesto no cambie, Docker reutiliza la instalación y no la rehace en cada edición de código</Option>
+  <Option>Porque Docker exige que todo `RUN` vaya antes que cualquier `COPY`</Option>
+  <Feedback>Cada instrucción es una capa cacheada. Lo que cambia poco (deps) va arriba; lo que cambia mucho (código) abajo, para no invalidar la capa lenta en cada build (Concepto 38).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · ¿Qué gana la imagen final con un multi-stage build?</Prompt>
+  <Option>Arranca más rápido porque Docker precompila el código en el builder</Option>
+  <Option ok>Pesa mucho menos y tiene menos superficie de ataque: el toolchain y las cachés se quedan en el builder y no viajan a producción</Option>
+  <Option>Permite usar `latest` de forma segura en producción</Option>
+  <Feedback>La etapa final copia solo el resultado (el entorno resuelto), no las herramientas de build. Menos peso, `pull` más rápido y lo que no viaja no se puede explotar (Conceptos 38 y 23).</Feedback>
+</Question>
+
+</Quiz>
+
+<Recap level={9} label="↺ En una frase">
+
+Una imagen es una plantilla inmutable en capas que empaqueta tu app sobre el kernel compartido del host; el `Dockerfile` es su receta —dependencias arriba para cachear, código abajo— y el multi-stage build deja el toolchain en el builder para que a producción viaje una imagen pequeña y con poca superficie de ataque.<Arch>archivo: `proyecto_llmops/Dockerfile` (multi-stage con uv) · lo construye c17c, lo orquesta c15b, lo corre c15c</Arch>
+
+</Recap>

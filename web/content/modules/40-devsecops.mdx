@@ -1,0 +1,205 @@
+La escena clásica: el equipo lleva tres meses construyendo la app, todo va sobre ruedas, y la víspera del lanzamiento aparece "el equipo de seguridad" a hacer su revisión. Encuentra un problema de raíz —un secreto en el repo, una dependencia con un CVE crítico— y el lanzamiento se cae, o peor: sale igual y explota en producción. Ese modelo —**seguridad como un gate al final**— es exactamente lo que este concepto desmonta. DevSecOps mete la seguridad en **cada fase** del ciclo, no en la última. Es el mismo *shift-left* que ya viste en espíritu: los tests del [c17b](/concepto/17b-tests-y-ci) corren en cada push, no la víspera; aquí hacemos lo mismo con la seguridad. Y encaja de lleno en los pilares **Automation** y **Measurement** del CALMS del [c36](/concepto/36-devops-y-calms): si no está automatizado y medido, no se cumple.
+
+<Box kind="warn" label="▲ Dos seguridades que se confunden todo el tiempo">
+
+Este curso ya te enseñó a proteger el **modelo** en el [c23](/concepto/23-seguridad-red-teaming): inyección de prompts, PII, el OWASP LLM Top-10. Eso es real y no lo repetimos. Pero hay una segunda seguridad que el c23 no cubre: la del **pipeline y el código** — ¿tu dependencia tiene un CVE?, ¿hay un secreto horneado en la imagen?, ¿tu propio código tiene una inyección SQL? Son **complementarias, no rivales**: una app LLM segura necesita las dos, y este concepto cubre la que faltaba.
+
+</Box>
+
+### S-SDLC: seguridad en cada fase, no al final
+
+El [c15a](/concepto/15a-arquitectura-de-software) te mostró el ciclo de vida del software (SDLC) como un lazo: Requisitos → Diseño → Implementación → Pruebas → Despliegue → Operación. El S-SDLC (*Secure* SDLC) no añade una fase nueva de "seguridad" al final — añade una **capa de seguridad dentro de cada fase existente**. Ese es el *shift-left*: mover el control lo más a la izquierda posible del diagrama, donde arreglar cuesta minutos, no una reescritura.
+
+| Fase del SDLC | Control de seguridad que se añade |
+| --- | --- |
+| Requisitos | Requisitos de seguridad explícitos (qué datos son sensibles, qué cumplimiento aplica) |
+| Diseño | **Threat modeling**: dibujar por dónde te pueden atacar antes de escribir código |
+| Implementación | **SAST** en el editor y en el pre-commit: el análisis estático caza el bug al teclearlo |
+| Pruebas | **DAST**: se ataca la app corriendo, como lo haría un intruso real |
+| Todo el ciclo | **Secret scanning** y **SCA** de dependencias, en cada commit y cada build |
+| Operación | Monitoreo de vulnerabilidades nuevas y del comportamiento en vivo ([c16](/concepto/16-observabilidad-y-costo)) |
+
+<Box kind="analogy" label="◆ El inspector que vive en la obra">
+
+Construir sin S-SDLC es levantar un edificio entero y **recién al final** llamar al inspector de estructuras: si el cimiento está mal, hay que demoler. El S-SDLC es tener al inspector **en la obra desde el primer día**: revisa el cimiento cuando es cimiento, las columnas cuando son columnas. Nunca demueles, porque nunca dejas que un problema quede enterrado bajo tres pisos.
+
+</Box>
+
+### El glosario del pipeline seguro
+
+Cuatro siglas que se confunden porque todas "buscan vulnerabilidades", pero cada una mira un lugar distinto. La clave para no perderte: **código quieto vs. app corriendo vs. dependencias de terceros**.
+
+<Box kind="def" label="◈ Definición · SAST, DAST, SCA y secret scanning">
+
+<DefList>
+  <Term>SAST · análisis estático</Term>
+  <Def>Lee **tu código fuente quieto**, sin ejecutarlo, buscando patrones peligrosos (SQL sin parametrizar, uso de `eval`). Es como un corrector ortográfico de seguridad. Herramientas: Semgrep, CodeQL.</Def>
+  <Term>DAST · análisis dinámico</Term>
+  <Def>Ataca la **app ya corriendo** desde afuera, como un intruso: le lanza payloads a los endpoints y mira si se rompe. Ve lo que SAST no puede — fallos que solo aparecen en ejecución. Herramienta: OWASP ZAP.</Def>
+  <Term>SCA · análisis de dependencias</Term>
+  <Def>Revisa las **librerías de terceros** que importas contra bases de CVEs conocidos. Tú no escribiste ese código, pero corre con tus permisos. Herramientas: Dependabot, Trivy.</Def>
+  <Term>secret scanning</Term>
+  <Def>Busca **credenciales filtradas** —API keys, tokens, llaves SSH— en el código y el historial de git antes de que salgan del repo. Herramienta: gitleaks.</Def>
+  <Term>shift-left</Term>
+  <Def>Mover cada control lo más temprano posible en el ciclo. Un bug encontrado en el editor cuesta minutos; el mismo bug en producción cuesta un incidente.</Def>
+</DefList>
+
+La regla mnemotécnica: **SAST** mira tu código sin correrlo, **DAST** corre la app y la ataca, **SCA** audita lo que trajiste de fuera, y **secret scanning** vigila que nada confidencial se escape. Ninguno reemplaza a otro.
+
+</Box>
+
+### Dónde encaja cada control en el pipeline del c17c
+
+El [c17c](/concepto/17c-continuous-delivery) montó una cinta que va del commit al servicio corriendo, con un **eval-gate** que tiene poder de veto sobre la calidad. DevSecOps añade un hermano gemelo: un **security-gate** con el mismo poder de veto, pero sobre la *seguridad*. Corre SAST + SCA + secret scan, y si encuentra algo crítico, la cinta se detiene igual que si un test se pusiera rojo.
+
+<Flow>
+  <Step n="1" title="Pre-commit (local)">SAST rápido y secret scan corren en tu máquina antes del commit. El *shift-left* más a la izquierda posible: el bug no llega ni a GitHub.</Step>
+  <Step n="2" title="security-gate (CI)">En cada push: SAST completo + SCA de dependencias + secret scan del historial. Veta si hay algo crítico.</Step>
+  <Step n="3" title="DAST (staging)">Contra la app ya desplegada en staging, antes de promover a producción: el ataque dinámico que el análisis estático no ve.</Step>
+  <Step n="4" title="Operación">Monitoreo continuo: un CVE nuevo puede aparecer *después* de desplegar, sobre una dependencia que ayer estaba limpia.</Step>
+</Flow>
+
+```yaml title=".github/workflows/security-gate.yml · el gemelo del eval-gate, con veto"
+name: security-gate
+on:
+  push:
+    branches: ["**"]        # en CADA push, no solo en release: shift-left
+
+jobs:
+  seguridad:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0     # historial completo: secret scan mira TODOS los commits
+
+      # 1) SAST — analiza tu código quieto en busca de patrones peligrosos
+      - name: SAST con Semgrep
+        run: semgrep scan --config auto --error   # --error => exit≠0 si halla algo
+
+      # 2) SCA — audita las dependencias de terceros contra CVEs conocidos
+      - name: SCA con Trivy
+        run: trivy fs --severity CRITICAL,HIGH --exit-code 1 .   # veta en crítico/alto
+
+      # 3) secret scanning — ninguna llave debe existir en el repo ni en su historial
+      - name: Secret scan con gitleaks
+        run: gitleaks detect --no-banner    # exit≠0 si encuentra un secreto
+      # Cualquiera de los tres que falle DETIENE el pipeline: no se construye la imagen,
+      # exactamente como el eval-gate del c17c veta un deploy cuando la calidad cae.
+```
+
+Fíjate en el veto: los tres pasos usan un código de salida distinto de cero cuando encuentran algo, y eso **basta para parar la cinta** — la imagen del [c17c](/concepto/17c-continuous-delivery) no se construye, el deploy no ocurre. Y hay una pieza transversal: la **gestión de secretos**. El secreto (la API key del modelo, la llave SSH del VPS) nunca va al repo — se inyecta en el arranque desde GitHub Secrets o un `Secret` de Kubernetes, tal como lo montaste en el [c17c](/concepto/17c-continuous-delivery) y el [c15c](/concepto/15c-donde-vive-tu-agente). El `git` del [c37](/concepto/37-git-flujo-de-trabajo) versiona tu código a la vista de todos; el secreto se queda fuera precisamente porque git lo recuerda para siempre.
+
+### Las dos seguridades, lado a lado
+
+Este es el corazón del concepto. No compiten: cada una tapa un hueco que la otra deja abierto.
+
+<Grid3>
+
+<Card num="1" title="DevSecOps (este módulo)">
+
+Protege el **pipeline, el código y las dependencias**. Responde: ¿mi build es reproducible y limpio? ¿hay un CVE en una librería? ¿se filtró un secreto? Herramientas: SAST, DAST, SCA, secret scanning.
+
+</Card>
+
+<Card num="2" title="Seguridad del modelo (c23)">
+
+Protege el **modelo y sus datos**. Responde: ¿alguien puede inyectar un prompt? ¿se fuga PII en la respuesta? Es el [c23](/concepto/23-seguridad-red-teaming): OWASP LLM Top-10, guardarraíles de entrada y salida.
+
+</Card>
+
+<Card num="3" title="Juntas = app segura">
+
+Una sin la otra deja la puerta abierta. Puedes tener guardarraíles LLM impecables y aun así filtrar tu API key en la imagen; o un pipeline blindado que sirve un modelo vulnerable a inyección. Necesitas **las dos**.
+
+</Card>
+
+</Grid3>
+
+| | DevSecOps (c40) | Seguridad del modelo (c23) |
+| --- | --- | --- |
+| Qué protege | Pipeline, código, dependencias, secretos | El modelo: prompts, PII, salida |
+| Amenaza típica | CVE en librería, secreto en el repo, inyección SQL | Inyección de prompts, fuga de PII, jailbreak |
+| Estándar de referencia | OWASP Top-10 (web), CVE/CWE | OWASP **LLM** Top-10 |
+| Cuándo actúa | En el pipeline, antes y durante el deploy | En tiempo de ejecución, en cada petición |
+
+Operar seguro también cuesta dinero, pero eso no se reenseña aquí: la optimización de costo y el FinOps ya viven en el [c16](/concepto/16-observabilidad-y-costo). Un pipeline seguro es parte de operar bien, y operar bien incluye no gastar de más.
+
+<Avoid label="⛔ Antipatrones de seguridad en el pipeline">
+
+- **Seguridad como único gate final.** La revisión de la víspera del lanzamiento encuentra los problemas cuando ya son caros de arreglar. Shift-left: un control en cada fase.
+- **Ignorar los CVE de dependencias.** El 80% de tu código es de terceros. Un `requirements.txt` sin SCA es un campo minado que no ves.
+- **Secretos en el código o en la imagen.** Una llave horneada en la imagen del [c38](/concepto/38-docker-a-fondo) viaja a cada registro y cada servidor donde esa imagen se descargue. El secreto se inyecta en el arranque, jamás en el `build`.
+- **Confiar solo en SAST y olvidar DAST.** El análisis estático no ve fallos de configuración ni de runtime. Una app puede pasar SAST en verde y caer al primer payload que le lance ZAP.
+
+</Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Toma el pipeline del [c17c](/concepto/17c-continuous-delivery) y ubica estos cuatro controles en la fase correcta: **SAST**, **DAST**, **SCA** y **secret scanning**. Para cada uno responde: ¿corre sobre código quieto, sobre la app corriendo, o sobre dependencias? ¿En qué momento de la cinta (pre-commit, CI, staging, operación)?
+
+<Solution summary="Ver una solución">
+
+- **Secret scanning** → *pre-commit y CI*, sobre el código y su historial. Es el más a la izquierda: idealmente el secreto no llega ni a GitHub. Corre también en CI por si alguien se saltó el hook.
+- **SAST** → *pre-commit y CI*, sobre tu código quieto. Rápido en local, completo en el security-gate.
+- **SCA** → *CI y operación*, sobre las dependencias. En cada build audita el `requirements.txt`; en operación vuelve a correr porque un CVE puede aparecer sobre una librería que ayer estaba limpia.
+- **DAST** → *staging*, sobre la app ya desplegada. Necesita algo corriendo a lo que atacar, así que va después del deploy a staging y antes de promover a producción.
+
+El patrón: los tres estáticos (SAST, SCA, secret scan) van temprano y vetan en el security-gate; el dinámico (DAST) necesita una app viva, así que va más a la derecha pero **antes** de producción.
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar por qué la seguridad como gate final falla, y qué significa *shift-left*.
+- Distinguir SAST, DAST, SCA y secret scanning por dónde miran cada uno (código quieto, app corriendo, dependencias).
+- Ubicar cada control en la fase correcta del S-SDLC y del pipeline del c17c.
+- Contrastar la seguridad del **pipeline** (este módulo) con la seguridad del **modelo** (c23) y argumentar por qué necesitas las dos.
+
+</Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 40">
+
+<Question>
+  <Prompt>1 · ¿Cuál es la diferencia entre SAST y DAST?</Prompt>
+  <Option>SAST es para apps web y DAST para APIs</Option>
+  <Option ok>SAST analiza tu código quieto sin ejecutarlo; DAST ataca la app ya corriendo desde afuera</Option>
+  <Option>SAST corre en producción y DAST en el editor</Option>
+  <Feedback>SAST lee el código como un corrector; DAST le lanza payloads a la app viva. Ven cosas distintas, por eso no se reemplazan (Concepto 40).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Qué significa "shift-left" en seguridad?</Prompt>
+  <Option>Delegar la seguridad a un equipo aparte que revisa al final</Option>
+  <Option ok>Mover cada control lo más temprano posible en el ciclo, donde arreglar cuesta minutos y no un incidente</Option>
+  <Option>Escribir el código de seguridad antes que el resto de la app</Option>
+  <Feedback>Es meter la seguridad en cada fase, empezando por el pre-commit y la CI. Un bug cazado al teclearlo cuesta minutos; el mismo en producción cuesta un incidente (Concepto 40).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Tienes guardarraíles LLM impecables del c23. ¿Por qué necesitas además DevSecOps?</Prompt>
+  <Option>No lo necesitas: proteger el modelo ya cubre toda la app</Option>
+  <Option ok>Porque son seguridades complementarias: el c23 protege el modelo, pero no ve un CVE en una dependencia ni un secreto filtrado en la imagen</Option>
+  <Option>Porque DevSecOps reemplaza al c23 con controles más modernos</Option>
+  <Feedback>El c23 blinda el modelo (inyección, PII); DevSecOps blinda el pipeline, el código y las dependencias. Una app segura necesita las dos (Concepto 40).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · ¿Dónde va la API key de tu proveedor de modelos?</Prompt>
+  <Option>En la imagen del contenedor, para que viaje con el código y esté siempre disponible</Option>
+  <Option ok>Fuera del repo y fuera de la imagen: se inyecta en el arranque desde GitHub Secrets o un Secret de Kubernetes</Option>
+  <Option>En el código, pero ofuscada con base64 para que no se lea a simple vista</Option>
+  <Feedback>Git recuerda para siempre y la imagen viaja a cada registro. El secreto se cruza con el artefacto lo más tarde posible, en el arranque, nunca en el build (Conceptos 40 y 17c).</Feedback>
+</Question>
+
+</Quiz>
+
+Con esto cierras la Ruta 8 · DevOps & Cloud: pasaste de la cultura (CALMS) al git, a Docker, a la infraestructura como código y, ahora, a la seguridad que atraviesa todo el pipeline. Lo que queda es juntarlo con el resto del curso —el cierre te espera para atar los cabos de todos los niveles.
+
+<Recap level={9} label="↺ En una frase">
+
+DevSecOps es *shift-left* aplicado a la seguridad: SAST (código quieto), SCA (dependencias) y secret scanning vetan en un security-gate gemelo del eval-gate, y DAST ataca la app en staging — todo complementario a la seguridad del modelo del c23, no en su lugar.<Arch>pipeline con veto: security-gate (SAST + SCA + secret scan) · DAST en staging · secretos fuera del repo y de la imagen</Arch>
+
+</Recap>

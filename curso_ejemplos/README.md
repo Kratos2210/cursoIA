@@ -164,6 +164,11 @@ montón de scripts: **cada concepto tiene una prueba que lo defiende**.
 | Caso real 2: asistente de compras retail (ETL · grounding · eval) | `29` | [29](ejercicios/ejercicio_29_retail.md) | `test_offline.py::TestTema29*` |
 | Caso retail en producción (proyecto LLMOps) | `proyecto_retail/` | — | `proyecto_retail/tests` |
 | Memoria de largo plazo (recordar entre conversaciones) | `30` | — | `test_offline.py::TestTema30*` |
+| Cultura DevOps y CALMS (los 5 pilares) | — | — | — |
+| Git: ramas, flujo de trabajo y pull requests | — | — | — |
+| Docker a fondo (VM vs contenedor · Dockerfile · multi-stage) | — | — | — |
+| Infraestructura como Código con Terraform | — | — | — |
+| DevSecOps (SAST · DAST · S-SDLC) | — | — | — |
 
 ## 6) Cómo se verifica que esto funciona
 
