@@ -42,7 +42,7 @@ evaluate(mi_app, data="preguntas_normativa", evaluators=[evaluador_correccion])
 
 ¿Y quién es `evaluador_correccion`? Comparar texto libre con "la respuesta esperada" no se puede con un `==`. La solución estándar es **LLM-as-judge**: otro modelo actúa de juez y califica si la respuesta contesta bien — con temperatura 0, porque un juez debe ser consistente:
 
-```python title="el juez · LLM-as-judge con openevals (patrón de la comisión de EricBz)"
+```python title="el juez · LLM-as-judge con openevals (CORRECTNESS_PROMPT ya probado)"
 from openevals.llm import create_llm_as_judge
 from openevals.prompts import CORRECTNESS_PROMPT
 
