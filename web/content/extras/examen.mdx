@@ -1,4 +1,4 @@
-Hazlo cuando hayas terminado los cuatro niveles. Son **30 preguntas nuevas** —no las de los quizzes, sino los mismos conceptos vistos desde otro ángulo— repartidas en seis bloques: uno por cada nivel, un quinto que barre todo el nivel **AI Engineer** (c20–c30) y un sexto sobre el **caso real de retail** (c29). Cada bloque te muestra su nota en cuanto lo completas.
+Hazlo cuando hayas terminado los cuatro niveles. Son **32 preguntas nuevas** —no las de los quizzes, sino los mismos conceptos vistos desde otro ángulo— repartidas en seis bloques: uno por cada nivel, un quinto que barre todo el nivel **AI Engineer** (c20–c30) y un sexto sobre el **caso real de retail** (c29). Cada bloque te muestra su nota en cuanto lo completas.
 
 <Box kind="analogy" label="◆ Cómo leer tu nota">
 
@@ -114,7 +114,7 @@ Hazlo cuando hayas terminado los cuatro niveles. Son **30 preguntas nuevas** —
 
 </Quiz>
 
-<Quiz title="Bloque 4 · Nivel Producción (conceptos 14–17b)">
+<Quiz title="Bloque 4 · Nivel Producción (conceptos 14–17b · método c19)">
 
 <Question>
   <Prompt>1 · Además de estandarizar, ¿qué aporta MCP a un servidor de herramientas?</Prompt>
@@ -146,6 +146,22 @@ Hazlo cuando hayas terminado los cuatro niveles. Son **30 preguntas nuevas** —
   <Option ok>Para poder importarlo y testearlo sin disparar llamadas caras a la API ni efectos secundarios</Option>
   <Option>Porque Python lo prohíbe</Option>
   <Feedback>Si construir el retriever corriera al importar, cada test pagaría esa llamada; por eso la lógica cara va en funciones (Concepto 17 · 17b).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>5 · El código que generó el agente y el spec discrepan. ¿Quién gana?</Prompt>
+  <Option>El código, porque ya está escrito y compila</Option>
+  <Option ok>El spec: es la fuente de verdad, así que se corrige el código, no se parchea el spec</Option>
+  <Option>El que se haya tocado más recientemente en el repo</Option>
+  <Feedback>Parchear el spec para que encaje con lo que tecleaste convierte al contrato en cómplice. El spec dice qué comportamiento se esperaba; el código se ajusta a él (Concepto 19).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>6 · ¿Qué distingue el **plan mode** de un asistente del SDD de verdad?</Prompt>
+  <Option>Nada: son lo mismo con otro nombre</Option>
+  <Option ok>El plan mode vive en un turno y en memoria; SDD persiste spec y plan en disco, con revisión entre fases, y sobrevive entre sesiones</Option>
+  <Option>El plan mode es para producción y SDD solo para prototipos</Option>
+  <Feedback>El plan mode es pensar antes de teclear —un gran primer paso— pero se lo lleva el viento al cerrar la sesión. SDD deja un contrato versionado que mañana retoma otra persona u otro agente (Concepto 19).</Feedback>
 </Question>
 
 </Quiz>

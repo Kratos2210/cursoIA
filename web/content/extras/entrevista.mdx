@@ -347,6 +347,17 @@ Lo que sube la respuesta de "hice una demo" a "operé un sistema" es **no parar 
   </QAnswer>
 </QA>
 
+<QA mod="c19 · c19b">
+  <QSummary>¿Qué es Spec-Driven Development y por qué importa más cuando quien teclea es un agente de IA?</QSummary>
+  <QAnswer>
+
+SDD invierte el orden habitual: primero escribes el **spec** (el QUÉ y el POR QUÉ, con escenarios de aceptación), luego el **plan** (el CÓMO técnico que el spec dejó abierto) y las **tasks** (la descomposición ordenada), y el código es la *consecuencia*. La regla dura: **el spec es la fuente de verdad** — si el código y el spec discrepan, se corrige el código, no se parchea el spec. Con un **agente** muerde más: sin spec produce código *plausible pero desalineado* —compila y se ve razonable, pero resuelve un problema ligeramente distinto—, y revisar eso cuesta más que escribirlo de cero. El spec es el contrato que hace *revisable* su trabajo. Alrededor van tres **gates** —revisar el spec, el plan y el diff, cada uno caza otra clase de error— y conviene no confundirlo con el **plan mode** del asistente: ese vive en un turno y en memoria; SDD persiste spec y plan en disco y sobrevive entre sesiones. La herramienta típica es spec-kit (constitution → /specify → /plan → /tasks → /implement).
+
+**◆ En una frase para negocio:** es lo que evita pagar dos veces por lo mismo — se acuerda por escrito qué se va a construir *antes* de gastar horas de desarrollo, las decisiones quedan auditables, y el agente entrega lo que se pidió, no una sorpresa cara que haya que rehacer la semana siguiente.
+
+  </QAnswer>
+</QA>
+
 </IvBlock>
 
 <IvBlock>
