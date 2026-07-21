@@ -51,11 +51,11 @@ class ContratoBackend:
         assert (leidas[0].uso.entrada, leidas[0].uso.salida) == (10, 5)
 
     def test_conserva_todos_los_campos(self, backend):
-        backend.registrar(metrica(modelo="qwen/qwen3-32b", latencia=250.5,
+        backend.registrar(metrica(modelo="openai/gpt-oss-120b", latencia=250.5,
                                   ttft=80.25, cache_hit=True,
                                   acciones=("bloqueo_pii", "anonimizado")))
         (m,) = list(backend.leer())
-        assert m.modelo == "qwen/qwen3-32b"
+        assert m.modelo == "openai/gpt-oss-120b"
         assert m.latencia_ms == pytest.approx(250.5)
         assert m.ttft_ms == pytest.approx(80.25)
         assert m.cache_hit is True

@@ -23,8 +23,9 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 # El modelo NO se instancia a mano: `crear_llm()` lo construye según el .env.
-# Con LLM_PROVIDER=groq usas qwen/qwen3-32b y dejas de gastar la cuota (muy
-# corta) de Gemini. El resto del archivo no se entera de cuál está detrás.
+# Con LLM_PROVIDER=groq usas el modelo por defecto de Groq y dejas de gastar
+# la cuota (muy corta) de Gemini. El resto del archivo no se entera de cuál
+# está detrás.
 from util import crear_llm, es_error_cuota, mensaje_cuota
 
 # Cuántos mensajes conserva la ventana (2 intercambios = 4 mensajes).

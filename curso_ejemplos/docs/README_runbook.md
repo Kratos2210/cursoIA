@@ -66,8 +66,12 @@ gastar un solo token.
    en el `.env`. (Ya no hay ninguna constante `MODELO_CHAT` que editar: todo el
    curso construye el modelo con `util.crear_llm()`, que lee el `.env`.)
 3. **La salida buena: cámbiate de proveedor.** `LLM_PROVIDER=groq` +
-   `GROQ_API_KEY` y el curso entero pasa a `qwen/qwen3-32b`, con un cupo mucho
-   más generoso. Llave gratis en <https://console.groq.com/keys>.
+   `GROQ_API_KEY` y el curso entero pasa al modelo por defecto de Groq, con un
+   cupo mucho más generoso. Llave gratis en <https://console.groq.com/keys>.
+   ⚠️ Si Groq te contesta `model not found` / `model_decommissioned`, es que
+   retiró ese modelo (le pasó a `qwen/qwen3-32b` en 2026-07). No es tu código:
+   copia un ID vigente de <https://console.groq.com/docs/models> —o de la tabla
+   de modelos del cheat sheet de la web— y ponlo en `LLM_MODELO` del `.env`.
    ⚠️ El RAG (temas 11, 12 y proyecto final) necesita **embeddings**, y Groq no
    los ofrece: seguiría gastando `GOOGLE_API_KEY` solo para vectorizar. Para no
    gastar nada: `uv sync --extra emb` y `EMBEDDINGS_PROVIDER=fastembed`, que los

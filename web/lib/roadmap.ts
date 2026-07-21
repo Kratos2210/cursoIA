@@ -37,6 +37,7 @@ const LEVEL_STYLE: Record<string, { name: string; short: string; colorVar: strin
   "Modelos": { name: "Ruta 5 · Modelos: mecánica, fine-tuning y multimodal", short: "5 · Modelos", colorVar: "--l5" },
   "Producción y LLMOps": { name: "Ruta 6 · Producción y LLMOps", short: "6 · Producción", colorVar: "--l6" },
   "Proyectos": { name: "Ruta 7 · Proyectos y casos reales", short: "7 · Proyectos", colorVar: "--l7" },
+  "DevOps y Cloud": { name: "Ruta 8 · DevOps & Cloud", short: "8 · DevOps & Cloud", colorVar: "--l9" },
   "Cierre": { name: "Cierre · AI Engineer", short: "Cierre", colorVar: "--l8" },
 };
 const FALLBACK = { name: "Curso", short: "Curso", colorVar: "--accent" };

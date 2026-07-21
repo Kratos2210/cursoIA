@@ -38,7 +38,7 @@ El orquestador: agentes que piensan en ciclo (pensar → actuar → observar), r
 
 ### Cómo estudiar este curso (plan sugerido)
 
-El curso está pensado para **13 sesiones de ~90 minutos** + el proyecto final. La regla de oro: cada concepto se estudia *corriendo su ejemplo*, no solo leyéndolo — y no avances de nivel sin pasar su **quiz de autoevaluación**. Marca cada concepto completado (el botón al final de cada uno): tu avance se guarda en este navegador.
+El curso está pensado para **13 sesiones de ~90 minutos —unas 20 horas de estudio en total—** más el proyecto final. La regla de oro: cada concepto se estudia *corriendo su ejemplo*, no solo leyéndolo — y no avances de nivel sin pasar su **quiz de autoevaluación**. Marca cada concepto completado (el botón al final de cada uno): tu avance se guarda en este navegador.
 
 Y cuando termines un nivel, haz sus [ejercicios](/recurso/ejercicios): leer código no enseña a escribirlo. Cada uno trae pistas progresivas y un criterio de aceptación que puedes verificar tú mismo.
 
@@ -110,22 +110,13 @@ Para crear tu primer archivo: abre VS Code → menú *Archivo → Nuevo archivo*
 ### Instalación (con `uv`)
 
 ```bash title="terminal · setup.sh"
-# Básico e intermedio
+# Crea el proyecto e instala lo básico para empezar
 uv init mi-curso-ia && cd mi-curso-ia
-uv add langchain langgraph python-dotenv pypdf
+uv add langchain langgraph python-dotenv
 
 # Los dos clientes de modelo. langchain-openai no es "para OpenAI":
 # es para CUALQUIER API que hable su dialecto — Groq, Ollama, Together…
 uv add langchain-google-genai langchain-openai
-
-# Avanzado (RAG pro + re-ranking)
-uv add langchain-chroma langchain-text-splitters langchain-community rank-bm25
-
-# Embeddings en tu máquina, sin cuota (opcional pero recomendado para el RAG)
-uv add fastembed
-
-# Producción (opcional)
-uv add langchain-mcp-adapters langsmith
 
 # Crea el .env con tu llave (NUNCA lo subas a git). Elige UNA:
 echo "LLM_PROVIDER=google"                    >  .env   # opción A: Gemini
@@ -133,48 +124,15 @@ echo "GOOGLE_API_KEY=tu_llave_secreta"        >> .env
 
 # echo "LLM_PROVIDER=groq"                    >  .env   # opción B: Groq
 # echo "GROQ_API_KEY=gsk_tu_llave_secreta"    >> .env
-# echo "EMBEDDINGS_PROVIDER=fastembed"        >> .env
 ```
+
+Con esto arrancas. Las demás librerías (RAG, re-ranking, producción…) las añades con un `uv add` cuando llegues a su nivel — cada concepto te dice cuál necesita.
 
 Esos comandos hacen dos cosas distintas y conviene no confundirlas. `uv init` crea la carpeta del proyecto con un `pyproject.toml` **vacío de dependencias**. `uv add` es lo que las escribe ahí dentro *y* las instala. Si te saltas los `uv add`, tienes un proyecto perfectamente válido… que no sabe nada de LangChain.
 
-<Box kind="warn" label="▲ Mac con chip Intel: el error de onnxruntime">
+<Box kind="def" label="◈ Si algún `uv add` se traba, es normal (y tiene arreglo de una línea)">
 
-Si tu Mac es **Intel** (no Apple Silicon), los `uv add` de arriba que traen `langchain-chroma` y `fastembed` pueden cortarse así:
-
-```text title="▸ el síntoma"
-error: Distribution `onnxruntime==1.27.0` can't be installed because it
-doesn't have a source distribution or wheel for the current platform
-hint: You're on macOS (`macosx_13_0_x86_64`), but `onnxruntime` only has
-wheels for … `macosx_14_0_arm64` …
-```
-
-No es tu código: `chromadb` arrastra `onnxruntime`, y desde la versión **1.24** ese paquete dejó de publicar binarios para Mac Intel (`x86_64`). La última con binario es la **1.23.2**. La solución es ponerle un techo en tu `pyproject.toml` y repetir la instalación:
-
-```toml title="pyproject.toml · añade este bloque, luego repite los uv add"
-[tool.uv]
-# onnxruntime dejó de publicar wheels para Mac Intel desde la 1.24
-constraint-dependencies = ["onnxruntime<1.24"]
-```
-
-Con eso `uv` resuelve `onnxruntime` a la **1.23.2** y todo instala. Solo afecta a Macs Intel; en Apple Silicon, Linux o Windows no verás este error ni necesitas el bloque.
-
-</Box>
-
-<Box kind="warn" label="▲ El primer tropiezo de todo el mundo">
-
-Al verificar la instalación verás esto:
-
-```text title="▸ el síntoma"
-$ uv run python -c "from dotenv import load_dotenv; print('listo')"
-Using CPython 3.12.13
-Creating virtual environment at: .venv
-ModuleNotFoundError: No module named 'dotenv'
-```
-
-Parece que `uv` falló. No falló: hizo **exactamente** lo que le pediste. `uv run` nunca adivina qué necesitas — instala *solo* lo que declara el `pyproject.toml`. Si la lista `dependencies` está vacía, crea el entorno y no pone nada dentro. La línea `Creating virtual environment` es la pista: significa que ahí no había entorno, así que tampoco había nada instalado.
-
-**La cura:** corre los `uv add` de arriba dentro de tu carpeta. Y si el error persiste, casi siempre es porque estás *parado en otro sitio*.
+La instalación puede tener algún tropiezo según tu equipo —el más común es en **Mac Intel**, donde un paquete que arrastra Chroma ya no trae binario—. No es tu código, y ninguno te frena de verdad: todos los casos están reunidos, con su causa y su solución de una línea, en el anexo **[Errores comunes](/recurso/faq)**. El hábito correcto es el del [Concepto 0b](/concepto/0b-python-minimo): lee la **última línea** de lo que salió en tu terminal y búscala ahí.
 
 </Box>
 
@@ -198,7 +156,7 @@ El modelo vive en los servidores de otra empresa; tu programa se identifica ante
 
 <Box kind="analogy" label="◆ Cuál elegir (y por qué te vas a acabar pasando a Groq)">
 
-**Gemini** es el camino por defecto del curso. **Groq** sirve `qwen/qwen3-32b` con un cupo gratuito *mucho* más generoso y respuestas bastante más rápidas.
+**Gemini** es el camino por defecto del curso. **Groq** sirve modelos abiertos con un cupo gratuito *mucho* más generoso y respuestas bastante más rápidas.
 
 La cuota gratuita de Gemini se agota en una tarde de práctica: verás un `429 RESOURCE_EXHAUSTED` y creerás que rompiste algo. No rompiste nada. Si vas a hacer los ejercicios del tirón, **empieza directamente en Groq**. Puedes tener las dos llaves y cambiar con una línea del `.env`.
 
@@ -225,7 +183,7 @@ LLM_PROVIDER=google
 GOOGLE_API_KEY=AIzaSyD-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-#### Opción B · Groq con `qwen/qwen3-32b`
+#### Opción B · Groq
 
 1. Entra a [console.groq.com/keys](https://console.groq.com/keys).
 2. Inicia sesión (con Google o GitHub, no hace falta tarjeta).
@@ -238,77 +196,32 @@ LLM_PROVIDER=groq
 GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-Eso es todo. Los ejemplos no cambian: todos llaman a `util.crear_llm()`, que lee el `.env` y construye el modelo del proveedor activo. Ninguno instancia un modelo a mano.
+Eso es todo. Los ejemplos no cambian: todos llaman a `util.crear_llm()`, que lee el `.env` y construye el modelo del proveedor activo — nunca instancias un modelo a mano. Cambiar de proveedor es una línea del `.env`; el cómo y el porqué de esa "fábrica de modelos" (y cuándo conviene cada proveedor) lo ves en el [Concepto 18b](/concepto/18b-elegir-modelo-y-proveedor).
 
-```python title="util.py · una clase para casi todo el mercado"
-def crear_llm(temperature=0.0, modelo=None):
-    activo = proveedor()                       # lo dice LLM_PROVIDER
-    modelo = modelo or modelo_por_defecto(activo)
+<Box kind="warn" label="▲ Léelo hoy, te ahorrará una tarde: los modelos se apagan">
 
-    if activo == "google":                     # Gemini habla su propio dialecto
-        from langchain_google_genai import ChatGoogleGenerativeAI
-        return ChatGoogleGenerativeAI(model=modelo, temperature=temperature)
+Fíjate en que arriba **no pusiste ningún modelo**, solo el proveedor: cada uno trae el suyo de fábrica. Eso es deliberado, y conviene que sepas por qué desde el primer día.
 
-    # Groq, Ollama, Together, OpenAI… todos hablan el dialecto de OpenAI.
-    # Lo único que cambia entre ellos es la base_url.
-    base_url, variable = _COMPATIBLES_OPENAI[activo]
-    from langchain_openai import ChatOpenAI
-    return ChatOpenAI(model=modelo, temperature=temperature,
-                      base_url=base_url, api_key=os.getenv(variable))
-```
+**Los proveedores retiran modelos cada pocos meses.** Cualquier nombre de modelo que leas en este curso —o en cualquier tutorial— es una **foto con fecha**, no una verdad permanente. Le pasó a este mismo curso: Groq apagó `qwen/qwen3-32b`, que era su modelo por defecto aquí, en julio de 2026.
 
-<Box kind="analogy" label="◆ Por qué basta con eso">
+Así que si algún día tu programa responde `model not found`, `model_decommissioned` o `has been deprecated`, **no rompiste nada y tu llave está bien**. Se arregla en 30 segundos y sin tocar código:
 
-No es que LangChain tenga un adaptador por proveedor: es que **el mercado convergió en un protocolo**. Groq, Ollama, Together y OpenAI hablan todos la misma API, así que una sola clase con otra `base_url` los cubre a los cuatro. Gemini no la habla, y por eso tiene su propia rama. También puedes usar `LLM_PROVIDER=ollama` para correr un modelo en tu propia máquina, sin llave y sin cuota.
-
-</Box>
-
-<Box kind="analogy" label="◆ Dos cosas que crear_llm() arregla por ti con Groq">
-
-**1. El bloque `<think>`.** `qwen/qwen3-32b` es un **modelo de razonamiento**: antes de responder escribe su cadena de pensamiento, y Groq la devuelve *dentro* del contenido, envuelta en `<think>…</think>`. Sin tratarlo, todas las salidas del curso saldrían con ese ruido delante. `crear_llm()` envía `reasoning_format: "hidden"` y Groq lo descarta.
-
-**2. La salida estructurada.** Por defecto, `with_structured_output()` pide `response_format: json_schema`. OpenAI lo soporta; **Groq solo en algunos modelos**, y `qwen3-32b` no está entre ellos: devolvía un `400` y el [Concepto 05](/concepto/05-salida-estructurada) se caía en seco. `crear_llm()` usa `method="function_calling"`, que consigue lo mismo declarando una herramienta con la forma del esquema.
-
-Los dos parches son **específicos de Groq** y condicionales: `reasoning_format` solo se manda a modelos de razonamiento, porque a `llama-3.3-70b` le provoca un `400`. Esto es exactamente el trabajo invisible que ahorra una fábrica de modelos: si cada ejemplo instanciara el suyo, tendrías que recordar los dos parches diecinueve veces.
-
-</Box>
-
-#### El RAG no se salva: los embeddings y `fastembed`
-
-Esto no lo vas a entender del todo hasta el [Concepto 11](/concepto/11-rag-profesional), y no pasa nada: **déjalo puesto en el `.env` y sigue**. Allí se explica qué es `fastembed` y por qué existe. Lo mínimo que necesitas saber ahora:
-
-Además del modelo que *conversa*, el RAG usa un segundo modelo que convierte texto en números (**embeddings**) para poder buscar por significado. Ese segundo modelo **no** se cambia con `LLM_PROVIDER`, por dos razones:
-
-1. **Groq no ofrece embeddings.** Ninguno. Si mueves el chat a Groq, el RAG se queda sin quien vectorice.
-2. **Cambiar de modelo de embeddings invalida el índice entero.** No es como cambiar de modelo de chat, donde lo peor que pasa es que la respuesta suene distinta. Los vectores de `gemini-embedding-001` y los de otro modelo *viven en espacios distintos*: compararlos no da un resultado peor, da un resultado **sin sentido**. Hay que reindexar.
-
-Por eso los embeddings tienen su propia variable. Y por eso existe una salida que no depende de ningún proveedor: **calcularlos en tu propia máquina** con `fastembed`.
-
-```bash title="terminal · instalar los embeddings locales"
-uv sync --extra emb     # trae fastembed (ONNX, sin PyTorch)
-```
-
-```ini title=".env · chat en Groq, embeddings en tu portátil → cero cuota de Gemini"
+```ini title=".env · el interruptor maestro"
 LLM_PROVIDER=groq
 GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-EMBEDDINGS_PROVIDER=fastembed
+LLM_MODELO=openai/gpt-oss-120b
 ```
 
-Con esas cuatro líneas, `11_rag.py` vectoriza los fragmentos en tu máquina y solo el chat sale a internet. La primera ejecución descarga el modelo (~220 MB, multilingüe: el curso está en español); a partir de ahí funciona incluso sin conexión.
+Copias un ID vigente y lo pegas en `LLM_MODELO`. Esa línea **gana sobre cualquier default del curso**, así que no dependes de que nosotros actualicemos el material. De dónde sacas el ID, en este orden:
 
-```text title="salida esperada · 11_rag.py con fastembed"
-📄 Se crearon 7 fragmentos.
+1. La [tabla de modelos vigentes del cheat sheet](/recurso/cheat-sheet) — lleva su fecha de verificación.
+2. La **página oficial del proveedor**, que siempre va por delante de nosotros: [Groq](https://console.groq.com/docs/models) · [Google](https://ai.google.dev/gemini-api/docs/models) · [OpenAI](https://platform.openai.com/docs/models) · [Anthropic](https://docs.anthropic.com/en/docs/about-claude/models) · [OpenRouter](https://openrouter.ai/models) · [Ollama](https://ollama.com/library).
 
-🙋 ¿Cuál es el horario de atención?
-🤖 Atendemos de lunes a viernes, de 9:00 a 18:00.
-```
-
-<Box kind="warn" label="▲ Si ya habías indexado con otro modelo, reindexa">
-
-En el curso no muerde: los ejemplos reconstruyen el índice en cada arranque, así que cambiar `EMBEDDINGS_PROVIDER` es inofensivo. En producción, donde el índice vive en una base de datos, cambiarlo **sin reindexar** deja un vector store que responde con basura convincente. Así lo resuelve [`proyecto_llmops/`](/recurso/llmops): los embeddings son locales *desde el principio*, precisamente para que ningún proveedor pueda obligarte a reindexar.
+Esta es la razón de fondo por la que en este curso el modelo vive en el `.env` y nunca dentro del código.
 
 </Box>
+
+Si más adelante haces RAG y mueves el chat a Groq (que no ofrece embeddings), añadirás `EMBEDDINGS_PROVIDER=fastembed` para calcularlos en tu propia máquina, sin cuota. Se explica en el [Concepto 11](/concepto/11-rag-profesional) — por ahora no hace falta.
 
 <Box kind="def" label="◈ Definición · API key">
 
@@ -371,24 +284,16 @@ El código correcto lo vas a tener igual — está a un clic. Lo que no vuelve e
 
 El plan gratuito de Gemini se agota (el famoso `429`). Por eso siete temas del curso están diseñados para correr **completamente offline**: `07`, `12`, `13b`, `14`, `15`, `16` y `16b`. No es un premio de consolación: los conceptos 12 y 13b, los dos más densos en ingeniería de RAG y agentes, están entre ellos. Si te quedaste sin cuota, ese es tu camino.
 
-### Las librerías que usaremos (y para qué sirve cada una)
+### Los imports que usarás hoy
+
+No memorices nada: cada concepto presenta los suyos cuando toca. Para arrancar, solo estos cuatro:
 
 | Import | Para qué sirve |
 | --- | --- |
 | `import os` | Leer variables de entorno (tu llave API) y rutas de archivos. |
 | `from dotenv import load_dotenv` | Cargar la llave secreta desde el archivo `.env`. |
-| `langchain_google_genai` | El modelo Gemini: `ChatGoogleGenerativeAI` (chat) y `GoogleGenerativeAIEmbeddings` (RAG). |
+| `langchain_google_genai` | El modelo Gemini: `ChatGoogleGenerativeAI`. |
 | `langchain_openai` | `ChatOpenAI`. Pese al nombre, sirve para **Groq**, Ollama, Together y OpenAI: todos hablan el mismo dialecto. Solo cambia la `base_url`. |
-| `langchain_core.messages` | Los roles de la conversación: System / Human / AI / Tool. |
-| `langchain_core.prompts` | Plantillas de prompt con huecos `{variable}`. |
-| `langchain_core.output_parsers` | Convertir la respuesta del modelo en texto plano (`StrOutputParser`). |
-| `langchain_core.tools` | El decorador `@tool` para crear herramientas. |
-| `langchain_core.runnables` | Componer flujos: Parallel / Passthrough / Lambda. |
-| `langchain_core.vectorstores` | Guardar y buscar por significado (`InMemoryVectorStore`) para RAG. |
-| `pydantic` | Moldes de datos para salida estructurada (`BaseModel`, `Field`). |
-| `langgraph.prebuilt` | Agentes listos: `create_react_agent`, `ToolNode`. |
-| `langgraph.graph` | Construir agentes a mano: `StateGraph`, `START`, `END`. |
-| `langgraph.checkpoint.memory` | La memoria del agente (`MemorySaver`), por `thread_id`. |
 
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 
@@ -418,19 +323,19 @@ El plan gratuito de Gemini se agota (el famoso `429`). Por eso siete temas del c
 </Question>
 
 <Question>
-  <Prompt>3 · Cambias `LLM_PROVIDER=groq` en el `.env`. ¿Tu RAG pasa también a vectorizar con Groq?</Prompt>
-  <Option>Sí: esa variable controla todos los modelos del proyecto</Option>
-  <Option ok>No: los embeddings tienen su propia variable, y Groq ni siquiera los ofrece</Option>
-  <Option>Sí, pero hay que borrar el vector store primero</Option>
-  <Feedback>`EMBEDDINGS_PROVIDER` es una variable aparte justamente porque Groq no tiene endpoint de embeddings — y porque cambiar de motor invalida el índice entero (Concepto 11).</Feedback>
+  <Prompt>3 · El mismo comando `uv run python …` funciona en una carpeta y falla en la de al lado. ¿Por qué?</Prompt>
+  <Option>Porque hay que reinstalar `uv` en cada carpeta</Option>
+  <Option ok>Porque `uv` elige el entorno según el `pyproject.toml` más cercano hacia arriba: cambiar de carpeta cambia de `.venv`</Option>
+  <Option>Porque la llave del `.env` solo vale en la carpeta donde se creó</Option>
+  <Feedback>La regla de oro de `uv`: antes de correr, `cd` a `mi-curso-ia/`. Cuando dudes, `uv run python -c "import sys; print(sys.prefix)"` te dice qué entorno usa de verdad (Concepto 00).</Feedback>
 </Question>
 
 <Question>
-  <Prompt>4 · ¿Qué ganas con que todos los ejemplos llamen a `util.crear_llm()` en vez de instanciar el modelo cada uno?</Prompt>
-  <Option>El modelo responde más rápido porque se reutiliza la conexión</Option>
-  <Option>Se gasta menos cuota porque las respuestas se cachean</Option>
-  <Option ok>Cambias de proveedor con una línea del `.env`, y los parches raros de cada uno viven en un solo sitio</Option>
-  <Feedback>Los dos arreglos de Groq (`reasoning_format` y `method="function_calling"`) están escritos una vez, no diecinueve. Ese es el trabajo invisible que ahorra una fábrica de modelos (Concepto 00).</Feedback>
+  <Prompt>4 · Se te agotó la cuota gratuita de Gemini y ves un `429 RESOURCE_EXHAUSTED`. ¿Qué haces?</Prompt>
+  <Option>Reinstalas todo: el proyecto se corrompió</Option>
+  <Option ok>Cambias a Groq con una línea del `.env`, o corres alguno de los 7 ejemplos que funcionan sin llave</Option>
+  <Option>Esperas 24 horas, no hay otra salida</Option>
+  <Feedback>El `429` no es un bug de tu código: es la cuota. Puedes tener las dos llaves y cambiar de proveedor con una línea, o ir a los siete conceptos offline (Concepto 00).</Feedback>
 </Question>
 
 </Quiz>

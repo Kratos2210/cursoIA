@@ -1,0 +1,219 @@
+<LevelBanner level={9} title="Empieza la Ruta 8 · DevOps & Cloud">
+Ya sabes construir un agente que funciona; ahora toca la disciplina de operarlo sin sustos. Esta ruta reúne las piezas sueltas que fuiste montando —testear, entregar, observar, desplegar— bajo el nombre de la cultura que las une: DevOps.
+</LevelBanner>
+
+El curso ya te dio las herramientas por separado: aprendiste a testear en el [c17b](/concepto/17b-tests-y-ci), a entregar una versión con un pipeline en el [c17c](/concepto/17c-continuous-delivery), a observar el sistema en vivo en el [c16](/concepto/16-observabilidad-y-costo) y a elegir dónde vive tu agente en el [c15c](/concepto/15c-donde-vive-tu-agente). Cada una resuelve un pedazo, pero ninguna te dijo cómo encajan. Esta ruta pone el marco. Y el marco empieza por matar de una vez la frase que hunde despliegues: **"en mi máquina funciona"** — que en una app LLM es peor todavía, porque además de tu código dependes de un modelo que cambia, de dependencias pesadas y de un costo por token que alguien tiene que vigilar.
+
+<Box kind="def" label="◈ Definición · DevOps no es un rol, ni una herramienta, ni un equipo">
+
+DevOps es una **cultura de trabajo**: la forma en que Desarrollo (Dev) y Operaciones (Ops) dejan de tirarse el código por encima del muro y comparten la responsabilidad de que llegue a producción y siga vivo ahí.
+
+<DefList>
+  <Term>Dev (Development)</Term>
+  <Def>Quiere *cambios*: features nuevas, iteración rápida, salir ya. Su métrica es la velocidad.</Def>
+  <Term>Ops (Operations)</Term>
+  <Def>Quiere *estabilidad*: que nada se caiga a las 3 a.m. Su métrica es que el servicio no se rompa.</Def>
+  <Term>DevOps</Term>
+  <Def>El puente entre las dos: mismos objetivos, propiedad compartida. No hay "yo lo programo, tú lo aguantas".</Def>
+</DefList>
+
+Lo que **no** es DevOps: no es un puesto que contratas ("necesitamos un DevOps"), no es una herramienta que instalas (Docker no te vuelve DevOps), y no es un equipo aparte que hace deploys por ti. Es un cambio de cómo el equipo entero se organiza para entregar.
+
+</Box>
+
+### El muro entre Dev y Ops, y cómo se derriba
+
+Durante décadas Desarrollo y Operaciones fueron dos mundos con incentivos opuestos, separados por un muro. Dev escribía el código, lo lanzaba "por encima del muro" a Ops, y se lavaba las manos; cuando algo fallaba en producción, Ops sufría un sistema que no había escrito y no entendía. Cada lado optimizaba su propia métrica y el usuario pagaba la pelea. DevOps derriba ese muro con una idea sencilla y exigente: **"you build it, you run it"** — quien construye una pieza, la opera. Si tu código despierta a alguien de madrugada, ese alguien deberías ser tú; y como no quieres que te despierten, escribes código que no despierta a nadie.
+
+<Box kind="analogy" label="◆ Analogía · el food truck, no la fábrica">
+
+En una fábrica antigua, quien diseña el auto nunca lo maneja: lo diseña, lo tira a la línea de montaje y otro se encarga. Si el volante vibra en carretera, el diseñador ni se entera. DevOps es lo contrario: es el dueño de un **food truck** que cocina, sirve, cobra y limpia. Como se come su propio plato y atiende a su propio cliente, le importa cada eslabón. La propiedad compartida no es generosidad: es que el que construye y el que opera son la misma persona, así que los incentivos por fin apuntan al mismo lado.
+
+</Box>
+
+### CALMS: los cinco pilares de la cultura
+
+DevOps suena abstracto hasta que lo aterrizas. **CALMS** es el acrónimo que descompone la cultura en cinco pilares concretos; cada letra es una palanca que puedes evaluar en tu equipo hoy.
+
+<Box kind="def" label="◈ Definición · el framework CALMS">
+
+<DefList>
+  <Term>C · Culture (cultura)</Term>
+  <Def>Colaboración y propiedad compartida por encima de los silos. Es el pilar raíz: sin él, las herramientas solo automatizan la disfunción.</Def>
+  <Term>A · Automation (automatización)</Term>
+  <Def>Automatizar todo lo repetible y propenso a error humano: la integración y la entrega (CI/CD), y la infraestructura como código (IaC). Lo que hace una persona a mano una vez, lo hace mal una noche.</Def>
+  <Term>L · Lean (flujo esbelto)</Term>
+  <Def>Optimizar el flujo de valor: lotes pequeños, reducir el trabajo en curso (WIP), entregar seguido en vez de en un gran lanzamiento. Menos cosas a medio hacer, menos riesgo por entrega.</Def>
+  <Term>M · Measurement (medición)</Term>
+  <Def>Medir para mejorar: si no lo mides, no sabes si mejoraste. La industria estandarizó cuatro métricas (DORA) para esto.</Def>
+  <Term>S · Sharing (compartir)</Term>
+  <Def>Feedback y conocimiento compartidos: postmortems sin culpa, documentación, visibilidad. Lo que aprende uno, lo aprende el equipo.</Def>
+</DefList>
+
+</Box>
+
+Fíjate en el orden: **Culture** es la base y **Sharing** la cierra. La automatización y la medición del centro son las herramientas; pero automatizar sin cultura de propiedad compartida solo te da desastres más rápidos, y medir sin compartir es un tablero que nadie mira. La cultura es lo que hace que lo demás sirva.
+
+<Box kind="analogy" label="◆ Analogía · las cuatro métricas DORA son el tablero del auto">
+
+La **M** de Measurement se apoya en cuatro números que la investigación DORA identificó como los que separan a los equipos de élite de los que van lentos. Piénsalos como el tablero de un auto: no manejas mirándolos todo el rato, pero sin ellos vuelas a ciegas.
+
+| Métrica DORA | Qué mide | Lo que te dice |
+| --- | --- | --- |
+| Deploy frequency | Cada cuánto sacas una versión a producción | Tu velocidad de entrega |
+| Lead time for changes | Cuánto tarda un commit desde que se escribe hasta que corre en prod | La fricción de tu pipeline |
+| MTTR (mean time to recovery) | Cuánto tardas en recuperarte de un fallo | Tu resiliencia real |
+| Change failure rate | Qué porcentaje de despliegues causa un incidente | Tu calidad al entregar |
+
+Las dos primeras miden velocidad; las dos últimas, estabilidad. El hallazgo clave de DORA es contraintuitivo: **no hay que elegir entre las dos** — los equipos de élite despliegan más seguido *y* rompen menos. La velocidad bien hecha genera estabilidad, no la contradice.
+
+</Box>
+
+### El mapa de la ruta · dónde vive cada cosa
+
+Esta es la portada, así que orientémonos. Esta Ruta 8 tiene cinco conceptos. Parte de lo que cubre es **nuevo** —lo aprenderás aquí— y parte ya lo viste antes y solo lo **enlazamos** para que veas cómo encaja en el marco DevOps. Este mapa es tu brújula:
+
+<Grid3>
+
+<Card num="36" title="Cultura y CALMS · NUEVO">
+
+Estás aquí. El marco: qué es DevOps, los cinco pilares CALMS y las métricas DORA. Lo demás cuelga de acá.
+
+</Card>
+
+<Card num="37" title="Git · flujo de trabajo · NUEVO">
+
+Ramas, PRs y estrategias de merge en serio. La base de la colaboración del pilar Culture. [c37](/concepto/37-git-flujo-de-trabajo)
+
+</Card>
+
+<Card num="38" title="Docker a fondo · NUEVO">
+
+Ya usaste contenedores; aquí los dominas: capas, multi-stage, imágenes ligeras. El artefacto del pilar Automation. [c38](/concepto/38-docker-a-fondo)
+
+</Card>
+
+<Card num="39" title="IaC · Terraform · NUEVO">
+
+Infraestructura como código: declarar tus servidores en archivos versionados. El otro brazo de Automation. [c39](/concepto/39-iac-terraform)
+
+</Card>
+
+<Card num="40" title="DevSecOps · NUEVO">
+
+Meter la seguridad *dentro* del pipeline, no al final. Cierra la ruta. [c40](/concepto/40-devsecops)
+
+</Card>
+
+<Card num="" title="CI/CD · ya lo viste">
+
+La integración y entrega continuas del pilar Automation ya las montaste en el [c17b](/concepto/17b-tests-y-ci) y el [c17c](/concepto/17c-continuous-delivery).
+
+</Card>
+
+<Card num="" title="Contenedores a escala · ya lo viste">
+
+Kubernetes, réplicas, autoescalado y estrategias de despliegue viven en el [c15b](/concepto/15b-arquitectura-de-despliegue).
+
+</Card>
+
+<Card num="" title="Medición · ya lo viste">
+
+El pilar Measurement, en su versión de app LLM (latencia, costo, trazas), es el [c16](/concepto/16-observabilidad-y-costo).
+
+</Card>
+
+</Grid3>
+
+La nube gestionada donde todo esto aterriza la viste en el [c15c](/concepto/15c-donde-vive-tu-agente) y, a escala de proveedor, en el [c34](/concepto/34-desplegar-en-bedrock-y-vertex); y la seguridad del modelo —el lado *aplicación* de lo que en el [c40](/concepto/40-devsecops) veremos en el pipeline— es el [c23](/concepto/23-seguridad-red-teaming). Nada de esto es nuevo por sí solo: lo nuevo es verlo como **un solo sistema de entrega**, no como cinco temas sueltos.
+
+### Por qué DevOps pesa el doble en una app LLM
+
+Una app web tradicional es código más una base de datos. Una app LLM le suma tres fuentes de inestabilidad que hacen la disciplina DevOps aún más necesaria:
+
+- **Dependencias pesadas.** `torch`, drivers de GPU, modelos de embeddings de cientos de MB: reconstruir "a mano" en cada servidor es lento y frágil. Por eso el artefacto sellado del [c38](/concepto/38-docker-a-fondo) importa más aquí.
+- **El modelo cambia bajo tus pies.** El proveedor actualiza la versión del LLM y tu misma pregunta devuelve otra respuesta, sin que tú tocaras una línea. Sin evals en el pipeline ni medición continua, te enteras por los usuarios.
+- **El costo es una métrica de producción.** En una app normal, un endpoint lento es molesto; en una app LLM, un prompt mal armado te cuesta dólares por consulta en cada llamada. El costo por token es una señal DORA-para-LLM que hay que vigilar como la latencia.
+
+<Avoid label="⛔ Malentendidos que arruinan una adopción DevOps">
+
+- **"Contratemos un DevOps."** DevOps no es un puesto que resuelve el problema por el resto del equipo; es cómo trabaja el equipo entero. Un "ingeniero de plataforma" ayuda, pero no reemplaza la propiedad compartida.
+- **"Ya usamos Docker y GitHub Actions, o sea que hacemos DevOps."** Las herramientas son la A de CALMS, no las cinco letras. Sin cultura ni medición, automatizaste el caos.
+- **"Vamos a desplegar diez veces al día para subir la métrica."** Deploy frequency sin change failure rate bajo es velocidad hacia el precipicio. Las cuatro métricas DORA se leen juntas, nunca una sola.
+
+</Avoid>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Toma cinco prácticas que ya conoces del curso y clasifícalas dentro del pilar CALMS que mejor les corresponde. Justifica cada una en una frase:
+
+1. El pipeline `deploy.yml` del [c17c](/concepto/17c-continuous-delivery) que construye la imagen y la despliega sola.
+2. El `eval-gate.yml` que veta una versión si la calidad de las respuestas cayó.
+3. El tablero de latencia, tokens y costo del [c16](/concepto/16-observabilidad-y-costo).
+4. Escribir un ADR y abrir un PR para que el equipo revise una decisión.
+5. Desplegar en lotes pequeños y frecuentes en vez de un gran lanzamiento trimestral.
+
+<Solution summary="Ver una solución">
+
+- **1 → Automation.** Automatizar el tramo del commit al servicio corriendo es el corazón del pilar A.
+- **2 → Measurement (con un pie en Automation).** El gate *mide* la calidad y actúa sobre esa medición; que corra solo lo hace también Automation.
+- **3 → Measurement.** Latencia, costo y errores en vivo son exactamente las señales de la M — aquí, la versión LLM de las métricas DORA.
+- **4 → Sharing (y Culture).** Un ADR + PR reparten conocimiento y decisión: el equipo aprende junto y comparte la propiedad.
+- **5 → Lean.** Lotes pequeños y entrega frecuente reducen el WIP y el riesgo por entrega — el flujo esbelto en estado puro.
+
+Lo interesante no es acertar la letra exacta (varias tocan dos pilares), sino ver que **ya venías haciendo DevOps sin llamarlo así**. La ruta solo le pone nombre y lo completa.
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar por qué DevOps es una cultura y no un rol, una herramienta ni un equipo aparte.
+- Describir el muro entre Dev y Ops y cómo "you build it, you run it" lo derriba con propiedad compartida.
+- Enumerar los cinco pilares CALMS y las cuatro métricas DORA, y decir para qué sirve cada uno.
+- Ubicar en el mapa de la ruta qué es nuevo (c37–c40) y qué ya cubriste y solo se enlaza (CI/CD, K8s, observabilidad, nube, seguridad).
+
+</Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 36">
+
+<Question>
+  <Prompt>1 · Un gerente dice "para hacer DevOps hay que contratar un DevOps y comprar las herramientas". ¿Qué falla en esa frase?</Prompt>
+  <Option>Nada: es exactamente eso, un puesto más una caja de herramientas</Option>
+  <Option ok>DevOps es una cultura de propiedad compartida del equipo entero, no un rol ni un set de herramientas</Option>
+  <Option>Falla solo en las herramientas; el puesto sí es correcto</Option>
+  <Feedback>DevOps no es un puesto que contratas ni un Docker que instalas: es cómo se organiza el equipo para entregar y operar junto. Las herramientas son solo la A de CALMS (Concepto 36).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · En el framework CALMS, ¿cuál es el pilar raíz del que dependen los demás?</Prompt>
+  <Option>Automation: sin herramientas no hay nada que medir</Option>
+  <Option ok>Culture: sin propiedad compartida, automatizar y medir solo aceleran la disfunción</Option>
+  <Option>Measurement: lo que no se mide no existe</Option>
+  <Feedback>Automatizar sin cultura da desastres más rápidos, y medir sin compartir da un tablero que nadie mira. La C es la base; la S lo cierra (Concepto 36).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Tu equipo despliega diez veces al día, pero cada dos despliegues rompe producción. Según las métricas DORA, ¿qué te dice eso?</Prompt>
+  <Option>Que van perfecto: la deploy frequency alta es la única métrica que importa</Option>
+  <Option ok>Que la deploy frequency es alta pero el change failure rate también: velocidad sin estabilidad, hay que leerlas juntas</Option>
+  <Option>Que deberían desplegar menos seguido para romper menos</Option>
+  <Feedback>Las cuatro métricas DORA se leen en conjunto. El hallazgo clave es que los equipos de élite van rápido *y* rompen poco; una deploy frequency alta con change failure rate alto es velocidad hacia el precipicio (Concepto 36).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · ¿Por qué DevOps pesa aún más en una app LLM que en una app web tradicional?</Prompt>
+  <Option>Porque las apps LLM no necesitan tests, solo despliegues rápidos</Option>
+  <Option ok>Por dependencias pesadas, un modelo que cambia sin avisar y un costo por token que es una métrica de producción a vigilar</Option>
+  <Option>Porque el LLM se encarga solo de la infraestructura</Option>
+  <Feedback>Torch y modelos de cientos de MB, un proveedor que actualiza la versión bajo tus pies, y dólares por consulta que hay que medir como la latencia: tres fuentes de inestabilidad que exigen más disciplina, no menos (Concepto 36).</Feedback>
+</Question>
+
+</Quiz>
+
+<Recap level={9} label="↺ En una frase">
+
+DevOps no es un rol que contratas ni una herramienta que instalas: es la cultura de propiedad compartida —CALMS— que une testear, entregar, observar y desplegar en un solo sistema de entrega, y que mides con las cuatro métricas DORA.<Arch>la ruta: cultura (aquí) · Git c37 · Docker c38 · IaC c39 · DevSecOps c40</Arch>
+
+</Recap>

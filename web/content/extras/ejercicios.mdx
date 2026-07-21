@@ -30,11 +30,11 @@ LLM_PROVIDER=groq
 GROQ_API_KEY=gsk_tu_llave_aqui
 ```
 
-Ya está. Los ejercicios —y **todos** los ejemplos del curso— pasan a usar **`qwen/qwen3-32b`**. Ni una línea de código cambia: nadie instancia un modelo a mano, todos llaman a `util.crear_llm()`.
+Ya está. Los ejercicios —y **todos** los ejemplos del curso— pasan al **modelo por defecto de Groq**. Ni una línea de código cambia: nadie instancia un modelo a mano, todos llaman a `util.crear_llm()`. Si Groq te contesta `model_decommissioned`, es que apagó ese modelo: copia uno vigente de la [tabla de modelos del cheat sheet](/recurso/cheat-sheet) y ponlo en `LLM_MODELO` del `.env`.
 
 <Box kind="warn" label="▲ El único que Groq no salva del todo: el ejercicio 11">
 
-El ejercicio 11 hace RAG, y el RAG necesita **embeddings**. Groq no los ofrece, así que el chat irá por Groq pero vectorizar seguiría gastando `GOOGLE_API_KEY`. La salida sin cuota es calcularlos en tu máquina: `uv sync --extra emb` y `EMBEDDINGS_PROVIDER=fastembed` en el `.env`. Está explicado en el [Concepto 00](/concepto/00-preparar-el-terreno).
+El ejercicio 11 hace RAG, y el RAG necesita **embeddings**. Groq no los ofrece, así que el chat irá por Groq pero vectorizar seguiría gastando `GOOGLE_API_KEY`. La salida sin cuota es calcularlos en tu máquina: `uv sync --extra emb` y `EMBEDDINGS_PROVIDER=fastembed` en el `.env`. Está explicado en el [Concepto 11](/concepto/11-rag-profesional).
 
 </Box>
 

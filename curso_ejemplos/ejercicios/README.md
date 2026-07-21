@@ -57,9 +57,14 @@ LLM_PROVIDER=groq
 GROQ_API_KEY=gsk_tu_llave_aqui
 ```
 
-Ya está. Los ejercicios —y todos los ejemplos del curso— pasan a usar
-**`qwen/qwen3-32b`**, con un cupo mucho más generoso. No hay que tocar ni una
-línea de código.
+Ya está. Los ejercicios —y todos los ejemplos del curso— pasan al **modelo por
+defecto de Groq**, con un cupo mucho más generoso. No hay que tocar ni una línea
+de código.
+
+> ⚠️ **Si Groq responde `model not found` o `model_decommissioned`**, es que
+> retiró ese modelo (ya pasó con `qwen/qwen3-32b`). No es tu código: copia un ID
+> vigente de la tabla de modelos del cheat sheet de la web y ponlo en
+> `LLM_MODELO` del `.env`. Esa línea gana sobre el default del curso.
 
 > ⭐ **Por qué basta con eso.** Groq, Ollama, Together y OpenAI hablan todos el
 > *mismo* dialecto: la API de OpenAI. Por eso una sola clase (`ChatOpenAI` con

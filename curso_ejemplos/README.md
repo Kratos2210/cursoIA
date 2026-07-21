@@ -24,7 +24,7 @@ cp .env.example .env     # edita y pon tu llave de https://aistudio.google.com
 > ⚡ **La cuota de Gemini es cortísima.** *Todos* los ejemplos llaman a
 > `util.crear_llm()`, que lee el proveedor del `.env`. Con dos líneas
 > (`LLM_PROVIDER=groq` + `GROQ_API_KEY`, [llave gratis](https://console.groq.com/keys))
-> el curso entero pasa a `qwen/qwen3-32b` sin tocar una sola línea de código.
+> el curso entero pasa al modelo por defecto de Groq sin tocar una sola línea de código.
 > También hay `LLM_PROVIDER=ollama` (en tu máquina, sin llave).
 
 > 🧭 **El RAG es la excepción.** Groq no ofrece embeddings, así que los temas 11 y
@@ -164,6 +164,11 @@ montón de scripts: **cada concepto tiene una prueba que lo defiende**.
 | Caso real 2: asistente de compras retail (ETL · grounding · eval) | `29` | [29](ejercicios/ejercicio_29_retail.md) | `test_offline.py::TestTema29*` |
 | Caso retail en producción (proyecto LLMOps) | `proyecto_retail/` | — | `proyecto_retail/tests` |
 | Memoria de largo plazo (recordar entre conversaciones) | `30` | — | `test_offline.py::TestTema30*` |
+| Cultura DevOps y CALMS (los 5 pilares) | — | — | — |
+| Git: ramas, flujo de trabajo y pull requests | — | — | — |
+| Docker a fondo (VM vs contenedor · Dockerfile · multi-stage) | — | — | — |
+| Infraestructura como Código con Terraform | — | — | — |
+| DevSecOps (SAST · DAST · S-SDLC) | — | — | — |
 
 ## 6) Cómo se verifica que esto funciona
 
@@ -244,7 +249,7 @@ Concepto 18b de la web (`web/content/modules/18b-elegir-modelo-y-proveedor.mdx`)
 | Quiero… | En el `.env` | Instalar |
 |---------|--------------|----------|
 | Gemini (por defecto) | `LLM_PROVIDER=google` + `GOOGLE_API_KEY` | — |
-| **Groq · `qwen/qwen3-32b`** | `LLM_PROVIDER=groq` + `GROQ_API_KEY` | — |
+| **Groq (el que aguanta)** | `LLM_PROVIDER=groq` + `GROQ_API_KEY` | — |
 | Ollama en mi máquina | `LLM_PROVIDER=ollama` + `LLM_MODELO=qwen3:8b` | `ollama serve` |
 | OpenAI · `gpt-5.4-mini` | `LLM_PROVIDER=openai` + `OPENAI_API_KEY` | — |
 | Anthropic · `claude-haiku-4-5` | `LLM_PROVIDER=anthropic` + `ANTHROPIC_API_KEY` | — |
@@ -252,6 +257,13 @@ Concepto 18b de la web (`web/content/modules/18b-elegir-modelo-y-proveedor.mdx`)
 | DeepSeek · `deepseek-v4-flash` | `LLM_PROVIDER=deepseek` + `DEEPSEEK_API_KEY` | — |
 | Otro modelo del mismo proveedor | `LLM_MODELO=llama-3.3-70b-versatile` | — |
 | **Embeddings sin cuota** | `EMBEDDINGS_PROVIDER=fastembed` | `uv sync --extra emb` |
+
+> ⚠️ **Qué modelo usa cada proveedor está en `util.MODELOS_POR_DEFECTO`, y esa tabla
+> es una foto con fecha.** Los proveedores retiran modelos sin avisar (le pasó a
+> `qwen/qwen3-32b`, el default de Groq hasta 2026-07). Si ves `model not found` o
+> `model_decommissioned`, no es tu código: copia un ID vigente de la tabla de
+> modelos del cheat sheet de la web —o de la página oficial del proveedor— y
+> ponlo en `LLM_MODELO` del `.env`. Esa variable gana sobre cualquier default.
 
 Una sola clase (`ChatOpenAI` con otra `base_url`) cubre Groq, Ollama, OpenAI,
 OpenRouter y DeepSeek: el mercado convergió en el dialecto de la API de OpenAI.

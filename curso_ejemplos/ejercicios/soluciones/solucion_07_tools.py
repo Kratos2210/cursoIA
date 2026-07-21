@@ -17,8 +17,8 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 # `crear_llm()` construye el modelo del proveedor que diga el .env. Con
-# LLM_PROVIDER=groq usas qwen/qwen3-32b y dejas de gastar la (cortísima) cuota
-# gratuita de Gemini.
+# LLM_PROVIDER=groq usas el modelo por defecto de Groq y dejas de gastar la
+# (cortísima) cuota gratuita de Gemini.
 from util import crear_llm, requiere_llm_key
 
 from dotenv import load_dotenv
@@ -91,7 +91,7 @@ def parte_2():
     from langchain_core.messages import HumanMessage, ToolMessage
 
     # El proveedor sale del .env. `bind_tools` funciona igual con Gemini que con
-    # qwen/qwen3-32b vía Groq: el tool calling es parte del protocolo, no del modelo.
+    # cualquier modelo de Groq: el tool calling es parte del protocolo, no del modelo.
     llm = crear_llm(temperature=0)
     herramientas = [calculadora_descuentos, validar_ruc, calcular_igv]
     llm_tools = llm.bind_tools(herramientas)

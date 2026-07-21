@@ -122,7 +122,7 @@ class TestProveedor:
 
     def test_cada_proveedor_tiene_su_modelo(self, monkeypatch):
         monkeypatch.delenv("LLM_MODELO", raising=False)
-        assert util.modelo_por_defecto("groq") == "qwen/qwen3-32b"
+        assert util.modelo_por_defecto("groq") == "openai/gpt-oss-120b"
         assert util.modelo_por_defecto("google") == "gemini-3.1-flash-lite"
         assert util.modelo_por_defecto("ollama") == "qwen3:8b"
         # Los cuatro proveedores nuevos, cada uno con su default (ver el plan):
@@ -201,17 +201,18 @@ class TestCrearLlm:
         llm = util.crear_llm(temperature=0.3)
         # Es un ChatOpenAI (subclase: ver _crear_chat_openai_compatible).
         assert isinstance(llm, ChatOpenAI)
-        assert llm.model_name == "qwen/qwen3-32b"
+        assert llm.model_name == "openai/gpt-oss-120b"
         assert "groq.com" in str(llm.openai_api_base)
         assert llm.temperature == 0.3
 
     def test_groq_oculta_el_bloque_think_de_los_modelos_de_razonamiento(self, monkeypatch):
-        # qwen3 escribe su cadena de pensamiento dentro del contenido, envuelta
-        # en <think>…</think>. `reasoning_format: hidden` le dice a Groq que la
-        # descarte. Sin esto, TODAS las salidas del curso salen contaminadas.
+        # qwen3.6 es de RAZONAMIENTO y devuelve su cadena de pensamiento dentro
+        # del contenido, envuelta en <think>…</think>. `reasoning_format: hidden`
+        # le dice a Groq que la descarte; sin esto, TODAS las salidas del curso
+        # salen contaminadas.
         monkeypatch.setenv("LLM_PROVIDER", "groq")
         monkeypatch.setenv("GROQ_API_KEY", "gsk_de_prueba")
-        monkeypatch.delenv("LLM_MODELO", raising=False)
+        monkeypatch.setenv("LLM_MODELO", "qwen/qwen3.6-27b")
         assert util.crear_llm().extra_body == {"reasoning_format": "hidden"}
 
     def test_a_un_modelo_SIN_razonamiento_no_se_le_manda_ese_parametro(self, monkeypatch):
@@ -222,10 +223,34 @@ class TestCrearLlm:
         monkeypatch.setenv("LLM_MODELO", "llama-3.3-70b-versatile")
         assert util.crear_llm().extra_body is None
 
+    def test_a_gpt_oss_NUNCA_se_le_manda_reasoning_format(self, monkeypatch):
+        # ⭐ LA REGRESIÓN QUE NOS COSTÓ UN 400. gpt-oss ES de razonamiento, pero
+        #    la doc de Groq dice que NO acepta `reasoning_format` (usa
+        #    `include_reasoning`, y son mutuamente excluyentes). Como gpt-oss es
+        #    el default de Groq del curso, mandárselo rompía la PRIMERA llamada
+        #    de cualquier alumno. Este test vigila que no vuelva a colarse.
+        monkeypatch.setenv("LLM_PROVIDER", "groq")
+        monkeypatch.setenv("GROQ_API_KEY", "gsk_de_prueba")
+        monkeypatch.delenv("LLM_MODELO", raising=False)  # el default: gpt-oss
+        extra = util.crear_llm().extra_body
+        assert "reasoning_format" not in extra
+        # Su razonamiento ya viaja en un campo aparte; lo apagamos igualmente
+        # para no pagar tokens que nadie va a leer.
+        assert extra == {"include_reasoning": False}
+
+    def test_gpt_oss_respeta_GROQ_RAZONAMIENTO_raw(self, monkeypatch):
+        # El interruptor didáctico sigue funcionando, traducido a su parámetro.
+        monkeypatch.setenv("LLM_PROVIDER", "groq")
+        monkeypatch.setenv("GROQ_API_KEY", "gsk_de_prueba")
+        monkeypatch.delenv("LLM_MODELO", raising=False)
+        monkeypatch.setenv("GROQ_RAZONAMIENTO", "raw")
+        assert util.crear_llm().extra_body == {"include_reasoning": True}
+
     def test_structured_output_usa_function_calling_no_json_schema(self, monkeypatch):
-        # ⭐ qwen/qwen3-32b NO soporta response_format=json_schema en Groq: el
-        #    TEMA 05 se caía con un 400. function_calling da el mismo resultado
-        #    por otro camino y funciona en todo modelo con tool calling.
+        # ⭐ Groq solo soporta response_format=json_schema en ALGUNOS modelos, y
+        #    el default del curso nunca ha estado entre ellos: el TEMA 05 se caía
+        #    con un 400. function_calling da el mismo resultado por otro camino y
+        #    funciona en todo modelo con tool calling, sea cual sea el default.
         monkeypatch.setenv("LLM_PROVIDER", "groq")
         monkeypatch.setenv("GROQ_API_KEY", "gsk_de_prueba")
         from pydantic import BaseModel
@@ -343,12 +368,12 @@ class TestProveedoresNuevos:
 
     def test_reasoning_format_es_EXCLUSIVO_de_groq(self, monkeypatch):
         # `reasoning_format` es un parámetro SOLO de Groq. A un modelo de
-        # razonamiento servido por OpenRouter (aquí un qwen3) NO se le puede
+        # razonamiento servido por OpenRouter (aquí un gpt-oss) NO se le puede
         # mandar: OpenRouter no lo entiende. El parche correcto es otro (ver el
         # test siguiente). Aquí blindamos que ese nombre no se cuele.
         monkeypatch.setenv("LLM_PROVIDER", "openrouter")
         monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or_de_prueba")
-        monkeypatch.setenv("LLM_MODELO", "qwen/qwen3-32b")
+        monkeypatch.setenv("LLM_MODELO", "openai/gpt-oss-120b")
         extra = util.crear_llm().extra_body or {}
         assert "reasoning_format" not in extra
 
@@ -357,7 +382,7 @@ class TestProveedoresNuevos:
         # equivalente al "hidden" de Groq es {"exclude": True}.
         monkeypatch.setenv("LLM_PROVIDER", "openrouter")
         monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or_de_prueba")
-        monkeypatch.setenv("LLM_MODELO", "qwen/qwen3-32b")
+        monkeypatch.setenv("LLM_MODELO", "openai/gpt-oss-120b")
         assert util.crear_llm().extra_body == {"reasoning": {"exclude": True}}
 
 

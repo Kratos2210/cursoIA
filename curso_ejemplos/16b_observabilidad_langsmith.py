@@ -52,8 +52,10 @@ PRECIOS = {
     "gemini-3.1-flash-lite":   {"entrada": 0.25, "salida": 1.50},
     "gemini-2.5-flash":        {"entrada": 0.30, "salida": 2.50},
     "gemini-2.0-flash":        {"entrada": 0.10, "salida": 0.40},   # apagado el 2026-06-01
-    "qwen/qwen3-32b":          {"entrada": 0.29, "salida": 0.59},
+    "openai/gpt-oss-120b":     {"entrada": 0.15, "salida": 0.60},
+    "openai/gpt-oss-20b":      {"entrada": 0.075, "salida": 0.30},
     "llama-3.3-70b-versatile": {"entrada": 0.59, "salida": 0.79},
+    "qwen/qwen3-32b":          {"entrada": 0.29, "salida": 0.59},   # retirado en 2026-07
     "qwen3:8b":                {"entrada": 0.0,  "salida": 0.0},   # local: no cuesta dinero
 }
 

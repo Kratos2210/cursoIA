@@ -33,7 +33,7 @@ def main():
     # ---- 2) Fallback: principal (falla) + respaldo ------
     # El principal tiene un nombre inválido para VER el salto al respaldo.
     # `modelo=` fuerza ese nombre; el respaldo usa el modelo por defecto de tu
-    # proveedor (gemini-3.1-flash-lite con Google, qwen/qwen3-32b con Groq).
+    # proveedor (el que diga MODELOS_POR_DEFECTO, o tu LLM_MODELO si lo pusiste).
     principal = crear_llm(temperature=0, modelo="modelo-que-no-existe")
     respaldo = crear_llm(temperature=0)
     modelo_robusto = principal.with_fallbacks([respaldo])

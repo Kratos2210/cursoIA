@@ -13,7 +13,7 @@ class TestCosto:
     def test_salida_cuesta_mas_que_entrada(self):
         """La asimetría del cost_model: el mismo número de tokens de salida cuesta
         más que de entrada."""
-        modelo = "qwen/qwen3-32b"
+        modelo = "openai/gpt-oss-120b"
         solo_entrada = cost_model.estimar_costo(Uso(entrada=1000, salida=0), modelo)
         solo_salida = cost_model.estimar_costo(Uso(entrada=0, salida=1000), modelo)
         assert solo_salida > solo_entrada
@@ -22,7 +22,7 @@ class TestCosto:
         assert cost_model.estimar_costo(Uso(entrada=100, salida=100), "modelo-fantasma") == 0.0
 
     def test_cache_hit_no_cuesta(self):
-        m = metrics.MetricasRequest(modelo="qwen/qwen3-32b", uso=Uso(entrada=100, salida=100),
+        m = metrics.MetricasRequest(modelo="openai/gpt-oss-120b", uso=Uso(entrada=100, salida=100),
                                     latencia_ms=1.0, cache_hit=True)
         assert m.costo == 0.0
 
@@ -45,6 +45,6 @@ class TestColector:
 
     def test_resumen_trae_las_claves_esperadas(self):
         col = metrics.ColectorMetricas()
-        col.registrar(metrics.MetricasRequest("qwen/qwen3-32b", Uso(10, 20), 5.0, ttft_ms=2.0))
+        col.registrar(metrics.MetricasRequest("openai/gpt-oss-120b", Uso(10, 20), 5.0, ttft_ms=2.0))
         r = col.resumen()
         assert {"requests", "costo_total", "latencia_p95_ms", "tasa_cache"} <= set(r)

@@ -12,9 +12,9 @@ FINALIDAD:
 
 ⚠️ EL PARCHE function_calling. Por defecto `with_structured_output()` pide al
    proveedor `response_format: json_schema`. OpenAI lo soporta; Groq solo en
-   algunos modelos, y `qwen/qwen3-32b` no. `method="function_calling"` obtiene lo
-   mismo declarando una tool con la forma del esquema: funciona en todos los
-   modelos con tool calling.
+   algunos modelos, y no hay garantía de que el que tengas en el .env sea uno de
+   ellos. `method="function_calling"` obtiene lo mismo declarando una tool con la
+   forma del esquema: funciona en todos los modelos con tool calling.
 """
 from __future__ import annotations
 

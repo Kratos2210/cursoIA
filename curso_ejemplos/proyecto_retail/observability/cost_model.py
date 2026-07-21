@@ -23,8 +23,12 @@ from dataclasses import dataclass
 # Dólares por 1.000.000 de tokens. Foto de 2026-07 (espejo de proyecto_llmops).
 PRECIOS: dict[str, dict[str, float]] = {
     #  modelo                        entrada   salida
-    "qwen/qwen3-32b":            {"entrada": 0.29, "salida": 0.59},
+    "openai/gpt-oss-120b":       {"entrada": 0.15, "salida": 0.60},
+    "openai/gpt-oss-20b":        {"entrada": 0.075, "salida": 0.30},
     "llama-3.3-70b-versatile":   {"entrada": 0.59, "salida": 0.79},
+    # Retirado por Groq en 2026-07. Se conserva para que los costes históricos
+    # ya registrados se sigan calculando con la tarifa que se cobró entonces.
+    "qwen/qwen3-32b":            {"entrada": 0.29, "salida": 0.59},
     "gemini-3.1-flash-lite":     {"entrada": 0.25, "salida": 1.50},
     "gemini-2.5-flash":          {"entrada": 0.30, "salida": 2.50},
     "qwen3:8b":                  {"entrada": 0.0, "salida": 0.0},

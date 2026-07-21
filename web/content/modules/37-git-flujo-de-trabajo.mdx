@@ -1,0 +1,195 @@
+Hasta aquí has visto comandos de git sueltos —un `commit` aquí, un `push` allá— sin el mapa que los une. Toca cerrar ese hueco, porque git no es un detalle del taller: es **el sustrato sobre el que se apoya todo lo demás**. En DevOps, absolutamente todo vive en un repositorio git —el código de tu agente, los `Dockerfile` del [c38](/concepto/38-docker-a-fondo), el Terraform del [c39](/concepto/39-iac-terraform), los propios workflows de CI—, y el sitio donde ese "todo" se revisa y se vigila es el **pull request**. Es la encarnación técnica del pilar *Automation* de CALMS que viste en el [c36](/concepto/36-devops-y-calms): cada `push` dispara la CI del [c17b](/concepto/17b-tests-y-ci), y ningún cambio entra a la rama principal sin pasar por esa puerta. Sin dominar git, DevOps es una colección de herramientas sueltas; con git, es una cinta continua.
+
+<Box kind="def" label="◈ Los tres estados de git · dónde vive un cambio antes de ser historia">
+
+Un archivo modificado no salta directo al historial: recorre **tres áreas**, y entender esa escalera es entender git entero.
+
+<DefList>
+  <Term>Working directory</Term>
+  <Def>Tu carpeta de trabajo tal como la ves: los archivos que editas. Aquí un cambio existe pero git aún no lo "tiene apuntado" para guardar.</Def>
+  <Term>Staging area (index)</Term>
+  <Def>La antesala. Con `git add` mueves aquí los cambios que quieres incluir en el próximo commit. Sirve para **componer** un commit: eliges qué entra y qué se queda esperando.</Def>
+  <Term>Repository</Term>
+  <Def>El historial permanente. Con `git commit` sellas lo que hay en staging como un punto inmutable del pasado, con su autor, fecha y mensaje.</Def>
+</DefList>
+
+El `add` es "poner sobre la mesa"; el `commit` es "sellar el sobre". Que sean dos pasos y no uno es lo que te deja meter en un commit solo los archivos de una tarea y dejar fuera los de otra.
+
+</Box>
+
+### Del cero al historial: los comandos que mueven un cambio
+
+Estos son los verbos base. No los memorices sueltos: léelos como el viaje de un cambio desde tu carpeta hasta el servidor remoto.
+
+```bash title="el ciclo básico · de la carpeta al remoto"
+git init                      # crea un repo nuevo en esta carpeta (.git)
+git clone URL                 # o baja uno que ya existe, con todo su historial
+
+git status                    # ¿qué cambió? ¿qué está en staging y qué no?
+git add app.py                # mueve app.py al staging (lo "pones sobre la mesa")
+git commit -m "feat: parser"  # sella lo que hay en staging como un punto del historial
+git log --oneline             # la línea de tiempo: cada commit, su hash y su mensaje
+
+git push                      # sube tus commits al remoto (GitHub) → dispara la CI
+git pull                      # baja los commits que otros subieron y los integra
+```
+
+<Box kind="analogy" label="◆ Git es una máquina del tiempo con universos paralelos">
+
+Cada `commit` es una **fotografía guardada** del proyecto entero: puedes viajar a cualquiera de ellas y ver el mundo tal como estaba. Pero git hace algo que ninguna máquina del tiempo de película permite: **abrir universos paralelos**. Con una rama creas una línea de tiempo alterna donde experimentas —rompes cosas, pruebas una idea— sin tocar la realidad "oficial". Si el experimento sale bien, fusionas ese universo con el principal; si sale mal, lo cierras y nadie se enteró. El historial no es una cinta que se sobreescribe: es un árbol que se ramifica.
+
+</Box>
+
+### Ramas: universos paralelos baratos
+
+Una **rama** (*branch*) es un puntero móvil a un commit. Crear una cuesta microsegundos porque no copia archivos: solo anota "desde aquí, por este lado". La práctica universal es la **feature branch**: para cada tarea abres una rama, trabajas ahí, y solo cuando está lista la fusionas (`merge`) a la principal.
+
+```bash title="el ciclo de una feature branch"
+git switch -c feat/login      # crea la rama feat/login y salta a ella
+#   ...editas, git add, git commit... (varias veces, a tu ritmo)
+git push -u origin feat/login # la subes al remoto para abrir un PR
+
+git switch main               # vuelves a la rama principal
+git merge feat/login          # fusionas tu trabajo: main ahora incluye login
+```
+
+Aquí conviene fijar una distinción que confunde a todo el mundo al empezar: **rama frente a tag**. No son lo mismo aunque ambos apunten a un commit.
+
+| | Rama (branch) | Tag |
+| --- | --- | --- |
+| Naturaleza | Puntero **móvil**: avanza con cada commit nuevo | Marca **fija e inmutable**: se clava en un commit y no se mueve |
+| Para qué | Una línea de trabajo viva (una feature, `main`) | Señalar un punto memorable: una **versión** publicada |
+| Analogía | El marcapáginas que corres al leer | El post-it pegado en "página 100, aquí pasó algo" |
+
+Esa inmutabilidad del tag es justo lo que aprovecha el [c17c](/concepto/17c-continuous-delivery): `git tag v1.4.2 && git push --tags` no es un push cualquiera, es el **disparador de un release**. La rama recibe el trabajo del día a día; el tag marca el instante exacto que sale a producción, y por eso puede servir de número de lote para un rollback.
+
+### Flujos de trabajo: cómo un equipo se coordina sin pisarse
+
+Tener ramas no basta: hay que acordar **cómo** se usan. Existen dos familias, y elegir mal cuesta caro.
+
+<Grid3>
+
+<Card num="1" title="Trunk-based">
+
+Ramas de vida **muy corta** (horas, un día) que se fusionan seguido a `main`. `main` siempre está desplegable. Es el flujo que pide la entrega continua: menos ramas vivas, menos conflictos, integración constante.
+
+</Card>
+
+<Card num="2" title="Git-flow / feature-branch">
+
+Ramas de **larga vida** (`develop`, `release`, `hotfix`) con reglas estrictas. Da orden a releases planificados y versionados, pero las ramas se separan tanto que fusionarlas duele.
+
+</Card>
+
+<Card num="3" title="El PR como puerta">
+
+En ambos, el cambio no entra a `main` a mano: abre un **pull request**. Ahí la CI corre, un colega revisa, y solo en verde se fusiona.
+
+</Card>
+
+</Grid3>
+
+| Criterio | Trunk-based | Git-flow |
+| --- | --- | --- |
+| Vida de las ramas | Horas o un día | Días o semanas |
+| Encaja con | Entrega/despliegue continuo ([c17c](/concepto/17c-continuous-delivery)) | Releases versionados y planificados |
+| Riesgo de conflictos | Bajo: integras seguido | Alto: ramas que divergen mucho |
+| Quién lo usa | Equipos web/SaaS que despliegan a diario | Software con versiones (v1, v2) y soporte largo |
+
+El **pull request** (PR) es la pieza que hace de todo esto algo seguro. No es solo "pedir que fusionen mi rama": es la **puerta de revisión** donde ocurren tres cosas a la vez —un humano lee el diff, la CI del [c17b](/concepto/17b-tests-y-ci) corre los tests como *gate* obligatorio, y queda registro de por qué entró ese cambio—. Cuando dos ramas tocaron la misma línea, al fusionar aparece un **conflicto de merge**: git no adivina cuál gana y te pide elegir a mano. No es un error ni un drama; es git siendo honesto sobre que dos personas cambiaron lo mismo. Se resuelve editando las líneas marcadas y haciendo un commit.
+
+<Box kind="warn" label="▲ El .env NUNCA entra a git">
+
+Git guarda **todo** lo que le pides y lo reparte a cada clon y a cada colaborador. Por eso hay una regla sin excepciones: los **secretos no van al repositorio**. Tu `.env` —con la `LLM_API_KEY`, contraseñas, claves— se declara en `.gitignore` para que git lo **ignore** por completo:
+
+```bash title=".gitignore · lo que git debe fingir que no existe"
+.env                # secretos: la regla del c00, nunca al repo
+__pycache__/        # basura generada: no es fuente
+*.log               # ruido, no historial
+node_modules/       # dependencias: se reinstalan, no se versionan
+```
+
+Esto conecta dos ideas del curso: el [c00](/concepto/00-preparar-el-terreno) te hizo poner las llaves en un `.env` local precisamente para esto, y el [c23](/concepto/23-seguridad-red-teaming) explica el porqué de fondo —un secreto en el historial de git es una fuga permanente: aunque lo borres luego, sigue vivo en commits viejos que cualquiera con el repo puede recuperar—. La regla de oro del [c15c](/concepto/15c-donde-vive-tu-agente) —el secreto y el artefacto se cruzan lo más tarde posible— empieza aquí, en no dejarlo entrar nunca.
+
+</Box>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Estás a mitad de una feature en la rama `feat/export-csv` (con cambios sin terminar, algunos ya en commits, otros solo en tu working directory) cuando entra un **hotfix urgente**: producción tiene un bug crítico que hay que arreglar *ya*. ¿Qué secuencia de ramas y comandos usas para arreglar el bug sin mezclarlo con tu feature a medias, y volver luego a lo tuyo?
+
+<Solution summary="Ver una solución">
+
+La clave es **aislar** el hotfix en su propia rama, salida de `main`, sin arrastrar tu feature incompleta.
+
+```bash title="hotfix sin contaminar la feature"
+# 1) Guarda lo que tengas sin commitear (o haz un commit "wip")
+git stash                       # aparta tu working directory a un lado
+
+# 2) El hotfix sale de main, NO de tu rama de feature
+git switch main
+git pull                        # parte del main más reciente
+git switch -c hotfix/crash-null # rama propia y de vida cortísima
+#   ...arreglas el bug, git add, git commit...
+git push -u origin hotfix/crash-null   # abres el PR → la CI valida el fix
+
+# 3) Vuelves a lo tuyo tal como lo dejaste
+git switch feat/export-csv
+git stash pop                   # recuperas los cambios que apartaste
+```
+
+El hotfix viaja por su propio PR y sale a producción sin esperar a que tu feature termine; tu `feat/export-csv` sigue intacta. Una vez el hotfix esté en `main`, te conviene traerlo a tu rama (`git merge main` o rebase) para no reintroducir el bug al fusionar. Esto es exactamente por qué las feature branches existen: cada trabajo en su universo.
+
+</Solution>
+
+</Box>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar el viaje de un cambio por los tres estados —working directory → staging (`add`) → repository (`commit`)— y por qué son dos pasos separados.
+- Abrir una feature branch, trabajar en ella y fusionarla, y distinguir una rama (puntero móvil) de un tag (marca inmutable que dispara un release en el c17c).
+- Elegir entre trunk-based y git-flow para un caso concreto, y explicar qué tres cosas hace un pull request a la vez.
+- Justificar por qué el `.env` va en `.gitignore` y nunca al repositorio, conectándolo con el c00 y el c23.
+
+</Checkpoint>
+
+<Quiz title="✅ Autoevaluación · Concepto 37">
+
+<Question>
+  <Prompt>1 · ¿Qué diferencia hay entre `git add` y `git commit`?</Prompt>
+  <Option>`add` guarda en el historial y `commit` lo sube al remoto</Option>
+  <Option ok>`add` mueve los cambios al staging (los "pone sobre la mesa"); `commit` sella lo que hay en staging como un punto inmutable del historial</Option>
+  <Option>Son sinónimos: cualquiera de los dos guarda el cambio</Option>
+  <Feedback>Son dos pasos a propósito: staging es la antesala donde compones qué entra al commit. Subirlo al remoto es un tercer paso, `push` (Concepto 37).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · ¿Cuál es la diferencia de fondo entre una rama y un tag?</Prompt>
+  <Option>La rama es local y el tag siempre es remoto</Option>
+  <Option ok>La rama es un puntero móvil que avanza con cada commit; el tag es una marca fija e inmutable clavada en un commit —por eso sirve para versionar un release</Option>
+  <Option>El tag guarda más metadatos, pero ambos avanzan igual con cada commit</Option>
+  <Feedback>La rama es el marcapáginas que corres al leer; el tag, el post-it fijo en "aquí pasó algo". Esa inmutabilidad es lo que aprovecha `git tag v1.4.2` para disparar un release (Conceptos 37 y 17c).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · ¿Qué hace un pull request que un `git merge` a mano no hace?</Prompt>
+  <Option>Fusiona más rápido porque comprime el historial</Option>
+  <Option ok>Convierte la fusión en una puerta: un humano revisa el diff, la CI corre los tests como gate obligatorio, y queda registro de por qué entró el cambio</Option>
+  <Option>Evita los conflictos de merge automáticamente</Option>
+  <Feedback>El PR es revisión + gate de CI + trazabilidad a la vez. Los conflictos siguen apareciendo si dos ramas tocan la misma línea; el PR es donde se ven y se resuelven, no donde desaparecen (Conceptos 37 y 17b).</Feedback>
+</Question>
+
+<Question>
+  <Prompt>4 · ¿Por qué el archivo `.env` nunca debe entrar a git?</Prompt>
+  <Option>Porque es muy grande y hace lento el clon</Option>
+  <Option ok>Porque git reparte todo lo que guarda a cada clon y lo conserva en el historial: un secreto commiteado es una fuga permanente, aunque lo borres después</Option>
+  <Option>Porque los archivos de configuración van siempre en una rama aparte</Option>
+  <Feedback>Se declara en `.gitignore` para que git lo ignore por completo. Borrarlo luego no basta: sigue vivo en commits viejos. Es la base de la disciplina de secretos del c23 (Concepto 37).</Feedback>
+</Question>
+
+</Quiz>
+
+<Recap level={9} label="↺ En una frase">
+
+Git es el sustrato de todo DevOps: un cambio sube por tres estados (working → staging → repository), vive en ramas que se fusionan por **pull requests** —donde la CI vigila y un humano revisa—, y se publica con tags inmutables; lo único que jamás entra es el secreto.<Arch>estados: working · staging · repository → PR (gate de CI del c17b) → tag = release del c17c</Arch>
+
+</Recap>
