@@ -1,0 +1,149 @@
+<LevelBanner level={3} title="Ruta 3 · Empiezan los agentes de verdad">
+
+Construimos agentes de verdad: memoria automática, grafos de estado, el estándar MCP y equipos multiagente.
+
+</LevelBanner>
+
+En el [Concepto 10](/concepto/10-agentes-prebuilt) montaste un agente con `create_agent`. Funciona, pero en producción vas a querer cosas transversales que **no son la lógica del agente**: resumir la conversación cuando se hace larga, tapar datos personales antes de mandarlos al modelo, pedir aprobación humana antes de una acción peligrosa. Meter todo eso a mano dentro del agente lo ensucia. Para eso está el **middleware**.
+
+<Box kind="def" label="◈ Definición · Middleware de agente">
+
+Un **middleware** es una pieza que se coloca **entre el agente y el modelo** y corre tu código en momentos fijos del ciclo: justo **antes** de cada llamada al modelo (`before_model`) y justo **después** (`after_model`). Como no vive dentro de tu lógica, puedes activarlo y quitarlo sin tocar el resto — es el mismo patrón "hook" que ya conoces de un servidor web.
+
+`create_agent(..., middleware=[...])` recibe una **lista**, y los middleware envuelven la llamada al modelo como **capas de cebolla**: el primero de la lista es el más externo. Por eso el orden importa.
+
+<DefList>
+  <Term>before_model / after_model</Term>
+  <Def>Los dos ganchos principales. `before_model` ve el estado antes de que hable el modelo (para inspeccionar, recortar o inyectar); `after_model`, la respuesta recién generada. Devolver `None` significa "solo miré, no cambies nada"; devolver un dict actualiza el estado.</Def>
+  <Term>middleware "de fábrica"</Term>
+  <Def>LangChain trae varios listos: `SummarizationMiddleware`, `PIIMiddleware`, `HumanInTheLoopMiddleware`, `ModelCallLimitMiddleware`… Los enchufas por nombre; no escribes nada.</Def>
+  <Term>AgentMiddleware</Term>
+  <Def>La clase base para escribir el tuyo: heredas de ella y defines `before_model` o `after_model`.</Def>
+</DefList>
+
+</Box>
+
+<Flow>
+  <Step n="1" title="Entra el estado">La conversación llega al agente.</Step>
+  <Step n="2" title="before_model">Cada middleware puede mirar o modificar lo que verá el modelo.</Step>
+  <Step n="3" title="El modelo habla">Recibe el estado ya "tratado" por los middleware.</Step>
+  <Step n="4" title="after_model">Cada middleware ve la respuesta y puede reaccionar.</Step>
+  <Step n="fin" title="Sigue el ciclo">Igual que en el Concepto 10: repite hasta que el modelo no pida más tools.</Step>
+</Flow>
+
+## Escribir el tuyo y enchufar los de fábrica
+
+```python title="10b_middleware.py · un middleware propio + dos de fábrica"
+from langchain.agents import create_agent
+from langchain.agents.middleware import (
+    AgentMiddleware, SummarizationMiddleware, PIIMiddleware,
+)
+
+# --- Middleware PROPIO: observa cuántos mensajes verá el modelo ---
+class GuardaDeContexto(AgentMiddleware):
+    def __init__(self):
+        super().__init__()
+        self.llamadas_al_modelo = 0
+
+    def before_model(self, state, runtime):
+        self.llamadas_al_modelo += 1   # corre antes de CADA llamada al modelo
+        return None                    # None = "solo observé, no toques el estado"
+
+agente = create_agent(
+    llm,
+    tools=[calcular_envio],
+    system_prompt="Eres un asistente de logística claro y breve.",
+    middleware=[
+        GuardaDeContexto(),
+        # Resume la charla cuando pasa de 20 mensajes; conserva los 6 últimos.
+        SummarizationMiddleware(llm, trigger=("messages", 20), keep=("messages", 6)),
+        # Tapa los correos que escriba el usuario antes de que el modelo los vea.
+        PIIMiddleware("email", strategy="redact", apply_to_input=True),
+    ],
+)
+```
+
+Fíjate en lo que **no** cambió: el `create_agent`, las tools y el `system_prompt` son los del Concepto 10. El middleware es aditivo — una lista más.
+
+<Box kind="def" label="◈ Los tres de fábrica que más vas a usar">
+
+- **`SummarizationMiddleware`** — cuando la conversación crece, resume la parte vieja y conserva las últimas. Es lo que evita que un chat largo reviente la ventana de contexto (y que la factura suba, [Concepto 16](/concepto/16-observabilidad-y-costo)). El `trigger` decide cuándo dispara (`("messages", 20)`, `("tokens", 4000)` o `("fraction", 0.8)`).
+- **`PIIMiddleware`** — detecta correos, tarjetas, IPs… y los tapa (`redact`, `mask`, `hash` o `block`). Puedes aplicarlo a la entrada del usuario, a la salida del modelo o a los resultados de las tools.
+- **`HumanInTheLoopMiddleware`** — pausa el agente para pedir aprobación humana antes de ejecutar una tool marcada como sensible. Es la versión "de fábrica" del *human-in-the-loop* que montaste a mano con `interrupt` en el [Concepto 13](/concepto/13-langgraph-a-fondo).
+
+</Box>
+
+<Box kind="warn" label="▲ El orden de la lista es el orden de las capas">
+
+Los middleware se anidan: el primero de la lista envuelve al segundo, y así. Si pones `PIIMiddleware` **después** de algo que ya mandó el texto al modelo, llegas tarde. Regla práctica: lo que **protege la entrada** (PII) va temprano; lo que **reacciona a la salida** puede ir después. Cuando dudes, escribe un `before_model` que imprima el estado y míralo correr.
+
+</Box>
+
+<Quiz title="✅ Autoevaluación · Concepto 10b">
+
+<Question>
+  <Prompt>1 · ¿Qué distingue a un middleware de meter la misma lógica dentro del agente?</Prompt>
+  <Option>Que corre más rápido</Option>
+  <Option ok>Que es transversal y desacoplado: se enchufa o se quita sin tocar la lógica del agente</Option>
+  <Option>Que solo funciona con modelos de Anthropic</Option>
+  <Feedback>El middleware vive ENTRE el agente y el modelo. Por eso resumir, tapar PII o pedir aprobación no ensucian tu `create_agent`: son una capa aparte que activas por lista.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>2 · Tu `before_model` devuelve `None`. ¿Qué significa?</Prompt>
+  <Option>Que hubo un error</Option>
+  <Option ok>Que solo observaste: no modificas el estado del agente</Option>
+  <Option>Que se salta la llamada al modelo</Option>
+  <Feedback>`None` es "no toques nada". Para cambiar el estado (recortar mensajes, inyectar contexto) devuelves un dict con la actualización.</Feedback>
+</Question>
+
+<Question>
+  <Prompt>3 · Un chat de soporte lleva 200 mensajes y empieza a costar caro. ¿Qué middleware ataca eso?</Prompt>
+  <Option ok>`SummarizationMiddleware`: resume lo viejo y conserva lo reciente</Option>
+  <Option>`PIIMiddleware`: tapa los datos personales</Option>
+  <Option>Ninguno; hay que reescribir el agente</Option>
+  <Feedback>La conversación larga infla los tokens de entrada en cada vuelta. Resumir la parte antigua mantiene el contexto acotado sin perder el hilo.</Feedback>
+</Question>
+
+</Quiz>
+
+<Box kind="practice" label="▸ Para practicar">
+
+Añade al agente un middleware propio `LimiteDeMensajes` que, en `before_model`, corte la respuesta si la conversación ya pasó de cierto número de mensajes. Pista: mira `ModelCallLimitMiddleware` de fábrica antes de escribir el tuyo — puede que ya exista lo que necesitas.
+
+<Solution summary="Ver una pista">
+
+```python title="pista"
+from langchain.agents.middleware import ModelCallLimitMiddleware
+# Muchas veces NO hace falta escribir un middleware: revisa primero los de
+# fábrica. Este corta el agente tras N llamadas al modelo, evitando el bucle
+# que se descontrola del que hablamos en el Concepto 10.
+agente = create_agent(llm, tools=[...], middleware=[ModelCallLimitMiddleware(max_calls=6)])
+```
+
+</Solution>
+
+</Box>
+
+<Avoid label="⛔ Errores clásicos con middleware">
+
+- **Reinventar lo que ya existe de fábrica.** Antes de escribir un `before_model`, mira la lista: resumen, PII, límites de llamadas, reintentos y fallback de modelo ya están hechos.
+- **Poner PII tarde.** Si el dato personal ya viajó al modelo, taparlo después no sirve. Protege la ENTRADA temprano.
+- **Meter lógica de negocio en un middleware.** El middleware es para lo transversal (contexto, seguridad, coste). Si tu regla depende del dominio, va en una tool o en un nodo del grafo ([Concepto 13](/concepto/13-langgraph-a-fondo)).
+
+</Avoid>
+
+<Checkpoint label="✔ Si llegaste aquí deberías poder…">
+
+- Explicar qué es un middleware y dónde se coloca (entre el agente y el modelo, con hooks `before_model`/`after_model`).
+- Enchufar middleware de fábrica a `create_agent` con la lista `middleware=[...]` y saber que el orden anida las capas.
+- Escribir un middleware propio heredando de `AgentMiddleware` y entender que devolver `None` es "solo observar".
+- Elegir el middleware correcto por problema: conversación larga → resumen; datos personales → PII; acción peligrosa → aprobación humana.
+
+</Checkpoint>
+
+<Recap level={3} label="↺ En una frase">
+
+El **middleware** es la capa transversal del agente: `create_agent(..., middleware=[...])` corre tus ganchos antes y después de cada llamada al modelo, y trae resúmenes, PII y aprobación humana ya hechos.<Arch>archivo: `10b_middleware.py`</Arch>
+
+</Recap>

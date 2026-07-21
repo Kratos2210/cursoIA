@@ -89,9 +89,22 @@ mensajes = [
 print(llm.invoke(mensajes).content)
 ```
 
+<Box kind="def" label="◈ .content lee el texto; .content_blocks lee TODO (v1)">
+
+`respuesta.content` te da el texto, y para empezar es lo único que necesitas. Pero una respuesta v1 puede traer más que texto —el **razonamiento** de un modelo que piensa, las **llamadas a herramientas**, trozos de **imagen**—. LangChain 1.x expone eso de forma uniforme en `respuesta.content_blocks`: una lista de bloques tipados que se lee **igual sea cual sea el proveedor**.
+
+```python title="leer la respuesta por bloques (cross-provider)"
+for bloque in respuesta.content_blocks:
+    print(bloque["type"])   # "text", "reasoning", "tool_call", "image"…
+```
+
+Para texto plano, `.content` basta y lo verás en casi todo el curso. Cuando lleguemos a lo multimodal ([c22](/concepto/22-multimodal)) y al razonamiento, `content_blocks` es la forma correcta de leerlo sin depender del proveedor.
+
+</Box>
+
 <Box kind="analogy" label="◆ Bueno saber">
 
-El parámetro `temperature` controla la creatividad: `0` = preciso y repetible (clasificar, calcular, usar tools); `0.7–1` = variado (redactar, conversar). En LangChain 1.x existe también `init_chat_model("gemini-3.1-flash-lite")` para crear cualquier modelo cambiando solo el nombre.
+El parámetro `temperature` controla la creatividad: `0` = preciso y repetible (clasificar, calcular, usar tools); `0.7–1` = variado (redactar, conversar). En LangChain 1.x existe también `init_chat_model("google_genai:gemini-3.1-flash-lite")` para crear cualquier modelo cambiando solo el nombre: la sintaxis canónica es `"proveedor:modelo"` (`"openai:gpt-5.4-mini"`, `"anthropic:claude-haiku-4-5"`…). El curso usa su propia fábrica `util.crear_llm()`, que además resuelve los casos especiales de cada proveedor.
 
 </Box>
 

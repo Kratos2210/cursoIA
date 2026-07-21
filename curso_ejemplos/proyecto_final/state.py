@@ -15,7 +15,7 @@ LÓGICA:
      de pisarlos. Por eso un nodo devuelve {"messages": [respuesta]} y no
      pierde la conversación anterior.
 
-  create_react_agent (el que usa graph_builder.py) construye por dentro un
+  create_agent (el que usa graph_builder.py) construye por dentro un
   grafo con exactamente este estado. Lo declaramos explícito aquí para que
   puedas ver qué hay dentro y, si quieres, extenderlo.
 """

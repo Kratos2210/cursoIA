@@ -61,9 +61,9 @@ extraer_preferencia("¿qué tal el clima?")         # -> None  (nada que recorda
 
 ### El agente que consulta su memoria
 
-Al agente se le pasa el `store` igual que el checkpointer. Una tool lo alcanza con `get_store()` —LangGraph se lo inyecta en tiempo de ejecución— y así el modelo puede decir "según recuerdo, te llamas Ana" en una conversación **nueva**.
+Al agente (creado con `create_agent`) se le pasa el `store` igual que el checkpointer. Una tool lo alcanza con `get_store()` —LangGraph se lo inyecta en tiempo de ejecución— y así el modelo puede decir "según recuerdo, te llamas Ana" en una conversación **nueva**.
 
-```python title="create_react_agent con las DOS memorias"
+```python title="create_agent con las DOS memorias"
 from langgraph.config import get_store
 
 @tool
@@ -72,7 +72,7 @@ def recordar_sobre_el_usuario() -> str:
     hechos = recuperar_hechos(get_store(), user_id)   # el MISMO store del agente
     return "; ".join(f"{k}: {v}" for k, v in hechos.items()) or "No recuerdo nada aún."
 
-agente = create_react_agent(
+agente = create_agent(
     llm, tools=[recordar_sobre_el_usuario],
     store=store,                 # memoria de LARGO PLAZO (entre conversaciones)
     checkpointer=MemorySaver(),  # memoria de TRABAJO (dentro de la conversación)

@@ -19,7 +19,12 @@ requires-python = ">=3.11"
 dependencies = [
     # === Base de LangChain ===
     # Piezas base: mensajes, prompts, tools, runnables, vector store en memoria.
-    "langchain-core==1.4.8",
+    "langchain-core==1.5.0",
+    # Paquete "paraguas" de LangChain v1. Trae `langchain.agents.create_agent`
+    # (el estándar v1 para agentes, que reemplaza al `create_react_agent` de
+    # langgraph.prebuilt) y su sistema de `middleware`. Exige langchain-core>=1.4.9,
+    # por eso el pin de arriba subió de 1.4.8 a 1.5.0.
+    "langchain==1.3.14",
     # Conexión con los modelos Gemini de Google (chat + embeddings).
     "langchain-google-genai==4.2.7",
     # Cliente para cualquier API que hable el dialecto de OpenAI: Groq, Ollama,
@@ -27,14 +32,16 @@ dependencies = [
     # cuando la (cortísima) cuota gratuita de Gemini se agota a mitad de ejercicio.
     # Va en las dependencias BASE, no en un extra: los ejercicios lo usan y se
     # instalan con `uv sync --extra dev`.
-    "langchain-openai>=0.2",
+    "langchain-openai==1.3.3",
     # Claude (Anthropic): NO habla el dialecto de OpenAI, así que tiene su
     # propia rama en `util.crear_llm()` (igual que Gemini). Es lo que permite
     # `LLM_PROVIDER=anthropic` en el .env sin tocar código.
     "langchain-anthropic==1.4.8",
 
     # === Agentes y grafos ===
-    # Agentes: create_react_agent, StateGraph y memoria (checkpointer).
+    # Agentes: create_agent (vía el paquete `langchain`), StateGraph y memoria
+    # (checkpointer). langgraph queda en 1.2.8: es la capa sobre la que corre
+    # create_agent, no hace falta subirla.
     "langgraph==1.2.8",
 
     # === Utilidades ===
@@ -114,7 +121,7 @@ llmops = [
     "numpy>=1.26",                  # similitud coseno del semantic cache
     # Cliente OpenAI-compatible: con él, una sola clase habla con Groq, Ollama,
     # Together u OpenAI. Cambiar de proveedor = cambiar LLM_BASE_URL en el .env.
-    "langchain-openai>=0.2",
+    "langchain-openai==1.3.3",
     # Embeddings LOCALES (ONNX, sin API ni cuota). Groq no ofrece embeddings, y
     # el RAG los necesita: así el proyecto no depende de ningún proveedor para
     # vectorizar. Descarga el modelo (~220 MB) la primera vez.

@@ -3,7 +3,7 @@
 Cada archivo es **autónomo**: lo abres en VS Code, lo corres y funciona solo.
 Están comentados **sección por sección** para que entiendas cada línea.
 
-Y todo está **verificado por 860 tests** que corren sin gastar un solo token
+Y todo está **verificado por 872 tests** que corren sin gastar un solo token
 (ver [§6](#6-cómo-se-verifica-que-esto-funciona)).
 
 ## 1) Requisitos (una sola vez)
@@ -63,7 +63,8 @@ La columna «Cuota» se refiere al proveedor que tengas activo: con
 | 07 · Herramientas | `07_herramientas.py` | `@tool` | **No** |
 | 08 · Routing | `08_routing.py` | el ciclo completo A→D | Sí |
 | 09 · Resiliencia + async | `09_resiliencia_async.py` | fallbacks, retry, async | Sí |
-| 10 · Agente (prebuilt) | `10_agente.py` | `create_react_agent` + memoria | Sí |
+| 10 · Agente (prebuilt) | `10_agente.py` | `create_agent` + memoria | Sí |
+| 10b · Middleware de agentes | `10b_middleware.py` | middleware: resumen · PII · aprobación humana | **No** |
 | 11 · RAG | `11_rag.py` | responder desde un documento | Sí (chat **+ embeddings**) |
 | 12 · RAG en profundidad | `12_rag_hibrido_rerank.py` | BM25 + vectorial, RRF y re-ranking | **No** |
 | 13 · LangGraph a fondo | `13_langgraph_stategraph.py` | `StateGraph` desde cero | Sí |
@@ -125,6 +126,7 @@ montón de scripts: **cada concepto tiene una prueba que lo defiende**.
 | Resiliencia (429, retry) | `09` | — | `test_util.py::TestEsErrorCuota` |
 | 🏗 Proyecto: contrato JSON + filtro + métricas + fallback | `09b` | — | `test_offline.py::TestTema09bProyectoTexto` (6 tests) |
 | Agente ReAct | `10` | — | `test_agente.py::TestAgenteCompleto` |
+| Middleware de agentes | `10b` | — | `test_10b_middleware.py` |
 | RAG: trocear y unir | `11` | [11](ejercicios/ejercicio_11_rag.md) | `test_offline.py::TestTema11Rag` |
 | BM25 · coseno · RRF · re-rank | `12` | [12](ejercicios/ejercicio_12_rerank.md) | `test_offline.py::TestTema12*` (25 tests) |
 | Re-ranker REAL (cross-encoder ONNX, sin torch) | `rerank/rerank_real.py` | [12](ejercicios/ejercicio_12_rerank.md) | — (companion, fuera del gate, ADR-0008) |
@@ -174,7 +176,7 @@ montón de scripts: **cada concepto tiene una prueba que lo defiende**.
 
 ```bash
 cd curso_ejemplos
-uv run pytest -m offline        # 860 tests, ~30 s, CERO llamadas a la API
+uv run pytest -m offline        # 872 tests, ~30 s, CERO llamadas a la API
 ```
 
 Qué cubren:

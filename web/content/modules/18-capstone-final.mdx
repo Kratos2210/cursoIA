@@ -152,7 +152,7 @@ LLM + LCEL + salida estructurada + herramientas + routing + agente LangGraph (`S
 | Chroma persistente (no en memoria) | Volumen bajo/medio; evita re-indexar y no añade costo de servicio externo. |
 | Re-ranker cross-encoder | La normativa tiene fragmentos muy parecidos; la precisión del contexto es crítica para no dar respuestas erróneas de cumplimiento. |
 | Human-in-the-loop antes de marcar incumplimiento | Una marca errónea tiene consecuencias regulatorias; exige validación humana. |
-| StateGraph en vez de prebuilt | Necesitamos el nodo de aprobación y ramas propias, no cabe en `create_react_agent`. |
+| StateGraph en vez de prebuilt | Necesitamos el nodo de aprobación y ramas propias, no cabe en `create_agent`. |
 | Audit trail de cada decisión | En una financiera, toda evaluación debe ser trazable y auditable ante el regulador. |
 
 <Box kind="warn" label="▲ Errores comunes">
@@ -205,7 +205,7 @@ LLM + LCEL + salida estructurada + herramientas + routing + agente LangGraph (`S
 </Question>
 
 <Question>
-  <Prompt>2 · El capstone monta un `StateGraph` en vez de `create_react_agent`. ¿Por qué?</Prompt>
+  <Prompt>2 · El capstone monta un `StateGraph` en vez de `create_agent`. ¿Por qué?</Prompt>
   <Option>Porque el prebuilt no admite herramientas con salida Pydantic</Option>
   <Option>Porque el prebuilt gasta más tokens en cada turno</Option>
   <Option ok>Porque hace falta un nodo de aprobación humana y ramas propias que el prebuilt no expone</Option>

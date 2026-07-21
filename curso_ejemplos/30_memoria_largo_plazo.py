@@ -30,7 +30,7 @@ LÓGICA (paso a paso):
   1) guardar_hecho() / recuperar_hechos(): el CRUD mínimo sobre el store.
   2) extraer_preferencia(): de una frase del usuario saca (clave, valor) si hay
      algo que valga la pena recordar (determinista → testeable byte a byte).
-  3) construir_agente_con_memoria(): un create_react_agent con `store=` y una
+  3) construir_agente_con_memoria(): un create_agent con `store=` y una
      tool que lee la memoria del usuario (la parte que SÍ usa el LLM).
   4) main(): demuestra el contraste —dos `thread_id` distintos comparten el
      store pero no el checkpointer— y, si hay llave, corre el agente real.
@@ -112,17 +112,17 @@ def extraer_preferencia(texto: str) -> tuple[str, str] | None:
 
 # ============ 3) EL AGENTE QUE CONSULTA SU MEMORIA (parte real) ============
 def construir_agente_con_memoria(llm, store: InMemoryStore, user_id: str):
-    """Un create_react_agent con `store=` y una tool que lee la memoria del usuario.
+    """Un create_agent con `store=` y una tool que lee la memoria del usuario.
 
     La tool usa `get_store()` para alcanzar el MISMO store que le pasamos al
     agente, sin recibirlo por parámetro: LangGraph lo inyecta en tiempo de
     ejecución. Así el modelo puede decir "según recuerdo, te llamas Ana" en una
     conversación nueva, porque el store sobrevive al cambio de `thread_id`.
     """
+    from langchain.agents import create_agent
     from langchain_core.tools import tool
     from langgraph.checkpoint.memory import MemorySaver
     from langgraph.config import get_store
-    from langgraph.prebuilt import create_react_agent
 
     @tool
     def recordar_sobre_el_usuario() -> str:
@@ -132,7 +132,7 @@ def construir_agente_con_memoria(llm, store: InMemoryStore, user_id: str):
             return "No recuerdo nada de este usuario todavía."
         return "; ".join(f"{k}: {v}" for k, v in sorted(hechos.items()))
 
-    return create_react_agent(
+    return create_agent(
         llm,
         tools=[recordar_sobre_el_usuario],
         store=store,                 # la memoria de largo plazo

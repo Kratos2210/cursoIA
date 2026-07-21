@@ -12,7 +12,7 @@ FINALIDAD:
   Y la tercera, propia del servicio: el RBAC llega hasta las tools.
 
 LÓGICA del guion:
-  create_react_agent llama al modelo, ve que pidió una tool, la ejecuta, le
+  create_agent llama al modelo, ve que pidió una tool, la ejecuta, le
   devuelve el resultado y vuelve a llamar al modelo. Por eso cada guion tiene
   2 respuestas: (1) "usa esta tool", (2) "esta es la respuesta final".
 """

@@ -14,7 +14,7 @@ FINALIDAD:
      olvidó llamar a `registrar_auditoria` y el agente dejó de auditar.)
 
 LÓGICA:
-  create_react_agent construye por dentro el mismo ciclo ReAct:
+  create_agent construye por dentro el mismo ciclo ReAct:
 
         START -> [agente] --¿pidió una tool?--> [tools] --+
                     ^                                     |
@@ -212,7 +212,7 @@ def construir_agentes_por_variante(variantes, rol: str | None = None,
     """Un agente por variante del A/B, compartiendo las piezas caras.
 
     ⭐ CIERRA EL LAZO A/B (ADR-0006). El prompt se hornea al construir el grafo
-       (`create_react_agent(prompt=...)`), así que "usar el prompt de la variante"
+       (`create_agent(system_prompt=...)`), así que "usar el prompt de la variante"
        significa, literalmente, un grafo por variante. Lo caro —modelo, retriever,
        evaluador— se construye UNA vez y se comparte; solo el prompt (y el grafo
        ligero que lo envuelve) cambia. Así el `thread_id` fija la variante, y la

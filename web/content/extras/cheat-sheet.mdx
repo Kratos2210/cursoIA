@@ -12,7 +12,7 @@ Las líneas que usarás mil veces, juntas en un solo lugar. Cada una está expli
 | Que el modelo la use | `llm.bind_tools(herramientas)` + ciclo A→D | 08 |
 | Plan B si falla el modelo | `llm.with_fallbacks([respaldo])` | 09 |
 | Reintentar ante un 429 | `cadena.with_retry(stop_after_attempt=3)` | 09 |
-| Un agente completo | `create_react_agent(llm, tools, checkpointer=MemorySaver())` | 10 |
+| Un agente completo | `create_agent(llm, tools, checkpointer=MemorySaver())` | 10 |
 | Buscar en mis documentos | `retriever = vs.as_retriever(search_type="mmr", search_kwargs={"k": 4})` | 11 |
 | Recuperar con más precisión | `ContextualCompressionRetriever(reranker, retriever)` + híbrido | 12 |
 | Un agente a mi medida | `StateGraph(Estado)` + `add_node` / `add_conditional_edges` | 13 |
@@ -66,9 +66,10 @@ La tabla de arriba mapea intención → código. Esta mapea **situación de nego
 ```python title="el interruptor universal"
 from langchain.chat_models import init_chat_model
 
-llm = init_chat_model("gemini-3.1-flash-lite")        # Google (necesita GOOGLE_API_KEY)
-# llm = init_chat_model("gpt-5.4-mini")          # OpenAI  (OPENAI_API_KEY)
-# llm = init_chat_model("claude-sonnet-5")       # Anthropic (ANTHROPIC_API_KEY)
+# Sintaxis canónica v1: "proveedor:modelo".
+llm = init_chat_model("google_genai:gemini-3.1-flash-lite")  # Google (GOOGLE_API_KEY)
+# llm = init_chat_model("openai:gpt-5.4-mini")        # OpenAI  (OPENAI_API_KEY)
+# llm = init_chat_model("anthropic:claude-haiku-4-5") # Anthropic (ANTHROPIC_API_KEY)
 
 # Groq (y Ollama, y Together): NO hace falta una clase por proveedor.
 # Todos hablan el dialecto de OpenAI; solo cambia la base_url.

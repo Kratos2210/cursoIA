@@ -864,22 +864,19 @@ def m22(importar_ejemplo):
     return importar_ejemplo("22_multimodal")
 
 
-class TestTema22DataUrl:
-    """La imagen se codifica en un data: URL con su base64."""
-
-    def test_prefijo_correcto(self, m22):
-        url = m22.imagen_a_data_url(b"\x89PNG\r\n", mime="image/png")
-        assert url.startswith("data:image/png;base64,")
-
-    def test_respeta_el_mime_que_se_le_pasa(self, m22):
-        assert m22.imagen_a_data_url(b"xx", mime="image/jpeg").startswith("data:image/jpeg;base64,")
+class TestTema22Base64:
+    """La imagen se codifica en base64 (texto). En v1 el mime NO va aquí: viaja
+    como campo aparte del bloque, así que el base64 es 'pelado', sin prefijo data:."""
 
     def test_el_base64_es_decodificable_y_recupera_los_bytes(self, m22):
         import base64
         datos = b"unos bytes cualquiera \x00\x01\x02"
-        url = m22.imagen_a_data_url(datos)
-        b64 = url.split(",", 1)[1]
+        b64 = m22.imagen_a_base64(datos)
         assert base64.b64decode(b64) == datos
+
+    def test_no_lleva_prefijo_data_url(self, m22):
+        # El bloque tipado v1 quiere el base64 crudo; el mime va en su propio campo.
+        assert not m22.imagen_a_base64(b"xx").startswith("data:")
 
     def test_el_png_demo_es_un_png_de_verdad(self, m22):
         import base64
@@ -888,35 +885,36 @@ class TestTema22DataUrl:
 
 
 class TestTema22Mensaje:
-    """El mensaje multimodal: dos bloques, texto + imagen, en el formato correcto."""
+    """El mensaje multimodal v1: dos bloques TIPADOS, texto + imagen."""
 
     def test_tiene_exactamente_dos_bloques(self, m22):
-        msg = m22.mensaje_multimodal("hola", "data:image/png;base64,AAAA")
-        assert len(msg.content) == 2
+        msg = m22.mensaje_multimodal("hola", "AAAA")
+        assert len(msg.content_blocks) == 2
 
     def test_el_bloque_de_texto_preserva_el_texto(self, m22):
-        msg = m22.mensaje_multimodal("¿qué ves?", "data:image/png;base64,AAAA")
-        assert msg.content[0]["type"] == "text"
-        assert msg.content[0]["text"] == "¿qué ves?"
+        msg = m22.mensaje_multimodal("¿qué ves?", "AAAA")
+        assert msg.content_blocks[0]["type"] == "text"
+        assert msg.content_blocks[0]["text"] == "¿qué ves?"
 
-    def test_el_bloque_de_imagen_lleva_el_data_url(self, m22):
-        url = "data:image/png;base64,AAAA"
-        msg = m22.mensaje_multimodal("x", url)
-        assert msg.content[1]["type"] == "image_url"
-        assert msg.content[1]["image_url"]["url"] == url
+    def test_el_bloque_de_imagen_lleva_base64_y_mime_por_separado(self, m22):
+        msg = m22.mensaje_multimodal("x", "AAAA", mime="image/jpeg")
+        img = msg.content_blocks[1]
+        assert img["type"] == "image"
+        assert img["base64"] == "AAAA"
+        assert img["mime_type"] == "image/jpeg"
 
     def test_es_un_humanmessage(self, m22):
         from langchain_core.messages import HumanMessage
-        assert isinstance(m22.mensaje_multimodal("x", "data:image/png;base64,AAAA"), HumanMessage)
+        assert isinstance(m22.mensaje_multimodal("x", "AAAA"), HumanMessage)
 
     def test_el_formato_lo_acepta_langchain_google_genai(self, m22):
-        """El contrato de verdad: langchain-google-genai traduce ESTA estructura a
-        una parte 'inline_data' de Gemini. Confirma que el formato que construimos
-        es el que el proveedor con visión espera (sin llamar a la API)."""
+        """El contrato de verdad: langchain-google-genai traduce ESTE bloque tipado
+        a una parte 'inline_data' de Gemini. Confirma que el formato v1 que
+        construimos es el que el proveedor con visión espera (sin llamar a la API)."""
         import base64
         from langchain_google_genai.chat_models import _convert_to_parts
-        url = m22.imagen_a_data_url(base64.b64decode(m22.PNG_DEMO_1x1))
-        partes = _convert_to_parts(m22.mensaje_multimodal("mira", url).content)
+        b64 = m22.imagen_a_base64(base64.b64decode(m22.PNG_DEMO_1x1))
+        partes = _convert_to_parts(m22.mensaje_multimodal("mira", b64).content)
         assert len(partes) == 2
         assert partes[0].text == "mira"
         assert partes[1].inline_data.mime_type == "image/png"
