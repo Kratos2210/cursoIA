@@ -41,7 +41,10 @@ class Settings(BaseSettings):
     llm_provider: str = "openai"
     llm_base_url: str = "https://api.groq.com/openai/v1"
     llm_api_key: str = Field(default="", description="Llave del proveedor OpenAI-compatible (p.ej. Groq)")
-    llm_modelo: str = "qwen/qwen3-32b"
+    # ⚠️ Foto con fecha (2026-07-21). Si el proveedor apaga este modelo verás
+    #    "model_decommissioned": no es el código, es el catálogo. Copia un ID
+    #    vigente de la web de Groq y ponlo en LLM_MODELO del .env.
+    llm_modelo: str = "openai/gpt-oss-120b"
     llm_temperatura: float = 0.0
 
     # ---- RESILIENCIA DEL CLIENTE LLM (ver app/llm.py) ----

@@ -120,9 +120,9 @@ Cada campo responde una pregunta de negocio concreta — así se lee la ficha co
 
 Fuera de Bedrock, la misma información vive en la **model card** de cada proveedor (la página del modelo en su documentación), en el endpoint `/models` de OpenRouter y en `ollama show <modelo>` para los locales. Leer la ficha es el paso CERO de la elección: filtra por capacidades **antes** de discutir precios — un modelo que no ve imágenes no se abarata: se descarta.
 
-### Cuánto cuesta cada modelo (consultado: 2026-07-10)
+### Cuánto cuesta cada modelo (consultado: 2026-07-21)
 
-Precios de lista por millón de tokens, tomados de las páginas oficiales de cada proveedor el 2026-07-09. Sirven para *estimar* y *comparar*, no como contrato.
+Precios de lista por millón de tokens, tomados de las páginas oficiales de cada proveedor. Sirven para *estimar* y *comparar*, no como contrato. Esta es la tabla de **decisión** (precio, ventana, tipo); la de **operación** —qué ID pegar en tu `.env` hoy mismo— está en el [cheat sheet](/recurso/cheat-sheet).
 
 | Modelo | Proveedor | Tipo | $/1M entrada | $/1M salida | Ventana | Nota |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -135,8 +135,11 @@ Precios de lista por millón de tokens, tomados de las páginas oficiales de cad
 | `Gemini 2.5 Flash` | Google | pago | $0.30 | $2.50 | 1M | Tarifa única sin tramos. |
 | `gemini-3.1-flash-lite` | Google | pago | $0.25 | $1.50 | 1M | Tiene capa gratuita. **El default del curso**, tras apagarse `gemini-2.0-flash` el 2026-06-01. |
 | `deepseek-v4-flash` | DeepSeek | open weights (API) | $0.14 | $0.28 | 1M | Cache miss; el nombre `deepseek-chat` se renombra el 2026-07-24. |
-| `Llama 3.3 70B` | Groq | open weights | $0.59 | $0.79 | 128K | Llama Community License. |
-| `Qwen3 32B` | Groq | open weights | $0.29 | $0.59 | 131K | Apache 2.0. El que usa el curso en Groq. |
+| `Llama 3.3 70B` | Groq | open weights | $0.59 | $0.79 | 128K | Llama Community License. El `strong` de la cascada del proyecto LLMOps. |
+| `openai/gpt-oss-120b` | Groq | open weights | $0.15 | $0.60 | 131K | Apache 2.0. **El que usa el curso en Groq** (consultado 2026-07-21). Razona antes de responder. |
+| `openai/gpt-oss-20b` | Groq | open weights | $0.075 | $0.30 | 131K | El hermano pequeño: la mitad de precio para tareas acotadas. Consultado 2026-07-21. |
+| `qwen/qwen3.6-27b` | Groq | open weights | $0.60 | $3.00 | — | ⚠️ En **preview**: Groq puede retirarlo sin aviso. No lo pongas en producción. Consultado 2026-07-21. |
+| ~~`Qwen3 32B`~~ | Groq | open weights | ~~$0.29~~ | ~~$0.59~~ | 131K | ⛔ **Retirado por Groq en 2026-07.** Era el default del curso: lo reemplaza `gpt-oss-120b`. Ejemplo vivo de por qué el modelo va en el `.env` y no en el código. |
 | `GLM-5` | Z.ai (Zhipu) | open weights (API) | $1.00 | $3.20 | — | Flagship chino de Zhipu. Consultado 2026-07-19. |
 | `GLM-4.7-FlashX` | Z.ai (Zhipu) | open weights (API) | $0.07 | $0.40 | — | El piso de precio de la familia GLM (y hay un Flash gratis). Consultado 2026-07-19. |
 | `kimi-k3` | Moonshot (Kimi) | open weights (API) | $3.00 | $15.00 | 1M | Cache miss; con cache hit la entrada baja a $0.30. Consultado 2026-07-19. |
@@ -144,16 +147,16 @@ Precios de lista por millón de tokens, tomados de las páginas oficiales de cad
 
 <Box kind="warn" label="▲ Esta tabla caduca">
 
-Los precios de los LLM cambian cada pocos meses (bajan casi siempre, y los nombres de modelo se renombran aún más rápido: OpenAI ya publica GPT-5.6). **Fecha de esta consulta: 2026-07-09.** Antes de decidir con dinero real, mira siempre la página oficial:
+Los precios de los LLM cambian cada pocos meses (bajan casi siempre) y los modelos se **retiran** aún más rápido: mientras escribíamos esto, Groq apagó `qwen/qwen3-32b`, que era el default del curso. **Fecha de esta consulta: 2026-07-21** (las filas de Groq; el resto, 2026-07-09/19 según la nota de cada una). Antes de decidir con dinero real —y antes de pegar un ID en tu `.env`— mira siempre la página oficial:
 
 - [OpenAI](https://platform.openai.com/docs/pricing) · [Gemini](https://ai.google.dev/gemini-api/docs/pricing) · [Anthropic](https://www.anthropic.com/pricing)
-- [DeepSeek](https://api-docs.deepseek.com/quick_start/pricing) · [Groq](https://groq.com/pricing) · [Z.ai / GLM](https://docs.z.ai/guides/overview/pricing) · [Kimi / Moonshot](https://platform.kimi.ai/docs/pricing/chat)
+- [DeepSeek](https://api-docs.deepseek.com/quick_start/pricing) · [Groq](https://groq.com/pricing) (catálogo vigente en [console.groq.com/docs/models](https://console.groq.com/docs/models)) · [Z.ai / GLM](https://docs.z.ai/guides/overview/pricing) · [Kimi / Moonshot](https://platform.kimi.ai/docs/pricing/chat)
 
 </Box>
 
 <Box kind="def" label="◈ Los modelos chinos: GLM, Qwen, DeepSeek, Kimi">
 
-Los laboratorios chinos — **Zhipu/Z.ai** (familia GLM), **Alibaba** (Qwen), **DeepSeek** y **Moonshot** (Kimi) — publican open weights con licencias permisivas y marcan el **piso de precio** del mercado. De hecho ya usas dos sin llamarlos así: el Qwen que corres en Groq y en Ollama, y DeepSeek por API. Dos matices que la tabla enseña:
+Los laboratorios chinos — **Zhipu/Z.ai** (familia GLM), **Alibaba** (Qwen), **DeepSeek** y **Moonshot** (Kimi) — publican open weights con licencias permisivas y marcan el **piso de precio** del mercado. De hecho ya usas dos sin llamarlos así: el Qwen que corres en Ollama, y DeepSeek por API. Dos matices que la tabla enseña:
 
 - **Chino ≠ barato siempre.** `kimi-k3` cuesta como un Claude Sonnet — compite en el tier flagship (con ventana de 1M) — mientras `GLM-4.7-FlashX` cuesta centavos. La familia importa menos que el tier.
 - **El mismo peso, tres jurisdicciones.** Un open weights chino puedes consumirlo por su **API nativa** (tus datos viajan a servidores del laboratorio — para un chatbot de atención al cliente con datos personales, eso es una decisión de privacidad, no solo de precio), **hospedado en un proveedor occidental** (Groq, Together, OpenRouter, el marketplace de Bedrock) o **en tus fierros** (camino ④). El modelo es el mismo; lo que eliges es quién ve tus datos y a qué precio — los cuatro caminos de arriba, otra vez.
@@ -195,7 +198,7 @@ OPENAI_API_KEY=sk-...      # openai      (default gpt-5.4-mini)
 # ANTHROPIC_API_KEY=sk-ant-...           # anthropic (default claude-haiku-4-5)
 # OPENROUTER_API_KEY=sk-or-...           # openrouter (modelos :free para prototipar)
 # DEEPSEEK_API_KEY=sk-...                # deepseek   (default deepseek-v4-flash)
-# GROQ_API_KEY=gsk_...                   # groq       (default qwen/qwen3-32b)
+# GROQ_API_KEY=gsk_...                   # groq       (default openai/gpt-oss-120b)
 # GOOGLE_API_KEY=AIza...                 # google     (default gemini-3.1-flash-lite)
 # (ollama no necesita llave: corre en tu máquina)
 ```

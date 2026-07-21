@@ -34,7 +34,9 @@ print(respuesta.content)
 
 <Box kind="analogy" label="◆ ¿Solo tienes llave de Groq? Cambia dos líneas">
 
-Groq sirve `qwen/qwen3-32b` con un cupo gratuito mucho más generoso que el de Gemini. El resto del archivo —y del curso entero— es idéntico: `invoke`, los mensajes, las cadenas, los agentes. Solo cambia *quién* está al otro lado del cable.
+Groq sirve modelos abiertos con un cupo gratuito mucho más generoso que el de Gemini. El resto del archivo —y del curso entero— es idéntico: `invoke`, los mensajes, las cadenas, los agentes. Solo cambia *quién* está al otro lado del cable.
+
+El **ID del modelo caduca**: los proveedores retiran modelos varias veces al año (a `qwen/qwen3-32b`, el default anterior del curso, lo apagó Groq en 2026-07). Si te responde `model_decommissioned`, copia uno vigente de la [tabla de modelos del cheat sheet](/recurso/cheat-sheet) y ponlo en `LLM_MODELO` de tu `.env`.
 
 ```python title="llmodel.py · la misma idea, con Groq"
 import os
@@ -45,11 +47,11 @@ from langchain_core.messages import HumanMessage
 load_dotenv()  # lee el .env y carga GROQ_API_KEY
 
 llm = ChatOpenAI(
-    model="qwen/qwen3-32b",
+    model="openai/gpt-oss-120b",                 # ← el ID vigente a 2026-07-21
     temperature=0,
     base_url="https://api.groq.com/openai/v1",   # ← lo único específico de Groq
     api_key=os.getenv("GROQ_API_KEY"),
-    # qwen3 RAZONA antes de responder y Groq devuelve ese razonamiento dentro
+    # Este modelo RAZONA antes de responder y Groq devuelve ese razonamiento dentro
     # del texto, envuelto en <think>…</think>. Esto le dice que lo descarte.
     extra_body={"reasoning_format": "hidden"},
 )

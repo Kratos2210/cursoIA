@@ -24,8 +24,15 @@ import os
 # ==================================================================
 # La cuota gratuita de Gemini es MUY corta: unas pocas decenas de llamadas por
 # minuto y un tope diario que se agota en una tarde de ejercicios. Groq regala
-# un cupo mucho más generoso y sirve `qwen/qwen3-32b`, que basta de sobra para
+# un cupo mucho más generoso y sirve modelos abiertos que bastan de sobra para
 # todo lo que se practica aquí.
+#
+# ⚠️ LOS PROVEEDORES APAGAN MODELOS. Los IDs de esta tabla son una FOTO CON
+#    FECHA, no una verdad permanente: si un día tu proveedor responde
+#    "model not found" o "model_decommissioned", NO es tu código — es que
+#    retiraron ese modelo. La salida son 30 segundos: copia un ID vigente de la
+#    página oficial del proveedor y ponlo en `LLM_MODELO` de tu .env, que gana
+#    sobre esta tabla (ver `modelo_por_defecto()` más abajo). Sin tocar código.
 #
 # ⭐ POR QUÉ UNA SOLA CLASE SIRVE PARA CASI TODOS. Casi todo el mercado (Groq,
 #    Ollama, Together, OpenAI, OpenRouter, DeepSeek) habla el MISMO dialecto:
@@ -36,7 +43,8 @@ import os
 #
 # Cambiar de proveedor es cambiar el .env, NO el código:
 #
-#   LLM_PROVIDER=groq       → qwen/qwen3-32b vía Groq. Llave gratis en
+#   LLM_PROVIDER=groq       → el modelo abierto por defecto de Groq (ver la tabla
+#                             de abajo). Llave gratis en
 #                             https://console.groq.com/keys  (GROQ_API_KEY)
 #   LLM_PROVIDER=google     → Gemini, el proveedor por defecto del curso.
 #   LLM_PROVIDER=ollama     → un modelo en tu máquina. Sin llave y sin cuota.
@@ -51,9 +59,13 @@ import os
 PROVEEDOR_POR_DEFECTO = "google"
 
 # El modelo que usa cada proveedor si no dices otro (LLM_MODELO en el .env).
+# Verificado contra las páginas oficiales de cada proveedor el 2026-07-21.
 MODELOS_POR_DEFECTO = {
     "google": "gemini-3.1-flash-lite",
-    "groq": "qwen/qwen3-32b",
+    # OJO: aquí vivía `qwen/qwen3-32b` hasta que Groq lo retiró (2026-07).
+    # gpt-oss-120b es su reemplazo abierto: mismo perfil (razona antes de
+    # responder) y más barato ($0.15/$0.60 por 1M tokens, 131K de contexto).
+    "groq": "openai/gpt-oss-120b",
     "ollama": "qwen3:8b",
     "openai": "gpt-5.4-mini",
     "anthropic": "claude-haiku-4-5",
@@ -88,7 +100,12 @@ def proveedor() -> str:
 
 
 def modelo_por_defecto(nombre_proveedor: str | None = None) -> str:
-    """El modelo de ese proveedor. LLM_MODELO en el .env manda sobre esto."""
+    """El modelo de ese proveedor. LLM_MODELO en el .env manda sobre esto.
+
+    Ese orden —primero el .env, después la tabla— es el que te salva cuando un
+    proveedor apaga un modelo: pones el ID nuevo en `LLM_MODELO` y sigues, sin
+    esperar a que actualicemos el curso.
+    """
     nombre_proveedor = nombre_proveedor or proveedor()
     if (elegido := os.getenv("LLM_MODELO")):
         return elegido
@@ -170,8 +187,9 @@ def _crear_chat_openai_compatible(modelo: str, temperature: float, activo: str):
 
         ⚠️ POR QUÉ ESTE PARCHE. Por defecto, `with_structured_output()` pide al
         proveedor un `response_format: json_schema`. OpenAI lo soporta; **Groq
-        solo lo soporta en algunos modelos**, y `qwen/qwen3-32b` no está entre
-        ellos: devuelve un 400 y el TEMA 05 del curso se cae en seco.
+        solo lo soporta en algunos modelos**, y no hay ninguna garantía de que
+        el modelo que tengas en el .env esté entre ellos: si no lo está,
+        devuelve un 400 y el TEMA 05 del curso se cae en seco.
 
         `method="function_calling"` obtiene el mismo resultado por otro camino:
         le declara al modelo una herramienta con la forma del esquema y le pide

@@ -3,7 +3,7 @@
 **Ejemplo base:** `11_rag.py` · **Gasta cuota:** sí (embeddings + 1 llamada por pregunta)
 
 > ⚠️ **Este es el único ejercicio que Groq no salva del todo.** Puedes mover el
-> *chat* a `qwen/qwen3-32b` (`LLM_PROVIDER=groq`), pero **Groq no ofrece
+> *chat* a Groq (`LLM_PROVIDER=groq`), pero **Groq no ofrece
 > embeddings** y el RAG los necesita: seguirías gastando `GOOGLE_API_KEY` solo
 > para vectorizar.
 >

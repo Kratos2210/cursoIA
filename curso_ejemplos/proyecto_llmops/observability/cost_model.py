@@ -33,8 +33,13 @@ from dataclasses import dataclass
 PRECIOS: dict[str, dict[str, float]] = {
     #  modelo                        entrada   salida
     # --- Groq (el default del .env.example) ---
-    "qwen/qwen3-32b":            {"entrada": 0.29, "salida": 0.59},
+    "openai/gpt-oss-120b":       {"entrada": 0.15, "salida": 0.60},
+    "openai/gpt-oss-20b":        {"entrada": 0.075, "salida": 0.30},
     "llama-3.3-70b-versatile":   {"entrada": 0.59, "salida": 0.79},
+    # Retirado por Groq en 2026-07 (era el cheap del proyecto). Se queda por lo
+    # mismo que gemini-2.0-flash: los costes que ya registraste se siguen
+    # calculando con la tarifa que de verdad se te cobró.
+    "qwen/qwen3-32b":            {"entrada": 0.29, "salida": 0.59},
     # --- Google (el resto del curso) ---
     "gemini-3.1-flash-lite":     {"entrada": 0.25, "salida": 1.50},
     "gemini-2.5-flash":          {"entrada": 0.30, "salida": 2.50},

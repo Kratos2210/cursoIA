@@ -156,7 +156,7 @@ El modelo vive en los servidores de otra empresa; tu programa se identifica ante
 
 <Box kind="analogy" label="◆ Cuál elegir (y por qué te vas a acabar pasando a Groq)">
 
-**Gemini** es el camino por defecto del curso. **Groq** sirve `qwen/qwen3-32b` con un cupo gratuito *mucho* más generoso y respuestas bastante más rápidas.
+**Gemini** es el camino por defecto del curso. **Groq** sirve modelos abiertos con un cupo gratuito *mucho* más generoso y respuestas bastante más rápidas.
 
 La cuota gratuita de Gemini se agota en una tarde de práctica: verás un `429 RESOURCE_EXHAUSTED` y creerás que rompiste algo. No rompiste nada. Si vas a hacer los ejercicios del tirón, **empieza directamente en Groq**. Puedes tener las dos llaves y cambiar con una línea del `.env`.
 
@@ -183,7 +183,7 @@ LLM_PROVIDER=google
 GOOGLE_API_KEY=AIzaSyD-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-#### Opción B · Groq con `qwen/qwen3-32b`
+#### Opción B · Groq
 
 1. Entra a [console.groq.com/keys](https://console.groq.com/keys).
 2. Inicia sesión (con Google o GitHub, no hace falta tarjeta).
@@ -195,6 +195,8 @@ GOOGLE_API_KEY=AIzaSyD-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 LLM_PROVIDER=groq
 GROQ_API_KEY=gsk_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
+
+¿No especificas modelo? Cada proveedor trae el suyo de fábrica. Y si algún día te contesta `model not found` o `model_decommissioned`, **no rompiste nada**: retiraron ese modelo del catálogo. Copia un ID vigente de la [tabla de modelos del cheat sheet](/recurso/cheat-sheet), ponlo en `LLM_MODELO=` de tu `.env` y sigue — esa línea gana sobre cualquier default del curso.
 
 Eso es todo. Los ejemplos no cambian: todos llaman a `util.crear_llm()`, que lee el `.env` y construye el modelo del proveedor activo — nunca instancias un modelo a mano. Cambiar de proveedor es una línea del `.env`; el cómo y el porqué de esa "fábrica de modelos" (y cuándo conviene cada proveedor) lo ves en el [Concepto 18b](/concepto/18b-elegir-modelo-y-proveedor).
 

@@ -48,14 +48,17 @@ class Settings(BaseSettings):
     #                            Together, OpenAI… Se usa llm_base_url + llm_api_key.
     #   llm_provider="google"  → Gemini, como el resto del curso. Usa google_api_key.
     #
-    # Por defecto: Groq con Qwen3-32B. Es rápido, barato y no consume la cuota
-    # (mucho más ajustada) del plan gratuito de Gemini.
+    # Por defecto: Groq con modelos abiertos. Es rápido, barato y no consume la
+    # cuota (mucho más ajustada) del plan gratuito de Gemini.
+    # ⚠️ Los IDs de abajo son una foto con fecha (verificada el 2026-07-21). Si
+    #    el proveedor apaga uno, verás "model_decommissioned": no es el código,
+    #    es el catálogo. Pon el ID vigente en LLM_MODELO_CHEAP/STRONG del .env.
     llm_provider: str = "openai"
     llm_base_url: str = "https://api.groq.com/openai/v1"
     llm_api_key: str = Field(default="", description="Llave del proveedor OpenAI-compatible (p.ej. Groq)")
     # La cascada necesita DOS modelos distintos: si cheap == strong,
     # with_fallbacks() reintenta con el mismo modelo y no sirve de nada.
-    llm_modelo_cheap: str = "qwen/qwen3-32b"
+    llm_modelo_cheap: str = "openai/gpt-oss-120b"
     llm_modelo_strong: str = "llama-3.3-70b-versatile"
     llm_temperatura: float = 0.0
 

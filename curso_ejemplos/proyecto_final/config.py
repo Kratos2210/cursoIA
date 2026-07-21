@@ -36,7 +36,8 @@ RUTA_AUDITORIA = CARPETA / "hallazgos_auditoria.log"
 
 # ============ MODELOS ============
 # El proveedor NO se cablea aquí: sale del .env (LLM_PROVIDER). Con `google`
-# usa gemini-3.1-flash-lite; con `groq`, qwen/qwen3-32b. El resto del proyecto
+# usa gemini-3.1-flash-lite; con `groq`, el modelo por defecto de Groq (o el que
+# diga LLM_MODELO, que manda sobre todo lo demás). El resto del proyecto
 # llama a crear_llm() y no sabe cuál hay detrás — que es justo el sentido de
 # tener este módulo.
 TEMPERATURA = 0                            # 0 = determinista (lo que se quiere en auditoría)

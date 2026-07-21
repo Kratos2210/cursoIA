@@ -18,8 +18,8 @@ import sys
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
 
 # `crear_llm()` construye el modelo del proveedor que diga el .env. Con
-# LLM_PROVIDER=groq usas qwen/qwen3-32b y dejas de gastar la (cortísima) cuota
-# gratuita de Gemini.
+# LLM_PROVIDER=groq usas el modelo por defecto de Groq y dejas de gastar la
+# (cortísima) cuota gratuita de Gemini.
 from util import crear_llm, requiere_llm_key
 from typing import List, Literal
 

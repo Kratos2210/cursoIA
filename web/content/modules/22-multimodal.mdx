@@ -12,7 +12,7 @@ Un `HumanMessage` multimodal lleva en su `content` una **lista** donde cada elem
   <Term>bloque `image_url`</Term>
   <Def>El formato "chat completions" `{"type":"image_url","image_url":{"url": data_url}}`. Es el que `langchain-google-genai` traduce a la parte `inline_data` que la API de Gemini espera — y el mismo que hablan los proveedores compatibles con OpenAI.</Def>
   <Term>modelo con visión</Term>
-  <Def>No todos ven. Gemini sí; el Qwen de texto en Groq, no. Si el proveedor no tiene visión, el bloque de imagen se ignora o da error.</Def>
+  <Def>No todos ven. Gemini sí; el modelo de texto que el curso usa en Groq, no. Si el proveedor no tiene visión, el bloque de imagen se ignora o da error.</Def>
 </DefList>
 
 </Box>
@@ -70,14 +70,14 @@ Una imagen se cobra como un buen puñado de tokens, y crece con su resolución. 
 <Avoid label="⛔ Cuándo NO usar esto">
 
 - No mandes imágenes **enormes sin redimensionar**: disparas tokens y coste por resolución que no aporta.
-- No asumas visión en cualquier proveedor: el Qwen de texto en Groq (y muchos open weights) **no ven**. Cambiar de proveedor puede romper el multimodal aunque el resto del curso conmute solo.
+- No asumas visión en cualquier proveedor: el modelo de texto del curso en Groq (y muchos open weights) **no ven**. Cambiar de proveedor puede romper el multimodal aunque el resto del curso conmute solo.
 - No uses multimodal cuando ya tienes el texto: si la factura llega como PDF con texto seleccionable, extraerlo y hacer RAG es más barato y exacto que "leer" la imagen.
 
 </Avoid>
 
 <Box kind="practice" label="▸ Para practicar">
 
-Con una `GOOGLE_API_KEY`, cambia el `PNG_DEMO_1x1` por una imagen real (lee un archivo con `open(ruta, "rb").read()`) y pídele al modelo que la describa. Luego prueba `LLM_PROVIDER=groq` con el Qwen de texto y observa qué pasa: es la lección de "no todos ven".
+Con una `GOOGLE_API_KEY`, cambia el `PNG_DEMO_1x1` por una imagen real (lee un archivo con `open(ruta, "rb").read()`) y pídele al modelo que la describa. Luego prueba `LLM_PROVIDER=groq` con su modelo de texto y observa qué pasa: es la lección de "no todos ven".
 
 Segundo reto: añade un **tercer** bloque de imagen al mismo mensaje y pídele al modelo que compare las dos. El formato de bloques lo permite sin cambiar nada más.
 
@@ -219,7 +219,7 @@ No hay archivo nuevo que copiar: **todo lo que necesitas ya está escrito y test
 </Question>
 
 <Question>
-  <Prompt>3 · Cambias a `LLM_PROVIDER=groq` con el Qwen de texto y el multimodal deja de funcionar. ¿Qué pasó?</Prompt>
+  <Prompt>3 · Cambias a `LLM_PROVIDER=groq` con su modelo de texto y el multimodal deja de funcionar. ¿Qué pasó?</Prompt>
   <Option>El bloque `image_url` cambia de formato según el proveedor</Option>
   <Option ok>Ese modelo no tiene visión: el bloque de imagen se ignora o da error, aunque el resto del curso conmute solo</Option>
   <Option>Falta convertir la imagen a un bloque `media` con su `mime_type`</Option>
