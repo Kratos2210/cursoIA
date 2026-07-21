@@ -718,9 +718,9 @@
       "pyFile": null,
       "fileref": "📋 Concepto de lectura y método — sin script ni dependencias nuevas. El caso trabajado es Sifrah, la retail del c29: aquí ves el discovery que produjo su 'menú del consultor'.",
       "tested": false,
-      "goals": "🎯 Al terminar sabrás: mapear un proceso (AS-IS → TO-BE), elegir el peldaño de autonomía —regla determinista, copiloto, agente o sistema agéntico— y priorizar con una matriz impacto × viabilidad y un ROI simple.",
+      "goals": "🎯 Al terminar sabrás: mapear un proceso (AS-IS → TO-BE), elegir el peldaño de autonomía —regla determinista, copiloto, agente o sistema agéntico—, priorizar con una matriz impacto × viabilidad y un ROI simple, y diseñar la célula híbrida humano+agente (job description Persona·Tarea·Contexto, reparto por tarea y roadmap de adopción).",
       "prereqs": "✅ Necesitas: distinguir cadena de agente (Conceptos 10 y 13) y haber ojeado el Concepto 29. Sin código.",
-      "minutes": "⏱️ ~45 min"
+      "minutes": "⏱️ ~55 min"
     },
     {
       "id": "m19",
