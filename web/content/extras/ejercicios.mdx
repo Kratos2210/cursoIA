@@ -64,8 +64,8 @@ Las pistas están plegadas a propósito, de una en una. La tentación de abrirla
 Cada ejercicio trae un **criterio de aceptación**: una condición verificable, no una opinión. Varios se comprueban con un test que escribes tú mismo ([Concepto 17b](/concepto/17b-tests-y-ci)). Esa es la red de seguridad que vas construyendo sobre la marcha, en tu propia carpeta:
 
 ```bash title="tu red de seguridad, en dos comandos"
-cd mi-curso-ia
-uv add --dev pytest       # una sola vez
+cd cursoIA/curso_ejemplos
+uv sync --extra dev       # una sola vez: trae pytest
 uv run pytest             # corre TUS tests, sin llave y sin cuota
 ```
 

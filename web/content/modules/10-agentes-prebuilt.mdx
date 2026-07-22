@@ -15,7 +15,7 @@ Por eso un agente no es "una cadena más larga". Una cadena es una línea recta 
 <DefList>
   <Term>ReAct</Term>
   <Def>El patrón que sigue (*Reason + Act*): razona qué hacer, actúa llamando a una herramienta, observa el resultado, vuelve a razonar. Es el ciclo A→D del Concepto 08, repetido.</Def>
-  <Term>create_react_agent</Term>
+  <Term>create_agent</Term>
   <Def>La versión "ya hecha" de LangGraph: le pasas modelo + herramientas + memoria y te devuelve el agente con el ciclo montado. En el Concepto 13 lo abrimos por dentro.</Def>
   <Term>checkpointer</Term>
   <Def>Dónde se guarda el estado entre turnos. Con uno en memoria basta para probar; en producción va a Sqlite o Postgres para sobrevivir a un reinicio.</Def>
@@ -41,16 +41,16 @@ Una **cadena** es una línea de ensamblaje (sin libertad). Un **router** es un r
 </Box>
 
 ```python title="funcionaconver_v3_streaming.py · agente con memoria"
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 from langgraph.checkpoint.memory import MemorySaver
 
 memoria = MemorySaver()   # recuerda la charla (indexada por thread_id)
 
-agente = create_react_agent(
+agente = create_agent(
     llm,
     tools=[calculadora_descuentos],
     checkpointer=memoria,
-    prompt="Eres un asesor de ventas claro y amable.",
+    system_prompt="Eres un asesor de ventas claro y amable.",
 )
 
 config = {"configurable": {"thread_id": "cliente_001"}}   # id de conversación
@@ -62,11 +62,13 @@ print(r["messages"][-1].content)
 Con el 18% de descuento, pagarías 2870 soles. ¿Te ayudo con algo más?
 ```
 
-Mucho más corto que el Concepto 08: LangGraph une cerebro + herramientas + memoria y corre el ciclo A→D solo. El `prompt=` da personalidad; el `thread_id` separa usuarios.
+Mucho más corto que el Concepto 08: LangGraph une cerebro + herramientas + memoria y corre el ciclo A→D solo. El `system_prompt=` da personalidad; el `thread_id` separa usuarios.
 
-<Box kind="analogy" label="◆ Novedad LangChain 1.x · el camino recomendado">
+<Box kind="analogy" label="◆ De dónde sale create_agent (y qué pasó con create_react_agent)">
 
-En LangChain 1.x el estándar recomendado es `from langchain.agents import create_agent` (misma idea, API más limpia, soporta "middleware"). El curso usa `create_react_agent` de `langgraph.prebuilt` porque es el que ya tenías y **sigue funcionando** — son primos —, pero al usarlo verás un aviso de *deprecation* (`LangGraphDeprecatedSinceV10`): la función se mudó a `langchain.agents.create_agent`. Migrar es cambiar el import y añadir el paquete —`uv add langchain`—; todo lo demás de este concepto queda igual.
+`create_agent`, de `from langchain.agents import create_agent`, es el **estándar de LangChain 1.x** para armar un agente. Corre por dentro sobre LangGraph (el mismo ciclo ReAct del Concepto 08), así que hereda memoria, streaming y persistencia sin que tú cables nada.
+
+Si en tutoriales viejos ves `create_react_agent` de `langgraph.prebuilt`, es el **antecesor**: misma idea, pero hoy emite un aviso de *deprecation* (`LangGraphDeprecatedSinceV10`) y se mudó justo a `langchain.agents.create_agent`. Dos detalles al migrar del viejo al nuevo: el parámetro de instrucciones pasó de `prompt=` a **`system_prompt=`**, y `create_agent` añade un sistema de **middleware** —resúmenes automáticos, aprobación humana, filtrado de datos sensibles— que verás en el [Concepto 10b](/concepto/10b-middleware-de-agentes). El paquete `langchain` (el que trae `create_agent`) ya viene instalado con el curso.
 
 </Box>
 
@@ -128,8 +130,8 @@ def agendar_cita(fecha: str, hora: str, nombre: str) -> str:
     explícitamente que quiere agendar (dice 'sí', 'resérvame', etc.)."""
     return f"Cita agendada: {nombre}, {fecha} {hora}"
 
-agente = create_react_agent(llm, tools=[consultar_disponibilidad, agendar_cita],
-                            checkpointer=MemorySaver())
+agente = create_agent(llm, tools=[consultar_disponibilidad, agendar_cita],
+                       checkpointer=MemorySaver())
 # "¿Tienes algo el viernes?"  -> consulta.  "Sí, resérvame a las 10" -> agenda.
 ```
 
@@ -184,6 +186,6 @@ agente = create_react_agent(llm, tools=[consultar_disponibilidad, agendar_cita],
 
 <Recap level={3} label="↺ En una frase">
 
-`create_react_agent` cierra por ti el ciclo pensar→actuar→observar, y el *checkpointer* lo vuelve conversacional: un `thread_id`, una conversación.<Arch>archivo: `10_agente.py`</Arch>
+`create_agent` cierra por ti el ciclo pensar→actuar→observar, y el *checkpointer* lo vuelve conversacional: un `thread_id`, una conversación.<Arch>archivo: `10_agente.py`</Arch>
 
 </Recap>

@@ -59,15 +59,15 @@ async for trozo in cadena.astream({"review": "Excelente."}):
 
 <Box kind="practice" label="▸ Para practicar">
 
-Lee un CSV con `pandas`, conviértelo con `df.to_dict(orient="records")` y pásalo a `.batch()`. Cronometra `batch` vs un `for` con `invoke`: verás la diferencia.
+En el repositorio tienes `resenas.csv`, con ocho reseñas de verdad en una columna llamada `review`. Léelo, conviértelo en una lista de diccionarios y pásasela a `.batch()`. Después cronometra `batch` contra un `for` con `invoke`: ahí se ve la diferencia.
 
 <Solution summary="Ver una solución">
 
 ```python title="solución"
-import time, pandas as pd
+import csv, time
 
-df = pd.read_csv("resenas.csv")            # una columna llamada "review"
-filas = df.to_dict(orient="records")       # [{"review": "…"}, {"review": "…"}, …]
+with open("resenas.csv", encoding="utf-8") as f:
+    filas = list(csv.DictReader(f))        # [{"review": "…"}, {"review": "…"}, …]
 
 t = time.time()
 cadena.batch(filas)
@@ -78,6 +78,8 @@ for f in filas:
     cadena.invoke(f)
 print("un for:", round(time.time() - t, 1), "s")   # bastante más lento
 ```
+
+`csv.DictReader` usa la **primera fila como nombres de columna**, así que devuelve justo lo que `.batch()` espera: un diccionario por fila, con la clave `review` que pide el prompt. Va en la librería estándar de Python — no instalas nada.
 
 </Solution>
 

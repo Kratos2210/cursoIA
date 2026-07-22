@@ -37,6 +37,7 @@ La columna «¿Gasta cuota?» se refiere al proveedor que tengas activo — con
 | 20 | [Cuándo el multi-query NO ayuda](ejercicio_20_rag_avanzado.md) | RAG avanzado | `20_rag_avanzado.py` | **No** | — |
 | 22 | [El mensaje deja de ser un string](ejercicio_22_multimodal.md) | Multimodal + voz | `22_multimodal.py` · `22b_voz.py` | **No** | — |
 | 23 | [Rodea tu propio detector](ejercicio_23_seguridad.md) | Seguridad | `23_seguridad.py` | **No** | — |
+| 26a | [Enruta tickets: del prompt vago al que mide](ejercicio_26a_prompting.md) | Anatomía del prompt | `26a_anatomia_prompt.py` | Sí | ✅ |
 | 27 | [Qué significan de verdad tus parámetros](ejercicio_27_fundamentos.md) | Fundamentos del LLM | `27_fundamentos_llm.py` | **No** | — |
 | 28 | [Mide la sospecha, no la confíes](ejercicio_28_alucinaciones.md) | Alucinaciones | `28_alucinaciones.py` | **No** | — |
 | 29 | [El dato sucio y el eval que no perdona](ejercicio_29_retail.md) | Caso real retail | `29_caso_retail.py` | **No** | — |

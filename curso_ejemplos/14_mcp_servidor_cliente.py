@@ -19,7 +19,7 @@ LÓGICA (paso a paso):
      - get_tools(): descubre qué herramientas expone (¡sin leer su código!).
      - Invocamos cada tool y mostramos el resultado.
   3) En el TEMA 14 del curso ves el paso final: darle estas mismas tools
-     a un agente con create_react_agent para que las use solo.
+     a un agente con create_agent para que las use solo.
 
 Requisitos: pip install -r curso_ejemplos/requirements.txt   (añade mcp + adapters)
 Ejecuta:    uv run python curso_ejemplos/14_mcp_servidor_cliente.py
@@ -99,7 +99,7 @@ async def correr_cliente():
     print("  evaluar_severidad(12.0)      ->", texto(severidad))
 
     print("\n💡 Paso final (con tu llave y cuota): dale estas tools a un agente:")
-    print("   agente = create_react_agent(llm, tools=herramientas)")
+    print("   agente = create_agent(llm, tools=herramientas)")
     print("   El agente decidirá solo cuándo llamar al servidor MCP.")
 
 

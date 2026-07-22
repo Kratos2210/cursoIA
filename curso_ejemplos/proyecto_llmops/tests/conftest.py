@@ -135,7 +135,7 @@ class EmbeddingsFalsos:
 # Doble 4 · Un agente de LangGraph que emite tokens de un guion
 # ==================================================================
 class AgenteFalso:
-    """Imita `create_react_agent(...).astream(..., stream_mode="messages")`.
+    """Imita `create_agent(...).astream(..., stream_mode="messages")`.
 
     LangGraph emite pares `(fragmento, metadatos)`. Los metadatos dicen de qué
     nodo del grafo salió el fragmento, y `app/streaming.py` los usa para

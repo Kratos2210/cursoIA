@@ -23,15 +23,22 @@ En pantalla, desde cero real (terminal limpia):
 ```bash
 # 1. instalar uv (una línea, la del c00)
 curl -LsSf https://astral.sh/uv/install.sh | sh
-# 2. proyecto nuevo
-uv init mi-curso-ia && cd mi-curso-ia
+# 2. traerse el curso
+git clone https://github.com/Kratos2210/cursoIA.git
+cd cursoIA/curso_ejemplos
 # 3. la llave gratis de aistudio.google.com (mostrar la página, tapar la llave)
-echo "GOOGLE_API_KEY=..." > .env
-# 4. el primer modelo (pegar el código del c01 en llmodel.py)
-uv run python llmodel.py
+cp .env.example .env        # abrir en el editor y pegar la llave
+# 4. instalar y COMPROBAR que todo quedó bien
+uv sync
+uv run python env_utils.py  # ✔ Entorno listo.
+# 5. el primer modelo (pegar el código del c01 en mi_01.py)
+uv run python mi_01.py
 ```
 
 Puntos de guion durante la demo:
+- En el `env_utils.py`: enseñar la lista de ✔ y decir «esto es lo que quiero que
+  veas ANTES de escribir una línea de código: si algo falta, te lo dice con el
+  arreglo debajo, en vez de reventar a mitad del primer ejemplo».
 - Cuando aparezca la respuesta del modelo: pausa de 2 segundos. «Eso que acaba
   de pasar es TODO el curso en miniatura: texto entra, texto sale. Lo demás es
   ingeniería alrededor.»

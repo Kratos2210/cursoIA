@@ -7,7 +7,7 @@ FINALIDAD:
   pide llaves y no imprime: solo ensambla.
 
 LÓGICA:
-  create_react_agent construye por dentro un StateGraph con este ciclo:
+  create_agent construye por dentro un StateGraph con este ciclo:
 
         START -> [agente] --¿pidió una tool?--> [tools] --+
                     ^                                     |
@@ -24,7 +24,7 @@ LÓGICA:
      y verificar el cableado del grafo sin gastar un solo token.
 """
 
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 
 import config
 import persistence
@@ -50,13 +50,14 @@ def construir_agente(llm, evaluador, retriever, checkpointer=None, ruta_auditori
     proyecto LLMOps puede reutilizar esta función (pasándole tools con RBAC y
     otro prompt) sin que cambie nada aquí.
     """
-    return create_react_agent(
+    return create_agent(
         llm,
         tools=tools if tools is not None
         else tools_mod.crear_tools(llm, evaluador, retriever, ruta_auditoria),
         # Sin checkpointer, el agente olvida todo entre invocaciones.
         checkpointer=checkpointer or persistence.crear_checkpointer(),
-        prompt=prompt or config.INSTRUCCIONES_AGENTE,
+        # En v1 el parámetro se llama `system_prompt` (antes `prompt`).
+        system_prompt=prompt or config.INSTRUCCIONES_AGENTE,
     )
 
 

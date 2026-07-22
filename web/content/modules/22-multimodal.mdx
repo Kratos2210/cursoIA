@@ -2,15 +2,15 @@ Hasta aquí todo fue texto → texto. Los modelos con **visión** (Gemini, GPT-5
 
 <Box kind="def" label="◈ Definición · Contenido multimodal por bloques">
 
-Un `HumanMessage` multimodal lleva en su `content` una **lista** donde cada elemento es un **bloque** con su `type`: uno de texto y uno de imagen. La imagen no viaja como bytes crudos (el JSON es texto) sino codificada en **base64** dentro de un `data:` URL.
+Un `HumanMessage` multimodal se construye con `content_blocks=`: una **lista** donde cada elemento es un **bloque tipado** con su `type` — uno de texto y uno de imagen. La imagen no viaja como bytes crudos (el JSON es texto) sino codificada en **base64**, con su tipo (`mime_type`) en un campo aparte.
 
 <DefList>
-  <Term>data: URL</Term>
-  <Def>Una imagen incrustada como texto: `data:image/png;base64,iVBOR…`. El prefijo dice el tipo (MIME) y que lo que sigue es base64.</Def>
+  <Term>bloque tipado (v1)</Term>
+  <Def>El formato estándar de LangChain 1.x: `{"type":"image","base64":"<…>","mime_type":"image/png"}`. Lo pasas con `content_blocks=` y langchain-core lo traduce solo a cada proveedor —a `inline_data` en Gemini, a `image_url` en los compatibles con OpenAI—. Un mismo bloque vale para todos.</Def>
   <Term>base64</Term>
-  <Def>Reescribe bytes binarios como texto ASCII para que quepan en el JSON de la petición. La stdlib de Python lo hace con `base64.b64encode`.</Def>
-  <Term>bloque `image_url`</Term>
-  <Def>El formato "chat completions" `{"type":"image_url","image_url":{"url": data_url}}`. Es el que `langchain-google-genai` traduce a la parte `inline_data` que la API de Gemini espera — y el mismo que hablan los proveedores compatibles con OpenAI.</Def>
+  <Def>Reescribe bytes binarios como texto ASCII para que quepan en el JSON de la petición. La stdlib de Python lo hace con `base64.b64encode`. En v1 va "pelado" (sin prefijo `data:`); el tipo viaja en `mime_type`.</Def>
+  <Term>`content_blocks`</Term>
+  <Def>La propiedad que LEE los bloques tipados de cualquier mensaje, sea quien sea el proveedor: `for b in mensaje.content_blocks: b["type"]`. Es la contraparte de lectura de `content_blocks=`.</Def>
   <Term>modelo con visión</Term>
   <Def>No todos ven. Gemini sí; el modelo de texto que el curso usa en Groq, no. Si el proveedor no tiene visión, el bloque de imagen se ignora o da error.</Def>
 </DefList>
@@ -19,44 +19,45 @@ Un `HumanMessage` multimodal lleva en su `content` una **lista** donde cada elem
 
 <Box kind="analogy" label="◆ Un sobre con dos hojas">
 
-El mensaje multimodal es un **sobre** con dos hojas dentro: una con tu pregunta escrita y otra con la imagen pegada. El modelo abre el sobre y lee *ambas* como una sola entrada — "mira esto Y respóndeme aquello". El `data:` URL es la imagen "fotocopiada en texto" para que quepa en el sobre.
+El mensaje multimodal es un **sobre** con dos hojas dentro: una con tu pregunta escrita y otra con la imagen pegada. El modelo abre el sobre y lee *ambas* como una sola entrada — "mira esto Y respóndeme aquello". El base64 es la imagen "fotocopiada en texto" para que quepa en el sobre.
 
 </Box>
 
-### Paso 1 · La imagen como data: URL
+### Paso 1 · La imagen en base64
 
-```python title="22_multimodal.py · bytes → data: URL (stdlib base64)"
+```python title="22_multimodal.py · bytes → base64 (stdlib base64)"
 import base64
 
-def imagen_a_data_url(datos, mime="image/png"):
+def imagen_a_base64(datos):
     # PORQUÉ base64: el JSON de la petición es texto y no lleva bytes crudos.
-    # base64 reescribe los bytes como ASCII; el prefijo dice qué tipo de imagen es.
-    b64 = base64.b64encode(datos).decode("ascii")
-    return f"data:{mime};base64,{b64}"
+    # base64 reescribe los bytes como ASCII. En v1 el mime NO va aquí: viaja
+    # como campo aparte del bloque (mime_type), así que el base64 va "pelado".
+    return base64.b64encode(datos).decode("ascii")
 ```
 
-### Paso 2 · El mensaje con dos bloques
+### Paso 2 · El mensaje con dos bloques tipados
 
-El `content` es una lista: bloque de texto y bloque de imagen. Este es el formato que **verificamos contra el paquete instalado**, no de memoria — el test confirma que `langchain-google-genai` lo traduce a una parte de imagen de Gemini.
+El contenido se pasa con `content_blocks=`: un bloque de texto y uno de imagen. Este es el formato que **verificamos contra el paquete instalado**, no de memoria — el test confirma que `langchain-google-genai` lo traduce a una parte de imagen de Gemini.
 
-```python title="22_multimodal.py · el mensaje multimodal"
+```python title="22_multimodal.py · el mensaje multimodal (bloques tipados v1)"
 from langchain_core.messages import HumanMessage
 
-def mensaje_multimodal(texto, data_url):
-    return HumanMessage(content=[
-        {"type": "text",      "text": texto},
-        {"type": "image_url", "image_url": {"url": data_url}},
+def mensaje_multimodal(texto, imagen_b64, mime="image/png"):
+    return HumanMessage(content_blocks=[
+        {"type": "text",  "text": texto},
+        {"type": "image", "base64": imagen_b64, "mime_type": mime},
     ])
 
 # ...y se envía como cualquier otro mensaje (la llamada real necesita API key):
-#   util.crear_llm().invoke([mensaje_multimodal(pregunta, data_url)])
+#   util.crear_llm().invoke([mensaje_multimodal(pregunta, imagen_b64)])
+# La respuesta también se LEE por bloques: mensaje.content_blocks
 ```
 
 ```text title="▸ deberías ver al correr 22_multimodal.py sin llave (recortado)"
 == Mensaje multimodal construido ==
   Bloques: 2
   [0] type='text' · text='¿Qué ves en esta imagen? Descríbela en una frase.'
-  [1] type='image_url' · url=data:image/png;base64,iVBORw0KGgoAAAANSU…
+  [1] type='image' · mime_type='image/png' · base64=iVBORw0KGgoAAAANSU…
 
 (⏸️  Sin API key: no llamo al modelo. Pon la llave en .env para verlo en acción.)
 ```
@@ -81,27 +82,27 @@ Con una `GOOGLE_API_KEY`, cambia el `PNG_DEMO_1x1` por una imagen real (lee un a
 
 Segundo reto: añade un **tercer** bloque de imagen al mismo mensaje y pídele al modelo que compare las dos. El formato de bloques lo permite sin cambiar nada más.
 
-**Criterio de aceptación:** `len(mensaje.content) == 3` y sus tipos son `['text', 'image_url', 'image_url']`. Con llave y un modelo con visión, la respuesta menciona algo que aparece **solo en la segunda** imagen — si te describe una sola, revisa que no estés pisando el bloque anterior en vez de añadirlo a la lista.
+**Criterio de aceptación:** `len(mensaje.content_blocks) == 3` y sus tipos son `['text', 'image', 'image']`. Con llave y un modelo con visión, la respuesta menciona algo que aparece **solo en la segunda** imagen — si te describe una sola, revisa que no estés pisando el bloque anterior en vez de añadirlo a la lista.
 
 <Solution summary="Ver una solución">
 
 ```python title="solución · dos imágenes en el mismo mensaje"
 from langchain_core.messages import HumanMessage
 
-def mensaje_comparar(texto, data_urls):
-    # El content es una LISTA: nada impide que lleve N bloques de imagen.
+def mensaje_comparar(texto, imagenes_b64, mime="image/png"):
+    # content_blocks es una LISTA: nada impide que lleve N bloques de imagen.
     # Se APILAN, no se sobrescriben — ese es todo el truco del formato por bloques.
     bloques = [{"type": "text", "text": texto}]
-    for url in data_urls:
-        bloques.append({"type": "image_url", "image_url": {"url": url}})
-    return HumanMessage(content=bloques)
+    for b64 in imagenes_b64:
+        bloques.append({"type": "image", "base64": b64, "mime_type": mime})
+    return HumanMessage(content_blocks=bloques)
 
-a = imagen_a_data_url(open("factura_a.png", "rb").read(), mime="image/png")
-b = imagen_a_data_url(open("factura_b.png", "rb").read(), mime="image/png")
+a = imagen_a_base64(open("factura_a.png", "rb").read())
+b = imagen_a_base64(open("factura_b.png", "rb").read())
 mensaje = mensaje_comparar("Compara ambas facturas: ¿qué campos difieren?", [a, b])
 
-print(len(mensaje.content))                             # 3
-print([bloque["type"] for bloque in mensaje.content])   # ['text', 'image_url', 'image_url']
+print(len(mensaje.content_blocks))                             # 3
+print([bloque["type"] for bloque in mensaje.content_blocks])   # ['text', 'image', 'image']
 # util.crear_llm().invoke([mensaje])  ← la llamada real, SOLO con un modelo con visión.
 ```
 
@@ -124,7 +125,7 @@ La imagen de entrada es solo una esquina del multimodal. El espectro completo ti
   <Def>Modelos texto→imagen (Imagen de Google, DALL·E, la generación de Gemini) devuelven una imagen, no texto. También es una API distinta de la de chat.</Def>
 </DefList>
 
-▲ Regla que se repite: el bloque `media`/`image_url` viaja igual, pero **el proveedor tiene que soportar esa modalidad** (Gemini oye y ve; un modelo de solo texto en Groq, no). Y audio/imagen pesan más que el texto: cuestan más y tardan más, así que mídelo ([c16](/concepto/16-observabilidad-y-costo)) antes de meterlo en el camino caliente.
+▲ Regla que se repite: el bloque tipado (`image`, `media`…) viaja igual, pero **el proveedor tiene que soportar esa modalidad** (Gemini oye y ve; un modelo de solo texto en Groq, no). Y audio/imagen pesan más que el texto: cuestan más y tardan más, así que mídelo ([c16](/concepto/16-observabilidad-y-costo)) antes de meterlo en el camino caliente.
 
 </Box>
 
@@ -171,7 +172,7 @@ No hay archivo nuevo que copiar: **todo lo que necesitas ya está escrito y test
 
 <Box kind="practice" label="▸ Los cuatro pasos (y de dónde sale cada pieza)">
 
-**1 · La entrada visual.** Usa `22_multimodal.py` tal cual: `imagen_a_data_url()` + el mensaje de dos bloques. El armado es offline; solo la llamada final necesita un modelo con visión.
+**1 · La entrada visual.** Usa `22_multimodal.py` tal cual: `imagen_a_base64()` + el mensaje de dos bloques tipados. El armado es offline; solo la llamada final necesita un modelo con visión.
 
 **2 · El contrato de salida.** No dejes que responda un párrafo: exige un molde como el del [c09b](/concepto/09b-proyecto-utilidad-texto) — `{"dano": "leve|grave|ninguno", "procede_reembolso": bool, "respuesta": str}` — y **valídalo**. Aquí importa más que nunca: una decisión de reembolso la va a consumir otro sistema.
 
@@ -192,9 +193,9 @@ No hay archivo nuevo que copiar: **todo lo que necesitas ya está escrito y test
 
 <Checkpoint label="✔ Si llegaste aquí deberías poder…">
 
-- Explicar por qué el contenido multimodal es una lista de bloques y no un string.
-- Codificar una imagen en un `data:` URL con base64 de la stdlib.
-- Construir el bloque `image_url` que un modelo con visión espera.
+- Explicar por qué el contenido multimodal es una lista de bloques tipados y no un string.
+- Codificar una imagen en base64 con la stdlib (y saber que el mime va aparte, en `mime_type`).
+- Construir el bloque `image` tipado (con `content_blocks=`) que un modelo con visión espera, y leer la respuesta con `content_blocks`.
 - Anticipar dos trampas: el coste por resolución y los proveedores sin visión.
 - Distinguir el modo **batch** (mandas todo, esperas todo) del **tiempo real** (STT→LLM→TTS por streaming) y cuándo vale cada uno.
 
@@ -211,16 +212,16 @@ No hay archivo nuevo que copiar: **todo lo que necesitas ya está escrito y test
 </Question>
 
 <Question>
-  <Prompt>2 · ¿Por qué la imagen viaja en base64 dentro de un `data:` URL?</Prompt>
+  <Prompt>2 · ¿Por qué la imagen viaja en base64 y no como bytes?</Prompt>
   <Option>Porque comprime la imagen y así abarata la llamada</Option>
   <Option ok>Porque el JSON de la petición es texto y no admite bytes crudos: base64 los reescribe como ASCII</Option>
   <Option>Porque permite que el proveedor cachee la imagen por su hash</Option>
-  <Feedback>base64 no comprime — de hecho agranda el payload alrededor de un 33%. Solo resuelve el transporte por un canal que es texto.</Feedback>
+  <Feedback>base64 no comprime — de hecho agranda el payload alrededor de un 33%. Solo resuelve el transporte por un canal que es texto. En v1 el tipo (mime) viaja aparte, en `mime_type`.</Feedback>
 </Question>
 
 <Question>
   <Prompt>3 · Cambias a `LLM_PROVIDER=groq` con su modelo de texto y el multimodal deja de funcionar. ¿Qué pasó?</Prompt>
-  <Option>El bloque `image_url` cambia de formato según el proveedor</Option>
+  <Option>El bloque de imagen cambia de formato según el proveedor</Option>
   <Option ok>Ese modelo no tiene visión: el bloque de imagen se ignora o da error, aunque el resto del curso conmute solo</Option>
   <Option>Falta convertir la imagen a un bloque `media` con su `mime_type`</Option>
   <Feedback>La interfaz unificada conmuta el **proveedor**, no las **capacidades**. Antes de cambiar, comprueba que el modelo destino vea.</Feedback>
@@ -238,6 +239,6 @@ No hay archivo nuevo que copiar: **todo lo que necesitas ya está escrito y test
 
 <Recap level={5} label="↺ En una frase">
 
-Para que el modelo VEA, el `content` pasa a ser una lista de bloques: uno de texto y uno de `image_url` con la imagen en base64 dentro de un `data:` URL — el mismo formato para Gemini y para los compatibles con OpenAI.<Arch>archivo: `22_multimodal.py`</Arch>
+Para que el modelo VEA, el contenido pasa a ser una lista de bloques tipados (`content_blocks=`): uno de texto y uno de `image` con la imagen en base64 y su `mime_type` — un mismo bloque que langchain-core traduce a Gemini o a los compatibles con OpenAI.<Arch>archivo: `22_multimodal.py`</Arch>
 
 </Recap>

@@ -1,4 +1,4 @@
-`create_react_agent` es una caja negra cómoda. Cuando necesitas **control total** (pasos personalizados, ramas, aprobación humana), abres el capó con `StateGraph`: defines un *estado*, unos *nodos* (funciones) y unas *aristas* (el flujo, que puede ser cíclico).
+`create_agent` es una caja negra cómoda. Cuando necesitas **control total** (pasos personalizados, ramas, aprobación humana), abres el capó con `StateGraph`: defines un *estado*, unos *nodos* (funciones) y unas *aristas* (el flujo, que puede ser cíclico).
 
 <Box kind="def" label="◈ Definición · LangGraph y StateGraph">
 
@@ -205,7 +205,7 @@ Cuando el grafo crece, un solo archivo se vuelve inmanejable. El patrón product
 <Avoid label="⛔ Cuándo NO usar esto">
 
 - Si una cadena LCEL lineal ya resuelve el flujo (sin ciclos, ramas ni pausas), no montes un `StateGraph`: es sobreingeniería, con estado y aristas que mantener a cambio de nada.
-- Si el agente "de fábrica" (`create_react_agent`) ya te alcanza, no lo reescribas a mano: solo abres el capó cuando necesitas control que el prebuilt no da (pasos propios, ramas, aprobación humana).
+- Si el agente "de fábrica" (`create_agent`) ya te alcanza, no lo reescribas a mano: solo abres el capó cuando necesitas control que el prebuilt no da (pasos propios, ramas, aprobación humana).
 - No metas `interrupt()` si no hay una decisión humana real que tomar: una pausa que nadie atiende solo deja el grafo congelado.
 
 </Avoid>

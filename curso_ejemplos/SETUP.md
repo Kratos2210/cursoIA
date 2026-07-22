@@ -12,14 +12,22 @@ respeta `uv.lock`, así que instalas exactamente las versiones con las que se
 escribió el curso.
 
 ```bash
-cd curso_ejemplos
-uv sync                    # entorno + dependencias desde pyproject.toml
+git clone https://github.com/Kratos2210/cursoIA.git
+cd cursoIA/curso_ejemplos
 cp .env.example .env       # pon tu llave dentro
+uv sync                    # entorno + dependencias desde pyproject.toml
+uv run python env_utils.py # ¿está todo listo? (no gasta cuota)
 uv run python 01_primer_modelo.py
 ```
 
 ¿No tienes `uv`? `curl -LsSf https://astral.sh/uv/install.sh | sh` (macOS/Linux) o
-`pip install uv`.
+`pip install uv`. ¿No tienes `git`? [git-scm.com/downloads](https://git-scm.com/downloads).
+
+`env_utils.py` es el atajo para el día 1: comprueba versión de Python, carpeta,
+librerías, `.env`, proveedor y llave, e imprime el arreglo junto a cada fallo.
+Con `--ping` hace además **una llamada real** al modelo — el único chequeo que
+distingue una llave que *está* de una que *sirve*, y un ID de modelo vigente de
+uno que el proveedor ya apagó.
 
 ---
 
@@ -146,6 +154,11 @@ cada proyecto trae el suyo:
 ## Verificar que todo está bien
 
 ```bash
+uv run python env_utils.py        # tu entorno: Python, librerías, .env, llave
+uv run python env_utils.py --ping # + una llamada real al proveedor
 uv run pytest -m offline          # suite completa sin gastar un token
 uv run python verificar_curso.py  # coherencia del material del curso
 ```
+
+Los dos primeros son para **ti** (¿puedo empezar?); los dos últimos, para el
+**material** (¿sigue siendo coherente?).

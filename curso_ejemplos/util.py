@@ -56,6 +56,10 @@ import os
 #                             variantes ':free'. https://openrouter.ai/keys  (OPENROUTER_API_KEY)
 #   LLM_PROVIDER=deepseek   → deepseek-v4-flash. De pago, pero muy barato. Llave en
 #                             https://platform.deepseek.com/api_keys  (DEEPSEEK_API_KEY)
+#   LLM_PROVIDER=kimi       → kimi-k2.6, de Moonshot. De pago. Llave en
+#                             https://platform.kimi.ai  (MOONSHOT_API_KEY).
+#                             ⚠️ NO acepta temperature=0 (ver más abajo): sirve
+#                             para explorarlo, no para los ejemplos del curso.
 PROVEEDOR_POR_DEFECTO = "google"
 
 # El modelo que usa cada proveedor si no dices otro (LLM_MODELO en el .env).
@@ -73,6 +77,13 @@ MODELOS_POR_DEFECTO = {
     # OJO: `deepseek-chat` y `deepseek-reasoner` son alias que DeepSeek deprecó
     # el 2026-07-24. Apuntamos al nombre real: v4-flash sirve los dos modos.
     "deepseek": "deepseek-v4-flash",
+    # Kimi (Moonshot). Ponemos el tier BARATO, como en los demás proveedores de
+    # pago: `kimi-k2.6` cuesta $0.95/$4.00 por 1M (256K de contexto) frente a los
+    # $3.00/$15.00 del flagship `kimi-k3`. Y NO ponemos `kimi-k2.5`, que es más
+    # barato todavía ($0.60/$3.00): Moonshot ya lo cerró a las cuentas nuevas y lo
+    # apaga del todo el 2026-08-31 — un default que caduca en un mes no es un
+    # default. Consultado el 2026-07-21 en platform.kimi.ai/docs/pricing.
+    "kimi": "kimi-k2.6",
 }
 
 # Proveedores con CLASE PROPIA en LangChain (no hablan el dialecto de OpenAI),
@@ -91,6 +102,12 @@ _COMPATIBLES_OPENAI = {
     "openai": ("https://api.openai.com/v1", "OPENAI_API_KEY"),
     "openrouter": ("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY"),
     "deepseek": ("https://api.deepseek.com/v1", "DEEPSEEK_API_KEY"),
+    # OJO al desajuste de nombres, y no es una errata: el proveedor se llama
+    # `kimi` porque así se llama el producto, pero la EMPRESA es Moonshot AI y su
+    # SDK espera la llave en `MOONSHOT_API_KEY`. Copiar el nombre de la variable
+    # de la doc oficial, y no deducirlo del nombre del modelo, es la diferencia
+    # entre que funcione a la primera y un 401 que nadie sabe de dónde sale.
+    "kimi": ("https://api.moonshot.ai/v1", "MOONSHOT_API_KEY"),
 }
 
 
@@ -205,6 +222,35 @@ def _crear_chat_openai_compatible(modelo: str, temperature: float, activo: str):
         # contenido, así que no ensucia las salidas del curso.
         extra["reasoning"] = {"exclude": True}
 
+    # ⚠️ KIMI FIJA LOS PARÁMETROS DE MUESTREO. La doc de Moonshot dice que
+    #    `kimi-k3` trabaja siempre con `temperature=1.0` y que hay que OMITIR el
+    #    campo en vez de mandar otro valor; `kimi-k2.6`/`k2.5` solo admiten 1.0
+    #    (pensando) o 0.6 (sin pensar). Todo el curso llama a
+    #    `crear_llm(temperature=0.0)` para que las salidas sean reproducibles, así
+    #    que mandárselo tal cual a Kimi es el mismo tipo de 400 que da Groq con
+    #    `reasoning_format`: cada proveedor tiene sus parámetros prohibidos.
+    #
+    #    Cómo se OMITE de verdad: en `ChatOpenAI` el campo es `float | None` y su
+    #    `_default_params` filtra con un `exclude_if_none`, así que `None` no viaja
+    #    en el JSON — es exactamente "no mandar el kwarg". (Poner `None` en un
+    #    cliente que lo serializara igual NO valdría; por eso se comprueba, no se
+    #    supone. El test de regresión vive en tests/test_util.py.)
+    #
+    #    Consecuencia pedagógica, y por eso Kimi NO es el camino recomendado del
+    #    curso: con Kimi no puedes fijar `temperature=0`, o sea que pierdes la
+    #    reproducibilidad de la que dependen los ejemplos y las evaluaciones.
+    #
+    #    ⚠️ DOS LÍMITES MÁS, conocidos y NO probados contra la API real (activar
+    #    una llave de Moonshot exige recargar saldo). Anotados aquí para que quien
+    #    los pise sepa que no es su código:
+    #      · si `kimi-k3` devolviera su razonamiento DENTRO del contenido, haría
+    #        falta una rama de `extra_body` como la de Groq; hoy no se le manda
+    #        ninguna.
+    #      · la doc avisa de que `kimi-k2.6` no soporta `tool_choice: "required"`,
+    #        que es justo lo que suele enviar el `method="function_calling"` de
+    #        aquí abajo → el TEMA 05 (salida estructurada) podría fallar con Kimi.
+    temperatura_efectiva = None if activo == "kimi" else temperature
+
     class _ChatCompatible(ChatOpenAI):
         """ChatOpenAI con `with_structured_output` en modo function_calling.
 
@@ -225,7 +271,7 @@ def _crear_chat_openai_compatible(modelo: str, temperature: float, activo: str):
 
     return _ChatCompatible(
         model=modelo,
-        temperature=temperature,
+        temperature=temperatura_efectiva,
         base_url=os.getenv("LLM_BASE_URL", base_url),
         # Ollama no valida la llave, pero el cliente de OpenAI exige que exista.
         api_key=os.getenv(variable, "no-hace-falta"),

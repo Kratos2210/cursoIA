@@ -18,7 +18,7 @@ FINALIDAD:
   ⭐ El "cerebro" entra POR PARÁMETRO (`responder`), igual que el modelo se
      inyecta en todo el curso. Aquí el default es un LLM simple con
      `util.crear_llm()`; para un agente RAG de verdad, enchufa el del
-     proyecto_llmops (ver la nota al final) o el `create_react_agent` del m10.
+     proyecto_llmops (ver la nota al final) o el `create_agent` del m10.
 
 Ejecuta (local):  uv run --extra whatsapp uvicorn canales.whatsapp.webhook:app --port 8080
                   (o levanta todo con docker-compose.yml)
@@ -47,7 +47,7 @@ def responder(texto: str, thread_id: str = "wa") -> str:
 
     Default: una llamada directa al LLM del `.env` (Gemini/Groq/…). Para un
     agente RAG real, reemplaza el cuerpo por una invocación a tu grafo —el mismo
-    `create_react_agent` del m10 o el servicio del proyecto_llmops— usando
+    `create_agent` del m10 o el servicio del proyecto_llmops— usando
     `thread_id` como memoria de conversación (uno por número de WhatsApp).
     """
     llm = util.crear_llm()

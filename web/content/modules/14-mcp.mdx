@@ -116,7 +116,7 @@ Nota lo familiar: `@mcp.tool()` funciona igual que el `@tool` del Concepto 07 �
 
 ```python title="langchain-mcp-adapters · servidores MCP como tools"
 from langchain_mcp_adapters.client import MultiServerMCPClient
-from langgraph.prebuilt import create_react_agent
+from langchain.agents import create_agent
 
 client = MultiServerMCPClient({
     "gobierno_datos": {
@@ -127,7 +127,7 @@ client = MultiServerMCPClient({
 })
 
 herramientas_mcp = await client.get_tools()   # se vuelven tools del agente
-agente = create_react_agent(llm, tools=herramientas_mcp)
+agente = create_agent(llm, tools=herramientas_mcp)
 ```
 
 <Box kind="warn" label="▲ Ese await no va suelto">

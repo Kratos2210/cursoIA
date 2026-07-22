@@ -41,28 +41,28 @@ t22b = cargar("22b_voz.py", "tema22b")
 # ==================================================================
 # PARTE 1 · Dos imágenes en un solo mensaje
 # ==================================================================
-def mensaje_multimodal_varias(texto: str, data_urls: list[str]) -> HumanMessage:
-    """Texto primero, luego un bloque `image_url` por cada imagen."""
-    return HumanMessage(content=[
+def mensaje_multimodal_varias(texto: str, imagenes_b64: list[str],
+                              mime: str = "image/png") -> HumanMessage:
+    """Texto primero, luego un bloque `image` (tipado v1) por cada imagen."""
+    return HumanMessage(content_blocks=[
         {"type": "text", "text": texto},
-        *[{"type": "image_url", "image_url": {"url": u}} for u in data_urls],
+        *[{"type": "image", "base64": b64, "mime_type": mime} for b64 in imagenes_b64],
     ])
 
 
 def parte_1():
     print("\n[P1] texto + 2 imágenes")
-    png = base64.b64decode(t22.PNG_DEMO_1x1)
-    url = t22.imagen_a_data_url(png)
+    png_b64 = t22.imagen_a_base64(base64.b64decode(t22.PNG_DEMO_1x1))
 
-    msg = mensaje_multimodal_varias("Compara estas dos fotos.", [url, url])
-    tipos = [b["type"] for b in msg.content]
-    print(f"     bloques: {len(msg.content)} · tipos: {tipos}")
-    assert len(msg.content) == 3                      # 1 texto + 2 imágenes
-    assert tipos == ["text", "image_url", "image_url"]  # el texto va primero
+    msg = mensaje_multimodal_varias("Compara estas dos fotos.", [png_b64, png_b64])
+    tipos = [b["type"] for b in msg.content_blocks]
+    print(f"     bloques: {len(msg.content_blocks)} · tipos: {tipos}")
+    assert len(msg.content_blocks) == 3          # 1 texto + 2 imágenes
+    assert tipos == ["text", "image", "image"]   # el texto va primero
 
     # Con lista vacía degrada al mensaje de texto normal (1 bloque).
     solo_texto = mensaje_multimodal_varias("¿Hola?", [])
-    assert [b["type"] for b in solo_texto.content] == ["text"]
+    assert [b["type"] for b in solo_texto.content_blocks] == ["text"]
     print("     → 1 + N bloques; con N=0, un chat de texto de toda la vida.")
 
 
@@ -81,10 +81,10 @@ def parte_2():
     assert wav["data"] == mp3["data"]                  # mismos bytes → mismo base64
     assert wav["mime_type"] != mp3["mime_type"]        # lo ÚNICO que cambia
 
-    # La imagen no declara mime en el bloque porque su data URL ya lo lleva
-    # (`data:image/png;base64,…`); el bloque `media` lleva `data` pelado, así
-    # que el mime tiene que viajar como campo aparte.
-    print("     → la imagen esconde el mime en el data URL; el audio lo declara aparte.")
+    # En v1 la imagen y el audio se parecen: los dos llevan los datos en base64
+    # y el `mime_type` como campo aparte del bloque. (El de imagen es `image` con
+    # `base64`; el de audio, `media` con `data` — misma idea, distinto nombre.)
+    print("     → imagen y audio declaran el mime aparte; cambia el nombre del campo, no la idea.")
 
 
 # ==================================================================

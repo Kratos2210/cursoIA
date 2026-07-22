@@ -121,7 +121,7 @@ def parte_2():
             mensajes.append(ToolMessage(content=str(resultado), tool_call_id=llamada["id"]))
 
     print("⚠️ El modelo no terminó en 5 vueltas. En producción, esto es un límite "
-          "de recursión y hay que cortarlo (create_react_agent lo hace solo).")
+          "de recursión y hay que cortarlo (create_agent lo hace solo).")
 
 
 def main():

@@ -18,35 +18,43 @@ FINALIDAD:
     4) DESCOMPOSICIÓN: partes una tarea grande en sub-preguntas más simples y
        resuelves cada una. Divide y vencerás, aplicado al prompt.
 
-  ⭐ 100% OFFLINE en su LÓGICA medible. Las cuatro técnicas se implementan como
-     FUNCIONES PURAS de texto (sin red, sin API, sin llave) para que se puedan
-     testear byte a byte. Además hay un harness "antes/después" con un mini
-     solver DETERMINISTA que demuestra —sin gastar un token— que estructurar la
-     tarea (CoT/descomposición) sube el acierto. Es el eco offline de medir con
-     evals de verdad: eso se hace "en serio" en el TEMA 16 con la tríada RAG.
+  Este ejemplo INVOCA AL MODELO DE VERDAD: ves few-shot ganándole a zero-shot en
+  el caso del desempate, CoT razonando un cálculo de varios pasos, y —el corazón
+  del módulo— MIDES cuánto sube el acierto de few-shot vs zero-shot sobre un
+  mini-dataset, llamando al modelo en cada caso. Medir es lo que separa el prompt
+  engineering de la superstición: no se ajusta a ojo, se ajusta y se comprueba.
 
-  La parte ONLINE es opcional: si hay LLM_PROVIDER + llave, main() enseña
-  self-consistency REAL muestreando el mismo prompt varias veces a temperatura>0
-  con util.crear_llm(). Sin llave, main() corre igual la comparación offline.
+  ⚠️ CADA CORRIDA CONSUME CUOTA. El número que mide [4] no es determinista: con
+     6 reseñas y un modelo que varía, puede bailar entre corridas. Aquí aprendes
+     la FORMA de medir; medir EN SERIO es un dataset grande y la tríada RAG del
+     TEMA 16c, no seis casos a mano.
 
   Mención a DSPy (solo lectura, NO se instala): en vez de que TÚ afines el prompt
   a mano, DSPy trata el prompt como parámetros a OPTIMIZAR contra una métrica y
   un set de ejemplos —prompt engineering hecho búsqueda automática, no artesanía.
 
 LÓGICA (paso a paso):
-  1) construir_prompt_fewshot(): k demostraciones + la pregunta, en orden.
-  2) plantilla_cot(): añade la estructura de razonamiento ("paso a paso").
-  3) self_consistency(): votación por mayoría sobre varias respuestas (moda).
-  4) descomponer(): parte una tarea en sub-preguntas por sus conectores.
-  5) resolver_directo() / resolver_cot() + evaluar(): el harness antes/después.
+  1) Cargamos la llave y creamos el modelo (uno a T=0, otro a T=0.8).
+  2) Few-shot vs zero-shot en la reseña que exige el desempate de la casa.
+  3) CoT vs directo en un cálculo de varios pasos.
+  4) Self-consistency: 5 pasadas a T=0.8 sobre una trampa, votando la moda.
+  5) Medir de verdad: exact-match de few-shot vs zero-shot sobre el mini-dataset.
 
-Requisitos: ninguno extra (solo Python).  La parte online usa util.crear_llm().
+Requisitos: pip install -r curso_ejemplos/requirements.txt  +  .env con tu llave
 Ejecuta:    uv run python 26b_prompt_engineering.py
 """
 
 # ============ LIBRERÍAS QUE USAMOS ============
 import re                          # extraer números y trocear por conectores
 from collections import Counter    # contar votos para la mayoría (self-consistency)
+
+from util import (                 # la fábrica del curso: modelo, llave y errores de cuota
+    cargar_var_entorno,
+    crear_llm,
+    es_error_cuota,
+    mensaje_cuota,
+    requiere_llm_key,
+)
 
 
 # ==================================================================
@@ -112,7 +120,27 @@ def self_consistency(respuestas: list[str]) -> str | None:
 # ==================================================================
 # 4) DESCOMPOSICIÓN · partir una tarea grande en sub-preguntas
 # ==================================================================
-_CONECTORES = re.compile(r"\s*(?:;|,|\by luego\b|\bluego\b|\bdespués\b|\by después\b|\by\b)\s*")
+# Separadores que SIEMPRE marcan un paso nuevo: no son ambiguos en español.
+_SEPARADORES_FUERTES = re.compile(
+    r"\s*(?:;|,|\by luego\b|\by después\b|\bluego\b|\bdespués\b)\s*"
+)
+
+# ⚠️ LA "y" A SECAS ES AMBIGUA, y aquí está la trampa del troceo por reglas. En
+#    español la "y" une pasos ("revisa el stock y calcula el total") pero también
+#    une sustantivos ("camisas y pantalones"). Partir por toda "y" produce basura:
+#    de "revisa el stock de camisas y pantalones" salía un paso llamado
+#    "pantalones", que no es ninguna tarea.
+#
+#    Regla: la "y" solo separa cuando lo que viene DETRÁS empieza por un verbo de
+#    acción. Es una heurística, no gramática — y por eso se declara la lista.
+_VERBOS_DE_ACCION = (
+    "busca", "calcula", "suma", "resta", "revisa", "valida", "verifica",
+    "descarga", "resume", "extrae", "clasifica", "compara", "genera",
+    "guarda", "envía", "ordena", "filtra", "cuenta", "actualiza",
+)
+_Y_ANTES_DE_VERBO = re.compile(
+    r"\s+y\s+(?=(?:" + "|".join(_VERBOS_DE_ACCION) + r")\b)", re.IGNORECASE
+)
 
 
 def descomponer(tarea: str) -> list[str]:
@@ -121,153 +149,184 @@ def descomponer(tarea: str) -> list[str]:
     POR QUÉ: un prompt que pide TRES cosas a la vez ("busca el precio y calcula
     el IVA y suma el total") invita al modelo a atajar u olvidar un paso. Si lo
     partes y resuelves cada sub-pregunta por separado, cada una es más simple y
-    verificable. Aquí troceamos por los conectores ("y", "luego", ";", …); en un
-    caso real la descomposición la propone el propio modelo o una plantilla.
+    verificable.
+
+    CÓMO: primero por los separadores inequívocos (";", ",", "luego", "después")
+    y después por la "y" —pero solo la que va seguida de un verbo de acción, ver
+    el comentario de arriba—.
+
+    ⚠️ LÍMITE HONESTO: esto es una heurística de juguete, útil para ver la idea
+    sin gastar un token. En un caso real la descomposición NO se hace con
+    expresiones regulares: la propone el propio modelo (o una plantilla fija por
+    tipo de tarea), justamente porque el lenguaje natural no se deja trocear con
+    una lista de conectores.
     """
-    partes = [p.strip() for p in _CONECTORES.split(tarea) if p and p.strip()]
+    partes: list[str] = []
+    for bloque in _SEPARADORES_FUERTES.split(tarea):
+        if not bloque or not bloque.strip():
+            continue
+        partes.extend(p.strip() for p in _Y_ANTES_DE_VERBO.split(bloque) if p.strip())
     return partes
 
 
 # ==================================================================
-# 5) HARNESS "antes/después" · medir que un prompt mejor acierta más
+# 5) EL CASO DEL MÓDULO · clasificar reseñas en la taxonomía de la casa
 # ==================================================================
-# Mini-dataset FIJO y offline: problemas de una operación con su respuesta exacta.
-# Cada enunciado tiene exactamente dos números y una palabra que revela la
-# operación. Es el "eco" del TEMA 16, donde se mide en serio con la tríada RAG.
-DATASET = [
-    {"pregunta": "Ana tiene 3 manzanas y compra 2 más. ¿Cuántas tiene ahora?", "respuesta": "5"},
-    {"pregunta": "Un bus lleva 12 pasajeros y suben 5. ¿Cuántos van en total?", "respuesta": "17"},
-    {"pregunta": "Luis tenía 20 soles y gastó 8. ¿Cuánto le queda?", "respuesta": "12"},
-    {"pregunta": "Hay 7 gatos en el patio y llegan 4 más. ¿Cuántos hay?", "respuesta": "11"},
-    {"pregunta": "María horneó 15 panes y vendió 9. ¿Cuántos le quedan?", "respuesta": "6"},
+# La misma taxonomía interna de resenas.csv (m03). El desempate de la casa
+# —"si hay defecto de producto Y mala atención, manda el DEFECTO"— es lo que
+# few-shot enseña en una línea y una instrucción a secas describe mal.
+CATEGORIAS = ("LOGISTICA", "PRODUCTO", "ATENCION", "APP")
+
+INSTRUCCION_CLASIFICAR = (
+    "Clasifica la reseña en UNA de estas categorías: "
+    "LOGISTICA, PRODUCTO, ATENCION, APP. "
+    "Responde SOLO con la categoría en mayúsculas."
+)
+
+# Las 4 demostraciones del few-shot. La 3ª vale por un párrafo: habla de producto
+# Y de atención, y la casa decide que manda el DEFECTO.
+EJEMPLOS_FEWSHOT = [
+    ("Llegó dos días antes de lo prometido y bien embalado.", "LOGISTICA"),
+    ("La app se cierra sola cada vez que intento pagar con Yape.", "APP"),
+    ("Excelente atención en la tienda, me explicaron todo con paciencia.", "ATENCION"),
+    ("Vino rayado y encima nadie contesta el correo.", "PRODUCTO"),
 ]
 
-# Palabras que delatan una RESTA; si no aparece ninguna, asumimos suma.
-_PALABRAS_RESTA = ("gastó", "gasta", "vendió", "vende", "perdió", "pierde",
-                   "regaló", "regala", "quita", "quitó", "menos", "queda", "quedan")
+# Mini-dataset con label de oro para MEDIR. Incluye dos casos de desempate
+# (defecto + mala atención → PRODUCTO), justo donde zero-shot suele fallar.
+DATASET_RESENAS = [
+    {"reseña": "Tardó tres semanas en llegar, pero el vendedor me fue avisando.", "categoria": "LOGISTICA"},
+    {"reseña": "El vaso vino rajado y además nadie responde mis correos.", "categoria": "PRODUCTO"},
+    {"reseña": "No puedo iniciar sesión en la app desde la última actualización.", "categoria": "APP"},
+    {"reseña": "La chica del mostrador fue amabilísima y resolvió todo al toque.", "categoria": "ATENCION"},
+    {"reseña": "Me llegó el modelo equivocado y encima me colgaron el teléfono.", "categoria": "PRODUCTO"},
+    {"reseña": "El paquete se perdió en el courier y llevo cinco días esperando.", "categoria": "LOGISTICA"},
+]
 
 
-def _numeros(texto: str) -> list[int]:
-    """Los enteros que aparecen en el texto, en orden."""
-    return [int(n) for n in re.findall(r"-?\d+", texto)]
+def _prompt_zero_shot(reseña: str) -> str:
+    """Solo la instrucción y la reseña. Sin demostraciones (k = 0)."""
+    return f"{INSTRUCCION_CLASIFICAR}\n\nReseña: {reseña}"
 
 
-def resolver_directo(pregunta: str) -> str:
-    """Estrategia POBRE: el modelo apurado agarra el PRIMER número que ve y lo
-    suelta como respuesta, sin razonar. Es el 'salto directo a la conclusión'
-    que CoT viene a corregir. Casi siempre falla en cuanto hay una operación."""
-    nums = _numeros(pregunta)
-    return str(nums[0]) if nums else ""
+def _prompt_few_shot(reseña: str) -> str:
+    """La MISMA instrucción + k demostraciones que enseñan la taxonomía y el desempate.
+
+    La única diferencia con `_prompt_zero_shot` son las demos: así, si el acierto
+    sube, sabemos que lo movieron ELLAS y no otra cosa (cambiar una sola variable).
+    """
+    return f"{INSTRUCCION_CLASIFICAR}\n\n{construir_prompt_fewshot(EJEMPLOS_FEWSHOT, reseña)}"
 
 
-def resolver_cot(pregunta: str) -> str:
-    """Estrategia BUENA: descompone el enunciado (¿qué números? ¿qué operación?)
-    y RECIÉN calcula. Es CoT/descomposición hechos código determinista: mismo
-    espíritu que pedirle al LLM que razone paso a paso antes de responder."""
-    nums = _numeros(pregunta)
-    if len(nums) < 2:
-        return str(nums[0]) if nums else ""
-    a, b = nums[0], nums[1]
-    es_resta = any(palabra in pregunta.lower() for palabra in _PALABRAS_RESTA)
-    return str(a - b if es_resta else a + b)
+def _extraer_categoria(respuesta: str) -> str:
+    """La primera categoría válida que aparezca en la respuesta del modelo.
+
+    El modelo puede envolver la etiqueta en texto ("La categoría es PRODUCTO.").
+    Nos quedamos con la primera de CATEGORIAS que aparezca; si ninguna, "".
+    """
+    texto = respuesta.upper()
+    for categoria in CATEGORIAS:
+        if categoria in texto:
+            return categoria
+    return ""
 
 
-def evaluar(estrategia, dataset: list[dict]) -> float:
-    """Exactitud (exact-match) de una estrategia sobre el dataset: fracción de
-    respuestas que coinciden EXACTAMENTE con la esperada. Métrica determinista,
-    sin LLM y sin juez: se puede afirmar en un test."""
+def _medir(llm, construir_prompt_fn, dataset: list[dict]) -> float:
+    """Exactitud (exact-match) de una estrategia LLAMANDO al modelo caso por caso.
+
+    Es el eco REAL del harness offline anterior: la métrica es la misma
+    (fracción de aciertos), pero ahora la respuesta la da el modelo, no un
+    resolutor determinista. Por eso el número puede variar entre corridas.
+    """
     if not dataset:
         return 0.0
-    aciertos = sum(1 for caso in dataset if estrategia(caso["pregunta"]) == caso["respuesta"])
+    aciertos = 0
+    for caso in dataset:
+        respuesta = llm.invoke(construir_prompt_fn(caso["reseña"])).text
+        if _extraer_categoria(respuesta) == caso["categoria"]:
+            aciertos += 1
     return aciertos / len(dataset)
 
 
-def comparar_estrategias() -> dict[str, float]:
-    """El experimento antes/después en una llamada: exactitud de la estrategia
-    directa vs la de CoT/descomposición sobre el mismo mini-dataset."""
-    return {
-        "directo": evaluar(resolver_directo, DATASET),
-        "cot": evaluar(resolver_cot, DATASET),
-    }
-
-
 # ==================================================================
-# main() · la parte offline SIEMPRE corre; la online es un extra
+# main() · las cuatro técnicas, ejecutadas contra el modelo real
 # ==================================================================
-def _demo_offline() -> None:
-    """Todo lo que no necesita red: few-shot, CoT, descomposición, el harness
-    antes/después y un ejemplo de self-consistency por votación."""
-    print("=" * 64)
-    print("PROMPT ENGINEERING · demostración 100% OFFLINE")
-    print("=" * 64)
+def main() -> None:
+    # El guard va DENTRO de main(): el archivo se importa (y testea) sin llave.
+    cargar_var_entorno()
+    if (error := requiere_llm_key()) is not None:
+        raise SystemExit(error)
 
-    # --- Few-shot: un prompt armado con demostraciones ---
-    ejemplos = [
-        ("Traduce 'gato' al inglés", "cat"),
-        ("Traduce 'perro' al inglés", "dog"),
-    ]
-    print("\n[1] FEW-SHOT · prompt con 2 demostraciones + la pregunta real:\n")
-    print(construir_prompt_fewshot(ejemplos, "Traduce 'casa' al inglés"))
+    llm = crear_llm(temperature=0.0)           # tareas deterministas: few-shot, CoT, medir
+    llm_creativo = crear_llm(temperature=0.8)   # self-consistency necesita variar entre pasadas
 
-    # --- CoT: la misma pregunta, ahora con estructura de razonamiento ---
-    print("\n[2] CHAIN-OF-THOUGHT · la pregunta envuelta para razonar:\n")
-    print(plantilla_cot("Si un tren sale a las 9 y tarda 2 horas, ¿a qué hora llega?"))
+    print("=" * 66)
+    print("PROMPT ENGINEERING · cuatro técnicas, contra el modelo real")
+    print("=" * 66)
 
-    # --- Descomposición: una tarea compuesta partida en sub-pasos ---
-    tarea = "busca el precio del producto y calcula el IVA y suma el total"
-    print("\n[3] DESCOMPOSICIÓN · una tarea grande en sub-preguntas:")
-    for i, paso in enumerate(descomponer(tarea), 1):
-        print(f"    {i}. {paso}")
-
-    # --- Self-consistency: mayoría sobre varias muestras ruidosas ---
-    muestras = ["42", "42", "17", "42", "17"]   # como si vinieran de 5 pasadas
-    print(f"\n[4] SELF-CONSISTENCY · 5 muestras {muestras}")
-    print(f"    → mayoría (moda): {self_consistency(muestras)}")
-
-    # --- Harness antes/después: el número que justifica todo lo anterior ---
-    marcador = comparar_estrategias()
-    print("\n[5] MEDIR LA MEJORA · exactitud sobre el mini-dataset (exact-match):")
-    print(f"    Prompt POBRE  (salto directo)     : {marcador['directo']:.0%}")
-    print(f"    Prompt MEJOR  (CoT/descomposición): {marcador['cot']:.0%}")
-    print("    → estructurar la tarea sube el acierto. En el TEMA 16 esto se")
-    print("      mide 'en serio' con un dataset y la tríada RAG, no a ojo.")
-
-
-def _demo_online() -> None:
-    """Self-consistency REAL: muestrea la MISMA pregunta N veces a temperatura>0
-    y vota. Solo corre si hay proveedor + llave; si no, se salta sin romper."""
-    import util
-
-    if util.requiere_llm_key() is not None:
-        print("\n(La demo ONLINE de self-consistency se salta: no hay llave. "
-              "Todo lo de arriba ya demostró la técnica offline.)")
-        return
-
-    print("\n" + "=" * 64)
-    print("SELF-CONSISTENCY REAL · muestreo a temperatura>0 (usa cuota)")
-    print("=" * 64)
-    pregunta = ("Un granjero tiene 17 ovejas. Todas menos 9 se escapan. "
-                "¿Cuántas le quedan? Responde SOLO con el número.")
-    llm = util.crear_llm(temperature=0.8)   # temperatura>0: cada muestra puede variar
-    muestras: list[str] = []
     try:
+        # --- [1] Few-shot vs zero-shot en el caso que exige el desempate ---
+        reseña = "El vaso vino rajado y además nadie responde mis correos."
+        print("\n[1] FEW-SHOT vs ZERO-SHOT · reseña con producto Y atención:")
+        print(f'    "{reseña}"')
+        print("    (esperado: PRODUCTO — en esta casa manda el DEFECTO)\n")
+        zs = _extraer_categoria(llm.invoke(_prompt_zero_shot(reseña)).text)
+        fs = _extraer_categoria(llm.invoke(_prompt_few_shot(reseña)).text)
+        print(f"    zero-shot (solo instrucción)      → {zs or '¿?'}")
+        print(f"    few-shot  (4 demos con desempate)  → {fs or '¿?'}")
+        print("    → la 3ª demo enseña el desempate en una línea; describirlo cuesta un párrafo.")
+
+        # --- [2] Chain-of-thought vs respuesta directa ---
+        pregunta = ("Un cliente devuelve 3 polos de S/ 45 cada uno. La tienda "
+                    "descuenta 10% de penalidad sobre el total devuelto. "
+                    "¿Cuánto se le reembolsa?")
+        print("\n[2] CHAIN-OF-THOUGHT vs DIRECTO · un cálculo de varios pasos:")
+        print(f"    {pregunta}")
+        print("    (esperado: 121.50 → 3 × 45 = 135, menos 10%)\n")
+        directo = llm.invoke(f"{pregunta}\n\nResponde SOLO con el número.").text.strip()
+        con_cot = llm.invoke(plantilla_cot(pregunta)).text.strip()
+        print(f"    directo → {directo[:80]}")
+        print(f"    con CoT → …{con_cot[-90:].strip()}")
+        print("    → escribir los pasos evita el salto directo a una conclusión equivocada.")
+
+        # --- [3] Self-consistency: votar la moda de N pasadas a temperatura>0 ---
+        trampa = ("Un almacén tiene 17 cajas. Todas menos 9 se despachan. "
+                  "¿Cuántas quedan? Responde SOLO con el número.")
+        print("\n[3] SELF-CONSISTENCY · 5 pasadas a temperatura 0.8 sobre una trampa:")
+        print(f"    {trampa}")
+        print("    (esperado: 9 — 'todas menos 9' es la trampa; el 8 = 17−9 es el error típico)\n")
+        muestras: list[str] = []
+        descartadas = 0
         for _ in range(5):
-            respuesta = llm.invoke(plantilla_cot(pregunta)).content.strip()
-            # Nos quedamos con el número final, que es lo que se vota.
+            # `.text` saca el texto plano aunque venga en content_blocks.
+            respuesta = llm_creativo.invoke(plantilla_cot(trampa)).text.strip()
             nums = re.findall(r"-?\d+", respuesta)
-            muestras.append(nums[-1] if nums else respuesta)
+            if nums:
+                muestras.append(nums[-1])   # el número final es lo que se vota
+            else:
+                # Una pasada sin número NO es un voto: ensuciaría la moda.
+                descartadas += 1
+        print(f"    muestras: {muestras}"
+              + (f"  ({descartadas} sin número, descartadas)" if descartadas else ""))
+        print(f"    → mayoría (moda): {self_consistency(muestras)}")
+        print("      una sola pasada puede caer en la trampa; la moda de 5 la filtra.")
+
+        # --- [4] MEDIR de verdad: ¿cuánto sube el acierto few-shot vs zero-shot? ---
+        print("\n[4] MEDIR LA MEJORA · exact-match sobre el mini-dataset, LLAMANDO al modelo:")
+        acc_zero = _medir(llm, _prompt_zero_shot, DATASET_RESENAS)
+        acc_few = _medir(llm, _prompt_few_shot, DATASET_RESENAS)
+        print(f"    zero-shot: {acc_zero:.0%}")
+        print(f"    few-shot : {acc_few:.0%}")
+        print(f"    → la mejora medida son {(acc_few - acc_zero) * 100:.0f} puntos sobre "
+              f"{len(DATASET_RESENAS)} reseñas.")
+        print("      ⚠️ Son 6 casos y el modelo no es determinista: el número puede bailar")
+        print("      entre corridas. Esto es la FORMA de medir, no el veredicto — medir")
+        print("      EN SERIO es un dataset grande y la tríada RAG del c16c.")
     except Exception as error:  # noqa: BLE001
-        if util.es_error_cuota(error):
-            print(util.mensaje_cuota())
+        if es_error_cuota(error):
+            print(mensaje_cuota())
             return
         raise
-    print(f"Muestras de las 5 pasadas: {muestras}")
-    print(f"Respuesta por MAYORÍA     : {self_consistency(muestras)}  (esperado: 9)")
-
-
-def main() -> None:
-    _demo_offline()
-    _demo_online()
 
 
 if __name__ == "__main__":

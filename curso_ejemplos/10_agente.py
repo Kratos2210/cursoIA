@@ -7,7 +7,7 @@ FINALIDAD:
 
 LÓGICA (paso a paso):
   1) Creamos el modelo y una herramienta.
-  2) create_react_agent une cerebro + tools + memoria.
+  2) create_agent une cerebro + tools + memoria.
   3) Con un thread_id, el agente recuerda la conversación.
   4) Turno 2 en streaming: la respuesta aparece token a token.
 
@@ -20,7 +20,7 @@ from dotenv import load_dotenv              # cargar .env
 from util import mensaje_cuota, crear_llm, requiere_llm_key   # el modelo, del proveedor que diga el .env
 from langchain_core.tools import tool                       # decorador de herramientas
 from langchain_core.messages import AIMessageChunk          # "trozo" de respuesta (para streaming)
-from langgraph.prebuilt import create_react_agent           # crea el agente ya armado
+from langchain.agents import create_agent                   # crea el agente ya armado (estándar v1)
 from langgraph.checkpoint.memory import MemorySaver         # memoria del agente (en RAM)
 
 
@@ -41,11 +41,11 @@ def main():
 
     # ---- 2) Crear el agente -----------------------------
     memoria = MemorySaver()   # recuerda la charla (indexada por thread_id)
-    agente = create_react_agent(
+    agente = create_agent(
         llm,
         tools=[calculadora_descuentos],
         checkpointer=memoria,
-        prompt="Eres un asesor de ventas claro y amable.",
+        system_prompt="Eres un asesor de ventas claro y amable.",   # en v1 es `system_prompt` (antes `prompt`)
     )
 
     # El thread_id identifica la conversación (como el chat de un cliente)

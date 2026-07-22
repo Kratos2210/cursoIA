@@ -142,7 +142,8 @@ Precios de lista por millón de tokens, tomados de las páginas oficiales de cad
 | ~~`Qwen3 32B`~~ | Groq | open weights | ~~$0.29~~ | ~~$0.59~~ | 131K | ⛔ **Retirado por Groq en 2026-07.** Era el default del curso: lo reemplaza `gpt-oss-120b`. Ejemplo vivo de por qué el modelo va en el `.env` y no en el código. |
 | `GLM-5` | Z.ai (Zhipu) | open weights (API) | $1.00 | $3.20 | — | Flagship chino de Zhipu. Consultado 2026-07-19. |
 | `GLM-4.7-FlashX` | Z.ai (Zhipu) | open weights (API) | $0.07 | $0.40 | — | El piso de precio de la familia GLM (y hay un Flash gratis). Consultado 2026-07-19. |
-| `kimi-k3` | Moonshot (Kimi) | open weights (API) | $3.00 | $15.00 | 1M | Cache miss; con cache hit la entrada baja a $0.30. Consultado 2026-07-19. |
+| `kimi-k3` | Moonshot (Kimi) | open weights (API) | $3.00 | $15.00 | 1M | Cache miss; con cache hit la entrada baja a $0.30. Consultado 2026-07-21. |
+| `kimi-k2.6` | Moonshot (Kimi) | open weights (API) | $0.95 | $4.00 | 256K | Cache miss; con cache hit, $0.16. **El default del curso en `LLM_PROVIDER=kimi`.** Consultado 2026-07-21. |
 | `qwen3:8b` (Ollama, tu máquina) | local | open weights | $0 | $0 | según tu RAM | Cero coste por token: pagas hardware y electricidad. |
 
 <Box kind="warn" label="▲ Esta tabla caduca">
@@ -175,6 +176,150 @@ No hay un "mejor modelo": hay un mejor modelo *para tu restricción dominante*. 
 
 El paso ③ es donde vive el ahorro real, porque casi cada flagship tiene un hermano barato que hace *casi* lo mismo en tareas acotadas: **Claude Opus ↔ Haiku**, **GPT-5.5 ↔ gpt-5.4-mini**, **Gemini Pro ↔ Flash** — y debajo de todos, el piso chino (GLM-FlashX, Qwen, DeepSeek). Para el chatbot del e-commerce de la casuística: streaming sí (chat en vivo), visión solo si los reclamos llegan con foto, tarea acotada y volumen alto → los candidatos naturales son del tier barato multimodal, y la decisión final la toma tu eval con transcripciones reales — no el leaderboard, y menos el hype.
 
+### Decidir CON NÚMEROS: la cuenta que casi nadie hace
+
+El embudo de arriba te deja 2–3 candidatos. La pregunta que llega inmediatamente después —y la que más se pregunta en un equipo real— es otra: **"¿y cuánto me va a costar esto al mes?"**. Casi siempre se responde señalando el precio de lista y diciendo "este es más barato". Esa respuesta es incierta porque el precio de lista **no** es la factura: entre uno y otra hay tres multiplicadores que cambian el resultado por un factor de 10 o de 200. Aquí los hacemos explícitos, con la calculadora encendida.
+
+#### 1 · La fórmula
+
+Todo se reduce a una línea, y todo lo demás de esta sección es aprender a estimar bien sus dos variables:
+
+```text title="el coste de una llamada"
+coste = (tokens_de_entrada × $in + tokens_de_salida × $out) / 1,000,000
+```
+
+Los precios están en dólares **por millón de tokens** (por eso se divide entre un millón), y son **dos precios distintos**, no uno. De punta a punta, con `gemini-3.1-flash-lite` ($0.25 entrada / $1.50 salida) y una consulta de 1,500 tokens de entrada y 300 de salida:
+
+```text title="una llamada, paso a paso"
+entrada:  1,500 × $0.25 / 1,000,000 = $0.000375
+salida:     300 × $1.50 / 1,000,000 = $0.000450
+                                      ---------
+por llamada:                          $0.000825
+
+× 100,000 llamadas al mes           = $82.50 / mes
+```
+
+Fíjate en algo que la intuición no ve: la llamada tiene **5 veces más tokens de entrada que de salida**, y sin embargo **la salida cuesta más**. Ese es el primer multiplicador.
+
+#### 2 · Los tres multiplicadores que casi nadie modela
+
+<Box kind="warn" label="▲ Multiplicador 1 · La salida cuesta 4–5× lo que cuesta la entrada">
+
+Mira la columna de precios: `$0.25 / $1.50` en flash-lite, `$5.00 / $30.00` en GPT-5.5, `$1.00 / $5.00` en Haiku. Casi todo el mercado cobra la salida entre **4 y 6 veces** más cara que la entrada, porque generar token a token es secuencial y la entrada se procesa en paralelo.
+
+La consecuencia práctica es contraintuitiva: **recortar el prompt de entrada rinde mucho menos que recortar la respuesta.** Quitar 500 tokens de instrucciones en flash-lite ahorra $0.000125 por llamada; pedir "responde en 3 líneas" y bajar 200 tokens de salida ahorra $0.0003 — más del doble, con un tercio del esfuerzo. Antes de pasar una tarde comprimiendo tu system prompt, mira si tu salida tiene grasa.
+
+</Box>
+
+<Box kind="warn" label="▲ Multiplicador 2 · Un modelo que razona genera tokens de salida que no lees (y sí pagas)">
+
+Ya viste en `util.py` que a los modelos de razonamiento hay que decirles dónde poner su cadena de pensamiento (`reasoning_format` en Groq, `include_reasoning` en gpt-oss, `reasoning: exclude` en OpenRouter). Ocultarla **no la hace gratis**: esos tokens se generaron y se facturan como salida. Según la tarea y el esfuerzo configurado, un razonador emite del orden de **3 a 10 veces** más tokens de salida de los que acabas leyendo.
+
+La cuenta, con 10,000 tareas al mes de 1,000 tokens de entrada y **300 tokens de respuesta visible**:
+
+| Modelo | Tokens de salida reales | Cuenta | $/mes |
+| --- | --- | --- | --- |
+| `Gemini 2.5 Flash` (no razona) | 300 → 3M al mes | 10 × $0.30 + 3 × $2.50 | **$10.50** |
+| `Claude Sonnet 5` (sin razonamiento extendido) | 300 → 3M al mes | 10 × $3.00 + 3 × $15.00 | **$75.00** |
+| `gpt-5.4-mini` razonando (5× oculto) | 300 + 1,500 → 18M al mes | 10 × $0.75 + 18 × $4.50 | **$88.50** |
+
+Léelo dos veces: el modelo del **tier barato** ($0.75/$4.50) sale **más caro** que un flagship de $3.00/$15.00, solo porque piensa en voz alta. Esta es la razón número uno por la que las estimaciones hechas con el precio de lista fallan, y por la que el [c16](/concepto/16-observabilidad-y-costo) mide `usage_metadata` en vez de estimar: ahí ves los tokens de salida **de verdad**, incluidos los que nunca se imprimieron.
+
+</Box>
+
+<Box kind="def" label="◈ Multiplicador 3 · El prompt caching cambia la factura hasta 10×">
+
+El descuento más grande del mercado, y el que no aparece en ninguna comparativa de titulares porque las tablas solo publican una columna de entrada. Si tus llamadas comparten un **prefijo largo y estable** —el system prompt, los ejemplos few-shot, un documento fijo—, el proveedor lo cachea y te cobra esos tokens muchísimo más barato a partir de la segunda llamada:
+
+| Modelo | Entrada normal (cache miss) | Entrada cacheada (cache hit) | Descuento |
+| --- | --- | --- | --- |
+| `kimi-k3` | $3.00 | $0.30 | 10× |
+| `kimi-k2.6` | $0.95 | $0.16 | ~6× |
+
+Dos condiciones que hay que respetar para que funcione, y que explican por qué a mucha gente "no le hace nada": el prefijo tiene que ser **idéntico byte a byte** (si metes la fecha y hora al principio del system prompt, rompes la caché en cada llamada) y tiene que ir **al principio** (la caché es de prefijo, no de fragmentos sueltos). O sea: lo estable arriba, lo variable abajo. Es la misma palanca de la caja de caché de prompt del [c16](/concepto/16-observabilidad-y-costo); aquí lo que añadimos es el número.
+
+</Box>
+
+#### 3 · Seis casos trabajados
+
+Cada fila es una carga de trabajo realista con su cuenta hecha. Los precios salen todos de la tabla de arriba. Lo importante no es el número final —tu volumen será otro— sino **qué restricción manda en cada caso**, porque es lo que decide, y casi nunca es el precio de lista.
+
+| Caso | Carga mensual | Restricción dominante | Candidatos y $/mes |
+| --- | --- | --- | --- |
+| **Chatbot de atención, alto volumen** | 100,000 interacciones · 1,500 in + 300 out → 150M in / 30M out | El volumen. Cualquier céntimo se multiplica por cien mil | `gemini-3.1-flash-lite` **$82.50** · `Claude Haiku 4.5` **$300.00** · `GPT-5.5` **$1,650.00** |
+| **Clasificación / extracción en lote** | 500,000 documentos · 800 in + 120 out → 400M in / 60M out | Nadie espera en pantalla → Batch API (~50% menos) | `gpt-oss-20b` **$48.00** · `deepseek-v4-flash` **$72.80** · `gpt-5.4-mini` **$570.00** (por batch, ~$285) |
+| **Agente con herramientas** | 10,000 tareas × 6 pasos = 60,000 llamadas · 4,000 in + 250 out → 240M in / 15M out | Los **pasos**: cada uno reenvía todo el historial | `gpt-oss-120b` **$45.00** · `Claude Haiku 4.5` **$315.00** · `Claude Sonnet 5` **$945.00** |
+| **RAG sobre normativa** (corpus de 200,000 tokens) | 10,000 consultas · 400 out | La **arquitectura**, no el modelo (ver abajo) | contexto completo en `kimi-k3` **$6,060.00** · con caché de prefijo **$660.00** · RAG + `Gemini 2.5 Flash` **$29.50** |
+| **Asistente de código interno** | 50 devs × 40 peticiones × 22 días = 44,000 · 6,000 in + 800 out → 264M in / 35.2M out | La **calidad**: el coste por dev es ruido frente a su sueldo | `gpt-5.4-mini` **$356.40** · `Claude Sonnet 5` **$1,320.00** ($26.40/dev) · `Claude Opus 4.8` **$2,200.00** ($44/dev) |
+| **Tarea corta con razonador** | 10,000 tareas · 1,000 in + 300 visibles | Los tokens de razonamiento **invisibles** (multiplicador 2) | `Gemini 2.5 Flash` **$10.50** · `Claude Sonnet 5` **$75.00** · `gpt-5.4-mini` razonando **$88.50** |
+
+Dos de estas filas merecen que veas la cuenta entera, porque son las que más sorprenden.
+
+**El agente.** Nadie factura "10,000 tareas": factura **60,000 llamadas**, porque un agente da varios pasos y en cada uno reenvía el historial completo. La entrada media sube a 4,000 tokens y el total de entrada se dispara a 240M. Con `Claude Sonnet 5`: 240 × $3.00 = $720 de entrada, 15 × $15.00 = $225 de salida, **$945/mes**. Con `gpt-oss-120b`: 240 × $0.15 = $36 y 15 × $0.60 = $9, **$45/mes** — 21 veces menos. La palanca aquí no es solo el modelo: es **recortar pasos y podar el historial**, porque el coste crece con el cuadrado de la conversación.
+
+**El RAG.** Una normativa de 200,000 tokens cabe entera en la ventana de 1M de `kimi-k3`, y meterla en cada consulta es tentador porque no hay que construir nada:
+
+```text title="tres arquitecturas, la misma pregunta"
+a) corpus completo en el contexto, sin caché
+   entrada: 10,000 × 200,000 = 2,000M × $3.00  = $6,000.00
+   salida:  10,000 ×     400 =      4M × $15.00 =    $60.00   → $6,060.00 / mes
+
+b) lo mismo, con el corpus como prefijo CACHEADO
+   entrada: 2,000M × $0.30                      =   $600.00
+   salida:                                            $60.00   →   $660.00 / mes
+
+c) RAG: recuperas ~6,500 tokens relevantes (Gemini 2.5 Flash)
+   entrada:  10,000 × 6,500 =  65M × $0.30      =    $19.50
+   salida:                       4M × $2.50     =    $10.00   →    $29.50 / mes
+```
+
+Del (a) al (c) hay un factor de **205×**, y ni una sola de esas decisiones fue "elegir un modelo más barato". La lección, y es la más rentable de todo el módulo: **la arquitectura pesa más que el proveedor**. Recuperar en vez de rellenar el contexto ([c11](/concepto/11-rag-profesional)) ahorra dos órdenes de magnitud; la caché de prefijo ahorra otro casi entero. Perseguir un modelo un 20% más barato mientras mandas 200,000 tokens en cada consulta es optimizar el decimal equivocado.
+
+<Avoid label="⛔ Errores clásicos al estimar el coste">
+
+- **Estimar en vez de medir.** Estas cuentas sirven para *comparar candidatos antes* de gastar. En cuanto tengas tráfico real, la cifra buena sale de `usage_metadata` ([c16](/concepto/16-observabilidad-y-costo)), no de una hoja de cálculo — porque tus tokens reales nunca son los que supusiste.
+- **Contar solo las llamadas que "cuentan".** Los reintentos, las llamadas de los tests, el fallback que se dispara y el juez del eval ([c16c](/concepto/16c-evaluacion)) también se facturan. En un sistema con evaluación automática, el evaluador puede ser una parte nada pequeña de la factura.
+- **Olvidar los embeddings y los reranker.** El RAG paga tokens al indexar y al consultar, con otra tarifa distinta.
+- **Extrapolar la tabla a otras modalidades.** Una imagen, un audio o un vídeo no consumen "un token por palabra": cada proveedor tiene su propia fórmula para convertirlos en tokens, y no está en esta tabla. Para lo multimodal ([c22](/concepto/22-multimodal)) hay dos salidas honestas: la fórmula publicada por el proveedor, o una llamada de prueba y `usage_metadata`. Estimarlo "a ojo" es inventar.
+
+</Avoid>
+
+#### 4 · Lo que decide y no es precio
+
+Un modelo puede ganar la cuenta anterior y aun así ser la peor elección. Estos son los criterios que descartan candidatos **antes** de que el precio hable, cada uno con la pregunta que hay que hacerse:
+
+| Criterio | La pregunta que responde | Por qué puede vetar al más barato |
+| --- | --- | --- |
+| Ventana de contexto | ¿Cabe lo que necesito mandarle? | Si tu documento no entra, el precio da igual: no hay respuesta que evaluar. |
+| Tool calling fiable | ¿Llama a las herramientas cuando toca, y con los argumentos correctos? | Un agente ([c10](/concepto/10-agentes-prebuilt)) con un modelo flojo en tools no es más barato: es un agente que no funciona. |
+| Salida estructurada nativa | ¿Puedo forzar un JSON con esquema? | Sin ella toca `function_calling` o parseo frágil ([c05](/concepto/05-salida-estructurada)) — y no todos los modelos soportan todos los métodos. |
+| Latencia y throughput | ¿Cuánto tarda el primer token, y cuántos usuarios aguanta? | En un chat en vivo, 4 segundos de espera cuestan usuarios; ahí Groq gana aunque no sea el más barato por token. |
+| Prompt caching | ¿Lo ofrece, y a qué descuento? | Es el multiplicador 3: puede invertir el orden de la comparativa de precios. |
+| Límites de tasa (rate limits) | ¿Cuántas peticiones por minuto me deja mi tier? | El modelo más barato con un límite de 30 RPM no sirve para 100,000 interacciones al mes. |
+| Licencia | ¿Puedo construir un producto comercial encima? | Apache 2.0 sí; la Llama Community License pone condiciones. |
+| Jurisdicción de los datos | ¿A qué país viajan, y qué dice mi regulación? | Es la conversación de los caminos ③ y ④ — y en banca o salud llega antes que el precio. |
+| **Política de deprecación** | ¿Cuánto tiempo va a existir este modelo? | Ver abajo. Es el criterio que más gente olvida y el que más caro sale. |
+
+<Box kind="warn" label="▲ El modelo perfecto que desaparece cuesta más que el caro que sigue ahí">
+
+No es una hipótesis: es la historia de este curso. `qwen/qwen3-32b` era el default — buen precio, buena calidad, todo cuadraba — y Groq lo retiró en 2026-07. Todo lo que apuntaba a él empezó a devolver `model_decommissioned`.
+
+El coste de una deprecación no es la diferencia de precio por token: es **re-evaluar, re-ajustar prompts y volver a desplegar**, y ocurre en el calendario del proveedor, no en el tuyo. Por eso, al comparar candidatos, mira también: ¿el proveedor publica una política de retirada con preaviso? ¿el ID lleva versión y fecha (`claude-...-20250929-v1:0`), o es un alias movedizo? ¿hay un modelo equivalente al que saltar sin cambiar de proveedor?
+
+Y por eso, en este curso, el modelo vive en el `.env` y no en el código: no evita la deprecación, pero convierte una migración en una línea. El seguro no es elegir bien: es no atarse.
+
+</Box>
+
+#### 5 · Dónde encaja Kimi en todo esto
+
+Con el marco montado, ubicar un proveedor concreto es rápido. **Kimi**, de Moonshot, es el que acabamos de añadir al conmutador (`LLM_PROVIDER=kimi`, llave en `MOONSHOT_API_KEY`), y es un buen ejemplo de que "chino" no significa "barato":
+
+- **Cuándo compensa.** Cuando tu restricción dominante es **contexto enorme con prefijo estable**: `kimi-k3` da 1M de ventana y el descuento de caché más agresivo de la tabla ($3.00 → $0.30, 10×). Es exactamente el caso (b) del RAG de arriba. Si mandas un corpus grande y fijo miles de veces, ahí la cuenta le favorece.
+- **Cuándo no.** Su flagship cuesta **lo mismo que un Claude Sonnet 5** ($3.00/$15.00): sin caché y sin necesidad de ventana enorme, no hay ninguna ventaja de precio. Y para el volumen puro, `gemini-3.1-flash-lite` o `gpt-oss-20b` están un orden de magnitud por debajo.
+- **La trampa que te encuentras el primer día.** Kimi **fija los parámetros de muestreo**: `kimi-k2.6` solo acepta temperatura 1.0 (pensando) o 0.6 (sin pensar), y `kimi-k3` exige que **ni siquiera mandes el campo**. Como todo el curso pide `temperature=0` para que las salidas sean reproducibles, `util.crear_llm()` omite ese parámetro cuando el proveedor es `kimi` — igual que no le manda `reasoning_format` a quien no es Groq. **Cada proveedor tiene sus parámetros prohibidos, y mandárselos es un 400.**
+
+Esa última viñeta es también el motivo por el que Kimi está *disponible* en el curso pero no es el camino recomendado de nada: sin `temperature=0` pierdes la reproducibilidad de la que dependen los ejemplos y las evaluaciones ([c16c](/concepto/16c-evaluacion)). Es una decisión de ingeniería perfectamente legítima — y un recordatorio de que la ficha técnica incluye *qué parámetros acepta*, no solo qué sabe hacer.
+
 La tabla de atajos, cuando ya sabes cuál es tu restricción dominante:
 
 | Si tu prioridad es… | Camino recomendado |
@@ -183,14 +328,15 @@ La tabla de atajos, cuando ya sabes cuál es tu restricción dominante:
 | Latencia mínima | Groq (LPU) — respuestas casi instantáneas. |
 | Coste mínimo | DeepSeek · Gemini Flash · open weights hospedados. |
 | Máxima capacidad de razonamiento | Claude Opus · GPT-5. |
-| Ventana enorme (1M tokens) | Claude · Gemini. |
+| Ventana enorme (1M tokens) | Claude · Gemini · `kimi-k3`. |
+| Prefijo larguísimo y estable repetido miles de veces | El que mejor caché de prompt ofrezca (`kimi-k3` baja la entrada 10×) — y antes, plantéate si eso debería ser un RAG. |
 | Prototipar sin gastar | Free tier de Groq / Gemini · OpenRouter `:free` · Ollama local. |
 
 Y como todo el curso pasa por `util.crear_llm()`, cambiar de camino es cambiar una variable — el conmutador ya soporta todos estos proveedores:
 
 ```python title=".env · cambiar de proveedor = cambiar una línea"
 # Elige UNO. crear_llm() lee esto y construye el modelo del proveedor activo.
-LLM_PROVIDER=openai        # o: anthropic | google | groq | openrouter | deepseek | ollama
+LLM_PROVIDER=openai        # o: anthropic | google | groq | openrouter | deepseek | kimi | ollama
 # LLM_MODELO=…             # opcional: manda sobre el default del proveedor
 
 # …y pon la llave del proveedor que activaste:
@@ -200,6 +346,9 @@ OPENAI_API_KEY=sk-...      # openai      (default gpt-5.4-mini)
 # DEEPSEEK_API_KEY=sk-...                # deepseek   (default deepseek-v4-flash)
 # GROQ_API_KEY=gsk_...                   # groq       (default openai/gpt-oss-120b)
 # GOOGLE_API_KEY=AIza...                 # google     (default gemini-3.1-flash-lite)
+# MOONSHOT_API_KEY=sk-...                # kimi       (default kimi-k2.6)
+#   ↑ la variable NO se llama KIMI_API_KEY: el producto es Kimi, la empresa es
+#     Moonshot, y su API espera ese nombre. Ver la caja de Kimi más abajo.
 # (ollama no necesita llave: corre en tu máquina)
 ```
 
@@ -269,6 +418,8 @@ Ambas se combinan con la disciplina del [c16b](/concepto/16-observabilidad-y-cos
 - Explicar qué aporta AWS Bedrock a una empresa regulada frente a una API pública.
 - Estimar el coste mensual de un servicio con la tabla de precios, y cambiar de proveedor tocando solo el `.env`.
 - Leer la ficha técnica de un modelo (modalidades, streaming, customización, tipo de inferencia) y aplicar el embudo ficha → benchmark → tu eval para justificar el caro o el barato según el propósito.
+- **Calcular** el coste mensual de una carga de trabajo con la fórmula `(in × $in + out × $out) / 1M`, y corregirla por los tres multiplicadores: la salida cuesta 4–5× la entrada, un razonador genera tokens que pagas y no lees, y la caché de prefijo puede dividir la entrada por 10.
+- Argumentar por qué la **arquitectura** (RAG vs. contexto completo) y la **política de deprecación** deciden más que el precio de lista.
 
 </Checkpoint>
 

@@ -40,6 +40,13 @@ dist/
 # ---- Archivos generados por los ejemplos ----
 curso_ejemplos/proyecto_final/hallazgos_auditoria.log
 
+# ---- El cuaderno del alumno ----
+# Quien clona el curso escribe SU código en curso_ejemplos/, junto a los
+# ejemplos de referencia (es donde viven pyproject.toml y util.py). La
+# convención del m00 es prefijarlo con `mi_`, y aquí es donde eso deja de
+# ensuciarle el `git status`.
+curso_ejemplos/mi_*.py
+
 # ---- Editor / SO ----
 .vscode/
 .idea/
