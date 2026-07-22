@@ -135,6 +135,47 @@ assert salida["metricas"]["uso_fallback"] is True     # el contrato lo salvó
 
 </Box>
 
+### La misma utilidad, ahora con LCEL
+
+Todo lo de arriba está escrito **a mano** a propósito: un `dict` de métricas, un `try/except` y un bucle `for intento in …`. Sirve para que veas **qué hay debajo** del contrato. Pero fíjate en algo incómodo: acabas de terminar nueve módulos de LangChain y tu "primer sistema completo" no usa ni una pieza de las que aprendiste. En un proyecto de verdad no escribes ese bucle: lo **compones** con lo del c02 al c09.
+
+```python title="09b_proyecto_texto.py · construir_cadena() — la versión que compone"
+def construir_cadena(modelo, intentos=2):
+    prompt = ChatPromptTemplate.from_template(PLANTILLA_LCEL)        # c02
+    parser = PydanticOutputParser(pydantic_object=RespuestaSoporte)  # c05
+
+    # prompt → modelo → contrato validado. .with_retry() ES el bucle for,
+    # pero declarado; .with_fallbacks() escala a un humano si insiste (c09).
+    clasificar = (prompt | _como_runnable(modelo) | parser).with_retry(
+        stop_after_attempt=intentos
+    ).with_fallbacks([RunnableLambda(lambda _: _FALLBACK)])
+
+    # El filtro NO es gratis en una cadena: la entrada recorre todos los
+    # eslabones, así que cortar antes del modelo pide una bifurcación explícita.
+    # RunnableBranch es el if/else de LCEL (la idea del routing del c08).
+    return RunnableBranch(
+        (lambda e: bool(filtro_entrada(e["consulta"])),
+         RunnableLambda(lambda _: _FALLBACK)),
+        clasificar,
+    )
+```
+
+Es la **misma lógica** y da el **mismo resultado** —hay un test que lo comprueba por los dos caminos— pero ahora aparecen los nombres que estudiaste: el `|` del c02, el parser del c05, la resiliencia del c09. Y por ser un `Runnable`, la cadena hereda **gratis** la interfaz unificada del c03: el mismo objeto responde a `.invoke()`, `.batch()` y `.stream()` sin una línea más.
+
+```python title="una consulta, o una tanda entera — sin tocar la cadena"
+cadena = construir_cadena(modelo_demo)
+cadena.invoke({"consulta": "Me cobraron dos veces la factura"})     # una
+cadena.batch([{"consulta": c} for c in tickets_del_dia])           # muchas (c03)
+```
+
+<Box kind="def" label="◈ Dos cosas que la versión a mano esconde y LCEL te obliga a ver">
+
+**El cortocircuito no es gratis.** En `procesar()`, saltarse el modelo es un `if …: return`. En una cadena, la entrada atraviesa todos los eslabones, así que para **no** llamar al modelo hace falta un `RunnableBranch`. No es burocracia: es que componer te obliga a decir *dónde* se corta el flujo, que en un pipeline real es justo lo que quieres explícito.
+
+**Reintento y fallback son la misma idea, dos formas.** El `for intento in range(...)` de `procesar()` y el `.with_retry().with_fallbacks()` de la cadena hacen lo mismo. La diferencia es que el segundo lo **declaras** una vez y se aplica a toda la cadena — y funciona igual con un modelo de verdad, donde además reintenta los `429` transitorios (c09).
+
+</Box>
+
 <Avoid label="⛔ Cuándo NO montar todo este andamiaje">
 
 - **Para una consulta suelta y manual.** Si vas a leer tú la respuesta, no necesitas contrato ni fallback: pide texto y ya. Esto se justifica cuando **otro código** consume la salida.
@@ -149,6 +190,7 @@ assert salida["metricas"]["uso_fallback"] is True     # el contrato lo salvó
 - Decir qué hace el sistema cuando el modelo devuelve algo inválido, y por qué el fallback marca `requiere_humano`.
 - Señalar por qué el filtro va **antes** del modelo y por qué el de este concepto no basta.
 - Justificar por qué el modelo entra por parámetro y qué te compra eso en los tests.
+- Reconstruir la misma utilidad con LCEL (`prompt | modelo | parser`, `.with_retry()`, `.with_fallbacks()`, `RunnableBranch`) y decir qué te da componer que el bucle a mano no: `.invoke`/`.batch`/`.stream` gratis.
 
 </Checkpoint>
 

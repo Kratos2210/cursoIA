@@ -3,7 +3,7 @@
 Cada archivo es **autónomo**: lo abres en VS Code, lo corres y funciona solo.
 Están comentados **sección por sección** para que entiendas cada línea.
 
-Y todo está **verificado por 872 tests** que corren sin gastar un solo token
+Y todo está **verificado por 886 tests** que corren sin gastar un solo token
 (ver [§6](#6-cómo-se-verifica-que-esto-funciona)).
 
 ## 1) Requisitos (una sola vez)
@@ -82,6 +82,7 @@ La columna «Cuota» se refiere al proveedor que tengas activo: con
 | 22b · Voz (audio in/out) | `22b_voz.py` | audio de entrada (STT) · síntesis de voz (TTS) · generación multimodal | No |
 | 23 · Seguridad | `23_seguridad.py` | red-teaming OWASP LLM: inyección, saneo, secretos | **No** |
 | 24 · Vector DBs | `24_vector_db.py` | dedup por hash + índice IVFFlat (recall↔velocidad) | **No** |
+| 26a · Anatomía del prompt | `26a_anatomia_prompt.py` | rol · tarea · contexto · formato · delimitadores · prompt de sistema | **No** |
 | 26b · Prompt engineering | `26b_prompt_engineering.py` | few-shot · CoT · self-consistency · descomposición | **No** |
 | 27 · Fundamentos del LLM | `27_fundamentos_llm.py` | tokenización BPE · softmax/temperatura · top_k/top_p · perplejidad | **No** |
 | 28 · Desafíos y alucinaciones | `28_alucinaciones.py` | taxonomía causa→mitigación · detector de inconsistencia · fragilidad | **No** |
@@ -98,7 +99,7 @@ evals con CI gate, serving FastAPI/SSE y ADRs. 127 tests, 100% offline.
 
 ## 4) Ejercicios
 
-Leer código no enseña a escribirlo. En [`ejercicios/`](ejercicios/) hay 18
+Leer código no enseña a escribirlo. En [`ejercicios/`](ejercicios/) hay 19
 ejercicios con enunciado, **pistas progresivas**, criterio de aceptación
 verificable y solución aparte —incluidos los de temas avanzados (MCP, patrón
 supervisor, evaluación, coste, multimodal, alucinaciones y el caso retail).
@@ -161,6 +162,7 @@ montón de scripts: **cada concepto tiene una prueba que lo defiende**.
 | Mapa del ecosistema (LangChain vs LlamaIndex · CrewAI · OpenAI Agents SDK) | — | — | — |
 | Correr LlamaIndex y CrewAI (mismo RAG/supervisor, otra piel) | `frameworks/rag_llamaindex.py` · `frameworks/crew_crewai.py` | — | — (anexo, fuera del gate, ADR-0006) |
 | Discovery de procesos (AS-IS/TO-BE · escalera de autonomía · matriz) | — | — | — |
+| Anatomía del prompt (rol · tarea · contexto · formato · delimitadores) | `26a` | [26a](ejercicios/ejercicio_26a_prompting.md) | `test_offline.py::TestTema26a*` |
 | Prompt engineering (few-shot · CoT · self-consistency) | `26b` | — | `test_offline.py::TestTema26b*` |
 | Mecánica del LLM (tokenización · softmax · muestreo · perplejidad) | `27` | [27](ejercicios/ejercicio_27_fundamentos.md) | `test_offline.py::TestTema27*` |
 | Arquitecturas e historia (transformer · encoder/decoder · RLHF · MoE) | — | — | — |
@@ -178,7 +180,7 @@ montón de scripts: **cada concepto tiene una prueba que lo defiende**.
 
 ```bash
 cd curso_ejemplos
-uv run pytest -m offline        # 872 tests, ~30 s, CERO llamadas a la API
+uv run pytest -m offline        # 886 tests, ~30 s, CERO llamadas a la API
 ```
 
 Qué cubren:

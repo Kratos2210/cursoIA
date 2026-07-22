@@ -22,12 +22,22 @@ FINALIDAD:
      23_seguridad.py:responder_seguro). El de fábrica es un doble que recita un
      guion; con una llave real le pasas `util.crear_llm()` y no cambia nada más.
 
+  DOS VERSIONES, A PROPÓSITO:
+    · procesar() lo hace TODO A MANO (un dict, un try/except, un bucle for).
+      No para que copies eso, sino para que VEAS qué hay debajo del contrato.
+    · construir_cadena() (sección 8) es la MISMA lógica compuesta con LCEL —
+      ChatPromptTemplate | modelo | PydanticOutputParser, .with_retry(),
+      .with_fallbacks(), RunnableBranch—. Ahí reaparecen, ya cosidas, las piezas
+      que estudiaste sueltas en los temas 02-09; y por ser un Runnable, hereda
+      gratis .invoke()/.batch()/.stream() (m03). Comparar las dos ES la lección.
+
 LÓGICA (paso a paso):
   1) filtro_entrada(): descarta lo que ni debe llegar al modelo (m23 lite).
   2) construir_prompt(): el molde que EXIGE el JSON con sus campos (m02).
   3) parsear_respuesta(): valida el JSON contra el molde Pydantic (m05).
-  4) procesar(): orquesta todo, reintenta si el contrato se rompe (m09) y
-     mide tokens estimados y latencia (m16 lite).
+  4) procesar(): orquesta todo A MANO, reintenta si el contrato se rompe (m09)
+     y mide tokens estimados y latencia (m16 lite).
+  5) construir_cadena(): la MISMA utilidad, pero con LCEL (temas 02-09).
 
 Requisitos: ninguno extra (Pydantic ya viene con LangChain).
 Ejecuta:    uv run python 09b_proyecto_texto.py
@@ -40,6 +50,12 @@ import time
 from typing import Callable, Literal
 
 from pydantic import BaseModel, Field, ValidationError
+
+# Piezas de LangChain de los temas 02-09 — las mismas que aprendiste sueltas.
+# Se usan en construir_cadena() (sección 8), la versión LCEL del proyecto.
+from langchain_core.output_parsers import PydanticOutputParser   # m05: valida el contrato
+from langchain_core.prompts import ChatPromptTemplate            # m02: el prompt como pieza
+from langchain_core.runnables import RunnableBranch, RunnableLambda  # m06/m08
 
 
 # ============ 1) EL CONTRATO · qué forma DEBE tener la respuesta ============
@@ -180,6 +196,74 @@ def modelo_roto(_prompt: str) -> str:
     return "Claro, aquí tienes: la factura se revisa en 3 días."   # no es JSON
 
 
+# ============ 8) LA MISMA IDEA, PERO CON LCEL ============
+# Todo lo de arriba está escrito A MANO a propósito: así ves qué hay DEBAJO del
+# contrato (un dict, un try/except y un bucle). Pero en un proyecto de verdad no
+# escribes eso: lo compones con las piezas de los temas 02-09. Misma lógica,
+# mismo comportamiento, y aquí sí aparecen los nombres que aprendiste.
+def _como_runnable(funcion: Callable[[str], str]) -> RunnableLambda:
+    """Convierte el doble `prompt -> texto` en un Runnable (m06).
+
+    Cualquier función de Python se vuelve una pieza encajable con
+    RunnableLambda. Es lo que permite meter nuestro modelo falso —o un
+    `util.crear_llm()` de verdad— en el mismo sitio de la cadena.
+
+    `valor` es un ChatPromptValue (lo que produce el prompt); `.to_string()` lo
+    aplana al texto que espera nuestro doble.
+    """
+    return RunnableLambda(lambda valor: funcion(valor.to_string()))
+
+
+PLANTILLA_LCEL = (
+    "Eres el clasificador del soporte técnico. Responde SOLO con un JSON válido, "
+    "sin texto alrededor y sin ```.\n"
+    'Campos: {{"categoria": "facturacion|tecnico|producto|otro", '
+    '"urgencia": 1-5, "respuesta": "texto para el cliente", '
+    '"requiere_humano": true|false}}\n\n'
+    "Consulta del cliente: {consulta}"
+)
+
+
+def construir_cadena(modelo: Callable[[str], str], intentos: int = 2):
+    """La MISMA utilidad, compuesta con LCEL. Devuelve un Runnable.
+
+    Pieza por pieza, y de dónde sale cada una:
+
+      · ChatPromptTemplate + el operador `|`  ......... m02
+      · PydanticOutputParser (valida el contrato) ..... m05
+      · .with_retry() / .with_fallbacks() ............. m09
+      · RunnableLambda / RunnableBranch ............... m06 (y el routing del m08)
+
+    Y como el resultado es un Runnable, hereda GRATIS toda la interfaz
+    unificada del m03: el mismo objeto responde a .invoke(), .batch() y
+    .stream(). Eso es lo que compras al componer en vez de escribir un bucle.
+    """
+    prompt = ChatPromptTemplate.from_template(PLANTILLA_LCEL)      # m02
+    parser = PydanticOutputParser(pydantic_object=RespuestaSoporte)  # m05
+
+    # El núcleo: prompt -> modelo -> contrato validado. `.with_retry()` reintenta
+    # cuando el parser lanza (JSON inválido), que es EXACTAMENTE el bucle `for`
+    # de procesar() — pero declarado, no escrito a mano (m09).
+    clasificar = (prompt | _como_runnable(modelo) | parser).with_retry(
+        stop_after_attempt=intentos)
+
+    # Si tras los reintentos sigue rompiéndose, se escala a un humano en vez de
+    # reventar. `.with_fallbacks()` es el "plan B" del m09.
+    clasificar = clasificar.with_fallbacks([RunnableLambda(lambda _: _FALLBACK)])
+
+    # ⚠️ EL CORTOCIRCUITO DEL FILTRO NO ES GRATIS EN LCEL. En procesar() basta un
+    #    `if ...: return`. En una cadena, la entrada recorre todos los eslabones,
+    #    así que para NO llamar al modelo hace falta una bifurcación explícita:
+    #    RunnableBranch es el `if/else` de LCEL (la idea del routing del m08).
+    #    Sin esto, una inyección obvia gastaría tokens igualmente.
+    return RunnableBranch(
+        (lambda entrada: bool(filtro_entrada(entrada["consulta"])),
+         RunnableLambda(lambda _: _FALLBACK.model_copy(
+             update={"respuesta": "Consulta bloqueada por el filtro de seguridad."}))),
+        clasificar,
+    )
+
+
 def main() -> None:
     casos = [
         "Me cobraron dos veces la factura de marzo",
@@ -200,6 +284,25 @@ def main() -> None:
     print(f"   → fallback={salida['metricas']['uso_fallback']} "
           f"· intentos={salida['metricas']['intentos']} "
           f"· requiere_humano={salida['resultado'].requiere_humano}")
+
+    # ---- La MISMA utilidad, ahora compuesta con LCEL (sección 8) ----
+    print("\n" + "=" * 60)
+    print("LA MISMA LÓGICA, COMPUESTA CON LCEL (temas 02-09)")
+    print("=" * 60)
+    cadena = construir_cadena(modelo_demo)
+
+    # .invoke() — una consulta, igual que procesar() pero sin bucle a mano.
+    r = cadena.invoke({"consulta": "Me cobraron dos veces la factura de marzo"})
+    print(f"invoke  → [{r.categoria}] urgencia={r.urgencia} humano={r.requiere_humano}")
+
+    # .batch() — varias consultas a la vez (m03), GRATIS por ser un Runnable.
+    tanda = [{"consulta": c} for c in casos]
+    print("batch   →", [r.categoria for r in cadena.batch(tanda)],
+          "  ← la 3ª la paró el RunnableBranch antes del modelo")
+
+    # El fallback del m09, ahora declarado con .with_fallbacks() en vez de un for.
+    roto = construir_cadena(modelo_roto).invoke({"consulta": "Me cobraron dos veces"})
+    print(f"roto    → requiere_humano={roto.requiere_humano} (cayó al fallback humano)")
 
 
 if __name__ == "__main__":

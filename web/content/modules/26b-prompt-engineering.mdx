@@ -21,7 +21,42 @@
 
 </Box>
 
+<Box kind="def" label="◈ Zero-shot, one-shot, few-shot: es un espectro, no tres técnicas">
+
+"Few-shot" es un punto de una escala que se recorre **hacia arriba y solo si hace falta**. El número de demostraciones (`k`) es el parámetro:
+
+<DefList>
+  <Term>Zero-shot (k = 0)</Term>
+  <Def>Solo la instrucción. **Empieza siempre aquí.** Para tareas comunes y bien nombradas —traduce, resume, clasifica en positivo/negativo— los modelos actuales ya la bordan, y cada demostración que añadas es contexto que pagas en cada llamada.</Def>
+  <Term>One-shot (k = 1)</Term>
+  <Def>Una demostración. Suele bastar cuando lo que quieres comunicar es el **formato**, no el criterio: "ah, la salida va así".</Def>
+  <Term>Few-shot (k = 2…5)</Term>
+  <Def>Varias. Es lo que necesitas cuando hay un **criterio propio de tu casa** —una taxonomía, un desempate, un caso límite— que se muestra en una línea y se describe en un párrafo.</Def>
+</DefList>
+
+La regla para subir de escalón: **sube solo cuando el escalón anterior falle, y mide el salto**. Pasar de k=0 a k=3 "por si acaso" encarece cada llamada para siempre a cambio de una mejora que nadie comprobó.
+
+</Box>
+
 ### Few-shot · enseñar con ejemplos, no con instrucciones
+
+Antes del código, el ejemplo correcto — porque elegirlo mal hace parecer que la técnica no sirve. Traducir `gato → cat` **no necesita demostraciones**: con una instrucción basta. Few-shot gana cuando la tarea tiene una **convención propia de tu casa**, larga de describir y corta de mostrar:
+
+```text title="clasificar reseñas en tu taxonomía interna (LOGISTICA · PRODUCTO · ATENCION · APP)"
+P: Llegó dos días antes de lo prometido y bien embalado.
+R: LOGISTICA
+
+P: La app se cierra sola cada vez que intento pagar con Yape.
+R: APP
+
+P: Vino rayado y encima nadie contesta el correo.
+R: PRODUCTO          ← habla de producto Y de atención: en esta casa manda el DEFECTO
+
+P: Tardó tres semanas en llegar, pero el vendedor me fue avisando.
+R:
+```
+
+La tercera demostración es la que vale por un párrafo entero de instrucciones. Ese criterio de desempate —"si hay defecto y además mala atención, clasifica como `PRODUCTO`"— se **muestra** en una línea; describirlo sin ambigüedad cuesta un párrafo que el modelo interpretará a su manera. Eso es few-shot: no le describes la tarea, le enseñas tu criterio.
 
 ```python title="curso_ejemplos/26b_prompt_engineering.py · construir_prompt_fewshot (función pura)"
 def construir_prompt_fewshot(ejemplos, pregunta):
@@ -51,22 +86,53 @@ def self_consistency(respuestas):
             return respuesta
 ```
 
-```text title="▸ deberías ver al correr uv run python 26b_prompt_engineering.py"
-[4] SELF-CONSISTENCY · 5 muestras ['42', '42', '17', '42', '17']
-    → mayoría (moda): 42
+```text title="▸ una corrida típica de uv run python 26b_prompt_engineering.py (los números varían)"
+[3] SELF-CONSISTENCY · 5 pasadas a temperatura 0.8 sobre una trampa:
+    Un almacén tiene 17 cajas. Todas menos 9 se despachan. ¿Cuántas quedan?
+    (esperado: 9 — 'todas menos 9' es la trampa; el 8 = 17−9 es el error típico)
 
-[5] MEDIR LA MEJORA · exactitud sobre el mini-dataset (exact-match):
-    Prompt POBRE  (salto directo)     : 0%
-    Prompt MEJOR  (CoT/descomposición): 100%
-    → estructurar la tarea sube el acierto. En el TEMA 16 esto se
-      mide 'en serio' con un dataset y la tríada RAG, no a ojo.
+    muestras: ['9', '9', '8', '9', '8']
+    → mayoría (moda): 9
+
+[4] MEDIR LA MEJORA · exact-match sobre el mini-dataset, LLAMANDO al modelo:
+    zero-shot: 67%
+    few-shot : 100%
+    → la mejora medida son 33 puntos sobre 6 reseñas.
 ```
 
-Ese último bloque es el corazón del concepto: un mini-dataset fijo y una métrica **determinista** (exact-match) que demuestran, sin gastar un token, que estructurar la tarea sube el acierto. Es el eco offline de lo que en el [c16c](/concepto/16c-evaluacion) se mide "en serio" con la tríada RAG.
+Ese último bloque es el corazón del concepto: un mini-dataset con label de oro y una métrica clara (exact-match) que te dicen, con un número, si el prompt nuevo acierta más que el viejo. Aquí se mide **llamando al modelo de verdad**, así que el número no es determinista —puede bailar entre corridas—: esto es la **forma** de medir, no el veredicto. Medir "en serio" es un dataset grande y la tríada RAG del [c16c](/concepto/16c-evaluacion).
+
+<Box kind="warn" label="▲ El baseline tiene que ser justo, o el número que reportas es ficción">
+
+Fíjate en que el control aquí es **zero-shot**, que ya acierta bastante —no un prompt tramposo que falle siempre. Es deliberado, y es la parte que más se copia mal.
+
+Un baseline honesto es **el mejor método simple** que se te ocurra —aquí, "la instrucción a secas, sin demostraciones"—, no el peor que puedas imaginar. Si como control eliges algo que falla siempre, tu prompt nuevo sale ganando por goleada contra nadie: el titular "0% → 100%" impresiona en una presentación y no demuestra absolutamente nada.
+
+Con un control justo la mejora es de **unos pocos puntos** —los que aporta el few-shot al enseñar el desempate. Es un número más modesto y es el único que puedes defender cuando alguien te pregunte "¿comparado con qué?". Cuando veas un antes/después de prompts —tuyo o de otro—, esa es la primera pregunta que hay que hacer.
+
+</Box>
 
 <Box kind="warn" label="▲ Más ejemplos ≠ siempre mejor; CoT no inventa datos">
 
 Cada demostración few-shot **gasta contexto y tokens**: veinte ejemplos "por si acaso" encarecen cada llamada y pueden empujar fuera de la ventana lo que de verdad importa. Y **CoT no arregla un modelo que no sabe el dato**: razonar paso a paso ordena lo que el modelo *ya* sabe; si le falta el hecho, lo que necesitas es RAG ([c11](/concepto/11-rag-profesional)), no más "pensemos paso a paso".
+
+</Box>
+
+### El bucle: cómo se refina un prompt sin volverse loco
+
+Con un baseline justo y una métrica ya tienes lo que hace falta para **refinar en serio**. El bucle es corto y aburrido, y esa es su virtud:
+
+1. **Escribe** la versión más simple que pueda funcionar (zero-shot).
+2. **Mide** contra el dataset. Ese número es tu punto de partida, te guste o no.
+3. **Mira los fallos** — no el promedio. El promedio te dice que algo va mal; los casos concretos te dicen *qué*.
+4. **Cambia UNA cosa.** Un elemento del prompt ([c26a](/concepto/26a-anatomia-del-prompt)), o un escalón de `k`, o una regla. Una.
+5. **Vuelve a medir.** Si mejoró, quédatelo. **Si empeoró, revierte** — y anota qué probaste, para no repetirlo dentro de tres semanas.
+
+<Box kind="warn" label="▲ Cambiar dos cosas a la vez te deja sin saber cuál funcionó">
+
+Es la tentación constante: como cada vuelta cuesta tiempo y tokens, uno mete cuatro mejoras juntas. Si el número sube, no sabes cuál de las cuatro lo hizo — así que no puedes quitar las otras tres, y te quedas arrastrando contexto que quizá no sirve de nada. Si el número baja, tampoco sabes cuál lo estropeó.
+
+Una cosa por vuelta. Es más lento por iteración y muchísimo más rápido hasta llegar a un prompt que entiendes.
 
 </Box>
 
@@ -82,45 +148,35 @@ Cada demostración few-shot **gasta contexto y tokens**: veinte ejemplos "por si
 
 Toma un prompt real del proyecto (el del sistema del agente, o el del c05) y crea una **segunda variante** con CoT o con 2–3 ejemplos few-shot. Mídelas con un mini-dataset como el de este concepto —exact-match o coincidencia de palabra clave— y quédate con la que gane *de verdad*. Cuando quieras hacerlo con evals serios, es el [c16c](/concepto/16c-evaluacion); y si te suena a artesanía repetitiva, mira **DSPy**: trata el prompt como parámetros a **optimizar** contra una métrica y un set de ejemplos —prompt engineering hecho búsqueda sistemática (solo lectura, no se instala aquí).
 
-**Segundo reto: rompe tu propio harness.** Añade al `DATASET` tres problemas de **multiplicación** ("Cada caja trae 6 galletas y hay 4 cajas") y comprueba que `resolver_cot` deja de acertar el 100%. Luego arréglalo como se arregla en serio: amplía la detección de operación y **vuelve a medir**.
+**Segundo reto: mide un cambio de verdad.** Añade al `DATASET_RESENAS` una reseña de **desempate** que sospeches que zero-shot fallará (defecto de producto + mala atención → `PRODUCTO`). Mide zero-shot y few-shot **antes**; si el few-shot también la falla, **refuerza la demostración** que enseña ese desempate (muéstrasela, no la describas) y **vuelve a medir**.
 
-**Criterio de aceptación:** imprimes el número **antes** y **después**. `evaluar(resolver_cot, AMPLIADO)` cae por debajo del 100% al añadir los casos nuevos, y tu versión arreglada vuelve a 100% **sin romper los cinco casos originales** — que es lo único que distingue un arreglo de un parche.
+**Criterio de aceptación:** imprimes el número **antes** y **después**. El few-shot reforzado acierta el caso nuevo **sin dejar de acertar los que ya acertaba**. Como el modelo no es determinista, corre la medición dos veces: si el número baila mucho con tan pocos casos, esa inestabilidad es justamente la señal de que seis reseñas no bastan para decidir en serio (para eso, el [c16c](/concepto/16c-evaluacion)).
 
 <Solution summary="Ver una solución">
 
-```python title="solución · ampliar el dataset y re-medir (nunca 'a ojo')"
-_PALABRAS_MULT = ("cada", "por caja", "veces", "docenas")
+```python title="solución · añadir un caso difícil, reforzar la demo, y re-medir (nunca 'a ojo')"
+from util import crear_llm, cargar_var_entorno
+cargar_var_entorno()
+llm = crear_llm(temperature=0)
 
-def resolver_cot_v2(pregunta: str) -> str:
-    nums = _numeros(pregunta)
-    if len(nums) < 2:
-        return str(nums[0]) if nums else ""
-    a, b = nums[0], nums[1]
-    bajo = pregunta.lower()
-    # La rama nueva va PRIMERO: "cada X … y hay N" no es una suma por mucho que
-    # tenga una 'y' en medio. El orden de las reglas ES parte de la lógica.
-    if any(p in bajo for p in _PALABRAS_MULT):
-        return str(a * b)
-    if any(p in bajo for p in _PALABRAS_RESTA):
-        return str(a - b)
-    return str(a + b)
+# 1) Un caso donde zero-shot suele fallar: producto Y atención → PRODUCTO
+NUEVO = {"reseña": "El horno llegó abollado y el chat de soporte nunca respondió.",
+         "categoria": "PRODUCTO"}
+AMPLIADO = DATASET_RESENAS + [NUEVO]
 
-NUEVOS = [
-    {"pregunta": "Cada caja trae 6 galletas y hay 4 cajas. ¿Cuántas galletas hay?", "respuesta": "24"},
-    {"pregunta": "Cada estante tiene 8 libros y hay 5 estantes. ¿Cuántos libros hay?", "respuesta": "40"},
-    {"pregunta": "Cada bolsa lleva 3 kilos y compras 7 bolsas. ¿Cuántos kilos llevas?", "respuesta": "21"},
-]
-AMPLIADO = DATASET + NUEVOS
+print(f"zero-shot, set ampliado : {_medir(llm, _prompt_zero_shot, AMPLIADO):.0%}")
+print(f"few-shot,  set ampliado : {_medir(llm, _prompt_few_shot,  AMPLIADO):.0%}")
 
-print(f"directo (control)         : {evaluar(resolver_directo, AMPLIADO):.0%}")   #   0%
-print(f"cot original, set ampliado: {evaluar(resolver_cot,     AMPLIADO):.0%}")   #  62%
-print(f"cot v2,       set ampliado: {evaluar(resolver_cot_v2,  AMPLIADO):.0%}")   # 100%
-print(f"cot v2,       set original: {evaluar(resolver_cot_v2,  DATASET):.0%}")    # 100% ← no rompiste nada
+# 2) Si el few-shot aún duda en el desempate, REFUERZA la demostración que lo
+#    enseña: otra reseña resuelta con la misma regla, no un párrafo de teoría.
+EJEMPLOS_FEWSHOT.append(
+    ("El horno llegó abollado y nadie del soporte respondió.", "PRODUCTO"))
+print(f"few-shot reforzado      : {_medir(llm, _prompt_few_shot, AMPLIADO):.0%}")
 ```
 
-La lección no es la regla de multiplicar: es que **el dataset creció y la métrica te lo dijo**. Sin volver a medir habrías "mejorado" el resolutor a ciegas, y esa última línea —el set original, todavía al 100%— es la que separa un arreglo de una regresión disfrazada de mejora.
+La lección no es la reseña del horno: es que **cambiaste UNA cosa (una demo), volviste a medir, y el número te dijo si sirvió**. Sin medir habrías "mejorado" el prompt a ciegas; y como aquí el juez es el modelo, repites la medición para no confundir una mejora real con el ruido de una sola pasada.
 
-Y es exactamente lo que pasa con un prompt real: cada caso nuevo que descubres en producción entra al dataset, y cada cambio se valida contra **todo** el dataset, no solo contra el caso que te acaba de doler. Eso, hecho en serio y con LLM de por medio, es el [c16c](/concepto/16c-evaluacion).
+Y es exactamente lo que pasa con un prompt en producción: cada caso nuevo que descubres entra al dataset, y cada cambio se valida contra **todo** el dataset, no solo contra el caso que te acaba de doler. Eso, hecho en serio y con un dataset grande, es el [c16c](/concepto/16c-evaluacion).
 
 </Solution>
 
@@ -183,11 +239,11 @@ Regla práctica: **CoT + self-consistency (este concepto) cubren la mayoría de 
 </Question>
 
 <Question>
-  <Prompt>4 · El concepto compara dos estrategias con exact-match sobre 5 problemas y sin llamar al LLM. ¿Qué demuestra eso exactamente?</Prompt>
+  <Prompt>4 · El concepto mide few-shot vs zero-shot con exact-match sobre 6 reseñas, llamando al modelo. ¿Qué demuestra eso exactamente?</Prompt>
   <Option>Que un modelo afinado acierta más que el modelo base</Option>
-  <Option ok>Que estructurar la tarea sube el acierto, con una métrica determinista y reproducible: el eco offline de medir en serio</Option>
-  <Option>Que cinco casos bastan para decidir qué prompt va a producción</Option>
-  <Feedback>Es un harness didáctico: enseña la **forma** de medir sin gastar un token. Quien decide en serio es un dataset real con la tríada RAG del c16c.</Feedback>
+  <Option ok>La **forma** de medir un cambio de prompt: un número comparable antes/después — pero con 6 casos y un modelo no determinista, es indicativo, no veredicto</Option>
+  <Option>Que seis casos bastan para decidir qué prompt va a producción</Option>
+  <Feedback>Es un harness didáctico: enseña a comparar dos prompts con una métrica, no a decidir en serio. Para eso hacen falta un dataset grande y la tríada RAG del c16c.</Feedback>
 </Question>
 
 </Quiz>
